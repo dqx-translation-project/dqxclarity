@@ -41,23 +41,23 @@ jobs:
           path: ./version.update
           contents: ${{ steps.bump_version.outputs.next-version }}
           write-mode: "overwrite"
-      - name: Clone dqxtranslationproject/dqx_custom_translations
+      - name: Clone dqxtranslationproject/dqx-custom-translations
         uses: GuillaumeFalourd/clone-github-repo-action@v2
         with:
           owner: "dqxtranslationproject"
-          repository: "dqx_custom_translations"
+          repository: "dqx-custom-translations"
       - name: Build dev package
         run: |
           mkdir -p dqxclarity/json/_lang/en;
           rsync -av --exclude="bms/" --exclude="imgs/" app/* dqxclarity/;
           cp version.update requirements.txt user_settings.ini dqxclarity/;
           cp -fr dqx_translations/json/_lang/en/* dqxclarity/json/_lang/en;
-          cp -fr dqx_custom_translations/json/* dqxclarity/json/_lang/en;
-          cp -f dqx_custom_translations/csv/glossary.csv dqxclarity/json/_lang/en;
-          cp -f dqx_custom_translations/csv/hex_dict.csv dqxclarity/misc_files;
+          cp -fr dqx-custom-translations/json/* dqxclarity/json/_lang/en;
+          cp -f dqx-custom-translations/csv/glossary.csv dqxclarity/json/_lang/en;
+          cp -f dqx-custom-translations/csv/hex_dict.csv dqxclarity/misc_files;
           zip -r dqxclarity.zip dqxclarity
           rm -rf dqx_translations;
-          rm -rf dqx_custom_translations;
+          rm -rf dqx-custom-translations;
       - name: Commit changes
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
