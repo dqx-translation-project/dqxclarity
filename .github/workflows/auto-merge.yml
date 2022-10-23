@@ -1,0 +1,17 @@
+---
+name: "automerge"
+on:
+  pull_request:
+    types:
+      - opened
+
+jobs:
+  automerge:
+    if: "github.event.pull_request.title == 'Sync: weblate to dev'"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Automerging weblate to dev
+        uses: "pascalgn/automerge-action@v0.15.3"
+        with:
+          MERGE_COMMIT_MESSAGE: "Merged weblate to dev"
+

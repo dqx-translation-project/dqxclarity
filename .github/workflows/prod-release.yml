@@ -1,0 +1,87 @@
+---
+name: "prod-release"
+
+on:
+  push:
+    branches:
+      - weblate
+  pull_request:
+    branches:
+      - weblate
+    types:
+      - closed
+
+jobs:
+  prod-release:
+    if: startsWith(github.event.pull_request.title, 'release')
+    name: "Prod release"
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Clone dqxtranslationproject/dqx_translations
+        uses: GuillaumeFalourd/clone-github-repo-action@v2
+        with:
+          owner: "dqxtranslationproject"
+          repository: "dqx_translations"
+      - name: Read version.update file
+        uses: juliangruber/read-file-action@v1
+        id: template
+        with:
+          path: ./version.update
+      - name: Increment version
+        id: bump_version
+        uses: christian-draeger/increment-semantic-version@1.0.2
+        with:
+          current-version: ${{ steps.template.outputs.content }}
+          version-fragment: "feature"
+      - name: Write new version to file
+        uses: DamianReeves/write-file-action@master
+        with:
+          path: ./version.update
+          contents: ${{ steps.bump_version.outputs.next-version }}
+          write-mode: "overwrite"
+      - name: Clone xshobux/dqx_custom_translations
+        uses: GuillaumeFalourd/clone-github-repo-action@v2
+        with:
+          owner: "xshobux"
+          repository: "dqx_custom_translations"
+      - name: Build dev package
+        run: |
+          mkdir -p dqxclarity/json/_lang/en;
+          rsync -av --exclude="bms/" --exclude="imgs/" app/* dqxclarity/;
+          cp version.update requirements.txt user_settings.ini dqxclarity/;
+          cp -fr dqx_translations/json/_lang/en/* dqxclarity/json/_lang/en;
+          cp -fr dqx_custom_translations/json/* dqxclarity/json/_lang/en;
+          cp -f dqx_custom_translations/csv/glossary.csv dqxclarity/json/_lang/en;
+          cp -f dqx_custom_translations/csv/hex_dict.csv dqxclarity/misc_files;
+          zip -r dqxclarity.zip dqxclarity
+          rm -rf dqx_translations;
+          rm -rf dqx_custom_translations;
+      - name: Commit changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git commit -m "Update version to ${{ steps.bump_version.outputs.next-version }}." -a
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: "weblate"
+      - name: Creating prod release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dqxclarity.zip
+          prerelease: false
+          draft: false
+          tag_name: v${{ steps.bump_version.outputs.next-version }}
+          name: "Release: v${{ steps.bump_version.outputs.next-version }}"
+          generate_release_notes: true
+      - name: Open Pull Request
+        uses: tretuna/sync-branches@1.4.0
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FROM_BRANCH: "weblate"
+          TO_BRANCH: "dev"
+          PULL_REQUEST_TITLE: "Sync: weblate to dev"
+          PULL_REQUEST_BODY: "sync-branches: Moving code from weblate back to dev."

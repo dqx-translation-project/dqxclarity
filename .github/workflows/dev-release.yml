@@ -1,0 +1,66 @@
+---
+name: "dev-release"
+
+on:
+  push:
+    branches:
+      - "dev"
+
+jobs:
+  dev-release:
+    name: "Dev release"
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Clone dqxtranslationproject/dqx_translations
+        uses: GuillaumeFalourd/clone-github-repo-action@v2
+        with:
+          owner: "dqxtranslationproject"
+          repository: "dqx_translations"
+      - name: Clone xshobux/dqx_custom_translations
+        uses: GuillaumeFalourd/clone-github-repo-action@v2
+        with:
+          owner: "xshobux"
+          repository: "dqx_custom_translations"
+      - name: Build dev package
+        run: |
+          mkdir -p dqxclarity/json/_lang/en;
+          rsync -av --exclude="bms/" --exclude="imgs/" app/* dqxclarity/;
+          cp version.update requirements.txt user_settings.ini dqxclarity/;
+          cp -fr dqx_translations/json/_lang/en/* dqxclarity/json/_lang/en;
+          cp -fr dqx_custom_translations/json/* dqxclarity/json/_lang/en;
+          cp -f dqx_custom_translations/csv/glossary.csv dqxclarity/json/_lang/en;
+          cp -f dqx_custom_translations/csv/hex_dict.csv dqxclarity/misc_files;
+          zip -r dqxclarity.zip dqxclarity
+      - name: Set outputs
+        id: vars
+        run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+      - name: Read version.update file
+        uses: juliangruber/read-file-action@v1
+        id: template
+        with:
+          path: ./version.update
+      - name: Get release version
+        id: bump_version
+        uses: christian-draeger/increment-semantic-version@1.0.2
+        with:
+          current-version: ${{ steps.template.outputs.content }}
+          version-fragment: "feature"
+      - name: Rename dqxclarity.zip to dev build
+        run: |
+          mv dqxclarity.zip dqxclarity-${{ steps.bump_version.outputs.next-version }}-dev-${{ steps.vars.outputs.sha_short }}.zip
+      - name: Delete existing release if exists
+        uses: The-PullRequest-Club/action-delete-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.bump_version.outputs.next-version }}-dev
+      - name: Creating dev release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dqxclarity-${{ steps.bump_version.outputs.next-version }}-dev-${{ steps.vars.outputs.sha_short }}.zip
+          prerelease: true
+          tag_name: v${{ steps.bump_version.outputs.next-version }}-dev
+          name: "Dev Build: ${{ steps.bump_version.outputs.next-version }}-dev-${{ steps.vars.outputs.sha_short }}"
+          generate_release_notes: true
