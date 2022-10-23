@@ -65,7 +65,7 @@ if (!$PythonInstallPath) {
 
             if (!$PythonInstallPath) {
                 LogWrite "Failed to install Python automatically. Please try downloading the installer manually and walking through the setup using the README on dqxclarity's Github page."
-                LogWrite "Github: https://github.com/xshobux/dqxclarity"
+                LogWrite "Github: https://github.com/dqxtranslationproject/dqxclarity"
                 LogWrite "Python: https://www.python.org/ftp/python/3.9.7/python-3.9.7.exe"
                 Read-Host "Press ENTER to close."
                 Exit

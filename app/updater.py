@@ -18,7 +18,7 @@ except Exception as e:
     pass
 
 try:
-    URL = "https://github.com/xshobux/dqxclarity/releases/latest/download/dqxclarity.zip"
+    URL = "https://github.com/dqxtranslationproject/dqxclarity/releases/latest/download/dqxclarity.zip"
     r = requests.get(URL, timeout=15)
 except Exception as e:
     message_box_fatal_error(

@@ -4,10 +4,10 @@ name: "prod-release"
 on:
   push:
     branches:
-      - weblate
+      - main
   pull_request:
     branches:
-      - weblate
+      - main
     types:
       - closed
 
@@ -41,10 +41,10 @@ jobs:
           path: ./version.update
           contents: ${{ steps.bump_version.outputs.next-version }}
           write-mode: "overwrite"
-      - name: Clone xshobux/dqx_custom_translations
+      - name: Clone dqxtranslationproject/dqx_custom_translations
         uses: GuillaumeFalourd/clone-github-repo-action@v2
         with:
-          owner: "xshobux"
+          owner: "dqxtranslationproject"
           repository: "dqx_custom_translations"
       - name: Build dev package
         run: |
@@ -67,7 +67,7 @@ jobs:
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: "weblate"
+          branch: "main"
       - name: Creating prod release
         uses: softprops/action-gh-release@v1
         with:
@@ -81,7 +81,7 @@ jobs:
         uses: tretuna/sync-branches@1.4.0
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FROM_BRANCH: "weblate"
+          FROM_BRANCH: "main"
           TO_BRANCH: "dev"
-          PULL_REQUEST_TITLE: "Sync: weblate to dev"
-          PULL_REQUEST_BODY: "sync-branches: Moving code from weblate back to dev."
+          PULL_REQUEST_TITLE: "Sync: main to dev"
+          PULL_REQUEST_BODY: "sync-branches: Moving code from main back to dev."

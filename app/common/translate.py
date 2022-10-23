@@ -78,7 +78,7 @@ def glossary_checksum(glossary_path="json/_lang/en/glossary.csv") -> str:
             cur_hash = hashlib.md5(bytes).hexdigest()
     else:
         try:
-            url = "https://raw.githubusercontent.com/xshobux/dqxclarity/weblate/json/_lang/en/glossary.csv"
+            url = "https://raw.githubusercontent.com/dqxtranslationproject/dqxclarity/weblate/json/_lang/en/glossary.csv"
             r = requests.get(url, timeout=15)
         except Exception as e:
             logger.warning("Error checking Github for glossary: {e}")
