@@ -7,11 +7,10 @@ on:
 
 jobs:
   automerge:
-    if: "github.event.pull_request.title == 'Sync: weblate to dev'"
+    if: "github.event.pull_request.title == 'Sync: main to dev'"
     runs-on: ubuntu-latest
     steps:
-      - name: Automerging weblate to dev
+      - name: Automerging main to dev
         uses: "pascalgn/automerge-action@v0.15.3"
         with:
-          MERGE_COMMIT_MESSAGE: "Merged weblate to dev"
-
+          MERGE_COMMIT_MESSAGE: "Merged main to dev"

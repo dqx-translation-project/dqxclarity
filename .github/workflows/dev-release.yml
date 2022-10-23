@@ -18,10 +18,10 @@ jobs:
         with:
           owner: "dqxtranslationproject"
           repository: "dqx_translations"
-      - name: Clone xshobux/dqx_custom_translations
+      - name: Clone dqxtranslationproject/dqx_custom_translations
         uses: GuillaumeFalourd/clone-github-repo-action@v2
         with:
-          owner: "xshobux"
+          owner: "dqxtranslationproject"
           repository: "dqx_custom_translations"
       - name: Build dev package
         run: |
