@@ -43,19 +43,19 @@ accept_quest_trigger = rb"\x8B\x45\xD8\x3B\x45\xDC\x8B\x03\x75\xDE\x56\xFF\x50\x
 # change and need to be updated on patches.
 #############################################
 
-# pattern for npc/monsters to rename.
-# npc:     78 0D ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 7C EA ?? ?? ?? ?? ?? ?? 78 D8 ?? ?? E?
-# monster: 78 0D ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 3C D8 ?? ?? ?? ?? ?? ?? 78 D8 ?? ?? E?
-# party:   78 0D ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 B4 DA ?? ?? ?? ?? ?? ?? 78 D8 ?? ?? E?
-npc_monster_pattern = rb"\x78\x0D..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00[\x7C\x3C\xB4][\xEA\xD8\xDA]......\x78\xD8..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+# pattern for npc/monsters to rename. 
+# npc:     A8 13 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 EC ?? ?? ?? ?? ?? ?? 34 D2 ?? ?? E?
+# monster: A8 13 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 D0 D9 ?? ?? ?? ?? ?? ?? 34 D2 ?? ?? E?
+# party:   A8 13 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 38 DC ?? ?? ?? ?? ?? ?? 34 D2 ?? ?? E?
+npc_monster_pattern = rb"\xA8\x13..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00[\x00\xD0\x38][\xEC\xD9\xDC]......\x34\xD2..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
 # pattern for concierge names
-# 78 D0 ?? ?? ?? ?? ?? ?? 78 D8 ?? ?? E?
-concierge_name_pattern = rb"\x78\xD0......\x78\xD8..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+# F8 D1 ?? ?? ?? ?? ?? ?? 34 D2 ?? ?? E?
+concierge_name_pattern = rb"\xF8\xD1......\x34\xD2..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
 # pattern for player names to rename.
-# 78 0D ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 18 4B ?? 01 ?? ?? ?? ?? ?? ?? ?? 01 E? (49 bytes)
-player_name_pattern = rb"\x78\x0D..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x18\x4B.\x01.......\x01[\xE3\xEF]"
+# A8 13 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 B0 4A ?? 01 ?? ?? ?? ?? ?? ?? ?? 01 E? (49 bytes)
+player_name_pattern = rb"\xA8\x13..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xB0\x4A.\x01.......\x01[\xE3\xEF]"
 
 # pattern for menu ai to rename.
 # 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 00 00 ?? ?? 00 00 00 00 00 00 ?? 00 00 00 ?? 1? ?? ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? 00 ?? ?? E? (58 bytes)
@@ -71,8 +71,8 @@ master_quest_pattern = rb"[\x10\x20\x30\x40\x50\x60\x70\x80\x90\xA0\xB0\xC0\xD0\
 
 # Main walkthrough text that loads on login. I can't figure out what function loads this on login,
 # so scanning for this for now. AC is also preventing this from just being accessible via hooks.
-# 20 ?? ?? ?? 00 00 00 00 04 02 00 00 10 00 00 00 E?
-walkthrough_pattern = rb"\x20...\x00\x00\x00\x00\x04\x02\x00\x00\x10\x00\x00\x00[\xE3\xE4\xE5\xE6\xE7\xE8\xE9]"
+# 00 ?? ?? ?? 00 00 00 00 04 02 00 00 10 00 00 00 E?
+walkthrough_pattern = rb"\x00...\x00\x00\x00\x00\x04\x02\x00\x00\x10\x00\x00\x00[\xE3\xE4\xE5\xE6\xE7\xE8\xE9]"
 
 ########################################
 # DQX patterns of interest
