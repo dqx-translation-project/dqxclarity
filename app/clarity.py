@@ -30,6 +30,7 @@ from common.signatures import (
     concierge_name_pattern,
     menu_ai_name_pattern,
     player_name_pattern,
+    sibling_name_pattern,
     master_quest_pattern,
     walkthrough_pattern,
 )
@@ -164,6 +165,31 @@ def scan_for_player_names():
         sys.exit()
 
 
+def scan_for_sibling_names():
+    """
+    Scans for addresses that are related to a specific
+    pattern to translate sibling names.
+    """
+    try:
+        if sibling_list := pattern_scan(pattern=sibling_name_pattern, return_multiple=True):
+            for address in sibling_list:
+                sibling_name_address = address + 51  # len of num of (sibling_name_pattern - 1)
+                try:
+                    ja_sibling_name = read_string(sibling_name_address)
+                    romaji_name = convert_into_eng(ja_sibling_name)
+                    write_bytes(sibling_name_address, b"\x04" + romaji_name.encode("utf-8") + b"\x00")
+                except UnicodeDecodeError:
+                    continue
+                except Exception as e:
+                    logger.warning("INFO ONLY: Failed to write sibling name.")
+    except TypeError:
+        logger.error(f"Cannot find DQX process. Must have closed? Exiting.")
+        sys.exit()
+    except Exception as e:
+        logger.error(f"Cannot find DQX process. Must have closed? Exiting.\nError: {e}")
+        sys.exit()
+        
+        
 def scan_for_concierge_names():
     try:
         if concierge_names := pattern_scan(pattern=concierge_name_pattern, return_multiple=True):
@@ -196,9 +222,9 @@ def scan_for_npc_names():
         if npc_list := pattern_scan(pattern=npc_monster_pattern, return_multiple=True):
             for address in npc_list:
                 npc_type = read_bytes(address + 36, 2)
-                if npc_type == b"\x7C\xEA" or npc_type == b"\x3C\xD8":
+                if npc_type == b"\x00\xEC" or npc_type == b"\xD0\xD9":
                     data = "NPC"
-                elif npc_type == b"\xB4\xDA":
+                elif npc_type == b"\x38\xDC":
                     data = "AI_NAME"
                 else:
                     continue
