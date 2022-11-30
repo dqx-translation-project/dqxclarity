@@ -523,6 +523,7 @@ def clean_up_and_return_items(text: str) -> str:
     Cleans up unnecessary text from item strings and searches for the name in items.json.
     Used specifically for the quest window.
     """
+    quest_rewards = merge_jsons(["json/_lang/en/key_items.json", "json/_lang/en/items.json", "json/_lang/en/custom_quest_rewards.json"])
     line_count = text.count("\n")
     sanitized = re.sub("男は ", "", text)  # remove boy reference from start of string
     sanitized = re.sub("女は ", "", sanitized)  # remove girl reference from start of string
@@ -536,18 +537,19 @@ def clean_up_and_return_items(text: str) -> str:
         if no_bullet.endswith("こ"):
             quantity = "(" + unicodedata.normalize("NFKC", no_bullet[-2]) + ")"
             no_bullet = re.sub("(　　.*)", "", no_bullet)
-        en = query_string_from_file(no_bullet, "custom_quest_rewards")
-        if en:
-            if "・" in original:
-                if line_count == 0:
-                    return "・" + en + quantity
+        if no_bullet in quest_rewards:
+            value = quest_rewards.get(no_bullet)
+            if value:
+                if "・" in original:
+                    if line_count == 0:
+                        return "・" + value + quantity
+                    else:
+                        final_string += "・" + value + quantity + "\n"
                 else:
-                    final_string += "・" + en + quantity + "\n"
-            else:
-                if line_count == 0:
-                    return en + quantity
-                else:
-                    final_string += en + quantity + "\n"
+                    if line_count == 0:
+                        return value + quantity
+                    else:
+                        final_string += value + quantity + "\n"
         else:
             if line_count == 0:
                 if "討伐ポイント" in original:
