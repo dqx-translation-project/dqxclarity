@@ -527,20 +527,23 @@ def clean_up_and_return_items(text: str) -> str:
     line_count = text.count("\n")
     sanitized = re.sub("男は ", "", text)  # remove boy reference from start of string
     sanitized = re.sub("女は ", "", sanitized)  # remove girl reference from start of string
+    sanitized = re.sub("男は　", "", sanitized)  # remove boy reference from start of string (fullwidth space)
+    sanitized = re.sub("女は　", "", sanitized)  # remove girl reference from start of string (fullwidth space)
     sanitized = re.sub("！　と頼まれた。", "と頼まれた。", sanitized)  # remove annoying 'asked to' string
     final_string = ""
     for item in sanitized.split("\n"):
-        original = item
         quantity = ""
         no_bullet = re.sub("(^\・)", "", item)
         points = no_bullet[6:18]
         if no_bullet.endswith("こ"):
-            quantity = "(" + unicodedata.normalize("NFKC", no_bullet[-2]) + ")"
+            quantity = "(" + unicodedata.normalize("NFKC", no_bullet[-3:]) + ")"
+            quantity = re.sub(" ", "", quantity)
+            quantity = re.sub("こ", "", quantity)
             no_bullet = re.sub("(　　.*)", "", no_bullet)
         if no_bullet in quest_rewards:
             value = quest_rewards.get(no_bullet)
             if value:
-                if "・" in original:
+                if "・" in item:
                     if line_count == 0:
                         return "・" + value + quantity
                     else:
@@ -552,7 +555,7 @@ def clean_up_and_return_items(text: str) -> str:
                         final_string += value + quantity + "\n"
         else:
             if line_count == 0:
-                if "討伐ポイント" in original:
+                if "討伐ポイント" in item:
                     return "・" + "Experience Points" + points
                 else:
                     return text
