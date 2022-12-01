@@ -536,9 +536,12 @@ def clean_up_and_return_items(text: str) -> str:
         no_bullet = re.sub("(^\・)", "", item)
         points = no_bullet[6:18]
         if no_bullet.endswith("こ"):
-            quantity = "(" + unicodedata.normalize("NFKC", no_bullet[-3:]) + ")"
+            quantity = "(" + unicodedata.normalize("NFKC", no_bullet[-3:-1]) + ")"
             quantity = re.sub(" ", "", quantity)
-            quantity = re.sub("こ", "", quantity)
+            no_bullet = re.sub("(　　.*)", "", no_bullet)
+        if no_bullet.endswith("他"):
+            if "必殺技を覚える" not in no_bullet:
+                quantity = "(1)"
             no_bullet = re.sub("(　　.*)", "", no_bullet)
         if no_bullet in quest_rewards:
             value = quest_rewards.get(no_bullet)
