@@ -65,7 +65,7 @@ def check_for_updates():
     if github_request.text != cur_ver:
         logger.warning(f"Clarity is out of date (Current: {str(cur_ver)}, Latest: {str(github_request.text)}).")
     else:
-        logger.info(f"Clarity is up to date! (Current version: {str(cur_ver)}")
+        logger.info(f"Clarity is up to date! (Current version: {str(cur_ver)})")
 
     return
 
