@@ -610,7 +610,7 @@ def convert_into_eng(word: str) -> str:
     :returns: Returns up to a 10 character name in English.
     """
     kks = pykakasi.kakasi()
-    invalid_chars = ["[", "]", "[", "(", ")", "\\", "/", "*", "_", "+", "?", "$", "^", '"']
+    invalid_chars = ["[", "]", "[", "(", ")", "\\", "/", "*", "_", "+", "?", "$", "^", '"', "・"]
     player_names = merge_jsons(["json/_lang/en/custom_player_names.json", "json/_lang/en/custom_npc_names.json"])
 
     result = kks.convert(word)
@@ -626,5 +626,5 @@ def convert_into_eng(word: str) -> str:
             if value:
                 romaji_name = value[0:10]
                 break
-
+                
     return romaji_name[0:10]
