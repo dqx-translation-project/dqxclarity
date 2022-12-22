@@ -540,7 +540,7 @@ def clean_up_and_return_items(text: str) -> str:
             quantity = re.sub(" ", "", quantity)
             no_bullet = re.sub("(　　.*)", "", no_bullet)
         if no_bullet.endswith("他"):
-            if "必殺技を覚える" not in no_bullet:
+            if "必殺技を覚える" and "入れられるようになる" not in no_bullet:
                 quantity = "(1)"
             no_bullet = re.sub("(　　.*)", "", no_bullet)
         if no_bullet in quest_rewards:
