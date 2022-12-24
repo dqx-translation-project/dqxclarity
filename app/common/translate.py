@@ -547,17 +547,20 @@ def clean_up_and_return_items(text: str) -> str:
         no_bullet = re.sub("(　　.*)", "", no_bullet)
         if no_bullet in quest_rewards:
             value = quest_rewards.get(no_bullet)
+            value_length = len(value)
+            quant_length = len(quantity)
+            num_spaces = 31 - value_length - quant_length
             if value:
                 if "・" in item:
                     if line_count == 0:
-                        return "・" + value + quantity
+                        return "・" + value + (" " * num_spaces) + quantity
                     else:
-                        final_string += "・" + value + quantity + "\n"
+                        final_string += "・" + value + (" " * num_spaces) + quantity + "\n"
                 else:
                     if line_count == 0:
-                        return value + quantity
+                        return value + (" " * num_spaces) + quantity
                     else:
-                        final_string += value + quantity + "\n"
+                        final_string += value + (" " * num_spaces) + quantity + "\n"
         else:
             if line_count == 0:
                 if "討伐ポイント" in item:
