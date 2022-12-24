@@ -538,11 +538,13 @@ def clean_up_and_return_items(text: str) -> str:
         if no_bullet.endswith("こ"):
             quantity = "(" + unicodedata.normalize("NFKC", no_bullet[-3:-1]) + ")"
             quantity = re.sub(" ", "", quantity)
-            no_bullet = re.sub("(　　.*)", "", no_bullet)
         if no_bullet.endswith("他"):
-            if "必殺技を覚える" and "入れられるようになる" not in no_bullet:
+            bad_strings = ["必殺技を覚える", "入れられるよう"]
+            if any(string in no_bullet for string in bad_strings):
+                quantity = ""
+            else:
                 quantity = "(1)"
-            no_bullet = re.sub("(　　.*)", "", no_bullet)
+        no_bullet = re.sub("(　　.*)", "", no_bullet)
         if no_bullet in quest_rewards:
             value = quest_rewards.get(no_bullet)
             if value:
