@@ -547,10 +547,11 @@ def clean_up_and_return_items(text: str) -> str:
         no_bullet = re.sub("(　　.*)", "", no_bullet)
         if no_bullet in quest_rewards:
             value = quest_rewards.get(no_bullet)
-            value_length = len(value)
-            quant_length = len(quantity)
-            num_spaces = 31 - value_length - quant_length
             if value:
+                value_length = len(value)
+                quant_length = len(quantity)             
+                byte_count = len(value.encode('utf-8'))
+                num_spaces = 31 - value_length - quant_length - ((byte_count - value_length)//2)
                 if "・" in item:
                     if line_count == 0:
                         return "・" + value + (" " * num_spaces) + quantity
