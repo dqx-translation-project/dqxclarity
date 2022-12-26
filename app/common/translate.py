@@ -616,21 +616,23 @@ def convert_into_eng(word: str) -> str:
     :returns: Returns up to a 10 character name in English.
     """
     kks = pykakasi.kakasi()
-    invalid_chars = ["[", "]", "[", "(", ")", "\\", "/", "*", "_", "+", "?", "$", "^", '"', "・"]
+    invalid_chars = ["[", "]", "[", "(", ")", "\\", "/", "*", "_", "+", "?", "$", "^", '"']
+    count = word.count("・")
     player_names = merge_jsons(["json/_lang/en/custom_player_names.json", "json/_lang/en/custom_npc_names.json"])
-
-    result = kks.convert(word)
-    romaji_name = ""
-    for word in result:
-        romaji_name = romaji_name + word["hepburn"]
-    romaji_name = romaji_name.title()
-    for item in invalid_chars:
-        romaji_name = romaji_name.replace(item, "")
-    for item in player_names:
-        if romaji_name in player_names:
-            value = player_names.get(romaji_name)
+    if any(char in word for char in invalid_chars):
+        return word
+    else:
+        romaji_name = ""
+        if word in player_names:
+            value = player_names.get(word)
             if value:
-                romaji_name = value[0:10]
-                break
-                
-    return romaji_name[0:10]
+                romaji_name = value
+        else:
+            result = kks.convert(word)
+            for word in result:
+                romaji_name = romaji_name + word["hepburn"]
+            romaji_name = romaji_name.title()
+            romaji_name = romaji_name.replace("・", "")
+            if romaji_name == "":
+                romaji_name = "." * count
+        return romaji_name[0:10]
