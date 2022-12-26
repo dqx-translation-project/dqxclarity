@@ -538,24 +538,30 @@ def clean_up_and_return_items(text: str) -> str:
         if no_bullet.endswith("こ"):
             quantity = "(" + unicodedata.normalize("NFKC", no_bullet[-3:-1]) + ")"
             quantity = re.sub(" ", "", quantity)
-            no_bullet = re.sub("(　　.*)", "", no_bullet)
         if no_bullet.endswith("他"):
-            if "必殺技を覚える" and "入れられるようになる" not in no_bullet:
+            bad_strings = ["必殺技を覚える", "入れられるよう"]
+            if any(string in no_bullet for string in bad_strings):
+                quantity = ""
+            else:
                 quantity = "(1)"
-            no_bullet = re.sub("(　　.*)", "", no_bullet)
+        no_bullet = re.sub("(　　.*)", "", no_bullet)
         if no_bullet in quest_rewards:
             value = quest_rewards.get(no_bullet)
             if value:
+                value_length = len(value)
+                quant_length = len(quantity)             
+                byte_count = len(value.encode('utf-8'))
+                num_spaces = 31 - value_length - quant_length - ((byte_count - value_length)//2)
                 if "・" in item:
                     if line_count == 0:
-                        return "・" + value + quantity
+                        return "・" + value + (" " * num_spaces) + quantity
                     else:
-                        final_string += "・" + value + quantity + "\n"
+                        final_string += "・" + value + (" " * num_spaces) + quantity + "\n"
                 else:
                     if line_count == 0:
-                        return value + quantity
+                        return value + (" " * num_spaces) + quantity
                     else:
-                        final_string += value + quantity + "\n"
+                        final_string += value + (" " * num_spaces) + quantity + "\n"
         else:
             if line_count == 0:
                 if "討伐ポイント" in item:
@@ -610,21 +616,23 @@ def convert_into_eng(word: str) -> str:
     :returns: Returns up to a 10 character name in English.
     """
     kks = pykakasi.kakasi()
-    invalid_chars = ["[", "]", "[", "(", ")", "\\", "/", "*", "_", "+", "?", "$", "^", '"', "・"]
+    invalid_chars = ["[", "]", "[", "(", ")", "\\", "/", "*", "_", "+", "?", "$", "^", '"']
+    count = word.count("・")
     player_names = merge_jsons(["json/_lang/en/custom_player_names.json", "json/_lang/en/custom_npc_names.json"])
-
-    result = kks.convert(word)
-    romaji_name = ""
-    for word in result:
-        romaji_name = romaji_name + word["hepburn"]
-    romaji_name = romaji_name.title()
-    for item in invalid_chars:
-        romaji_name = romaji_name.replace(item, "")
-    for item in player_names:
-        if romaji_name in player_names:
-            value = player_names.get(romaji_name)
+    if any(char in word for char in invalid_chars):
+        return word
+    else:
+        romaji_name = ""
+        if word in player_names:
+            value = player_names.get(word)
             if value:
-                romaji_name = value[0:10]
-                break
-                
-    return romaji_name[0:10]
+                romaji_name = value
+        else:
+            result = kks.convert(word)
+            for word in result:
+                romaji_name = romaji_name + word["hepburn"]
+            romaji_name = romaji_name.title()
+            romaji_name = romaji_name.replace("・", "")
+            if romaji_name == "":
+                romaji_name = "." * count
+        return romaji_name[0:10]
