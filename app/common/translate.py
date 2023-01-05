@@ -617,8 +617,10 @@ def convert_into_eng(word: str) -> str:
     """
     kks = pykakasi.kakasi()
     invalid_chars = ["[", "]", "[", "(", ")", "\\", "/", "*", "_", "+", "?", "$", "^", '"']
-    count = word.count("・")
     player_names = merge_jsons(["json/_lang/en/custom_player_names.json", "json/_lang/en/custom_npc_names.json"])
+    interpunct_count = word.count("・")
+    word_len = len(word)
+    
     if any(char in word for char in invalid_chars):
         return word
     else:
@@ -627,12 +629,19 @@ def convert_into_eng(word: str) -> str:
             value = player_names.get(word)
             if value:
                 romaji_name = value
+            return romaji_name[0:10]
         else:
-            result = kks.convert(word)
-            for word in result:
-                romaji_name = romaji_name + word["hepburn"]
-            romaji_name = romaji_name.title()
-            romaji_name = romaji_name.replace("・", "")
-            if romaji_name == "":
-                romaji_name = "." * count
-        return romaji_name[0:10]
+            if word_len < 7:
+                for char in word:
+                    num = ord(char)
+                    if num not in (list(range(12353, 12430)) + [12431] + list(range(12434,12436)) + list(range(12449,12526)) + [12527] + list(range(12530,12533)) + list(range(12539,12541)) + [65374]):
+                        return word
+                    else:                        
+                        result = kks.convert(word)
+                        for word in result:
+                            romaji_name = romaji_name + word["hepburn"]
+                        romaji_name = romaji_name.title()
+                        romaji_name = romaji_name.replace("・", "")
+                        if romaji_name == "":
+                            romaji_name = "." * interpunct_count
+                        return romaji_name[0:10]
