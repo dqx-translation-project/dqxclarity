@@ -140,7 +140,7 @@ def load_evtx_detour_2(simple_str_addr: int, debug=False):
     hook_obj = EasyDetour(
         hook_name="load_evtx_2",
         signature=evtx_load_2,
-        num_bytes_to_steal=6,
+        num_bytes_to_steal=5,
         simple_str_addr=simple_str_addr,
         debug=debug,
     )
