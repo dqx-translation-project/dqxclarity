@@ -22,7 +22,8 @@ quest_text_trigger = rb"\x8D\x8E\x78\x04\x00\x00\xE8....\x5F"
 # 68 49 4E 44 58 56 E8
 # 81 38 45 56 54 58 74 48
 evtx_load_1 = rb"\x68\x49\x4E\x44\x58\x56\xE8"  # most evtx files
-evtx_load_2 = rb"\x81\x38\x45\x56\x54\x58\x74\x48"  # master orb, sugo stuff
+#evtx_load_2 = rb"\x81\x38\x45\x56\x54\x58\x74\x48"  # master orb, sugo stuff
+evtx_load_2 = rb"\x8B\xD8\x83\xC4\x08\x85\xDB\x0F\x84....\x8B\x7B\x04" # new address that also accounts for daifugo
 
 # Integrity check + hooking addresses
 # 52 57 51 50 53 56
@@ -54,16 +55,16 @@ npc_monster_pattern = rb"\xA8\x13..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
 concierge_name_pattern = rb"\xF8\xD1......\x34\xD2..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
 # pattern for player names to rename.
-# A8 13 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 B0 4A ?? 01 ?? ?? ?? ?? ?? ?? ?? 01 E? (49 bytes)
-player_name_pattern = rb"\xA8\x13..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xB0\x4A.\x01.......\x01[\xE3\xEF]"
+# A8 13 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 B0 4A ?? 01 ?? ?? ?? ?? ?? ?? ?? 01 E? (49 bytes)
+player_name_pattern = rb"\xA8\x13..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xB0\x4A.\x01.......\x01[\xE3\xEF]"
 
 # pattern for sibling names to rename.
 # 01 ?? 00 ?? 00 00 00 ?? ?? 00 02 ?? 00 ?? 00 ?? 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? 00 ?? 00 ?? ?? ?? 00 ?? 00 ?? ?? 00 00 00 00 ?? ?? 00 00 00 00 E? (52 bytes)
 sibling_name_pattern = rb"\x01.\x00.\x00\x00\x00..\x00\x02.\x00.\x00.\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00...\x00.\x00...\x00.\x00..\x00\x00\x00\x00..\x00\x00\x00\x00[\xE3\xEF]"
 
 # pattern for menu ai to rename.
-# 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 00 00 ?? ?? 00 00 00 00 00 00 ?? 00 00 00 ?? 1? ?? ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? 00 ?? ?? E? (58 bytes)
-menu_ai_name_pattern = rb"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00..........\x00\x00..\x00\x00\x00\x00\x00\x00.\x00\x00\x00.[\x1B\x1C].....\x00.....\x00..[\xE3\xEF]"
+# 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 00 00 ?? ?? 00 00 ?? ?? ?? ?? ?? 00 00 00 ?? 1? ?? ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? 00 ?? ?? E? (58 bytes)
+menu_ai_name_pattern = rb"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00..........\x00\x00..\x00\x00.....\x00\x00\x00.[\x1B\x1C].....\x00.....\x00..[\xE3\xEF]"
 
 # pattern for master quests.
 # ?0 ?? ?? ?? ?0 00 00 00 ?0 ?? ?? 0? E?

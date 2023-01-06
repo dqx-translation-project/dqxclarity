@@ -102,6 +102,9 @@ try:
     logger = setup_logger('out', 'out.log')
 
     evtx_address = unpack_to_int({address})
+    check_bytes = read_bytes(evtx_address, 4)
+    if check_bytes == b"\x43\x4D\x4E\x48":
+        evtx_address = evtx_address - 16
     evtx = EvtxFile(evtx_address)
     if evtx.wrote:
         file = evtx.file_name()
