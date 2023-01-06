@@ -96,7 +96,7 @@ try:
     chdir(working_dir)
 
     from evtxfile import EvtxFile
-    from common.memory import unpack_to_int
+    from common.memory import unpack_to_int, read_bytes
     from common.lib import setup_logger
 
     logger = setup_logger('out', 'out.log')
