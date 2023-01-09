@@ -549,7 +549,7 @@ def clean_up_and_return_items(text: str) -> str:
             value = quest_rewards.get(no_bullet)
             if value:
                 value_length = len(value)
-                quant_length = len(quantity)             
+                quant_length = len(quantity)
                 byte_count = len(value.encode('utf-8'))
                 num_spaces = 31 - value_length - quant_length - ((byte_count - value_length)//2)
                 if "・" in item:
@@ -620,6 +620,7 @@ def convert_into_eng(word: str) -> str:
     player_names = merge_jsons(["json/_lang/en/custom_player_names.json", "json/_lang/en/custom_npc_names.json"])
     interpunct_count = word.count("・")
     word_len = len(word)
+    bad_word = False
     
     if any(char in word for char in invalid_chars):
         return word
@@ -635,13 +636,14 @@ def convert_into_eng(word: str) -> str:
                 for char in word:
                     num = ord(char)
                     if num not in (list(range(12353, 12430)) + [12431] + list(range(12434,12436)) + list(range(12449,12526)) + [12527] + list(range(12530,12533)) + list(range(12539,12541)) + [65374]):
+                        bad_word = True
                         return word
-                    else:                        
-                        result = kks.convert(word)
-                        for word in result:
-                            romaji_name = romaji_name + word["hepburn"]
-                        romaji_name = romaji_name.title()
-                        romaji_name = romaji_name.replace("・", "")
-                        if romaji_name == "":
-                            romaji_name = "." * interpunct_count
-                        return romaji_name[0:10]
+                if bad_word != True:
+                    result = kks.convert(word)
+                    for word in result:
+                        romaji_name = romaji_name + word["hepburn"]
+                    romaji_name = romaji_name.title()
+                    romaji_name = romaji_name.replace("・", "")
+                    if romaji_name == "":
+                        romaji_name = "." * interpunct_count
+                    return romaji_name[0:10]
