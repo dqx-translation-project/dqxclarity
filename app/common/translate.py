@@ -647,3 +647,5 @@ def convert_into_eng(word: str) -> str:
                     if romaji_name == "":
                         romaji_name = "." * interpunct_count
                     return romaji_name[0:10]
+            else:
+                return word
