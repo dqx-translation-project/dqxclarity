@@ -44,31 +44,31 @@ accept_quest_trigger = rb"\x8B\x45\xD8\x3B\x45\xDC\x8B\x03\x75\xDE\x56\xFF\x50\x
 # change and need to be updated on patches.
 #############################################
 
-# pattern for npc/monsters to rename. 
-# npc:     A8 13 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 EC ?? ?? ?? ?? ?? ?? 34 D2 ?? ?? E?
-# monster: A8 13 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 D0 D9 ?? ?? ?? ?? ?? ?? 34 D2 ?? ?? E?
-# party:   A8 13 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 38 DC ?? ?? ?? ?? ?? ?? 34 D2 ?? ?? E?
-npc_monster_pattern = rb"\xA8\x13..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00[\x00\xD0\x38][\xEC\xD9\xDC]......\x34\xD2..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+# pattern for npc/monsters to rename. (49 bytes) 
+# npc:     20 62 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 D4 E6 ?? ?? ?? ?? ?? ?? B4 D4 ?? ?? E?
+# monster: 20 62 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 78 D4 ?? ?? ?? ?? ?? ?? B4 D4 ?? ?? E?
+# party:   20 62 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 F0 D6 ?? ?? ?? ?? D2 25 B4 D4 ?? ?? E?
+npc_monster_pattern = rb"\x20\x62..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00[\xD4\x78\xF0][\xE6\xD4\xD6]......\xB4\xD4..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
-# pattern for concierge names
-# F8 D1 ?? ?? ?? ?? ?? ?? 34 D2 ?? ?? E?
-concierge_name_pattern = rb"\xF8\xD1......\x34\xD2..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+# pattern for concierge names (13 bytes)
+# D4 E6 ?? ?? ?? ?? ?? ?? B4 D4 ?? ?? E?
+concierge_name_pattern = rb"\xD4\xE6......\xB4\xD4..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
-# pattern for player names to rename.
-# A8 13 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 B0 4A ?? 01 ?? ?? ?? ?? ?? ?? ?? 01 E? (49 bytes)
-player_name_pattern = rb"\xA8\x13..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xB0\x4A.\x01.......\x01[\xE3\xEF]"
+# pattern for player names to rename. (49 bytes)
+# 20 62 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 B8 50 ?? 0? ?? ?? ?? ?? ?? ?? ?? 0? E?
+player_name_pattern = rb"\x20\x62..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xB8\x50.[\x01\x02].......[\x01\x02][\xE3\xEF]"
 
-# pattern for sibling names to rename.
+# pattern for sibling names to rename. (52 bytes)
 # 01 ?? 00 ?? 00 00 00 ?? ?? 00 02 ?? 00 ?? 00 ?? 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? 00 ?? 00 ?? ?? ?? 00 ?? 00 ?? ?? 00 00 00 00 ?? ?? 00 00 00 00 E? (52 bytes)
 sibling_name_pattern = rb"\x01.\x00.\x00\x00\x00..\x00\x02.\x00.\x00.\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00...\x00.\x00...\x00.\x00..\x00\x00\x00\x00..\x00\x00\x00\x00[\xE3\xEF]"
 
-# pattern for menu ai to rename.
-# 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 00 00 ?? ?? 00 00 ?? ?? ?? ?? ?? 00 00 00 ?? 1? ?? ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? 00 ?? ?? E? (58 bytes)
+# pattern for menu ai to rename. (58 bytes)
+# 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 00 00 ?? ?? 00 00 ?? ?? ?? ?? ?? 00 00 00 ?? 1? ?? ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? 00 ?? ?? E?
 menu_ai_name_pattern = rb"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00..........\x00\x00..\x00\x00.....\x00\x00\x00.[\x1B\x1C].....\x00.....\x00..[\xE3\xEF]"
 
 # pattern for master quests.
 # ?0 ?? ?? ?? ?0 00 00 00 ?0 ?? ?? 0? E?
-master_quest_pattern = rb"[\x10\x20\x30\x40\x50\x60\x70\x80\x90\xA0\xB0\xC0\xD0\xE0\xF0]...[\x10\x20\x30\x40\x50]\x00\x00\x00[\x00\x10\x20\x30\x40\x50\x60\x70\x80\x90\xA0\xB0\xC0\xD0\xE0\xF0]..[\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F][\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+# master_quest_pattern = rb"[\x10\x20\x30\x40\x50\x60\x70\x80\x90\xA0\xB0\xC0\xD0\xE0\xF0]...[\x10\x20\x30\x40\x50]\x00\x00\x00[\x00\x10\x20\x30\x40\x50\x60\x70\x80\x90\xA0\xB0\xC0\xD0\xE0\xF0]..[\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F][\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
 # pattern for projector names to rename.
 # 20 00 00 00 ?? ?? ?? 0A E?
