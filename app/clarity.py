@@ -152,7 +152,8 @@ def scan_for_player_names():
                 try:
                     ja_player_name = read_string(player_name_address)
                     romaji_name = convert_into_eng(ja_player_name)
-                    write_bytes(player_name_address, b"\x04" + romaji_name.encode("utf-8") + b"\x00")
+                    if romaji_name != ja_player_name:
+                        write_bytes(player_name_address, b"\x04" + romaji_name.encode("utf-8") + b"\x00")
                 except UnicodeDecodeError:
                     continue
                 except Exception as e:
@@ -177,7 +178,8 @@ def scan_for_sibling_names():
                 try:
                     ja_sibling_name = read_string(sibling_name_address)
                     romaji_name = convert_into_eng(ja_sibling_name)
-                    write_bytes(sibling_name_address, b"\x04" + romaji_name.encode("utf-8") + b"\x00")
+                    if romaji_name != ja_sibling_name:
+                        write_bytes(sibling_name_address, b"\x04" + romaji_name.encode("utf-8") + b"\x00")
                 except UnicodeDecodeError:
                     continue
                 except Exception as e:
@@ -198,7 +200,8 @@ def scan_for_concierge_names():
                 try:
                     ja_name = read_string(name_addr)
                     en_name = convert_into_eng(ja_name)
-                    write_bytes(name_addr, b"\x04" + str.encode(en_name) + b"\x00")
+                    if en_name != ja_name:
+                        write_bytes(name_addr, b"\x04" + str.encode(en_name) + b"\x00")
                 except UnicodeDecodeError:
                     pass
     except TypeError:
@@ -222,9 +225,9 @@ def scan_for_npc_names():
         if npc_list := pattern_scan(pattern=npc_monster_pattern, return_multiple=True):
             for address in npc_list:
                 npc_type = read_bytes(address + 36, 2)
-                if npc_type == b"\x00\xEC" or npc_type == b"\xD0\xD9":
+                if npc_type == b"\xD4\xE6" or npc_type == b"\x78\xD4":
                     data = "NPC"
-                elif npc_type == b"\x38\xDC":
+                elif npc_type == b"\xF0\xD6":
                     data = "AI_NAME"
                 else:
                     continue
@@ -242,10 +245,11 @@ def scan_for_npc_names():
                                 logger.warning(f"Failed to write {data} name {value}.")
                 elif data == "AI_NAME":
                     en_name = convert_into_eng(name)
-                    try:
-                        write_bytes(name_addr, b"\x04" + en_name.encode("utf-8") + b"\x00")
-                    except Exception as e:
-                        logger.warning(f"Failed to write {data} for {en_name}.")
+                    if en_name != name:
+                        try:
+                            write_bytes(name_addr, b"\x04" + en_name.encode("utf-8") + b"\x00")
+                        except Exception as e:
+                            logger.warning(f"Failed to write {data} for {en_name}.")
     except TypeError:
         logger.error(f"Cannot find DQX process. Must have closed? Exiting.")
         sys.exit()
@@ -264,11 +268,12 @@ def scan_for_menu_ai_names():
                 ai_name_address = address + 57
                 if ja_ai_name := read_string(ai_name_address):
                     romaji_name = convert_into_eng(ja_ai_name)
-                    try:
-                        write_string(ai_name_address, romaji_name)
-                        logger.debug(f"Wrote player name {romaji_name}.")
-                    except Exception as e:
-                        logger.warning("INFO ONLY: Failed to write Menu AI name.")
+                    if romaji_name != ja_ai_name:
+                        try:
+                            write_string(ai_name_address, romaji_name)
+                            logger.debug(f"Wrote player name {romaji_name}.")
+                        except Exception as e:
+                            logger.warning("INFO ONLY: Failed to write Menu AI name.")
     except UnicodeDecodeError:
         pass
     except TypeError:
