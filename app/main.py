@@ -31,13 +31,13 @@ def blast_off(
 ):
     """A command line tool that assists in translating the game Dragon Quest X."""
     logger.info("Getting started. DO NOT TOUCH THE GAME OR REMOVE YOUR MEMORY CARD.")
-    user_config = load_user_config()
-    if user_config["translation"]["enabledeepltranslate"] == "True":
-        refresh_glossary_id()
     if not disable_update_check:
         check_for_updates()
     if update_weblate:
         get_latest_from_weblate()
+    user_config = load_user_config()
+    if user_config["translation"]["enabledeepltranslate"] == "True":
+        refresh_glossary_id()
 
     try:
         if not disable_translations:
