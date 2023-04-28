@@ -3,7 +3,7 @@ import sys
 import time
 import click
 from loguru import logger
-from common.update import check_for_updates
+from common.update import check_for_updates, download_custom_files
 from common.translate import load_user_config, refresh_glossary_id
 
 # fmt: off
@@ -29,6 +29,7 @@ def blast_off(
     logger.info("Getting started. DO NOT TOUCH THE GAME OR REMOVE YOUR MEMORY CARD.")
     if not disable_update_check:
         check_for_updates()
+        download_custom_files()
     user_config = load_user_config()
     if user_config["translation"]["enabledeepltranslate"] == "True":
         refresh_glossary_id()

@@ -27,7 +27,7 @@ from common.signatures import (
     walkthrough_pattern,
 )
 
-from common.lib import merge_jsons
+from common.lib import merge_jsons, get_abs_path
 
 
 def scan_for_player_names():
@@ -107,9 +107,12 @@ def scan_for_npc_names():
     Scan to look for NPC and monster names and translate them into English.
     Also finds names above your party members.
     """
-    translated_names = merge_jsons(
-        ["json/_lang/en/monsters.json", "json/_lang/en/npc_names.json", "json/_lang/en/custom_npc_names.json"]
-    )
+    misc_files = "/".join([get_abs_path(__file__), "misc_files"])
+    translated_names = merge_jsons([
+        f"{misc_files}/monsters.json",
+        f"{misc_files}/npc_names.json",
+        f"{misc_files}/custom_npc_names.json"
+    ])
 
     try:
         if npc_list := pattern_scan(pattern=npc_monster_pattern, return_multiple=True):
@@ -238,7 +241,7 @@ def run_scans(player_names=True, npc_names=True, communication_window=True, debu
     if npc_names:
         logger.info("Will watch and update NPCs.")
     if not communication_window:
-        logger.info("Will watch for new game files.")
+        logger.info("Will watch for NPC dialog.")
 
     while True:
         try:

@@ -5,7 +5,8 @@ import configparser
 import shutil
 import unicodedata
 from common.errors import warning_message, message_box_fatal_error
-from common.lib import merge_jsons
+from common.lib import merge_jsons, get_abs_path
+from common.constants import GITHUB_CLARITY_GLOSSARY_URL
 import os
 import langdetect
 import re
@@ -64,13 +65,14 @@ def translate(translation_service, dialog_text, api_key, region_code):
         return google_translate(dialog_text, api_key, region_code)
 
 
-def glossary_checksum(glossary_path="json/_lang/en/glossary.csv") -> str:
+def glossary_checksum() -> str:
     """
     Returns an md5 hash of the glossary_path file.
 
     :param glossary_path: Path to the glossary.csv file.
     :returns: md5 hash of the glossary.csv file.
     """
+    glossary_path = "/".join([get_abs_path(__file__), "../misc_files/glossary.csv"])
     cur_hash = ""
     if os.path.exists(glossary_path):
         with open(glossary_path, "rb") as f:
@@ -78,8 +80,7 @@ def glossary_checksum(glossary_path="json/_lang/en/glossary.csv") -> str:
             cur_hash = hashlib.md5(bytes).hexdigest()
     else:
         try:
-            url = "https://raw.githubusercontent.com/dqxtranslationproject/dqxclarity/weblate/json/_lang/en/glossary.csv"
-            r = requests.get(url, timeout=15)
+            r = requests.get(GITHUB_CLARITY_GLOSSARY_URL, timeout=15)
         except Exception as e:
             logger.warning("Error checking Github for glossary: {e}")
             message_box_fatal_error(
@@ -92,12 +93,12 @@ def glossary_checksum(glossary_path="json/_lang/en/glossary.csv") -> str:
     return cur_hash
 
 
-def refresh_glossary_id(glossary_csv_file="json/_lang/en/glossary.csv"):
+def refresh_glossary_id():
     """
     Deletes and creates a new glossary ID for the DeepL Translate service.
-
-    :param glossary_csv_file: Relative path to the glossary.csv file.
     """
+    glossary_csv_file = "/".join([get_abs_path(__file__), "../misc_files/glossary.csv"])
+
     user_config = load_user_config()
     api_key = user_config["translation"]["deepltranslatekey"]
     curr_glossary_id = user_config["glossary"]["glossaryid"]
@@ -283,7 +284,7 @@ def sqlite_read(text_to_query, language, table):
     escaped_text = text_to_query.replace("'", "''")
 
     try:
-        db_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "misc_files/clarity_dialog.db"))
+        db_file = "/".join([get_abs_path(__file__), "../misc_files/clarity_dialog.db"])
         conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
         selectQuery = f"SELECT {language} FROM {table} WHERE ja = '{escaped_text}'"
@@ -307,7 +308,7 @@ def sqlite_write(source_text, table, translated_text, language, npc_name=""):
     escaped_text = translated_text.replace("'", "''")
 
     try:
-        db_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "misc_files/clarity_dialog.db"))
+        db_file = "/".join([get_abs_path(__file__), "../misc_files/clarity_dialog.db"])
         conn = sqlite3.connect(db_file)
         selectQuery = f"SELECT ja FROM {table} WHERE ja = '{source_text}'"
         updateQuery = f"UPDATE {table} SET {language} = '{escaped_text}' WHERE ja = '{source_text}'"
@@ -509,7 +510,8 @@ def query_string_from_file(text: str, file: str) -> str:
     text: The text to search
     file: The name of the file (leave off the file extension)
     """
-    data = read_json_file("json/_lang/en/" + file + ".json")
+    misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
+    data = read_json_file(misc_files + "/" + file + ".json")
 
     for item in data:
         key, value = list(data[item].items())[0]
@@ -523,7 +525,12 @@ def clean_up_and_return_items(text: str) -> str:
     Cleans up unnecessary text from item strings and searches for the name in items.json.
     Used specifically for the quest window.
     """
-    quest_rewards = merge_jsons(["json/_lang/en/key_items.json", "json/_lang/en/items.json", "json/_lang/en/custom_quest_rewards.json"])
+    misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
+    quest_rewards = merge_jsons([
+        f"{misc_files}/key_items.json",
+        f"{misc_files}/items.json",
+        f"{misc_files}/custom_quest_rewards.json"
+    ])
     line_count = text.count("\n")
     sanitized = re.sub("男は ", "", text)  # remove boy reference from start of string
     sanitized = re.sub("女は ", "", sanitized)  # remove girl reference from start of string
@@ -575,7 +582,7 @@ def clean_up_and_return_items(text: str) -> str:
 
 def deal_with_icky_strings(text) -> str:
     fixed_string = ""
-    file = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "misc_files/merge.xlsx"))
+    file = "/".join([get_abs_path(__file__), "../misc_files/merge.xlsx"])
     if os.path.exists(file):
         wb = load_workbook(file)
         ws_dialogue = wb["Dialogue"]
@@ -617,7 +624,8 @@ def convert_into_eng(word: str) -> str:
     """
     kks = pykakasi.kakasi()
     invalid_chars = ["[", "]", "[", "(", ")", "\\", "/", "*", "_", "+", "?", "$", "^", '"']
-    player_names = merge_jsons(["json/_lang/en/custom_player_names.json", "json/_lang/en/custom_npc_names.json"])
+    misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
+    player_names = merge_jsons([f"{misc_files}/custom_player_names.json", f"{misc_files}/custom_npc_names.json"])
     interpunct_count = word.count("・")
     word_len = len(word)
     bad_word = False

@@ -1,5 +1,6 @@
 import logging
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -67,3 +68,8 @@ def merge_jsons(files: list):
             merged_changes[key] = value
 
     return merged_changes
+
+
+def get_abs_path(file: str):
+    abs_path = os.path.abspath(os.path.join(os.path.dirname(file)))
+    return abs_path.replace("\\", "/")
