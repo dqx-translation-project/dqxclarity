@@ -22,3 +22,4 @@ adhoc_parser/keys.py
 defaults.pref
 app/misc_files/clarity_dialog.db
 unknown_json/
+tests

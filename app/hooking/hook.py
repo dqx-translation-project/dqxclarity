@@ -4,10 +4,7 @@ import traceback
 from loguru import logger
 from common.signatures import (
     dialog_trigger,
-    cutscene_trigger,
     quest_text_trigger,
-    evtx_load_1,
-    evtx_load_2,
     integrity_check,
     accept_quest_trigger,
 )
@@ -67,26 +64,6 @@ def translate_detour(simple_str_addr: int, debug=False):
     return hook_obj
 
 
-def cutscene_detour(simple_str_addr: int, debug=False):
-    """
-    Hooks the cutscene dialog to translate text and write English instead.
-    """
-    hook_obj = EasyDetour(
-        hook_name="cutscene",
-        signature=cutscene_trigger,
-        num_bytes_to_steal=5,
-        simple_str_addr=simple_str_addr,
-        debug=debug,
-    )
-
-    edi = hook_obj.address_dict["attrs"]["edi"]
-    shellcode = cutscene_shellcode(edi_address=edi)
-    shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
-    write_string(address=shellcode_addr, text=shellcode)
-
-    return hook_obj
-
-
 def quest_text_detour(simple_str_addr: int, debug=False):
     """
     Hook the quest dialog window and translate to english.
@@ -104,48 +81,6 @@ def quest_text_detour(simple_str_addr: int, debug=False):
         eax_address=eax,
         debug=debug,
     )
-    shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
-    write_string(address=shellcode_addr, text=shellcode)
-
-    return hook_obj
-
-
-def load_evtx_detour_1(simple_str_addr: int, debug=False):
-    """
-    Detours function where EVTX files are written to memory so we can write our own copy.
-    EBX is the register that houses the address we want to read.
-    """
-    hook_obj = EasyDetour(
-        hook_name="load_evtx_1",
-        signature=evtx_load_1,
-        num_bytes_to_steal=5,
-        simple_str_addr=simple_str_addr,
-        debug=debug,
-    )
-
-    ecx = hook_obj.address_dict["attrs"]["ebx"]
-    shellcode = load_evtx_shellcode(ecx)
-    shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
-    write_string(address=shellcode_addr, text=shellcode)
-
-    return hook_obj
-
-
-def load_evtx_detour_2(simple_str_addr: int, debug=False):
-    """
-    Detours function where EVTX files are written to memory so we can write our own copy.
-    EBX is the register that houses the address we want to read.
-    """
-    hook_obj = EasyDetour(
-        hook_name="load_evtx_2",
-        signature=evtx_load_2,
-        num_bytes_to_steal=5,
-        simple_str_addr=simple_str_addr,
-        debug=debug,
-    )
-
-    ecx = hook_obj.address_dict["attrs"]["eax"]
-    shellcode = load_evtx_shellcode(ecx)
     shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
     write_string(address=shellcode_addr, text=shellcode)
 
@@ -189,10 +124,7 @@ def activate_hooks(debug=False):
     # activates all hooks. add any new hooks to this list
     hooks = []
     hooks.append(translate_detour(simple_str_addr=simple_str_addr, debug=debug))
-    hooks.append(cutscene_detour(simple_str_addr=simple_str_addr, debug=debug))
     hooks.append(quest_text_detour(simple_str_addr=simple_str_addr, debug=debug))
-    hooks.append(load_evtx_detour_1(simple_str_addr=simple_str_addr, debug=debug))
-    hooks.append(load_evtx_detour_2(simple_str_addr=simple_str_addr, debug=debug))
 
     # construct our asm to detach hooks
     unhook_bytecode = b""
