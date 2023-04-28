@@ -6,8 +6,6 @@ import requests
 from common.errors import message_box_fatal_error
 
 
-FILES_COPIED = 0
-
 os.system("taskkill /f /im DQXClarity.exe >nul 2>&1")
 print("Clarity is updating. Please wait...")
 

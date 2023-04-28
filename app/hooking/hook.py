@@ -2,12 +2,14 @@ import struct
 import sys
 import traceback
 from loguru import logger
+
 from common.signatures import (
     dialog_trigger,
     quest_text_trigger,
     integrity_check,
     accept_quest_trigger,
 )
+
 from common.memory import (
     dqx_mem,
     write_bytes,
@@ -17,6 +19,7 @@ from common.memory import (
     allocate_memory,
     read_bytes,
 )
+
 from hooking.dialog import translate_shellcode
 from hooking.quest import quest_text_shellcode
 from hooking.hide_hooks import load_hooks
