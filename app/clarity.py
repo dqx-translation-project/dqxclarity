@@ -1,9 +1,5 @@
-from pathlib import Path
 import sys
 import time
-import random
-from evtxfile import EvtxFile
-from alive_progress import alive_bar
 from loguru import logger
 from common.translate import (
     sqlite_read,
@@ -13,131 +9,25 @@ from common.translate import (
     sanitized_dialog_translate,
     convert_into_eng,
 )
+
 from common.memory import (
     read_bytes,
     read_string,
     write_string,
     write_bytes,
     pattern_scan,
-    get_start_of_game_text,
-    find_first_match,
 )
+
 from common.signatures import (
-    evtx_pattern,
-    index_pattern,
-    foot_pattern,
     npc_monster_pattern,
     concierge_name_pattern,
     menu_ai_name_pattern,
     player_name_pattern,
     sibling_name_pattern,
-    master_quest_pattern,
     walkthrough_pattern,
 )
-from common.lib import (
-    split_hex_into_spaces,
-    query_csv,
-    generate_hex,
-    write_file,
-    read_json_file,
-    merge_jsons,
-    dump_game_file,
-)
 
-
-def write_initial_evtx():
-    """Writes over the TEXT section of found EVTX files in memory."""
-    evtx_list = pattern_scan(pattern=evtx_pattern, return_multiple=True)
-    list_length = len(evtx_list)
-    with alive_bar(list_length, title="Translating..", theme="musical", length=20) as progress_bar:
-        for address in evtx_list:
-            progress_bar()  # pylint: disable=not-callable
-            evtx = EvtxFile(address)
-            if not evtx.file:
-                evtx.write_to_disk()
-
-
-def write_adhoc_entry(start_addr: int, hex_str: str) -> dict:
-    """
-    Checks the stored json files for a matching adhoc file. If found,
-    converts the json into bytes and writes bytes at the appropriate
-    address.
-    """
-    results = {}
-    hex_result = split_hex_into_spaces(hex_str)
-    csv_result = query_csv(hex_result)
-    if csv_result:
-        file = csv_result["file"]
-        if file:
-            hex_to_write = generate_hex(file)
-            index_address = find_first_match(start_addr, index_pattern)
-            if index_address:
-                text_address = get_start_of_game_text(index_address)
-                if text_address:
-                    write_bytes(text_address, hex_to_write)
-                    results["success"] = True
-                    results["file"] = file
-                    return results
-    else:
-        results["success"] = False
-        filename = str(random.randint(1, 1000000000))
-        Path("new_adhoc_dumps/en").mkdir(parents=True, exist_ok=True)
-        Path("new_adhoc_dumps/ja").mkdir(parents=True, exist_ok=True)
-
-        csv_path = "new_adhoc_dumps/new_hex_dict.csv"
-        new_csv = Path(csv_path)
-        if new_csv.is_file():
-            csv_result = query_csv(hex_result, csv_path)
-            if csv_result:  # if we have an entry, don't make another one
-                results["file"] = None
-                return results
-        else:
-            write_file("new_adhoc_dumps", "new_hex_dict.csv", "a", "file,hex_string\n")
-
-        # get number of bytes to read from start
-        begin_address = get_start_of_game_text(start_addr)  # make sure we start on the first byte of the first letter
-        end_address = find_first_match(begin_address, foot_pattern)
-        bytes_to_read = end_address - begin_address
-
-        # dump game file
-        game_file = dump_game_file(begin_address, bytes_to_read)
-        ja_data = game_file["ja"]
-        en_data = game_file["en"]
-        write_file("new_adhoc_dumps", "new_hex_dict.csv", "a", f"{filename},{hex_result}\n")
-        write_file("new_adhoc_dumps/ja", f"{filename}.json", "w", ja_data)
-        write_file("new_adhoc_dumps/en", f"{filename}.json", "w", en_data)
-        results["file"] = filename
-        return results
-    return None
-
-
-def scan_for_adhoc_files(debug=False):
-    """
-    Scans for specific adhoc files that have yet to have a hook written for them.
-
-    :param api: Enable dialog insertion by working with the translation API.
-    :param cutscenes: Whether to enable cutscene translation.
-    """
-    logger.remove()
-    if debug:
-        logger.add(sys.stderr, level="DEBUG")
-    else:
-        logger.add(sys.stderr, level="INFO")
-    try:
-        evtx_list = pattern_scan(pattern=evtx_pattern, return_multiple=True)
-        for evtx_address in evtx_list:
-            evtx = EvtxFile(evtx_address)
-            if evtx.wrote:
-                logger.debug(f"Wrote {evtx.file} @ {hex(evtx_address)}")
-            else:
-                if not evtx.file:
-                    if evtx.write_to_disk():
-                        logger.debug(f"Found new file. Check out the unknown_json folder.")
-    except TypeError:
-        logger.error(f"Cannot find DQX process. Must have closed? Exiting.")
-    except Exception as e:
-        logger.error(f"Cannot find DQX process. Must have closed? Exiting.\nError: {e}")
-        sys.exit()
+from common.lib import merge_jsons
 
 
 def scan_for_player_names():
@@ -284,48 +174,6 @@ def scan_for_menu_ai_names():
         sys.exit()
 
 
-def scan_for_master_quests():
-    """
-    Scans for master quest addresses and translates when found.
-    """
-    master_data = read_json_file("json/_lang/en/custom_master_quests.json")
-
-    try:
-        master_list = pattern_scan(pattern=master_quest_pattern, return_multiple=True)
-
-        if master_list != []:
-            for address in master_list:
-                master_address = address + 12
-                try:
-                    master_name = read_string(master_address)
-                    num_bytes_to_read = len(master_name.encode("utf-8"))
-                    master_name = read_bytes(master_address, num_bytes_to_read).hex()
-                    master_name = bytes.fromhex(master_name).decode("utf-8")
-                    master_name = master_name.replace("\x0a", "\x7c")
-                except UnicodeDecodeError:
-                    continue
-                master_name = master_name.rstrip("|")
-                data = master_data
-                if master_name:
-                    for item in data:
-                        key, value = list(data[item].items())[0]
-                        if master_name == key:
-                            if value:
-                                master_name = value
-                                master_name = master_name.replace("\x7c", "\x0a")
-                                try:
-                                    write_bytes(master_address, master_name.encode("utf-8") + b"\x00")
-                                    logger.debug(f"Wrote quest {master_name}.")
-                                except Exception as e:
-                                    logger.warning("INFO ONLY: Failed to write master quest.")
-    except TypeError:
-        logger.error(f"Cannot find DQX process. Must have closed? Exiting.")
-        sys.exit()
-    except Exception as e:
-        logger.error(f"Cannot find DQX process. Must have closed? Exiting.\nError: {e}")
-        sys.exit()
-
-
 def loop_scan_for_walkthrough():
     """
     Scans for the walkthrough address in an infinite loop and translates when found.
@@ -372,13 +220,12 @@ def loop_scan_for_walkthrough():
             sys.exit()
 
 
-def run_scans(player_names=True, npc_names=True, master_quest=True, communication_window=True, debug=False):
+def run_scans(player_names=True, npc_names=True, communication_window=True, debug=False):
     """
     Run chosen scans.
 
     :param player_names: Run player name scans.
     :param npc_names: Run NPC name scans.
-    :param master_quest: Run master quest scans.
     :param communication_window: Run adhoc scans.
     """
     logger.remove()
@@ -390,8 +237,6 @@ def run_scans(player_names=True, npc_names=True, master_quest=True, communicatio
         logger.info("Will watch and update player names.")
     if npc_names:
         logger.info("Will watch and update NPCs.")
-    if master_quest:
-        logger.warning("Master quest has been disabled until we find a better pattern to search for. Sorry!")
     if not communication_window:
         logger.info("Will watch for new game files.")
 
@@ -403,11 +248,6 @@ def run_scans(player_names=True, npc_names=True, master_quest=True, communicatio
             if npc_names:
                 scan_for_npc_names()
                 scan_for_concierge_names()
-            if master_quest:
-                pass
-                # scan_for_master_quests()
-            if not communication_window:
-                scan_for_adhoc_files()
         except TypeError:
             logger.error(f"Cannot find DQX process. Must have closed? Exiting.")
             sys.exit()

@@ -9,21 +9,9 @@
 # 8D 64 24 FC 89 04 24 8D 64 24 FC E9 ?? ?? ?? ?? 3B -- better, but picked up by integrity scans in combat.
 dialog_trigger = rb"\xFF\x77\x08\xC7\x45\xFC....\xBB"
 
-# reading at this address will show you the adhoc file that's currently being read from. we use this
-# to dump the adhoc file if we don't have it.
-# 8B C6 41 89 0A 5F 5E 5D
-cutscene_trigger = rb"\x8B\xC6\x41\x89\x0A\x5F\x5E\x5D"
-
 # function that is triggered when a quest window opens. used for translating quest text
 # 8D 8E 78 04 00 00 E8 ?? ?? ?? ?? 5F
 quest_text_trigger = rb"\x8D\x8E\x78\x04\x00\x00\xE8....\x5F"
-
-# function triggered when an EVTX file is loaded into memory
-# 68 49 4E 44 58 56 E8
-# 81 38 45 56 54 58 74 48
-evtx_load_1 = rb"\x68\x49\x4E\x44\x58\x56\xE8"  # most evtx files
-#evtx_load_2 = rb"\x81\x38\x45\x56\x54\x58\x74\x48"  # master orb, sugo stuff
-evtx_load_2 = rb"\x8B\xD8\x83\xC4\x08\x85\xDB\x0F\x84....\x8B\x7B\x04" # new address that also accounts for daifugo
 
 # Integrity check + hooking addresses
 # 52 57 51 50 53 56
@@ -78,12 +66,3 @@ master_quest_pattern = rb"[\x10\x20\x30\x40\x50\x60\x70\x80\x90\xA0\xB0\xC0\xD0\
 # so scanning for this for now. AC is also preventing this from just being accessible via hooks. (17 bytes)
 # A0 ?? ?? ?? 00 00 00 00 04 02 00 00 10 00 00 00 E?
 walkthrough_pattern = rb"\xA0...\x00\x00\x00\x00\x04\x02\x00\x00\x10\x00\x00\x00[\xE3\xE4\xE5\xE6\xE7\xE8\xE9]"
-
-########################################
-# DQX patterns of interest
-########################################
-
-evtx_pattern = b"\x45\x56\x54\x58\x10\x00\x00\x00"  # EVTX block start
-index_pattern = b"\x49\x4E\x44\x58\x10\x00\x00\x00"  # INDX block start
-text_pattern = b"\x54\x45\x58\x54\x10\x00\x00"  # TEXT block start
-foot_pattern = b"\x46\x4F\x4F\x54\x10\x00\x00"  # FOOT block start

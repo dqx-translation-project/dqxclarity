@@ -1,4 +1,3 @@
-import ctypes
 import re
 import struct
 import pymem
@@ -12,10 +11,8 @@ from common.errors import (
     FailedToReadAddress,
     message_box_fatal_error,
 )
-from common.signatures import text_pattern
 
 
-# pylint: disable=inconsistent-return-statements
 def dqx_mem():
     """
     Instantiates a pymem instance.
@@ -96,7 +93,6 @@ def write_string(address: int, text: str):
     return PYM_PROCESS.write_string(address, text + "\x00")
 
 
-# pylint: disable=inconsistent-return-statements,no-else-return
 def pattern_scan(pattern: bytes, return_multiple=False, module=None):
     """
     Scan for a byte pattern.
@@ -182,30 +178,6 @@ def get_base_address(name="DQXGame.exe") -> int:
     Returns the base address of a module. Defaults to DQXGame.exe.
     """
     return pymem.process.module_from_name(PYM_PROCESS.process_handle, name).lpBaseOfDll
-
-
-def get_start_of_game_text(indx_address: int) -> int:
-    """
-    Returns the address of the first character of text from a loaded
-    game file. This should be used when starting at an INDX address.
-    """
-    # pylint: disable=pointless-statement
-    address = find_first_match(indx_address, text_pattern)
-    loop_count = 1
-    if address:
-        address += 16  # skip passed all the junk bytes
-        while True:  # skip passed the padded 00's
-            result = read_bytes(address, 1)
-            if result != b"\x00":
-                address
-                break
-            address += 1
-            loop_count += 1
-            if loop_count > 50:
-                return False
-
-        return address
-    return None
 
 
 def pack_to_int(address: int) -> bytes:

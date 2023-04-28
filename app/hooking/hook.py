@@ -20,8 +20,7 @@ from common.memory import (
     allocate_memory,
     read_bytes,
 )
-from hooking.dialog import translate_shellcode, load_evtx_shellcode
-from hooking.cutscene import cutscene_shellcode
+from hooking.dialog import translate_shellcode
 from hooking.quest import quest_text_shellcode
 from hooking.hide_hooks import load_hooks
 from hooking.easydetour import EasyDetour

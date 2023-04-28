@@ -6,7 +6,6 @@ from common.constants import (
     GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL,
     GITHUB_CLARITY_VERSION_UPDATE_URL,
     GITHUB_CLARITY_MERGE_XLSX_URL,
-    GITHUB_WEBLATE_ZIP_URL,
 )
 from loguru import logger
 import os
@@ -71,7 +70,6 @@ def check_for_updates():
 
 
 def get_latest_and_merge_db():
-
     file = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "misc_files/merge.xlsx"))
     records_inserted = 0
     records_updated = 0
@@ -179,41 +177,3 @@ def get_latest_and_merge_db():
 
         logger.info(str(records_inserted) + " records were inserted into local db.")
         logger.info(str(records_updated) + " records in local db were updated.")
-
-
-def get_latest_from_weblate():
-    """
-    Downloads the latest zip file from the weblate branch and
-    extracts the json files into the appropriate folder.
-    """
-    logger.info("Downloading latest translation files.")
-    try:
-        url = GITHUB_WEBLATE_ZIP_URL
-        request = requests.get(url, timeout=15)
-        if request.status_code == 200:
-            zfile = zip(BytesIO(request.content))
-            for obj in zfile.infolist():
-                if obj.filename[-1] == "/":  # don't parse directories
-                    continue
-                if "json/_lang/en/" in obj.filename:
-                    obj.filename = os.path.basename(
-                        obj.filename
-                    )  # unzipped files copy zip folder structure, so re-assign filename to basename when we extract
-                    zfile.extract(obj, "json/_lang/en")
-        else:
-            logger.error(f"Failed to download translation files. Did not get 200 from github.com.")
-            message_box_fatal_error(
-                "Error",
-                "Failed to download custom files.\nRelaunch Clarity without 'Grab Latest Translations' and try again.",
-            )
-
-        download_custom_files()
-        get_latest_and_merge_db()
-        logger.info("Now up to date!")
-
-    except Exception as e:
-        logger.error(f"Failed to download custom files. Error: {e}")
-        message_box_fatal_error(
-            "Error",
-            "Failed to download custom files. See the Powershell window for details.\nRelaunch Clarity without 'Grab Latest Translations' and try again.",
-        )
