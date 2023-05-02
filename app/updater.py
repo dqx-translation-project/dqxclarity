@@ -44,6 +44,7 @@ if process_exists("DQXGame.exe"):
     sys.exit()
 
 print("dqxclarity is updating. Please wait...")
+kill_clarity_exe()
 
 try:
     z_data = download_latest_zip()
