@@ -7,7 +7,7 @@ import sys
 import subprocess
 from urllib.request import urlopen, Request
 
-CLARITY_URL = "https://github.com/dqxtranslationproject/dqxclarity/releases/latest/download/dqxclarity.zip"
+CLARITY_URL = "https://github.com/dqx-translation-project/dqxclarity/releases/latest/download/dqxclarity.zip"
 
 
 def process_exists(process_name):
