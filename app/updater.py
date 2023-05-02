@@ -27,6 +27,8 @@ def download_latest_zip():
     data = urlopen(req, timeout=15)
     if data.status == 200:
         zfile = zip(BytesIO(data.read()))
+    else:
+        zfile = None
     return zfile
 
 
@@ -45,6 +47,8 @@ print("dqxclarity is updating. Please wait...")
 
 try:
     z_data = download_latest_zip()
+    if not z_data:
+        raise
 except Exception as e:
     input(f"Failed to download the latest update. Please try again or download the update manually from Github.\n\nError: {e}")
     sys.exit()
