@@ -15,3 +15,4 @@ tests
 app/misc_files/*.json
 app/misc_files/glossary.csv
 app/misc_files/merge.xlsx
+app/logs
