@@ -59,7 +59,8 @@ files_to_ignore = [
     "clarity_dialog.db",
     "user_settings.ini",
     "defaults.pref",
-    "misc_files"
+    "misc_files",
+    "logs"
 ]
 
 clarity_path = os.path.split(__file__)[0]
@@ -69,7 +70,7 @@ for file in clarity_files:
     if basename in files_to_ignore:
         continue
     if basename.endswith(".json"):
-        if "misc_files" in file:
+        if "misc_files" in file or "logs" in file:
             continue
     if basename:
         delete_file(file)
