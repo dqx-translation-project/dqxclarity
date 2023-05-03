@@ -59,15 +59,20 @@ files_to_ignore = [
     "clarity_dialog.db",
     "user_settings.ini",
     "defaults.pref",
+    "misc_files"
 ]
 
 clarity_path = os.path.split(__file__)[0]
-clarity_files = glob.glob(f"{clarity_path}/*")
+clarity_files = glob.glob(f"{clarity_path}/**", recursive=True)
 for file in clarity_files:
     basename = os.path.basename(file)
     if basename in files_to_ignore:
         continue
-    delete_file(file)
+    if basename.endswith(".json"):
+        if "misc_files" in file:
+            continue
+    if basename:
+        delete_file(file)
 
 for obj in z_data.infolist():
     basename = os.path.basename(obj.filename)
