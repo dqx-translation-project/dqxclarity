@@ -16,7 +16,7 @@ jobs:
       - name: Clone dqxtranslationproject/dqx_translations
         uses: GuillaumeFalourd/clone-github-repo-action@v2
         with:
-          owner: "dqxtranslationproject"
+          owner: "dqx-translation-project"
           repository: "dqx_translations"
       - name: Clone dqxtranslationproject/dqx-custom-translations
         uses: GuillaumeFalourd/clone-github-repo-action@v2
@@ -25,13 +25,15 @@ jobs:
           repository: "dqx-custom-translations"
       - name: Build dev package
         run: |
-          mkdir -p dqxclarity/json/_lang/en;
-          rsync -av --exclude="bms/" --exclude="imgs/" app/* dqxclarity/;
+          rsync -av --exclude="imgs/" app/* dqxclarity/;
           cp version.update requirements.txt user_settings.ini dqxclarity/;
-          cp -fr dqx_translations/json/_lang/en/* dqxclarity/json/_lang/en;
-          cp -fr dqx-custom-translations/json/* dqxclarity/json/_lang/en;
-          cp -f dqx-custom-translations/csv/glossary.csv dqxclarity/json/_lang/en;
-          cp -f dqx-custom-translations/csv/hex_dict.csv dqxclarity/misc_files;
+          cp -fr dqx-custom-translations/json/* dqxclarity/misc_files;
+          cp -f dqx-custom-translations/csv/glossary.csv dqxclarity/misc_files;
+          cp -f dqx_translations/json/_lang/en/adhoc_wd_quests_requests.json dqxclarity/misc_files;
+          cp -f dqx_translations/json/_lang/en/items.json dqxclarity/misc_files;
+          cp -f dqx_translations/json/_lang/en/key_items.json dqxclarity/misc_files;
+          cp -f dqx_translations/json/_lang/en/monsters.json dqxclarity/misc_files;
+          cp -f dqx_translations/json/_lang/en/npc_names.json dqxclarity/misc_files;
           zip -r dqxclarity.zip dqxclarity
       - name: Set outputs
         id: vars
@@ -50,12 +52,6 @@ jobs:
       - name: Rename dqxclarity.zip to dev build
         run: |
           mv dqxclarity.zip dqxclarity-${{ steps.bump_version.outputs.next-version }}-dev-${{ steps.vars.outputs.sha_short }}.zip
-      - name: Delete existing release if exists
-        uses: The-PullRequest-Club/action-delete-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ steps.bump_version.outputs.next-version }}-dev
       - name: Creating dev release
         uses: softprops/action-gh-release@v1
         with:
