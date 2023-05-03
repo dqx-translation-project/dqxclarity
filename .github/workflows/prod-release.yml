@@ -19,10 +19,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      - name: Clone dqxtranslationproject/dqx_translations
+      - name: Clone dqx-translation-project/dqx_translations
         uses: GuillaumeFalourd/clone-github-repo-action@v2
         with:
-          owner: "dqxtranslationproject"
+          owner: "dqx-translation-project"
           repository: "dqx_translations"
       - name: Read version.update file
         uses: juliangruber/read-file-action@v1
@@ -41,10 +41,10 @@ jobs:
           path: ./version.update
           contents: ${{ steps.bump_version.outputs.next-version }}
           write-mode: "overwrite"
-      - name: Clone dqxtranslationproject/dqx-custom-translations
+      - name: Clone dqx-translation-project/dqx-custom-translations
         uses: GuillaumeFalourd/clone-github-repo-action@v2
         with:
-          owner: "dqxtranslationproject"
+          owner: "dqx-translation-project"
           repository: "dqx-custom-translations"
       - name: Build dev package
         run: |
