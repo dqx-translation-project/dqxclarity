@@ -207,13 +207,12 @@ def get_latest_from_weblate():
                 # "Failed to download custom files.\nRelaunch Clarity without 'Grab Latest Translations' and try again.",
             # )
 
-        download_custom_files()
-        get_latest_and_merge_db()
-        logger.info("Now up to date!")
-
-    except Exception as e:
-        logger.error(f"Failed to download custom files. Error: {e}")
-        message_box_fatal_error(
-            "Error",
-            "Failed to download custom files. See the Powershell window for details.\nRelaunch Clarity without 'Grab Latest Translations' and try again.",
-        )
+    # except Exception as e:
+        # logger.error(f"Failed to download custom files. Error: {e}")
+        # message_box_fatal_error(
+            # "Error",
+            # "Failed to download custom files. See the Powershell window for details.\nRelaunch Clarity without 'Grab Latest Translations' and try again.",
+        # )
+    download_custom_files()
+    get_latest_and_merge_db()
+    logger.info("Now up to date!")
