@@ -52,11 +52,11 @@ jobs:
           cp version.update requirements.txt user_settings.ini dqxclarity/;
           cp -fr dqx-custom-translations/json/* dqxclarity/misc_files;
           cp -f dqx-custom-translations/csv/glossary.csv dqxclarity/misc_files;
-          cp -f dqx_translations/json/_lang/en/adhoc_wd_quests_requests.json dqxclarity/misc_files;
-          cp -f dqx_translations/json/_lang/en/items.json dqxclarity/misc_files;
-          cp -f dqx_translations/json/_lang/en/key_items.json dqxclarity/misc_files;
-          cp -f dqx_translations/json/_lang/en/monsters.json dqxclarity/misc_files;
-          cp -f dqx_translations/json/_lang/en/npc_names.json dqxclarity/misc_files;
+          cp -f dqx_translations/json/_lang/en/eventTextSysQuestaClient.json dqxclarity/misc_files;
+          cp -f dqx_translations/json/_lang/en/subPackage05Client.json dqxclarity/misc_files;
+          cp -f dqx_translations/json/_lang/en/subPackage41Client.win32.json dqxclarity/misc_files;
+          cp -f dqx_translations/json/_lang/en/subPackage02Client.win32.json dqxclarity/misc_files;
+          cp -f dqx_translations/json/_lang/en/smldt_msg_pkg_NPC_DB.win32.json dqxclarity/misc_files;
           zip -r dqxclarity.zip dqxclarity
           rm -rf dqx_translations;
           rm -rf dqx-custom-translations;

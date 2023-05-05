@@ -527,8 +527,8 @@ def clean_up_and_return_items(text: str) -> str:
     """
     misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
     quest_rewards = merge_jsons([
-        f"{misc_files}/key_items.json",
-        f"{misc_files}/items.json",
+        f"{misc_files}/subPackage41Client.win32.json",
+        f"{misc_files}/subPackage05Client.json",
         f"{misc_files}/custom_quest_rewards.json"
     ])
     line_count = text.count("\n")

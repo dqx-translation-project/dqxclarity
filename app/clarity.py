@@ -109,8 +109,8 @@ def scan_for_npc_names():
     """
     misc_files = "/".join([get_abs_path(__file__), "misc_files"])
     translated_names = merge_jsons([
-        f"{misc_files}/monsters.json",
-        f"{misc_files}/npc_names.json",
+        f"{misc_files}/subPackage02Client.win32.json",
+        f"{misc_files}/smldt_msg_pkg_NPC_DB.win32.json",
         f"{misc_files}/custom_npc_names.json"
     ])
 
