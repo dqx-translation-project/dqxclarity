@@ -3,7 +3,7 @@ import sys
 import time
 from loguru import logger
 from common.memory import read_bytes, write_bytes
-from clarity import scan_for_adhoc_files, scan_for_sibling_names
+from clarity import scan_for_sibling_names
 
 
 def load_hooks(hook_list: list, state_addr: int, debug: bool):
@@ -38,7 +38,6 @@ def load_hooks(hook_list: list, state_addr: int, debug: bool):
                 write_bytes(state_addr, b"\x00")  # reset our state byte since we're hooked again
                 # during the loading screen, we might have missed a file getting loaded.
                 # also, since this timing is so sensitive, kick this process off in the background
-                Process(name="Adhoc scan", target=scan_for_adhoc_files, args=(debug,)).start()
                 Process(name="Sibling scan", target=scan_for_sibling_names, args=()).start()
                 logger.info("Hooks enabled.")
             time.sleep(0.25)

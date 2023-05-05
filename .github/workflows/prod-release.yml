@@ -19,10 +19,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      - name: Clone dqxtranslationproject/dqx_translations
+      - name: Clone dqx-translation-project/dqx_translations
         uses: GuillaumeFalourd/clone-github-repo-action@v2
         with:
-          owner: "dqxtranslationproject"
+          owner: "dqx-translation-project"
           repository: "dqx_translations"
       - name: Read version.update file
         uses: juliangruber/read-file-action@v1
@@ -41,20 +41,22 @@ jobs:
           path: ./version.update
           contents: ${{ steps.bump_version.outputs.next-version }}
           write-mode: "overwrite"
-      - name: Clone dqxtranslationproject/dqx-custom-translations
+      - name: Clone dqx-translation-project/dqx-custom-translations
         uses: GuillaumeFalourd/clone-github-repo-action@v2
         with:
-          owner: "dqxtranslationproject"
+          owner: "dqx-translation-project"
           repository: "dqx-custom-translations"
       - name: Build dev package
         run: |
-          mkdir -p dqxclarity/json/_lang/en;
-          rsync -av --exclude="bms/" --exclude="imgs/" app/* dqxclarity/;
+          rsync -av --exclude="imgs/" app/* dqxclarity/;
           cp version.update requirements.txt user_settings.ini dqxclarity/;
-          cp -fr dqx_translations/json/_lang/en/* dqxclarity/json/_lang/en;
-          cp -fr dqx-custom-translations/json/* dqxclarity/json/_lang/en;
-          cp -f dqx-custom-translations/csv/glossary.csv dqxclarity/json/_lang/en;
-          cp -f dqx-custom-translations/csv/hex_dict.csv dqxclarity/misc_files;
+          cp -fr dqx-custom-translations/json/* dqxclarity/misc_files;
+          cp -f dqx-custom-translations/csv/glossary.csv dqxclarity/misc_files;
+          cp -f dqx_translations/json/_lang/en/adhoc_wd_quests_requests.json dqxclarity/misc_files;
+          cp -f dqx_translations/json/_lang/en/items.json dqxclarity/misc_files;
+          cp -f dqx_translations/json/_lang/en/key_items.json dqxclarity/misc_files;
+          cp -f dqx_translations/json/_lang/en/monsters.json dqxclarity/misc_files;
+          cp -f dqx_translations/json/_lang/en/npc_names.json dqxclarity/misc_files;
           zip -r dqxclarity.zip dqxclarity
           rm -rf dqx_translations;
           rm -rf dqx-custom-translations;
