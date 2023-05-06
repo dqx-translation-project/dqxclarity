@@ -46,7 +46,7 @@ try:
     logger = setup_logger('out', 'out.log')
     game_text_logger = setup_logger('gametext', 'game_text.log')
 
-    quest_file = 'adhoc_wd_quests_requests'
+    quest_file = 'eventTextSysQuestaClient'
     quest_addr = unpack_to_int({eax_address})
 
     subquest_name_addr = quest_addr + 20
