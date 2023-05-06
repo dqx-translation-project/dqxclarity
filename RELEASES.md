@@ -1,5 +1,3 @@
-## How to release
-
 # Release instructions
 
 Releases are performed through Github Action workflows.
