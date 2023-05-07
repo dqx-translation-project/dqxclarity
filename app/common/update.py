@@ -47,6 +47,7 @@ def download_custom_files():
                 misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
                 with open("/".join([misc_files, os.path.basename(url)]), "w+", encoding="utf-8") as f:
                     f.write(request.text)
+        merge_local_db()
     except Exception as e:
         logger.error(f"Failed to download custom files. Error: {e}")
         input("Press ENTER to exit.")
@@ -78,9 +79,9 @@ def check_for_updates():
     return
 
 
-def get_latest_and_merge_db():
-    merge_file = "/".join([get_abs_path(__file__), "..misc_files/merge.xlsx"])
-    db_file = "/".join([get_abs_path(__file__), "..misc_files/clarity_dialog.db"])
+def merge_local_db():
+    merge_file = "/".join([get_abs_path(__file__), "../misc_files/merge.xlsx"])
+    db_file = "/".join([get_abs_path(__file__), "../misc_files/clarity_dialog.db"])
 
     records_inserted = 0
     records_updated = 0
