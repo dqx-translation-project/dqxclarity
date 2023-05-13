@@ -1,124 +1,90 @@
-$ClarityFlags = "-pnmvc" 
+$ClarityFlags = "-pnvcl"
+
+function LogWrite($string) {
+   Write-Host $string -ForegroundColor "Yellow"
+}
+
+function PythonExePath() {
+    # Because of the pymem lib, required to install Python for all users.
+    # No longer supporting "Install for Me" installations, just "Install for all users"
+    $PythonRegKey = "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Python\PythonCore\3.11-32\InstallPath"
+    $ErrorActionPreference="SilentlyContinue"
+    try { (Get-ItemProperty -Path $PythonRegKey -Name "ExecutablePath").ExecutablePath }
+    catch { "" }
+    $ErrorActionPreference="Continue"
+}
+
+function RemoveFile($path) {
+    if (Test-Path $path) {
+        Remove-Item $path -Recurse
+    }
+}
 
 $ErrorActionPreference="SilentlyContinue"
 Stop-Transcript | Out-Null
 $ErrorActionPreference = "Continue"
-Start-Transcript -path console.log -append
+Start-Transcript -path console.log
 
-function LogWrite($string) {
-   Write-Host $string -ForegroundColor "Yellow"
-   $TimeStamp = (Get-Date -Format yyyy-MM-dd) + " " + (Get-Date -Format HH:MM:ss) 
-   $TimeStamp + " " + $string | Out-File -Filepath "out.log" -Append -Force -Encoding utf8
-}
+$HelpMessage = "If you need help, please join the DQX Discord and post your question in the #clarity-questions channel. https://discord.gg/dragonquestx"
 
-function GetPythonInstall() {
-    # Determines the location of where the user installed Python.
-    # If the user installs Python for all users, but doesn't choose a
-    # custom install path, any other user on the system won't have Python
-    # available to them as the default installation is
-    # C:\users\<user>\AppData\..., which another user on the system
-    # wouldn't have access to.
-
-    # Users that install with the default settings use this key
-    $PythonRegKey = "Registry::HKEY_CURRENT_USER\SOFTWARE\Python\PythonCore\3.9-32\InstallPath"
-    # Users that install for all users, but with a custom install path settings use this key
-    $PythonRegKeyCustomInstall = "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Python\PythonCore\3.9-32\InstallPath"
-
-    $ErrorActionPreference="SilentlyContinue"
-    if ((Get-ItemProperty -Path $PythonRegKey -Name "(default)")."(default)") {
-        (Get-ItemProperty -Path $PythonRegKey -Name "(default)")."(default)"
-    } elseif ((Get-ItemProperty -Path $PythonRegKeyCustomInstall -Name "(default)")."(default)") {
-        (Get-ItemProperty -Path $PythonRegKeyCustomInstall -Name "(default)")."(default)"
-    }
-    $ErrorActionPreference="Continue"
-}
-
-$PythonInstallPath = GetPythonInstall
+$PythonInstallPath = PythonExePath
 
 if (!$PythonInstallPath) {
-    LogWrite "Could not find Python installation for Python 3.9-32."
+    LogWrite "Could not find Python installation for Python 3.11-32."
 
-    $Shell = new-object -comobject "WScript.Shell"
-    $Result = $Shell.popup("Could not find Python installation. Do you want to install it?",0,"Question",4+32)
+    $Shell = New-Object -comobject "WScript.Shell"
+    $Result = $Shell.popup("Could not find Python 3.11 installation. Do you want to install it?",0,"Question",4+32)
 
     if ($Result -eq 6) {
-        $ProgressPreference = 'SilentlyContinue'  # workaround to faster download speeds using IWR
+        $ProgressPreference = "SilentlyContinue"  # workaround to faster download speeds using IWR
         LogWrite "Downloading Python executable from the internet."
-        Invoke-WebRequest -Uri https://www.python.org/ftp/python/3.9.7/python-3.9.7.exe -OutFile python-3.9.7.exe
-        $PythonMD5 = Get-FileHash .\python-3.9.7.exe -Algorithm MD5
-        if ($PythonMD5.Hash -ne "0d949bdfdbd0c8c66107a980a95efd85") {  # pragma: allowlist secret
-            LogWrite "File download did not complete successfully. Please re-run this script and try again. Alternatively, you can install it yourself with this link."
-            LogWrite "https://www.python.org/ftp/python/3.9.7/python-3.9.7.exe"
-
-            if (Test-Path "python-3.9.7.exe" = True) {
-                Remove-Item "python-3.9.7.exe"
-            }
-
+        Invoke-WebRequest -Uri https://www.python.org/ftp/python/3.11.3/python-3.11.3.exe -OutFile python-3.11.3.exe
+        $PythonMD5 = Get-FileHash .\python-3.11.3.exe -Algorithm MD5
+        if ($PythonMD5.Hash -ne "691232496E346CE0860AEF052DD6844F") {
+            LogWrite "File download did not complete successfully. Please re-run this script and try again. $HelpMessage"
+            RemoveFile "python-3.11.3.exe"
             Read-Host "Press ENTER to close."
             Exit
         } else {
-            LogWrite "Launching Python installer. Make sure you check 'Add Python 3.9 to PATH' before clicking 'Install Now'."
-            & .\python-3.9.7.exe
-            Read-Host "When you are COMPLETELY finished with the install, press ENTER to continue. If ENTER does nothing, click inside this box first and make sure 'Select:' is not in the title bar of this window."
-
-            $PythonInstallPath = GetPythonInstall
+            LogWrite "Launching Python 3.11 installer and installing Python for you. Please wait."
+            .\python-3.11.3.exe /passive InstallAllUsers=1 PrependPath=1 Include_doc=0 Include_tcltk=0 Include_test=0 Shortcuts=0 SimpleInstallDescription="Installing necessary components for dqxclarity." | Out-Null
+            $PythonInstallPath = PythonExePath
 
             if (!$PythonInstallPath) {
-                LogWrite "Failed to install Python automatically. Please try downloading the installer manually and walking through the setup using the README on dqxclarity's Github page."
-                LogWrite "Github: https://github.com/dqxtranslationproject/dqxclarity"
-                LogWrite "Python: https://www.python.org/ftp/python/3.9.7/python-3.9.7.exe"
+                LogWrite "Failed to install Python. Please try again. $HelpMessage"
                 Read-Host "Press ENTER to close."
                 Exit
             }
         }
-
     } else {
-        LogWrite "No problem. I get it - you want to be in control. You will need to download Python in order to use dqxclarity. Here's a link to the download in case you want to grab it yourself."
-        LogWrite "https://www.python.org/ftp/python/3.9.7/python-3.9.7.exe"
+        LogWrite "You selected 'No'. Python 3.11 is required to use dqxclarity. Exiting."
         Read-Host "Press ENTER to close."
         Exit
     }
 }
 
 if (Test-Path -Path "venv") {
-    $CheckIfPythonModulesExist = & .\venv\Scripts\python.exe -c "import click"
-    if ($LASTEXITCODE -eq 0) {
-        LogWrite "Virtual environment exists. Activating."
-        & .\venv\Scripts\activate
-    } else {
-        LogWrite "Virtual environment doesn't look quite right. Deleting local venv folder. Re-open dqxclarity to re-install."
-        Remove-Item 'venv' -Recurse
-        Read-Host "Press ENTER to close."
+    try {
+        & .\venv\Scripts\python.exe -c "import click"
+    }
+    catch {
+        LogWrite "Virtual environment did not install correctly. Re-open dqxclarity to try again. $HelpMessage"
+        RemoveFile "venv"
+        Read-Host "Press ENTER to close"
         Exit
     }
 } else {
-    LogWrite "Creating virtual environment (venv)."
-    $PythonExe = "$PythonInstallPath" + "python.exe"
-    & $PythonExe -m venv venv
-    LogWrite "Activating virtual environment."
-    & .\venv\Scripts\activate
-
-    $AreWeInAVirtualEnvironment = & .\venv\Scripts\python.exe -c "import sys; print('False') if sys.prefix == sys.base_prefix else print('True')"
-
-    if ("$AreWeInAVirtualEnvironment" -eq "False") {
-        LogWrite "Failed to activate virtual environment. Try deleting the 'venv' folder and running this again. Exiting."
-        Read-Host "Press ENTER to close."
-        Exit
-    }
-
-    if (Test-Path -Path "requirements.txt") {
-        LogWrite "Installing requirements."
-        & .\venv\Scripts\pip.exe install -r requirements.txt --quiet
-    }
-}
-
-if (Test-Path -Path "requirements.txt") {
-    .\venv\Scripts\pip.exe config set global.disable-pip-version-check true | Out-Null
-    LogWrite "Checking requirements."
-    & .\venv\Scripts\pip.exe install -r requirements.txt | findstr /V /C:"Requirement already satisfied"
+    LogWrite "Creating virtual environment."
+    & $PythonInstallPath -m venv venv
+    LogWrite "Updating pip and installation dependencies."
+    .\venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel --quiet
+    LogWrite "Installing dqxclarity dependencies."
+    & .\venv\Scripts\pip.exe install -r requirements.txt --quiet
 }
 
 LogWrite "Python install location: $PythonInstallPath"
+LogWrite "Clarity installation path: $PSScriptRoot"
+LogWrite "Clarity flags: $ClarityFlags"
 
-LogWrite "Running clarity."
-& .\venv\Scripts\python.exe main.py $ClarityFlags
+LogWrite "Running dqxclarity."
+& .\venv\Scripts\python.exe -m main $ClarityFlags
