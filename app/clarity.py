@@ -53,7 +53,7 @@ def scan_for_player_names():
                 else:
                     raise
             except Exception as e:
-                logger.debug(f"Failed to write player name {romaji_name}.")
+                logger.debug(f"Failed to write player name at {str(hex(address))} for name {romaji_name}.")
 
 
 def scan_for_sibling_names():
@@ -72,7 +72,7 @@ def scan_for_sibling_names():
             except UnicodeDecodeError:
                 continue
             except Exception as e:
-                logger.debug("Failed to write sibling name.")
+                logger.debug(f"Failed to write sibling name at {str(hex(address))} for name {romaji_name}.")
 
         
 def scan_for_concierge_names():
@@ -85,6 +85,7 @@ def scan_for_concierge_names():
                 if en_name != ja_name:
                     write_bytes(name_addr, b"\x04" + str.encode(en_name) + b"\x00")
             except UnicodeDecodeError:
+                logger.debug(f"Failed to write concierge name at {str(hex(address))} for name {en_name}.")
                 pass
 
 
