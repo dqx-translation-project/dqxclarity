@@ -144,7 +144,7 @@ def scan_for_menu_ai_names():
                         write_string(ai_name_address, romaji_name)
                         logger.debug(f"Wrote player name {romaji_name}.")
                     except Exception as e:
-                        logger.warning("INFO ONLY: Failed to write Menu AI name.")
+                        logger.debug(f"Failed to write Menu AI name at {str(hex(address))} for name {romaji_name}.")
 
 
 def loop_scan_for_walkthrough():
@@ -179,7 +179,7 @@ def loop_scan_for_walkthrough():
                                     write_string(address + 16, translated_text)
                                     logger.debug("Wrote walkthrough.")
                                 except Exception as e:
-                                    logger.warning("INFO ONLY: Failed to write walkthrough text.")
+                                    logger.debug(f"Failed to write walkthrough text at {str(hex(address))}.")
                     else:
                         time.sleep(0.5)
         else:
