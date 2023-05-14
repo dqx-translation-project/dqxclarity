@@ -58,7 +58,7 @@ def blast_off(
                 logger.info("Thanks for enabling logging!")
                 threading.Thread(name="Community logging", target=start_logger, args=()).start()
 
-            start_process(name="Flavortown scanner", target=run_scans, args=(player_names, npc_names, communication_window, debug))
+            start_process(name="Flavortown scanner", target=run_scans, args=(player_names, npc_names, debug))
             # fmt: on
 
             logger.info("Done! Keep this window open (minimize it) and have fun on your adventure!")

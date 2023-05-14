@@ -29,7 +29,7 @@ def load_hooks(hook_list: list, state_addr: int, debug: bool):
         try:
             curr_state = read_bytes(state_addr, 1)
             if curr_state == b"\x01":  # we've been unhooked
-                logger.info("Hooks disabled.")
+                logger.debug("Hooks disabled.")
                 # these integrity scans happen pretty much instantly after we've noticed.
                 # let's just give it a moment to be safe and then we'll rehook
                 time.sleep(1)
@@ -39,13 +39,17 @@ def load_hooks(hook_list: list, state_addr: int, debug: bool):
                 # during the loading screen, we might have missed a file getting loaded.
                 # also, since this timing is so sensitive, kick this process off in the background
                 Process(name="Sibling scan", target=scan_for_sibling_names, args=()).start()
-                logger.info("Hooks enabled.")
+                logger.debug("Hooks enabled.")
             time.sleep(0.25)
         except TypeError:
             logger.error(f"Unable to talk to DQXGame.exe. Exiting.")
             sys.exit()
         except Exception as e:
-            logger.error(f"Unable to talk to DQXGame.exe. Exiting. Error: {e}")
-            for hook in hook_list:
-                hook.disable()
-            sys.exit()
+            if "Unable to read memory at address" in str(e):
+                logger.error(f"Cannot find DQXGame.exe process. dqxclarity will exit.")
+                sys.exit(1)
+            else:
+                logger.error(f"Exception occurred. Unhooking.\n{e}")
+                for hook in hook_list:
+                    hook.disable()
+                sys.exit(1)

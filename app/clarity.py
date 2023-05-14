@@ -186,7 +186,7 @@ def loop_scan_for_walkthrough():
             time.sleep(0.5)
 
 
-def run_scans(player_names=True, npc_names=True, communication_window=True, debug=False):
+def run_scans(player_names=True, npc_names=True, debug=False):
     """
     Run chosen scans.
 
@@ -203,8 +203,6 @@ def run_scans(player_names=True, npc_names=True, communication_window=True, debu
         logger.info("Will watch and update player names.")
     if npc_names:
         logger.info("Will watch and update NPCs.")
-    if not communication_window:
-        logger.info("Will watch for NPC dialog.")
 
     while True:
         try:
@@ -215,17 +213,19 @@ def run_scans(player_names=True, npc_names=True, communication_window=True, debu
                 scan_for_npc_names()
                 scan_for_concierge_names()
         except pymem.exception.WinAPIError as e:
-            if "error_code: 299" in str(e):  # impartial read, just ignore.
-                print("299 - but continue")
+            if "error_code: 299" in str(e):
+                logger.debug("WinApi error 299: Impartial read. Ignoring.")
                 continue
+            elif "error_code: 5" in str(e):  # ERROR_ACCESS_DENIED. *usually* means the game client was closed
+                logger.error(f"Cannot find DQXGame.exe process. dqxclarity will exit.")
+                sys.exit(1)
             else:
-                print("crash")
                 raise
         except UnicodeDecodeError:
             pass
         except TypeError:
-            logger.error(f"Cannot find DQX process. Must have closed? Exiting.")
-            sys.exit()
+            logger.error(f"Cannot find DQXGame.exe process. dqxclarity will exit.")
+            sys.exit(1)
         except Exception as e:
-            logger.error(f"Cannot find DQX process. Must have closed? Exiting.\nError: {e}")
-            sys.exit()
+            logger.error(f"Exception occurred:\n\n{e}")
+            sys.exit(1)
