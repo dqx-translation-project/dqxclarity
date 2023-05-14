@@ -47,11 +47,6 @@ def scan_for_player_names():
                     write_bytes(player_name_address, b"\x04" + romaji_name.encode("utf-8") + b"\x00")
             except UnicodeDecodeError:
                 continue
-            except pymem.exception.WinAPIError as e:
-                if "error_code: 299" in str(e):  # impartial read, just ignore.
-                    continue
-                else:
-                    raise
             except Exception as e:
                 logger.debug(f"Failed to write player name at {str(hex(address))} for name {romaji_name}.")
 
@@ -69,12 +64,14 @@ def scan_for_sibling_names():
                 romaji_name = convert_into_eng(ja_sibling_name)
                 if romaji_name != ja_sibling_name:
                     write_bytes(sibling_name_address, b"\x04" + romaji_name.encode("utf-8") + b"\x00")
+                    logger.debug(f"Wrote sibling name at {str(hex(address))} for name {romaji_name}.")
             except UnicodeDecodeError:
+                logger.debug(f"UnicodeDecodeError: Failed to write sibling name at {str(hex(address))} for name {romaji_name}.")
                 continue
             except Exception as e:
                 logger.debug(f"Failed to write sibling name at {str(hex(address))} for name {romaji_name}.")
 
-        
+
 def scan_for_concierge_names():
     if concierge_names := pattern_scan(pattern=concierge_name_pattern, return_multiple=True):
         for address in concierge_names:
@@ -84,6 +81,7 @@ def scan_for_concierge_names():
                 en_name = convert_into_eng(ja_name)
                 if en_name != ja_name:
                     write_bytes(name_addr, b"\x04" + str.encode(en_name) + b"\x00")
+                    logger.debug(f"Wrote player name at {str(hex(address))} for name {en_name}.")
             except UnicodeDecodeError:
                 logger.debug(f"Failed to write concierge name at {str(hex(address))} for name {en_name}.")
                 pass
@@ -120,15 +118,17 @@ def scan_for_npc_names():
                     if value:
                         try:
                             write_string(name_addr, value)
+                            logger.debug(f"Wrote NPC name at {str(hex(address))} for name {value}.")
                         except Exception as e:
-                            logger.warning(f"Failed to write {data} name {value}.")
+                            logger.debug(f"Failed to write {data} at {str(hex(address))} for name {value}.")
             elif data == "AI_NAME":
                 en_name = convert_into_eng(name)
                 if en_name != name:
                     try:
                         write_bytes(name_addr, b"\x04" + en_name.encode("utf-8") + b"\x00")
+                        logger.debug(f"Wrote AI name at {str(hex(address))} for name {en_name}.")
                     except Exception as e:
-                        logger.warning(f"Failed to write {data} for {en_name}.")
+                        logger.debug(f"Failed to write {data} at {str(hex(address))} for name {en_name}.")
 
 
 def scan_for_menu_ai_names():
@@ -143,9 +143,9 @@ def scan_for_menu_ai_names():
                 if romaji_name != ja_ai_name:
                     try:
                         write_string(ai_name_address, romaji_name)
-                        logger.debug(f"Wrote player name {romaji_name}.")
+                        logger.debug(f"Wrote party member name at {str(hex(address))} for name {romaji_name}.")
                     except Exception as e:
-                        logger.debug(f"Failed to write Menu AI name at {str(hex(address))} for name {romaji_name}.")
+                        logger.debug(f"Failed to write party member name at {str(hex(address))} for name {romaji_name}.")
 
 
 def loop_scan_for_walkthrough():
