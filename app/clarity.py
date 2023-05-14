@@ -182,7 +182,7 @@ def loop_scan_for_walkthrough():
                                 except Exception as e:
                                     logger.debug(f"Failed to write walkthrough text at {str(hex(address))}.")
                     else:
-                        time.sleep(0.5)
+                        time.sleep(5)
         else:
             time.sleep(0.5)
 
