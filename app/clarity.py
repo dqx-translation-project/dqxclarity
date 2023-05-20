@@ -60,7 +60,10 @@ def scan_for_comm_names():
     """
     comm_name_list_1 = pattern_scan(pattern=comm_name_pattern_1, return_multiple=True)
     comm_name_list_2 = pattern_scan(pattern=comm_name_pattern_2, return_multiple=True)
-    comm_names = comm_name_list_1 + comm_name_list_2
+    comm_name_list_2_mod = []
+    for address in comm_name_list_2:
+        comm_name_list_2_mod.append(address + 1)
+    comm_names = comm_name_list_1 + comm_name_list_2_mod
     for address in comm_names:
         try:
             ja_name = read_string(address)
