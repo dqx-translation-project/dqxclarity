@@ -27,6 +27,8 @@ from common.signatures import (
     player_name_pattern,
     sibling_name_pattern,
     walkthrough_pattern,
+    comm_name_pattern_1,
+    comm_name_pattern_2
 )
 
 from common.lib import merge_jsons, get_abs_path
@@ -49,6 +51,26 @@ def scan_for_player_names():
                 continue
             except Exception as e:
                 logger.debug(f"Failed to write player name at {str(hex(address))} for name {romaji_name}.")
+
+
+def scan_for_comm_names():
+    """
+    Scans for addresses that are related to a specific
+    pattern to translate player names in the comms window.
+    """
+    comm_name_list_1 = pattern_scan(pattern=comm_name_pattern_1, return_multiple=True)
+    comm_name_list_2 = pattern_scan(pattern=comm_name_pattern_2, return_multiple=True)
+    comm_names = comm_name_list_1 + comm_name_list_2
+    for address in comm_names:
+        try:
+            ja_name = read_string(address)
+            romaji_name = convert_into_eng(ja_name)
+            if romaji_name != ja_name:
+                write_string(address, romaji_name)
+        except UnicodeDecodeError:
+            continue
+        except Exception as e:
+            logger.debug(f"Failed to write comms name at {str(hex(address))} for name {romaji_name}.")
 
 
 def scan_for_sibling_names():
