@@ -1,4 +1,3 @@
-import re
 import struct
 import pymem
 import pymem.process
@@ -88,7 +87,7 @@ def write_string(address: int, text: str):
     return PYM_PROCESS.write_string(address, text + "\x00")
 
 
-def pattern_scan(pattern: bytes, return_multiple=False, module=None):
+def pattern_scan(pattern: bytes, return_multiple=False, use_regex=False, module=None):
     """
     Scan for a byte pattern.
     """
@@ -98,9 +97,16 @@ def pattern_scan(pattern: bytes, return_multiple=False, module=None):
             pattern=pattern,
             return_multiple=return_multiple,
             module=pymem.process.module_from_name(PYM_PROCESS.process_handle, module),
+            use_regex=use_regex
         )
     else:
-        return pattern_scan_all(handle=PYM_PROCESS.process_handle, pattern=pattern, return_multiple=return_multiple)
+        return pattern_scan_all(
+            handle=PYM_PROCESS.process_handle,
+            pattern=pattern,
+            all_protections=False,
+            return_multiple=return_multiple,
+            use_regex=use_regex
+        )
 
 
 def get_ptr_address(base, offsets):
