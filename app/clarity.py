@@ -58,8 +58,8 @@ def scan_for_comm_names():
     Scans for addresses that are related to a specific
     pattern to translate player names in the comms window.
     """
-    comm_name_list_1 = pattern_scan(pattern=comm_name_pattern_1, return_multiple=True)
-    comm_name_list_2 = pattern_scan(pattern=comm_name_pattern_2, return_multiple=True)
+    comm_name_list_1 = pattern_scan(pattern=comm_name_pattern_1, use_regex=True, return_multiple=True)
+    comm_name_list_2 = pattern_scan(pattern=comm_name_pattern_2, use_regex=True, return_multiple=True)
     comm_name_list_2_mod = []
     for address in comm_name_list_2:
         comm_name_list_2_mod.append(address + 1)
@@ -69,7 +69,7 @@ def scan_for_comm_names():
             ja_name = read_string(address)
             romaji_name = convert_into_eng(ja_name)
             if romaji_name != ja_name:
-                write_string(address, romaji_name)
+                write_string(address, "\x04" + romaji_name)
         except UnicodeDecodeError:
             continue
         except Exception as e:
@@ -181,35 +181,40 @@ def loop_scan_for_walkthrough():
     logger.info("Will watch for walkthrough text.")
 
     while True:
-        if address := pattern_scan(pattern=walkthrough_pattern):
-            prev_text = ""
-            while True:
-                if text := read_string(address + 16):
-                    if text != prev_text:
-                        prev_text = text
-                        if detect_lang(text):
-                            result = sqlite_read(text, "en", "walkthrough")
-                            if result:
-                                write_string(address + 16, result)
-                            else:
-                                translated_text = sanitized_dialog_translate(
-                                    api_details["TranslateService"],
-                                    text,
-                                    api_details["TranslateKey"],
-                                    api_details["RegionCode"],
-                                    text_width=31,
-                                    max_lines=3,
-                                )
-                                try:
-                                    sqlite_write(text, "walkthrough", translated_text, api_details["RegionCode"])
-                                    write_string(address + 16, translated_text)
-                                    logger.debug("Wrote walkthrough.")
-                                except Exception as e:
-                                    logger.debug(f"Failed to write walkthrough text at {str(hex(address))}.")
-                    else:
-                        time.sleep(5)
-        else:
-            time.sleep(0.5)
+        try:
+            if address := pattern_scan(pattern=walkthrough_pattern):
+                prev_text = ""
+                while True:
+                    if text := read_string(address + 16):
+                        if text != prev_text:
+                            prev_text = text
+                            if detect_lang(text):
+                                result = sqlite_read(text, "en", "walkthrough")
+                                if result:
+                                    write_string(address + 16, result)
+                                else:
+                                    translated_text = sanitized_dialog_translate(
+                                        api_details["TranslateService"],
+                                        text,
+                                        api_details["TranslateKey"],
+                                        api_details["RegionCode"],
+                                        text_width=31,
+                                        max_lines=3,
+                                    )
+                                    try:
+                                        sqlite_write(text, "walkthrough", translated_text, api_details["RegionCode"])
+                                        write_string(address + 16, translated_text)
+                                        logger.debug("Wrote walkthrough.")
+                                    except Exception as e:
+                                        logger.debug(f"Failed to write walkthrough text at {str(hex(address))}.")
+                        else:
+                            time.sleep(1)
+            else:
+                time.sleep(0.5)
+        except pymem.exception.WinAPIError as e:
+            if "error_code: 299" in str(e):
+                logger.debug("WinApi error 299: Impartial read. Ignoring.")
+                continue
 
 
 def run_scans(player_names=True, npc_names=True, debug=False):
