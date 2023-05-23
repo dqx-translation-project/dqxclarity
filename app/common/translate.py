@@ -1,10 +1,9 @@
 import textwrap
-import requests
 import json
 import configparser
 import shutil
 import unicodedata
-from common.errors import warning_message, message_box_fatal_error
+from common.errors import warning_message
 from common.lib import merge_jsons, get_abs_path
 from common.constants import GITHUB_CLARITY_GLOSSARY_URL
 import os
