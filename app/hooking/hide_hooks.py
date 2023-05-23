@@ -2,6 +2,7 @@ from multiprocessing import Process
 import sys
 import time
 from loguru import logger
+import pymem
 from common.memory import read_bytes, write_bytes
 from clarity import scan_for_sibling_names, scan_for_comm_names
 
@@ -45,6 +46,9 @@ def load_hooks(hook_list: list, state_addr: int, debug: bool):
         except TypeError:
             logger.error(f"Unable to talk to DQXGame.exe. Exiting.")
             sys.exit()
+        except pymem.exception.WinAPIError as e:
+            if "error_code: 299" in str(e):
+                logger.debug("WinApi error 299: Impartial read. Ignoring.")
         except Exception as e:
             if "Unable to read memory at address" in str(e):
                 logger.error(f"Cannot find DQXGame.exe process. dqxclarity will exit.")
