@@ -82,7 +82,7 @@ def read_string(address: int):
 
 def write_string(address: int, text: str):
     """
-    Writes a string to memory at the given address.
+    Writes a null-terminated string to memory at the given address.
     """
     return PYM_PROCESS.write_string(address, text + "\x00")
 
