@@ -201,7 +201,6 @@ class Pymem(object):
         if last_error:
             pymem.logger.warning('Got an error in start thread, code: %s' % last_error)
         pymem.ressources.kernel32.WaitForSingleObject(thread_h, -1)
-        pymem.logger.debug('New thread_id: 0x%08x' % thread_h)
         return thread_h
 
     def open_process_from_name(
@@ -272,9 +271,6 @@ class Pymem(object):
         self.process_handle = pymem.process.open(self.process_id)
         if not self.process_handle:
             raise pymem.exception.CouldNotOpenProcess(self.process_id)
-        pymem.logger.debug('Process {} is being debugged'.format(
-            process_id
-        ))
 
     def close_process(self):
         """Close the current opened process
