@@ -5,7 +5,6 @@ import time
 import click
 from loguru import logger
 from common.update import check_for_updates, download_custom_files
-from common.translate import load_user_config, refresh_glossary_id
 from dqxcrypt.dqxcrypt import start_logger
 
 # fmt: off
@@ -33,9 +32,6 @@ def blast_off(
     if not disable_update_check:
         check_for_updates()
         download_custom_files()
-    user_config = load_user_config()
-    if user_config["translation"]["enabledeepltranslate"] == "True":
-        refresh_glossary_id()
 
     try:
         if not disable_translations:
