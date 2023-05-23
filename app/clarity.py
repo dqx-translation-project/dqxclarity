@@ -180,8 +180,8 @@ def loop_scan_for_walkthrough():
     api_details = determine_translation_service()
     logger.info("Will watch for walkthrough text.")
 
-    while True:
-        try:
+    try:
+        while True:
             if address := pattern_scan(pattern=walkthrough_pattern):
                 prev_text = ""
                 while True:
@@ -194,10 +194,7 @@ def loop_scan_for_walkthrough():
                                     write_string(address + 16, result)
                                 else:
                                     translated_text = sanitized_dialog_translate(
-                                        api_details["TranslateService"],
                                         text,
-                                        api_details["TranslateKey"],
-                                        api_details["RegionCode"],
                                         text_width=31,
                                         max_lines=3,
                                     )
@@ -211,10 +208,22 @@ def loop_scan_for_walkthrough():
                             time.sleep(1)
             else:
                 time.sleep(0.5)
-        except pymem.exception.WinAPIError as e:
-            if "error_code: 299" in str(e):
-                logger.debug("WinApi error 299: Impartial read. Ignoring.")
-                continue
+    except pymem.exception.WinAPIError as e:
+        if "error_code: 299" in str(e):
+            logger.debug("WinApi error 299: Impartial read. Ignoring.")
+        elif "error_code: 5" in str(e):  # ERROR_ACCESS_DENIED. *usually* means the game client was closed
+            logger.error(f"Cannot find DQXGame.exe process. dqxclarity will exit.")
+            sys.exit(1)
+        else:
+            raise
+    except UnicodeDecodeError:
+        pass
+    except TypeError:
+        logger.error(f"Cannot find DQXGame.exe process. dqxclarity will exit.")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Exception occurred:\n\n{e}")
+        sys.exit(1)
 
 
 def run_scans(player_names=True, npc_names=True, debug=False):
