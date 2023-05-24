@@ -18,10 +18,11 @@ All text that isn't pulled from DQX servers lives in the DQX game files. A modif
 
 ## `dqxclarity` (live translation)
 
-- Install [Python 3.9.7 32-bit](https://www.python.org/ftp/python/3.9.7/python-3.9.7.exe)
 - Download the latest `dqxclarity.zip` file from the [releases](https://github.com/dqx-translation-project/dqxclarity/releases/latest) section
 - Unzip `dqxclarity.zip` somewhere that **isn't** in `Program Files` (desktop, documents, etc.)
 - Open the extracted `dqxclarity` folder and double-click `DQXClarity.exe` to run
+
+**Note that this will prompt you to install Python 3.11.3 32-bit if you don't have it installed for all users.**
 
 [Read the wiki if you still need help](https://github.com/dqxtranslationproject/dqxclarity/wiki)
 

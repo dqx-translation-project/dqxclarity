@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_python_dll(version):
-    """ "Given a python dll version will find its path using the current process as a placeholder
+    """Given a python dll version will find its path using the current process as a placeholder
 
     Parameters
     ----------
@@ -25,7 +25,7 @@ def get_python_dll(version):
     str
         The full path of dll
     """
-    current_process_id = ctypes.c_void_p(os.getpid())
+    current_process_id = os.getpid()
     current_process_handle = pymem.process.open(current_process_id)
     for module in pymem.process.enum_process_module(current_process_handle):
         if module.name == version:
@@ -37,7 +37,7 @@ def inject_dll(handle, filepath):
 
     Parameters
     ----------
-    handle: HANDLE
+    handle: int
         Handle to an open object
     filepath: bytes
         Dll to be injected filepath
@@ -51,9 +51,8 @@ def inject_dll(handle, filepath):
         handle,
         0,
         len(filepath),
-        pymem.ressources.structure.MEMORY_STATE.MEM_COMMIT.value
-        | pymem.ressources.structure.MEMORY_STATE.MEM_RESERVE.value,
-        pymem.ressources.structure.MEMORY_PROTECTION.PAGE_EXECUTE_READWRITE.value,
+        pymem.ressources.structure.MEMORY_STATE.MEM_COMMIT.value | pymem.ressources.structure.MEMORY_STATE.MEM_RESERVE.value,
+        pymem.ressources.structure.MEMORY_PROTECTION.PAGE_EXECUTE_READWRITE.value
     )
     pymem.ressources.kernel32.WriteProcessMemory(handle, filepath_address, filepath, len(filepath), None)
     kernel32_handle = pymem.ressources.kernel32.GetModuleHandleW("kernel32.dll")
@@ -66,14 +65,13 @@ def inject_dll(handle, filepath):
         handle, filepath_address, len(filepath), pymem.ressources.structure.MEMORY_STATE.MEM_RELEASE.value
     )
     dll_name = os.path.basename(filepath)
-    dll_name = dll_name.decode("ascii")
+    dll_name = dll_name.decode('ascii')
     module_address = pymem.ressources.kernel32.GetModuleHandleW(dll_name)
     return module_address
 
 
 def get_luid(name):
-    """
-    Get the LUID for the SeCreateSymbolicLinkPrivilege
+    """Get the LUID for the SeCreateSymbolicLinkPrivilege
     """
     luid = pymem.ressources.structure.LUID()
     res = pymem.ressources.advapi32.LookupPrivilegeValue(None, name, luid)
@@ -83,12 +81,13 @@ def get_luid(name):
 
 
 def get_process_token():
-    """
-    Get the current process token
+    """Get the current process token
     """
     token = ctypes.c_void_p()
     res = pymem.ressources.advapi32.OpenProcessToken(
-        ctypes.windll.kernel32.GetCurrentProcess(), pymem.ressources.structure.TOKEN.TOKEN_ALL_ACCESS, token
+        ctypes.windll.kernel32.GetCurrentProcess(),
+        pymem.ressources.structure.TOKEN.TOKEN_ALL_ACCESS,
+        token
     )
     if not res > 0:
         raise RuntimeError("Couldn't get process token")
@@ -98,12 +97,17 @@ def get_process_token():
 def set_debug_privilege(lpszPrivilege, bEnablePrivilege):
     """Leverage current process privileges.
 
-    :param lpszPrivilege: privilege name
-    :param bEnablePrivilege: Enable privilege
-    :type lpszPrivilege: str
-    :type bEnablePrivilege: bool
-    :return: True if privileges have been leveraged.
-    :rtype: bool
+    Parameters
+    ----------
+    lpszPrivilege: str
+        Privilege name
+    bEnablePrivilege: bool
+        Enable privilege
+
+    Returns
+    -------
+    bool
+        If privileges have been leveraged
     """
     # create a space in memory for a TOKEN_PRIVILEGES structure
     #  with one element
@@ -127,14 +131,17 @@ def set_debug_privilege(lpszPrivilege, bEnablePrivilege):
 
 
 def base_module(handle):
-    """Returns process base address, looking at its modules.
+    """Returns process base module
 
-    :param handle: A valid handle to an open object.
-    :type handle: ctypes.c_void_p
-    :param process_id: The identifier of the process.
-    :type process_id: ctypes.c_void_p
-    :return: The base address of the current process.
-    :rtype: ctypes.c_void_p
+    Parameters
+    ----------
+    handle: int
+        A valid handle to an open object
+
+    Returns
+    -------
+    MODULEINFO
+        The base module of the process
     """
     hModules = (ctypes.c_void_p * 1024)()
     process_module_success = pymem.ressources.psapi.EnumProcessModulesEx(
@@ -142,40 +149,45 @@ def base_module(handle):
         ctypes.byref(hModules),
         ctypes.sizeof(hModules),
         ctypes.byref(ctypes.c_ulong()),
-        pymem.ressources.structure.EnumProcessModuleEX.LIST_MODULES_ALL,
+        pymem.ressources.structure.EnumProcessModuleEX.LIST_MODULES_ALL
     )
     if not process_module_success:
         return  # xxx
     module_info = pymem.ressources.structure.MODULEINFO(handle)
     pymem.ressources.psapi.GetModuleInformation(
-        handle, ctypes.c_void_p(hModules[0]), ctypes.byref(module_info), ctypes.sizeof(module_info)
+        handle,
+        ctypes.c_void_p(hModules[0]),
+        ctypes.byref(module_info),
+        ctypes.sizeof(module_info)
     )
     return module_info
 
 
-def open(process_id, debug=None, process_access=None):
+def open(process_id, debug=True, process_access=None):
     """Open a process given its process_id.
-    By default the process is opened with full access and in debug mode.
+    By default, the process is opened with full access and in debug mode.
 
     https://msdn.microsoft.com/en-us/library/windows/desktop/ms684320%28v=vs.85%29.aspx
     https://msdn.microsoft.com/en-us/library/windows/desktop/aa379588%28v=vs.85%29.aspx
 
-    :param process_id: The identifier of the process to be opened
-    :param debug: open process in debug mode
-    :param process_access: desired access level
-    :type process_id: ctypes.c_void_p
-    :type debug: bool
-    :type process_access: pymem.ressources.structure
+    Parameters
+    ----------
+    process_id: int
+        The identifier of the process to be opened
+    debug: bool
+        If the process should be opened in debug mode
+    process_access: pymem.ressources.structure.PROCESS
+        Desired access level, defaulting to all access
 
-    :return: A handle of the given process_id
-    :rtype: ctypes.c_void_p
+    Returns
+    -------
+    int
+        A handle to the opened process
     """
-    if debug is None:
-        debug = False
     if not process_access:
         process_access = pymem.ressources.structure.PROCESS.PROCESS_ALL_ACCESS.value
     if debug:
-        set_debug_privilege("SeDebugPrivilege", True)
+        set_debug_privilege('SeDebugPrivilege', True)
     process_handle = pymem.ressources.kernel32.OpenProcess(process_access, False, process_id)
     return process_handle
 
@@ -183,11 +195,15 @@ def open(process_id, debug=None, process_access=None):
 def open_main_thread(process_id):
     """List given process threads and return a handle to first created one.
 
-    :param process_id: The identifier of the process
-    :type process_id: ctypes.c_void_p
+    Parameters
+    ----------
+    process_id: int
+        The identifier of the process
 
-    :return: A handle to the first thread of the given process_id
-    :rtype: ctypes.c_void_p
+    Returns
+    -------
+    int
+        A handle to the main thread
     """
     threads = enum_process_thread(process_id)
     threads = sorted(threads, key=lambda t32: t32.creation_time)
@@ -200,49 +216,58 @@ def open_main_thread(process_id):
     return thread_handle
 
 
+# TODO: impl enum for thread access levels
 def open_thread(thread_id, thread_access=None):
     """Opens an existing thread object.
-
     https://msdn.microsoft.com/en-us/library/windows/desktop/ms684335%28v=vs.85%29.aspx
 
-    :param thread_id: The identifier of the thread to be opened.
-    :type thread_id: ctypes.c_void_p
+    Parameters
+    ----------
+    thread_id: int
+        The identifier of the thread to be opened
+    thread_access: int
+        Desired access level, defaulting to all access
 
-    :return: A handle to the first thread of the given process_id
-    :rtype: ctypes.c_void_p
+    Returns
+    -------
+    int
+        A handle to the opened thread
     """
-    # XXX
-    if not thread_access:
-        thread_access = THREAD_ALL = 0x001F03FF
+    if thread_access is None:
+        thread_access = 0x001F03FF
     thread_handle = pymem.ressources.kernel32.OpenThread(thread_access, 0, thread_id)
     return thread_handle
 
 
 def close_handle(handle):
     """Closes an open object handle.
-
     https://msdn.microsoft.com/en-us/library/windows/desktop/ms724211%28v=vs.85%29.aspx
 
-    :param handle: A valid handle to an open object.
-    :type handle: ctypes.c_void_p
+    Parameters
+    ----------
+    handle: int
+        A valid handle to an open object
 
-    :return: If the function succeeds, the return value is nonzero.
-    :rtype: bool
+    Returns
+    -------
+    bool
+        If the closure succeeded
     """
     if not handle:
         return
     success = pymem.ressources.kernel32.CloseHandle(handle)
-    return success
+    return success != 0
 
 
 def list_processes():
     """List all processes
-
     https://msdn.microsoft.com/en-us/library/windows/desktop/ms682489%28v=vs.85%29.aspx
     https://msdn.microsoft.com/en-us/library/windows/desktop/ms684834%28v=vs.85%29.aspx
 
-    :return: a list of process entry 32.
-    :rtype: list(pymem.ressources.structure.ProcessEntry32)
+    Returns
+    -------
+    list[ProcessEntry32]
+        A list of open process entries
     """
     SNAPPROCESS = 0x00000002
     hSnap = pymem.ressources.kernel32.CreateToolhelp32Snapshot(SNAPPROCESS, 0)
@@ -257,30 +282,58 @@ def list_processes():
     pymem.ressources.kernel32.CloseHandle(hSnap)
 
 
-def process_from_name(name):
+def process_from_name(
+    name: str,
+    exact_match: bool = False,
+    ignore_case: bool = True,
+):
     """Open a process given its name.
 
-    :param name: The name of the process to be opened
-    :type name: str
+    Parameters
+    ----------
+    name:
+        The name of the process to be opened
+    exact_match:
+        Defaults to False, is the full name match or just part of it expected?
+    ignore_case:
+        Default to True, should ignore process name case?
 
-    :return: The ProcessEntry32 structure of the given process.
-    :rtype: ctypes.c_void_p
+    Returns
+    -------
+    ProcessEntry32
+        The process entry of the opened process
     """
-    name = name.lower()
+
+    if ignore_case:
+        name = name.lower()
+
     processes = list_processes()
     for process in processes:
-        if name in process.szExeFile.decode(locale.getpreferredencoding()).lower():
-            return process
+        process_name = process.szExeFile.decode(locale.getpreferredencoding())
+
+        if ignore_case:
+            process_name = process_name.lower()
+
+        if exact_match:
+            if process_name == name:
+                return process
+        else:
+            if name in process_name:
+                return process
 
 
 def process_from_id(process_id):
     """Open a process given its name.
 
-    :param process_id: The identifier of the process
-    :type process_id: ctypes.c_void_p
+    Parameters
+    ----------
+    process_id: int
+        The identifier of the process to be opened
 
-    :return: The ProcessEntry32 structure of the given process.
-    :rtype: ctypes.c_void_p
+    Returns
+    -------
+    ProcessEntry32
+        The process entry of the opened process
     """
     processes = list_processes()
     for process in processes:
@@ -291,14 +344,21 @@ def process_from_id(process_id):
 def module_from_name(process_handle, module_name):
     """Retrieve a module loaded by given process.
 
-    ex:
-        d3d9 = module_from_name(process_handle, 'd3d9')
+    Parameters
+    ----------
+    process_handle: int
+        Handle to the process to get the module from
+    module_name: str
+        Name of the module to get
 
-    :param process_handle: A process handle
-    :param module_name: The module name
-    :type process_handle: ctypes.c_void_p
-    :type module_name: str
-    :return: MODULEINFO
+    Returns
+    -------
+    MODULEINFO
+        The retrieved module
+
+    Examples
+    --------
+    >>> d3d9 = module_from_name(process_handle, 'd3d9')
     """
     module_name = module_name.lower()
     modules = enum_process_module(process_handle)
@@ -310,11 +370,15 @@ def module_from_name(process_handle, module_name):
 def enum_process_thread(process_id):
     """List all threads of given processes_id
 
-    :param process_id: The identifier of the process
-    :type process_id: ctypes.c_void_p
+    Parameters
+    ----------
+    process_id: int
+        Identifier of the process to enum the threads of
 
-    :return: a list of thread entry 32.
-    :rtype: list(pymem.ressources.structure.ThreadEntry32)
+    Returns
+    -------
+    list[ThreadEntry32]
+        The process's threads
     """
     TH32CS_SNAPTHREAD = 0x00000004
     hSnap = pymem.ressources.kernel32.CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0)
@@ -322,7 +386,7 @@ def enum_process_thread(process_id):
     ret = pymem.ressources.kernel32.Thread32First(hSnap, ctypes.byref(thread_entry))
 
     if not ret:
-        raise pymem.exception.PymemError("Could not get Thread32First")
+        raise pymem.exception.PymemError('Could not get Thread32First')
 
     while ret:
         if thread_entry.th32OwnerProcessID == process_id:
@@ -333,15 +397,18 @@ def enum_process_thread(process_id):
 
 def enum_process_module(handle):
     """List and retrieves the base names of the specified loaded module within a process
-
     https://msdn.microsoft.com/en-us/library/windows/desktop/ms682633(v=vs.85).aspx
     https://msdn.microsoft.com/en-us/library/windows/desktop/ms683196(v=vs.85).aspx
 
-    :param handle: A valid handle to an open object.
-    :type handle: ctypes.c_void_p
+    Parameters
+    ----------
+    handle: int
+        Handle of the process to enum the modules of
 
-    :return: a list of loaded modules
-    :rtype: list(pymem.ressources.structure.MODULEINFO)
+    Returns
+    -------
+    list[MODULEINFO]
+        The process's modules
     """
     hModules = (ctypes.c_void_p * 1024)()
     process_module_success = pymem.ressources.psapi.EnumProcessModulesEx(
@@ -349,27 +416,35 @@ def enum_process_module(handle):
         ctypes.byref(hModules),
         ctypes.sizeof(hModules),
         ctypes.byref(ctypes.c_ulong()),
-        pymem.ressources.structure.EnumProcessModuleEX.LIST_MODULES_ALL,
+        pymem.ressources.structure.EnumProcessModuleEX.LIST_MODULES_ALL
     )
     if process_module_success:
         hModules = iter(m for m in hModules if m)
         for hModule in hModules:
             module_info = pymem.ressources.structure.MODULEINFO(handle)
             pymem.ressources.psapi.GetModuleInformation(
-                handle, ctypes.c_void_p(hModule), ctypes.byref(module_info), ctypes.sizeof(module_info)
+                handle,
+                ctypes.c_void_p(hModule),
+                ctypes.byref(module_info),
+                ctypes.sizeof(module_info)
             )
             yield module_info
 
 
+# TODO: should this be named is_wow64?
 def is_64_bit(handle):
     """Determines whether the specified process is running under WOW64 (emulation).
 
-    :param handle: A valid handle to an open object.
-    :type handle: ctypes.c_void_p
+    Parameters
+    ----------
+    handle: int
+        Handle of the process to check wow64 status of
 
-    :return: True if the 32 bit process is running under WOW64.
-    :rtype: bool
+    Returns
+    -------
+    bool
+        If the process is running under wow64
     """
     Wow64Process = ctypes.c_long()
-    response = pymem.ressources.kernel32.IsWow64Process(handle, ctypes.byref(Wow64Process))
-    return Wow64Process
+    pymem.ressources.kernel32.IsWow64Process(handle, ctypes.byref(Wow64Process))
+    return bool(Wow64Process.value)

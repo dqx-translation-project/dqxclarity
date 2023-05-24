@@ -1,4 +1,3 @@
-import re
 import struct
 import pymem
 import pymem.process
@@ -63,11 +62,6 @@ def write_bytes(address: int, value: bytes):
         raise MemoryWriteError(address) from e
 
 
-def read_int(address: int):
-    """Return an int from an address."""
-    return PYM_PROCESS.read_int(address)
-
-
 def read_string(address: int):
     """
     Reads a string from memory at the given address.
@@ -88,12 +82,12 @@ def read_string(address: int):
 
 def write_string(address: int, text: str):
     """
-    Writes a string to memory at the given address.
+    Writes a null-terminated string to memory at the given address.
     """
     return PYM_PROCESS.write_string(address, text + "\x00")
 
 
-def pattern_scan(pattern: bytes, return_multiple=False, module=None):
+def pattern_scan(pattern: bytes, return_multiple=False, use_regex=False, module=None):
     """
     Scan for a byte pattern.
     """
@@ -103,58 +97,16 @@ def pattern_scan(pattern: bytes, return_multiple=False, module=None):
             pattern=pattern,
             return_multiple=return_multiple,
             module=pymem.process.module_from_name(PYM_PROCESS.process_handle, module),
+            use_regex=use_regex
         )
     else:
-        return pattern_scan_all(handle=PYM_PROCESS.process_handle, pattern=pattern, return_multiple=return_multiple)
-
-
-def scan_backwards(start_addr: int, pattern: bytes):
-    """
-    From start_addr, read bytes backwards until a pattern is found.
-    Used primarily for finding the beginning of an adhoc file.
-    """
-    curr_addr = start_addr
-    curr_bytes = bytes()
-    segment_size = 120  # give us a buffer to read from
-    segment_buffer_size = segment_size * 2  # prevent match from getting chopped off
-    loop_count = 1
-    while True:
-        curr_segment = read_bytes(curr_addr, segment_size)
-        curr_bytes = curr_segment + curr_bytes  # want the pattern to be read left to right, so prepending
-        if len(curr_bytes) > segment_buffer_size:
-            curr_bytes = curr_bytes[:-segment_size]  # keep our buffer reasonably sized
-        if pattern in curr_bytes:  # found our match
-            position = re.search(pattern, curr_bytes).span(0)
-            return curr_addr + position[0]
-        curr_addr -= segment_size
-        loop_count += 1
-        if loop_count * segment_size > 1000000:
-            return False  # this scan is slow, so don't scan forever.
-
-
-def find_first_match(start_addr: int, pattern: bytes) -> int:
-    """
-    This is so dumb that this has to exist, but scan_pattern_page does not
-    find patterns consistently, so we must read this byte by byte
-    until we find a match. This works like scan backwards, but the other way around.
-    """
-    curr_addr = start_addr
-    curr_bytes = bytes()
-    segment_size = 120  # give us a buffer to read from
-    segment_buffer_size = segment_size * 2  # prevent match from getting chopped off
-    loop_count = 1
-    while True:
-        curr_segment = read_bytes(curr_addr, segment_size)
-        curr_bytes = curr_segment + curr_bytes
-        if pattern in curr_bytes:  # found our match
-            position = re.search(pattern, curr_bytes).span(0)
-            return curr_addr + position[0]
-        if len(curr_bytes) > segment_buffer_size:
-            curr_bytes = curr_bytes[segment_size:]  # keep our buffer reasonably sized
-        curr_addr += segment_size
-        loop_count += 1
-        if loop_count * segment_size > 1000000:
-            return False  # this scan is slow, so don't scan forever.
+        return pattern_scan_all(
+            handle=PYM_PROCESS.process_handle,
+            pattern=pattern,
+            all_protections=False,
+            return_multiple=return_multiple,
+            use_regex=use_regex
+        )
 
 
 def get_ptr_address(base, offsets):
@@ -225,15 +177,6 @@ def get_hook_bytecode(hook_address: int):
     Returns a formatted jump address for your hook.
     """
     return b"\xE9" + pack_to_int(hook_address)
-
-
-def unpack_address_to_int(address: int):
-    """
-    Reads the first four bytes of memory and unpacks it into an address.
-    """
-    value = read_bytes(address, 4)
-
-    return struct.unpack("<i", value)[0]
 
 
 PYM_PROCESS = dqx_mem()

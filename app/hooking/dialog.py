@@ -1,7 +1,7 @@
 import sys
 import os
 from json import dumps
-from common.translate import determine_translation_service
+from common.translate import determine_translation_service, Translate
 
 
 def translate_shellcode(esi_address: int, debug: bool) -> str:
@@ -12,11 +12,10 @@ def translate_shellcode(esi_address: int, debug: bool) -> str:
     local_paths = dumps(sys.path).replace("\\", "\\\\")
     working_dir = dumps(os.getcwd()).replace("\\", "\\\\")
 
+    Translate()
     api_details = determine_translation_service()
-    api_service = api_details["TranslateService"]
-    api_key = api_details["TranslateKey"]
     api_logging = api_details["EnableDialogLogging"]
-    api_region = api_details["RegionCode"]
+    region_code = Translate.region_code
 
     shellcode = rf"""
 try:
@@ -27,6 +26,7 @@ try:
     working_dir = {working_dir}
     debug = {debug}
     api_logging = {api_logging}
+    region_code = '{region_code}'
 
     sys.path = local_paths
     og_working_dir = getcwd()
@@ -55,14 +55,14 @@ try:
         game_text_logger.info(ja_text)
 
     if detect_lang(ja_text):
-        result = sqlite_read(ja_text, '{api_region}', 'dialog')
+        result = sqlite_read(ja_text, region_code, 'dialog')
         if result is not None:
             logger.info('Found database entry. No translation was needed.')
             write_string(ja_address, result)
         else:
-            logger.info('Translation is needed for ' + str(len(ja_text) / 3) + ' characters. Sending to {api_service}')
-            translated_text = sanitized_dialog_translate('{api_service}', ja_text, '{api_key}', '{api_region}')
-            sqlite_write(ja_text, 'dialog', translated_text, '{api_region}', npc_name='')
+            logger.info('Translation is needed for ' + str(len(ja_text) / 3) + ' characters.')
+            translated_text = sanitized_dialog_translate(ja_text)
+            sqlite_write(ja_text, 'dialog', translated_text, region_code, npc_name='')
             write_string(ja_address, translated_text)
     chdir(og_working_dir)
 except AddressOutOfRange:
