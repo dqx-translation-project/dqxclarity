@@ -5,7 +5,6 @@ import shutil
 import unicodedata
 from common.errors import warning_message
 from common.lib import merge_jsons, get_abs_path
-from common.constants import GITHUB_CLARITY_GLOSSARY_URL
 import os
 import langdetect
 import re
@@ -14,6 +13,7 @@ import sqlite3
 from openpyxl import load_workbook
 import deepl
 from googleapiclient.discovery import build
+from nltk import sent_tokenize
 
 
 class Translate():
@@ -63,10 +63,15 @@ class Translate():
     def translate(self, text: str):
         text = self.__glossify(text)
         if Translate.service == "deepl":
-            return self.deepl(text)
+            return self.__capitalize(self.deepl(text))
         if Translate.service == "google":
-            return self.google(text)
+            return self.__capitalize(self.google(text))
         return None
+
+
+    def __capitalize(self, text):
+        text = sent_tokenize(text)
+        return " ".join([s.replace(s[0],s[0].capitalize(),1) for s in text])
 
 
 def sanitized_dialog_translate(dialog_text, text_width=45, max_lines=None) -> str:
