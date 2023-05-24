@@ -1,10 +1,11 @@
-import sys
-import os
 from json import dumps
+import os
+import sys
+from common.translate import Translate
 
 
 def walkthrough_shellcode(
-    esi_address: int, api_service: str, api_key: str, api_logging: str, api_region: str, debug: bool
+    esi_address: int, api_logging: str, debug: bool
 ) -> str:
     """
     Returns shellcode for the walkthrough function hook.
@@ -12,6 +13,8 @@ def walkthrough_shellcode(
     """
     local_paths = dumps(sys.path).replace("\\", "\\\\")
     working_dir = dumps(os.getcwd()).replace("\\", "\\\\")
+    Translate()
+    region_code = Translate.region_code
 
     shellcode = rf"""
 try:
@@ -22,6 +25,7 @@ try:
     working_dir = {working_dir}
     debug = {debug}
     api_logging = {api_logging}
+    region_code = '{region_code}'
 
     sys.path = local_paths
     og_working_dir = getcwd()
@@ -46,20 +50,20 @@ try:
 
     if detect_lang(walkthrough_str):
         logger.debug('Walkthrough text: ' + str(walkthrough_str))
-        result = sqlite_read(walkthrough_str, '{api_region}', 'walkthrough')
+        result = sqlite_read(walkthrough_str, region_code, 'walkthrough')
 
         if result is not None:
             logger.debug('Found database entry. No translation was needed.')
             write_bytes(walkthrough_addr, result.encode() + b'\x00')
         else:
-            logger.debug('Translation is needed for ' + str(len(walkthrough_str)) + ' characters. Sending to {api_service}')
-            translated_text = sanitized_dialog_translate('{api_service}', walkthrough_str, '{api_key}', '{api_region}', text_width=31)
-            sqlite_write(walkthrough_str, 'walkthrough', translated_text, '{api_region}')
+            logger.debug('Translation is needed for ' + str(len(walkthrough_str)) + ' characters.')
+            translated_text = sanitized_dialog_translate(walkthrough_str, text_width=31)
+            sqlite_write(walkthrough_str, 'walkthrough', translated_text, region_code)
             write_bytes(walkthrough_addr, translated_text.encode() + b'\x00')
     chdir(og_working_dir)
 except Exception as e:
     with open('out.log', 'a+') as f:
-        f.write(e)
+        f.write(str(e))
     """
 
     return str(shellcode)

@@ -5,7 +5,6 @@ import time
 import click
 from loguru import logger
 from common.update import check_for_updates, download_custom_files
-from common.translate import load_user_config, refresh_glossary_id
 from dqxcrypt.dqxcrypt import start_logger
 
 # fmt: off
@@ -33,9 +32,6 @@ def blast_off(
     if not disable_update_check:
         check_for_updates()
         download_custom_files()
-    user_config = load_user_config()
-    if user_config["translation"]["enabledeepltranslate"] == "True":
-        refresh_glossary_id()
 
     try:
         if not disable_translations:
@@ -58,7 +54,7 @@ def blast_off(
                 logger.info("Thanks for enabling logging!")
                 threading.Thread(name="Community logging", target=start_logger, args=()).start()
 
-            start_process(name="Flavortown scanner", target=run_scans, args=(player_names, npc_names, communication_window, debug))
+            start_process(name="Flavortown scanner", target=run_scans, args=(player_names, npc_names, debug))
             # fmt: on
 
             logger.info("Done! Keep this window open (minimize it) and have fun on your adventure!")

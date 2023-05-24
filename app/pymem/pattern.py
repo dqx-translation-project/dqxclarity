@@ -2,10 +2,9 @@ import sys
 import pymem.memory
 import pymem.ressources.kernel32
 import pymem.ressources.structure
-import re
 
 
-def scan_pattern_page(handle, address, pattern, *, return_multiple=False):
+def scan_pattern_page(handle, address, pattern, *, all_protections=True, use_regex=False, return_multiple=False):
     """Search a byte pattern given a memory location.
     Will query memory location information and search over until it reaches the
     length of the memory page. If nothing is found the function returns the
@@ -29,12 +28,24 @@ def scan_pattern_page(handle, address, pattern, *, return_multiple=False):
         if return_multiple is True found address will instead be a list of found addresses
         or an empty list if no results
     """
+    if use_regex:
+        import regex as re
+    else:
+        import re
+
     mbi = pymem.memory.virtual_query(handle, address)
     next_region = mbi.BaseAddress + mbi.RegionSize
-    allowed_protections = [
-        pymem.ressources.structure.MEMORY_PROTECTION.PAGE_EXECUTE_READWRITE,
-        pymem.ressources.structure.MEMORY_PROTECTION.PAGE_READWRITE,
-    ]
+    if all_protections:
+        allowed_protections = [
+            pymem.ressources.structure.MEMORY_PROTECTION.PAGE_EXECUTE_READ,
+            pymem.ressources.structure.MEMORY_PROTECTION.PAGE_EXECUTE_READWRITE,
+            pymem.ressources.structure.MEMORY_PROTECTION.PAGE_READWRITE,
+            pymem.ressources.structure.MEMORY_PROTECTION.PAGE_READONLY,
+        ]
+    else:
+        allowed_protections = [
+            pymem.ressources.structure.MEMORY_PROTECTION.PAGE_READWRITE
+        ]
     if mbi.state != pymem.ressources.structure.MEMORY_STATE.MEM_COMMIT or mbi.protect not in allowed_protections:
         return next_region, None
 
@@ -57,7 +68,7 @@ def scan_pattern_page(handle, address, pattern, *, return_multiple=False):
     return next_region, found
 
 
-def pattern_scan_module(handle, module, pattern, *, return_multiple=False):
+def pattern_scan_module(handle, module, pattern, *, all_protections=True, use_regex=False, return_multiple=False):
     """Given a handle over an opened process and a module will scan memory after
     a byte pattern and return its corresponding memory address.
     Parameters
@@ -92,7 +103,7 @@ def pattern_scan_module(handle, module, pattern, *, return_multiple=False):
     if not return_multiple:
         found = None
         while page_address < max_address:
-            page_address, found = scan_pattern_page(handle, page_address, pattern)
+            page_address, found = scan_pattern_page(handle, page_address, pattern, all_protections=all_protections, use_regex=use_regex)
 
             if found:
                 break
@@ -100,7 +111,7 @@ def pattern_scan_module(handle, module, pattern, *, return_multiple=False):
     else:
         found = []
         while page_address < max_address:
-            page_address, new_found = scan_pattern_page(handle, page_address, pattern, return_multiple=True)
+            page_address, new_found = scan_pattern_page(handle, page_address, pattern, all_protections=all_protections, use_regex=use_regex, return_multiple=True)
 
             if new_found:
                 found += new_found
@@ -108,7 +119,7 @@ def pattern_scan_module(handle, module, pattern, *, return_multiple=False):
     return found
 
 
-def pattern_scan_all(handle, pattern, *, return_multiple=False):
+def pattern_scan_all(handle, pattern, *, all_protections=True, use_regex=False, return_multiple=False):
     """Scan the entire address space for a given regex pattern
     Parameters
     ----------
@@ -129,7 +140,7 @@ def pattern_scan_all(handle, pattern, *, return_multiple=False):
     found = []
     user_space_limit = 0x7FFFFFFF0000 if sys.maxsize > 2**32 else 0x7FFF0000
     while next_region < user_space_limit:
-        next_region, page_found = scan_pattern_page(handle, next_region, pattern, return_multiple=return_multiple)
+        next_region, page_found = scan_pattern_page(handle, next_region, pattern, all_protections=all_protections, use_regex=use_regex, return_multiple=return_multiple)
 
         if not return_multiple and page_found:
             return page_found

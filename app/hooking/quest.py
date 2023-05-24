@@ -1,7 +1,130 @@
+from json import dumps, loads
+import re
 import sys
-import os
-from json import dumps
-from common.translate import determine_translation_service
+import textwrap
+from common.lib import get_abs_path, setup_logger
+from common.memory import read_string, write_string, unpack_to_int
+from common.translate import (
+    detect_lang,
+    Translate,
+    sqlite_read,
+    sqlite_write,
+    clean_up_and_return_items
+)
+
+class Quest(object):
+
+    misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
+    logger = setup_logger("out", "/".join([get_abs_path(__file__), "../out.log"]))
+    quests = None
+
+    def __init__(self, address, debug=False):
+        if debug:
+            self.address = address
+        else:
+            self.address = unpack_to_int(address)
+
+        self.subquest_name_address = self.address + 20
+        self.quest_name_address = self.address + 76
+        self.quest_desc_address = self.address + 132
+        self.quest_rewards_address = self.address + 640
+        self.quest_repeat_rewards_address = self.address + 744
+
+        self.subquest_name = read_string(self.subquest_name_address)
+        self.quest_name = read_string(self.quest_name_address)
+        self.quest_desc = read_string(self.quest_desc_address)
+        self.quest_rewards = read_string(self.quest_rewards_address)
+        self.quest_repeat_rewards = read_string(self.quest_repeat_rewards_address)
+
+        self.is_ja = self.__is_ja()
+
+        if Quest.quests is None:
+            Quest.quests = self.__read_file(f"{Quest.misc_files}/eventTextSysQuestaClient.json")
+
+        self.write_to_game()
+        Quest.logger.info(f"Wrote to quest address: {self.address}")
+
+
+    def __is_ja(self):
+        return detect_lang(self.quest_desc)
+
+
+    def __write_subquest_name(self):
+        if self.is_ja:
+            if data := self.__query_quest(self.subquest_name):
+                write_string(address=self.subquest_name_address, text=data)
+
+
+    def __write_quest_name(self):
+        if self.is_ja:
+            if data := self.__query_quest(self.quest_name):
+                write_string(address=self.quest_name_address, text=data)
+
+
+    def __write_quest_desc(self):
+        if self.is_ja:
+            if data := self.__translate_quest_desc():
+                write_string(address=self.quest_desc_address, text=data)
+
+
+    def __write_quest_rewards(self):
+        if self.is_ja:
+            if data := clean_up_and_return_items(self.quest_rewards):
+                write_string(address=self.quest_rewards_address, text=data)
+
+
+    def __write_repeat_quest_rewards(self):
+        if self.is_ja:
+            if data := clean_up_and_return_items(self.quest_repeat_rewards):
+                write_string(address=self.quest_repeat_rewards_address, text=data)
+
+
+    def __translate_quest_desc(self):
+        translator = Translate()
+        if db_quest_text := sqlite_read(
+            text_to_query=self.quest_desc,
+            language=Translate.region_code,
+            table="quests"
+        ):
+            return db_quest_text
+
+        full_text = re.sub("\n", " ", self.quest_desc)
+        if translation := translator.translate(full_text):
+            formatted_translation = textwrap.fill(translation, width=45, replace_whitespace=False)
+            sqlite_write(
+                source_text=self.quest_desc,
+                table="quests",
+                translated_text=formatted_translation,
+                language=Translate.region_code
+            )
+            return formatted_translation
+        return None
+
+
+    def __read_file(self, file):
+        """
+        Reads a json file and returns a single key, value dict.
+        """
+        with open(file, "r", encoding="utf-8") as json_data:
+            data = loads(json_data.read())
+        new_dict = dict()
+        for key in data:
+            new_dict.update(data[key])
+        return new_dict
+
+
+    def __query_quest(self, text: str):
+        if value := Quest.quests.get(text):
+            return value
+        return None
+
+
+    def write_to_game(self):
+        self.__write_subquest_name()
+        self.__write_quest_name()
+        self.__write_quest_desc()
+        self.__write_quest_rewards()
+        self.__write_repeat_quest_rewards()
 
 
 def quest_text_shellcode(eax_address: int, debug: bool) -> str:
@@ -9,84 +132,22 @@ def quest_text_shellcode(eax_address: int, debug: bool) -> str:
     Returns shellcode for the translate function hook.
     eax_address: Where text can be modified to be fed to the screen
     """
+    import os
     local_paths = dumps(sys.path).replace("\\", "\\\\")
-    working_dir = dumps(os.getcwd()).replace("\\", "\\\\")
+    log_path = os.path.join(os.path.abspath('.'), 'out.log').replace("\\", "\\\\")
 
-    api_details = determine_translation_service()
-    api_service = api_details["TranslateService"]
-    api_key = api_details["TranslateKey"]
-    api_logging = api_details["EnableDialogLogging"]
-    api_region = api_details["RegionCode"]
-
-    shellcode = rf"""
+    # Overwriting the process's sys.path with the one outside of the process
+    # is required to run our imports and function code. It's also necessary to
+    # escape the slashes.
+    shellcode = f"""
 try:
     import sys
-    from os import chdir, getcwd
-
-    local_paths = {local_paths}
-    working_dir = {working_dir}
-    debug = {debug}
-    api_logging = {api_logging}
-
-    sys.path = local_paths
-    og_working_dir = getcwd()
-    chdir(working_dir)
-
-    from common.lib import setup_logger
-    from common.memory import (
-        write_bytes,
-        read_string,
-        unpack_to_int)
-    from common.translate import (
-        query_string_from_file,
-        detect_lang,
-        clean_up_and_return_items,
-        quest_translate)
-
-    logger = setup_logger('out', 'out.log')
-    game_text_logger = setup_logger('gametext', 'game_text.log')
-
-    quest_file = 'eventTextSysQuestaClient'
-    quest_addr = unpack_to_int({eax_address})
-
-    subquest_name_addr = quest_addr + 20
-    quest_name_addr = quest_addr + 76
-    quest_desc_addr = quest_addr + 132
-    quest_rewards_addr = quest_addr + 640
-    quest_repeat_rewards_addr = quest_addr + 744
-
-    subquest_name_ja = read_string(subquest_name_addr)
-    quest_name_ja = read_string(quest_name_addr)
-    quest_desc_ja = read_string(quest_desc_addr)
-    quest_rewards_ja = read_string(quest_rewards_addr)
-    quest_repeat_rewards_ja = read_string(quest_repeat_rewards_addr)
-
-    if detect_lang(quest_desc_ja):
-        if subquest_name_ja:
-            subquest_name_en = query_string_from_file(subquest_name_ja, quest_file)
-            if subquest_name_en:
-                write_bytes(subquest_name_addr, str.encode(subquest_name_en) + b'\x00')
-        if quest_name_ja:
-            quest_name_en = query_string_from_file(quest_name_ja, quest_file)
-            if quest_name_en:
-                logger.info('Found quest address @ ' + str(hex(quest_name_addr)))
-                write_bytes(quest_name_addr, str.encode(quest_name_en) + b'\x00')
-        if quest_rewards_ja:
-            quest_rewards_en = clean_up_and_return_items(quest_rewards_ja)
-            if quest_rewards_en:
-                write_bytes(quest_rewards_addr, str.encode(quest_rewards_en) + b'\x00')
-        if quest_repeat_rewards_ja:
-            quest_repeat_rewards_en = clean_up_and_return_items(quest_repeat_rewards_ja)
-            if quest_repeat_rewards_en:
-                write_bytes(quest_repeat_rewards_addr, str.encode(quest_repeat_rewards_en) + b'\x00')
-        if quest_desc_ja:
-            quest_desc_en = quest_translate('{api_service}', quest_desc_ja, '{api_key}', '{api_region}')
-            if quest_desc_en:
-                write_bytes(quest_desc_addr, str.encode(quest_desc_en) + b'\x00')
-    chdir(og_working_dir)
+    sys.path = {local_paths}
+    from hooking.quest import Quest
+    Quest({eax_address})
 except Exception as e:
-    with open('out.log', 'a+') as f:
-        f.write(e)
+    with open("{log_path}", "a+") as f:
+        f.write(str(e))
     """
 
     return str(shellcode)

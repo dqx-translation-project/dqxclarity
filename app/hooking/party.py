@@ -41,7 +41,7 @@ try:
     chdir(og_working_dir)
 except Exception as e:
     with open('out.log', 'a+') as f:
-        f.write(e)
+        f.write(str(e))
     """
 
     return str(shellcode)

@@ -1,10 +1,9 @@
 import textwrap
-import requests
 import json
 import configparser
 import shutil
 import unicodedata
-from common.errors import warning_message, message_box_fatal_error
+from common.errors import warning_message
 from common.lib import merge_jsons, get_abs_path
 from common.constants import GITHUB_CLARITY_GLOSSARY_URL
 import os
@@ -14,152 +13,68 @@ import pykakasi
 import sqlite3
 from openpyxl import load_workbook
 import deepl
-import hashlib
-from loguru import logger
+from googleapiclient.discovery import build
 
 
-def deepl_translate(dialog_text, api_key, region_code):
-    """
-    Use DeepL Translate to translate text to the specified language.
-    """
-    user_config = load_user_config()
-    glossary_id = user_config["glossary"]["glossaryid"]
-    if user_config["translation"]["regioncode"].lower() == "en":
-        region_code = "en-us"
-    translator = deepl.Translator(api_key)
+class Translate():
+    service = None
+    api_key = None
+    region_code = None
+    glossary = None
 
-    if glossary_id:
-        response = translator.translate_text(
-            text=dialog_text, source_lang="ja", target_lang=region_code, glossary=glossary_id
-        )
-    else:
-        response = translator.translate_text(text=dialog_text, source_lang="ja", target_lang=region_code)
+    def __init__(self):
+        if Translate.service is None:
+            self.user_settings = load_user_config()
+            self.translation_settings = determine_translation_service()
+            Translate.service = self.translation_settings["TranslateService"]
+            Translate.api_key = self.translation_settings["TranslateKey"]
+            Translate.region_code = self.translation_settings["RegionCode"]
 
-    return response.text
-
-
-def google_translate(dialog_text, api_key, region_code):
-    """Uses Google Translate to translate text to the specified language."""
-    uri = "&source=ja&target=" + region_code + "&q=" + dialog_text + "&format=text"
-    api_url = "https://www.googleapis.com/language/translate/v2?key=" + api_key + uri
-    headers = {"Content-Type": "application/json"}
-    r = requests.post(api_url, headers=headers, timeout=5)
-    request_return = r.content
-    if r.status_code == 200:
-        return json.loads(request_return)["data"]["translations"][0]["translatedText"]
-    elif r.status_code == 400:
-        raise Exception("Your Google Translate API key is not valid. Check the key and try again.")
-    elif r.status_code == 408:
-        raise Exception(
-            "Google Translate timed out making a translation request. This is not a Clarity issue. Google Translate could be having issues. Try again later."
-        )
-    else:
-        error = json.loads(request_return)["error"]["message"]
-        raise Exception(f"Google Translate returned an error: {error}")
+        if Translate.glossary is None:
+            with open("/".join([get_abs_path(__file__), "../misc_files/glossary.csv"]), "r", encoding="utf-8") as f:
+                strings = f.read()
+                Translate.glossary = [ x for x in strings.split("\n") if x ]
 
 
-def translate(translation_service, dialog_text, api_key, region_code):
-    if translation_service == "deepl":
-        return deepl_translate(dialog_text, api_key, region_code)
-    elif translation_service == "google":
-        return google_translate(dialog_text, api_key, region_code)
+    def deepl(self, text: str):
+        self.region_code = Translate.region_code
+        if self.region_code.lower() == "en":
+            self.region_code = "en-us"
+        translator = deepl.Translator(Translate.api_key)
+        response = translator.translate_text(text=text, source_lang="ja", target_lang=self.region_code)
+        return response.text
 
 
-def glossary_checksum() -> str:
-    """
-    Returns an md5 hash of the glossary_path file.
-
-    :param glossary_path: Path to the glossary.csv file.
-    :returns: md5 hash of the glossary.csv file.
-    """
-    glossary_path = "/".join([get_abs_path(__file__), "../misc_files/glossary.csv"])
-    cur_hash = ""
-    if os.path.exists(glossary_path):
-        with open(glossary_path, "rb") as f:
-            bytes = f.read()
-            cur_hash = hashlib.md5(bytes).hexdigest()
-    else:
-        try:
-            r = requests.get(GITHUB_CLARITY_GLOSSARY_URL, timeout=15)
-        except Exception as e:
-            logger.warning("Error checking Github for glossary: {e}")
-            message_box_fatal_error(
-                "Timeout", "Timed out trying to reach github.com. Relaunch DQXClarity and try again."
-            )
-
-        with open(glossary_path, "wb") as glossary_csv:
-            glossary_csv.write(r.content)
-
-    return cur_hash
+    def google(self, text: str):
+        service = build("translate", "v2", developerKey=Translate.api_key)
+        response = service.translations().list(source="ja", target="en", q=[text]).execute()
+        return response["translations"][0]["translatedText"]
 
 
-def refresh_glossary_id():
-    """
-    Deletes and creates a new glossary ID for the DeepL Translate service.
-    """
-    glossary_csv_file = "/".join([get_abs_path(__file__), "../misc_files/glossary.csv"])
-
-    user_config = load_user_config()
-    api_key = user_config["translation"]["deepltranslatekey"]
-    curr_glossary_id = user_config["glossary"]["glossaryid"]
-    curr_glossary_checksum = user_config["glossary"]["glossarychecksum"]
-    enabledeepltranslate = user_config["translation"]["enabledeepltranslate"]
-    translator = deepl.Translator(api_key)
-
-    if enabledeepltranslate == "True" and api_key != "":
-        update_glossary = False
-        md5 = glossary_checksum()
-        if curr_glossary_id:
-            if md5 != curr_glossary_checksum:
-                update_glossary = True
-            try:
-                # If there is a glossary in the user's config, but DeepL doesn't know about it,
-                # we'll update it.
-                translator.get_glossary(glossary_id=curr_glossary_id)
-            except deepl.exceptions.GlossaryNotFoundException:
-                update_glossary = True
-        else:
-            update_glossary = True
-
-        if update_glossary:
-            glossaries = translator.list_glossaries()
-            for glossary in glossaries:
-                if curr_glossary_id == glossary.glossary_id:
-                    translator.delete_glossary(glossary=glossary.glossary_id)
-
-            try:
-                with open(glossary_csv_file, "r", encoding="utf-8-sig") as g_csv:
-                    contents = g_csv.read()
-
-                glossary_dict = {}
-                for entry in contents.split("\n"):
-                    line = entry.split(",", 1)
-                    if line[0]:
-                        glossary_dict.update({line[0]: line[1]})
-
-                glossary = translator.create_glossary(
-                    name="DQX Glossary", source_lang="ja", target_lang="en", entries=glossary_dict
-                )
-                update_user_config(section="glossary", key="glossaryid", value=glossary.glossary_id)
-                update_user_config(section="glossary", key="glossarychecksum", value=md5)
-                logger.info("Glossary updated!")
-            except Exception as e:
-                update_user_config(section="glossary", key="glossaryid", value="")
-                update_user_config(section="glossary", key="glossarychecksum", value="")
-                logger.warning(f"Glossary error: {e}")
-                warning_message(
-                    title="[dqxclarity] Glossary error",
-                    message="There was a problem creating the glossary. The glossary feature will be disabled for this session.",
-                )
+    def __glossify(self, text):
+        for record in Translate.glossary:
+            k, v = record.split(",", 1)
+            if v == "\"\"":  # check for glossary entries that have blank strings and re-assign
+                v = ""
+            text = text.replace(k, v)
+        return text
 
 
-def sanitized_dialog_translate(
-    translation_service, dialog_text, api_key, region_code, text_width=45, max_lines=None
-) -> str:
+    def translate(self, text: str):
+        text = self.__glossify(text)
+        if Translate.service == "deepl":
+            return self.deepl(text)
+        if Translate.service == "google":
+            return self.google(text)
+        return None
+
+
+def sanitized_dialog_translate(dialog_text, text_width=45, max_lines=None) -> str:
     """
     Does a bunch of text sanitization to handle tags seen in DQX, as well as automatically
     splitting the text up into chunks to be fed into the in-game dialog window.
     """
+    translator = Translate()
     bad_dialogue = False
     fixed_string = deal_with_icky_strings(dialog_text)
 
@@ -200,7 +115,7 @@ def sanitized_dialog_translate(
                         sanitized = re.sub(
                             "", "", sanitized
                         )  # romaji player names use this. remove as it messes up the translation
-                        translation = translate(translation_service, sanitized, api_key, region_code)
+                        translation = translator.translate(sanitized)
                         translation = translation.strip()
                         translation = re.sub(
                             "   ", " ", translation
@@ -228,7 +143,7 @@ def sanitized_dialog_translate(
                             "「", "", sanitized
                         )  # these create a single double quote, which look weird in english
                         sanitized = re.sub("…", "", sanitized)  # elipsis doesn't look natural with english
-                        translation = translate(translation_service, sanitized, api_key, region_code)
+                        translation = translator.translate(sanitized)
                         final_string += translation
 
                     def rreplace(s, old, new, occurrence):
@@ -260,23 +175,6 @@ def sanitized_dialog_translate(
             return fixed_string
     else:
         return dialog_text
-
-
-def quest_translate(translation_service, quest_text, api_key, region):
-    """
-    Translates quest text and fits it into the quest window.
-    """
-    db_quest_text = sqlite_read(quest_text, region, "quests")
-    if db_quest_text:
-        return db_quest_text
-
-    full_text = re.sub("\n", " ", quest_text)
-    translation = translate(translation_service, full_text, api_key, region)
-    if translation:
-        formatted_translation = textwrap.fill(translation, width=45, replace_whitespace=False)
-        sqlite_write(quest_text, "quests", formatted_translation, region)
-
-    return formatted_translation
 
 
 def sqlite_read(text_to_query, language, table):
@@ -336,16 +234,16 @@ def sqlite_write(source_text, table, translated_text, language, npc_name=""):
             conn.close()
 
 
-def load_user_config(filename="user_settings.ini"):
+def load_user_config():
     """
     Returns a user's config settings.
     If the config doesn't exist, a default config is generated.
     If the user's config is missing values, we back up the old
     config and generate a new default one for them.
 
-    :param filename: Filename of the user_settings.ini file.
     :returns: Dict of config.
     """
+    filename = "/".join([get_abs_path(__file__), "../user_settings.ini"])
     base_config = configparser.ConfigParser()
     base_config["translation"] = {
         "enabledeepltranslate": False,
@@ -355,7 +253,6 @@ def load_user_config(filename="user_settings.ini"):
         "regioncode": "en",
     }
     base_config["behavior"] = {"enabledialoglogging": "False"}
-    base_config["glossary"] = {"glossaryid": "", "glossarychecksum": ""}
 
     def create_base_config():
         with open(filename, "w+") as configfile:
