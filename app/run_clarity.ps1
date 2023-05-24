@@ -65,6 +65,7 @@ if (!$PythonInstallPath) {
 
 if (Test-Path -Path "venv") {
     try {
+		& .\venv\Scripts\activate
         & .\venv\Scripts\python.exe -c "import click"
     }
     catch {
@@ -76,8 +77,9 @@ if (Test-Path -Path "venv") {
 } else {
     LogWrite "Creating virtual environment."
     & $PythonInstallPath -m venv venv
+	& .\venv\Scripts\activate
     LogWrite "Updating pip and installation dependencies."
-    .\venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel --quiet
+    & .\venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel --quiet
     LogWrite "Installing dqxclarity dependencies."
     & .\venv\Scripts\pip.exe install -r requirements.txt --quiet
 }
