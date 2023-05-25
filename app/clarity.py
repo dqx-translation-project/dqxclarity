@@ -45,7 +45,7 @@ def scan_for_player_names():
                 ja_player_name = read_string(player_name_address)
                 romaji_name = convert_into_eng(ja_player_name)
                 if romaji_name != ja_player_name:
-                    write_string(player_name_address, "\x04" + romaji_name + "\x00")
+                    write_string(player_name_address, "\x04" + romaji_name)
             except UnicodeDecodeError:
                 continue
             except Exception as e:
@@ -98,10 +98,10 @@ def scan_for_sibling_names():
             romaji_sibling_name = convert_into_eng(ja_sibling_name)
             romaji_player_name = convert_into_eng(ja_player_name)
             if romaji_sibling_name != ja_sibling_name:
-                write_string(sibling_name_address, "\x04" + romaji_sibling_name + "\x00")
+                write_string(sibling_name_address, "\x04" + romaji_sibling_name)
                 logger.debug(f"Wrote sibling name at {str(hex(address))} for name {romaji_sibling_name}.")
             if romaji_player_name != ja_player_name:
-                write_string(player_name_address, "\x04" + romaji_player_name + "\x00")
+                write_string(player_name_address, "\x04" + romaji_player_name)
                 logger.debug(f"Wrote player name at {str(hex(address))} for name {romaji_player_name}.")
         except UnicodeDecodeError:
             logger.debug(f"UnicodeDecodeError: Failed to write sibling name at {str(hex(address))} for name {romaji_sibling_name}.")
@@ -117,7 +117,7 @@ def scan_for_concierge_names():
                 ja_name = read_string(name_addr)
                 en_name = convert_into_eng(ja_name)
                 if en_name != ja_name:
-                    write_string(name_addr, "\x04" + en_name + "\x00")
+                    write_string(name_addr, "\x04" + en_name)
                     logger.debug(f"Wrote player name at {str(hex(address))} for name {en_name}.")
             except UnicodeDecodeError:
                 logger.debug(f"Failed to write concierge name at {str(hex(address))} for name {en_name}.")
@@ -162,7 +162,7 @@ def scan_for_npc_names():
                 en_name = convert_into_eng(name)
                 if en_name != name:
                     try:
-                        write_string(name_addr, "\x04" + en_name + "\x00")
+                        write_string(name_addr, "\x04" + en_name)
                         logger.debug(f"Wrote AI name at {str(hex(address))} for name {en_name}.")
                     except Exception as e:
                         logger.debug(f"Failed to write {data} at {str(hex(address))} for name {en_name}.")
