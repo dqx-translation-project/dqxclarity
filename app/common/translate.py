@@ -47,7 +47,7 @@ class Translate():
 
     def google(self, text: str):
         service = build("translate", "v2", developerKey=Translate.api_key)
-        response = service.translations().list(source="ja", target="en", q=[text]).execute()
+        response = service.translations().list(source="ja", target="en", format="text", q=[text]).execute()
         return response["translations"][0]["translatedText"]
 
 
