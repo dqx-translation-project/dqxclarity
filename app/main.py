@@ -48,7 +48,7 @@ def blast_off(
                     time.sleep(0.25)
 
             if communication_window:
-                start_process(name="Hook loader", target=activate_hooks, args=(debug,))
+                start_process(name="Hook loader", target=activate_hooks, args=(player_names,debug))
                 start_process(name="Walkthrough scanner", target=loop_scan_for_walkthrough, args=())
             if community_logging:
                 logger.info("Thanks for enabling logging!")

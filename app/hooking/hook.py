@@ -110,7 +110,7 @@ def accept_quest_detour(simple_str_addr: int, debug=False):
     return hook_obj
 
 
-def activate_hooks(debug=False):
+def activate_hooks(player_names: bool, debug=False):
     """
     Activates all hooks and kicks off hook manager.
     """
@@ -173,7 +173,7 @@ def activate_hooks(debug=False):
     logger.debug(f"unhook :: hook ({hex(unhook_addr)}) :: detour ({hex(integrity_addr)})")
     logger.debug(f"state  :: addr ({hex(state_addr)})")
 
-    load_hooks(hook_list=hooks, state_addr=state_addr, debug=debug)
+    load_hooks(hook_list=hooks, state_addr=state_addr, player_names=player_names, debug=debug)
 
 
 PYM_PROCESS = dqx_mem()

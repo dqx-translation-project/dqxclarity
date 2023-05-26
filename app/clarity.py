@@ -16,7 +16,6 @@ from common.memory import (
     read_bytes,
     read_string,
     write_string,
-    write_bytes,
     pattern_scan,
 )
 
@@ -46,7 +45,7 @@ def scan_for_player_names():
                 ja_player_name = read_string(player_name_address)
                 romaji_name = convert_into_eng(ja_player_name)
                 if romaji_name != ja_player_name:
-                    write_bytes(player_name_address, b"\x04" + romaji_name.encode("utf-8") + b"\x00")
+                    write_string(player_name_address, "\x04" + romaji_name)
             except UnicodeDecodeError:
                 continue
             except Exception as e:
@@ -58,22 +57,31 @@ def scan_for_comm_names():
     Scans for addresses that are related to a specific
     pattern to translate player names in the comms window.
     """
-    comm_name_list_1 = pattern_scan(pattern=comm_name_pattern_1, use_regex=True, return_multiple=True)
-    comm_name_list_2 = pattern_scan(pattern=comm_name_pattern_2, use_regex=True, return_multiple=True)
-    comm_name_list_2_mod = []
-    for address in comm_name_list_2:
-        comm_name_list_2_mod.append(address + 1)
-    comm_names = comm_name_list_1 + comm_name_list_2_mod
-    for address in comm_names:
-        try:
-            ja_name = read_string(address)
-            romaji_name = convert_into_eng(ja_name)
-            if romaji_name != ja_name:
-                write_string(address, "\x04" + romaji_name)
-        except UnicodeDecodeError:
-            continue
-        except Exception as e:
-            logger.debug(f"Failed to write comms name at {str(hex(address))} for name {romaji_name}.")
+    try:
+        comm_name_list_1 = pattern_scan(pattern=comm_name_pattern_1, use_regex=True, return_multiple=True)
+        comm_name_list_2 = pattern_scan(pattern=comm_name_pattern_2, use_regex=True, return_multiple=True)
+        comm_name_list_2_mod = []
+        for address in comm_name_list_2:
+            comm_name_list_2_mod.append(address + 1)
+        comm_names = comm_name_list_1 + comm_name_list_2_mod
+        for address in comm_names:
+            try:
+                ja_name = read_string(address)
+                romaji_name = convert_into_eng(ja_name)
+                if romaji_name != ja_name:
+                    write_string(address, "\x04" + romaji_name)
+            except UnicodeDecodeError:
+                continue
+            except Exception as e:
+                logger.debug(f"Failed to write comms name at {str(hex(address))} for name {romaji_name}.")
+    except pymem.exception.WinAPIError as e:
+        if "error_code: 299" in str(e):
+            logger.debug("WinApi error 299: Impartial read. Ignoring.")
+        elif "error_code: 5" in str(e):  # ERROR_ACCESS_DENIED. *usually* means the game client was closed
+            logger.error(f"Cannot find DQXGame.exe process. dqxclarity will exit.")
+            sys.exit(1)
+        else:
+            raise
 
 
 def scan_for_sibling_names():
@@ -81,20 +89,24 @@ def scan_for_sibling_names():
     Scans for addresses that are related to a specific
     pattern to translate sibling names.
     """
-    if sibling_list := pattern_scan(pattern=sibling_name_pattern, return_multiple=True):
-        for address in sibling_list:
-            sibling_name_address = address + 51  # len of num of (sibling_name_pattern - 1)
-            try:
-                ja_sibling_name = read_string(sibling_name_address)
-                romaji_name = convert_into_eng(ja_sibling_name)
-                if romaji_name != ja_sibling_name:
-                    write_bytes(sibling_name_address, b"\x04" + romaji_name.encode("utf-8") + b"\x00")
-                    logger.debug(f"Wrote sibling name at {str(hex(address))} for name {romaji_name}.")
-            except UnicodeDecodeError:
-                logger.debug(f"UnicodeDecodeError: Failed to write sibling name at {str(hex(address))} for name {romaji_name}.")
-                continue
-            except Exception as e:
-                logger.debug(f"Failed to write sibling name at {str(hex(address))} for name {romaji_name}.")
+    if address := pattern_scan(pattern=sibling_name_pattern):
+        sibling_name_address = address + 51  # len of num of (sibling_name_pattern - 1)
+        player_name_address = address - 21 # Start of sibling_name_pattern - 21 (jump to player name)
+        try:
+            ja_sibling_name = read_string(sibling_name_address)
+            ja_player_name = read_string(player_name_address)
+            romaji_sibling_name = convert_into_eng(ja_sibling_name)
+            romaji_player_name = convert_into_eng(ja_player_name)
+            if romaji_sibling_name != ja_sibling_name:
+                write_string(sibling_name_address, "\x04" + romaji_sibling_name)
+                logger.debug(f"Wrote sibling name at {str(hex(address))} for name {romaji_sibling_name}.")
+            if romaji_player_name != ja_player_name:
+                write_string(player_name_address, "\x04" + romaji_player_name)
+                logger.debug(f"Wrote player name at {str(hex(address))} for name {romaji_player_name}.")
+        except UnicodeDecodeError:
+            logger.debug(f"UnicodeDecodeError: Failed to write sibling name at {str(hex(address))} for name {romaji_sibling_name}.")
+        except Exception as e:
+            logger.debug(f"Failed to write sibling name at {str(hex(address))} for name {romaji_sibling_name}.")
 
 
 def scan_for_concierge_names():
@@ -105,7 +117,7 @@ def scan_for_concierge_names():
                 ja_name = read_string(name_addr)
                 en_name = convert_into_eng(ja_name)
                 if en_name != ja_name:
-                    write_bytes(name_addr, b"\x04" + str.encode(en_name) + b"\x00")
+                    write_string(name_addr, "\x04" + en_name)
                     logger.debug(f"Wrote player name at {str(hex(address))} for name {en_name}.")
             except UnicodeDecodeError:
                 logger.debug(f"Failed to write concierge name at {str(hex(address))} for name {en_name}.")
@@ -150,7 +162,7 @@ def scan_for_npc_names():
                 en_name = convert_into_eng(name)
                 if en_name != name:
                     try:
-                        write_bytes(name_addr, b"\x04" + en_name.encode("utf-8") + b"\x00")
+                        write_string(name_addr, "\x04" + en_name)
                         logger.debug(f"Wrote AI name at {str(hex(address))} for name {en_name}.")
                     except Exception as e:
                         logger.debug(f"Failed to write {data} at {str(hex(address))} for name {en_name}.")
