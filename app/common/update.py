@@ -103,6 +103,7 @@ def merge_local_db():
         wb = load_workbook(merge_file)
         ws_dialogue = wb["Dialogue"]
         ws_walkthrough = wb["Walkthrough"]
+        ws_quests = wb["Quests"]
 
         ###Dialogue insertion
         for rowNum in range(2, ws_dialogue.max_row + 1):
@@ -165,6 +166,50 @@ def merge_local_db():
 
                 updateQuery = f"UPDATE walkthrough SET en = '{escaped_text}' WHERE ja = '{source_text}'"
                 insertQuery = f"INSERT INTO walkthrough (ja, en) VALUES ('{source_text}', '{escaped_text}')"
+
+                cursor = conn.cursor()
+                results = cursor.execute(selectQuery)
+
+                if results.fetchone() is None:
+                    cursor.execute(insertQuery)
+                    records_inserted += 1
+                else:
+                    cursor.execute(updateQuery)
+                    records_updated += 1
+
+                conn.commit()
+                cursor.close()
+            except sqlite3.Error as e:
+                raise Exception(f"Unable to write data to table: {e}")
+            finally:
+                if conn:
+                    conn.close()
+                    
+        # Quests insertion
+        for rowNum in range(2, ws_quests.max_row + 1):
+            source_text = ws_quests.cell(row=rowNum, column=1).value
+            en_text = ws_quests.cell(row=rowNum, column=3).value
+
+            escaped_text = en_text.replace("'", "''")
+            
+            bad_string = False
+            bad_string_col = str(ws_quests.cell(row=rowNum, column=4).value)
+            if "BAD STRING" in bad_string_col:
+                bad_string = True
+
+            try:
+                conn = sqlite3.connect(db_file)
+                 if bad_string:
+                    selectQuery = f"SELECT ja FROM quests WHERE ja LIKE '%{source_text}%'"
+                    updateQuery = f"UPDATE quests SET en = '{escaped_text}' WHERE ja LIKE '%{source_text}%'"
+                else:
+                    selectQuery = f"SELECT ja FROM quests WHERE ja = '{source_text}'"
+                    updateQuery = f"UPDATE quests SET en = '{escaped_text}' WHERE ja = '{source_text}'"
+                    
+                if not bad_string:
+                    insertQuery = f"INSERT INTO quests (ja, npc_name, en) VALUES ('{source_text}', '{npc_name}', '{escaped_text}')"
+                else:
+                    insertQuery = ""
 
                 cursor = conn.cursor()
                 results = cursor.execute(selectQuery)
