@@ -207,7 +207,7 @@ def merge_local_db():
                     updateQuery = f"UPDATE quests SET en = '{escaped_text}' WHERE ja = '{source_text}'"
                     
                 if not bad_string:
-                    insertQuery = f"INSERT INTO quests (ja, npc_name, en) VALUES ('{source_text}', '{npc_name}', '{escaped_text}')"
+                    insertQuery = f"INSERT INTO quests (ja, en) VALUES ('{source_text}', '{escaped_text}')"
                 else:
                     insertQuery = ""
 
