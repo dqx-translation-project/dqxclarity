@@ -199,7 +199,7 @@ def merge_local_db():
 
             try:
                 conn = sqlite3.connect(db_file)
-                 if bad_string:
+                if bad_string:
                     selectQuery = f"SELECT ja FROM quests WHERE ja LIKE '%{source_text}%'"
                     updateQuery = f"UPDATE quests SET en = '{escaped_text}' WHERE ja LIKE '%{source_text}%'"
                 else:
