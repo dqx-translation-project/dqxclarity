@@ -1,3 +1,4 @@
+import re
 import sys
 import time
 from loguru import logger
@@ -193,10 +194,17 @@ def loop_scan_for_walkthrough():
     logger.info("Will watch for walkthrough text.")
 
     try:
+        pattern = re.compile(walkthrough_pattern)
         while True:
             if address := pattern_scan(pattern=walkthrough_pattern):
                 prev_text = ""
                 while True:
+                    # check if the address is still valid by validating the pattern.
+                    # if not, we'll re-scan for it.
+                    verify = read_bytes(address, 17)
+                    if not pattern.match(verify):
+                        break
+
                     if text := read_string(address + 16):
                         if text != prev_text:
                             prev_text = text
