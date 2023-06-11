@@ -111,7 +111,7 @@ def pattern_scan(pattern: bytes, return_multiple=False, use_regex=False, module=
                 use_regex=use_regex
             )
     except pymem.exception.WinAPIError as e:
-        if "error_code: 299" in str(e):
+        if "error_code: 299" in str(e) or "GetLastError: 299" in str(e):
             logger.debug("WinApi error 299: Impartial read. Ignoring.")
             return None
         elif "error_code: 5" in str(e):  # ERROR_ACCESS_DENIED. *usually* means the game client was closed
