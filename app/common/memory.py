@@ -111,10 +111,10 @@ def pattern_scan(pattern: bytes, return_multiple=False, use_regex=False, module=
                 use_regex=use_regex
             )
     except pymem.exception.WinAPIError as e:
-        if "error_code: 299" in str(e) or "GetLastError: 299" in str(e):
+        if e.error_code == 299:
             logger.debug("WinApi error 299: Impartial read. Ignoring.")
             return None
-        elif "error_code: 5" in str(e):  # ERROR_ACCESS_DENIED. *usually* means the game client was closed
+        elif e.error_code == 5:  # ERROR_ACCESS_DENIED. *usually* means the game client was closed
             logger.error(f"Cannot find DQXGame.exe process. dqxclarity will exit.")
             sys.exit(1)
         else:
