@@ -7,7 +7,22 @@
 # it's rendered to screen. captures npc text.
 # FF 77 08 C7 45 FC ?? ?? ?? ?? BB
 # 8D 64 24 FC 89 04 24 8D 64 24 FC E9 ?? ?? ?? ?? 3B -- better, but picked up by integrity scans in combat.
-dialog_trigger = rb"\xFF\x77\x08\xC7\x45\xFC....\xBB"
+#
+# Code around where we detour
+#
+#    DQXGame.exe.text+432093 - 51                    - push ecx
+#    DQXGame.exe.text+432094 - 89 01                 - mov [ecx],eax
+#    DQXGame.exe.text+432096 - 8B C4                 - mov eax,esp
+#    DQXGame.exe.text+432098 - 89 30                 - mov [eax],esi
+#    DQXGame.exe.text+43209A - E8 41B8FFFF           - call DQXGame.exe.text+42D8E0
+# >> DQXGame.exe.text+43209F - FF 77 08              - push [edi+08]
+#    DQXGame.exe.text+4320A2 - C7 45 F0 00000000     - mov [ebp-10],00000000
+#    DQXGame.exe.text+4320A9 - C7 45 F4 FDFFFFFF     - mov [ebp-0C],FFFFFFFD
+#    DQXGame.exe.text+4320B0 - E8 CB0BC6FF           - call DQXGame.exe.text+92C80
+#    DQXGame.exe.text+4320B5 - 8B 15 18160D02        - mov edx,[DQXGame.exe+2011618]
+#    DQXGame.exe.text+4320BB - 83 C4 14              - add esp,14
+#    DQXGame.exe.text+4320BE - 89 45 F8              - mov [ebp-08],eax
+dialog_trigger = rb"\xFF\x77\x08\xC7\x45"
 
 # function that is triggered when a quest window opens. used for translating quest text
 # 8D 8E 78 04 00 00 E8 ?? ?? ?? ?? 5F
@@ -15,6 +30,22 @@ quest_text_trigger = rb"\x8D\x8E\x78\x04\x00\x00\xE8....\x5F"
 
 # Integrity check + hooking addresses
 # 52 57 51 50 53 56
+# >> DQXGame.exe.text+DF049B - 52                    - push edx
+#    DQXGame.exe.text+DF049C - 57                    - push edi
+#    DQXGame.exe.text+DF049D - 51                    - push ecx
+#    DQXGame.exe.text+DF049E - 50                    - push eax
+#    DQXGame.exe.text+DF049F - 53                    - push ebx
+#    DQXGame.exe.text+DF04A0 - 56                    - push esi
+#    DQXGame.exe.text+DF04A1 - 8D 64 24 80           - lea esp,[esp--80]
+#    DQXGame.exe.text+DF04A5 - 66 0F11 3C 24         - movupd [esp],xmm7
+#    DQXGame.exe.text+DF04AA - 66 0F11 64 24 10      - movupd [esp+10],xmm4
+#    DQXGame.exe.text+DF04B0 - 66 0F11 44 24 20      - movupd [esp+20],xmm0
+#    DQXGame.exe.text+DF04B6 - 66 0F11 4C 24 30      - movupd [esp+30],xmm1
+#    DQXGame.exe.text+DF04BC - 66 0F11 54 24 40      - movupd [esp+40],xmm2
+#    DQXGame.exe.text+DF04C2 - 66 0F11 6C 24 50      - movupd [esp+50],xmm5
+#    DQXGame.exe.text+DF04C8 - 66 0F11 74 24 60      - movupd [esp+60],xmm6
+#    DQXGame.exe.text+DF04CE - 66 0F11 5C 24 70      - movupd [esp+70],xmm3
+#    DQXGame.exe.text+DF04D4 - E9 BF2754FD           - jmp DQXGame.exe.text+4C5C98
 integrity_check = rb"\x52\x57\x51\x50\x53\x56"
 
 # If we ever figure out how to go undetected with scans, this will translate
@@ -33,18 +64,18 @@ accept_quest_trigger = rb"\x8B\x45\xD8\x3B\x45\xDC\x8B\x03\x75\xDE\x56\xFF\x50\x
 #############################################
 
 # pattern for npc/monsters to rename. (49 bytes) 
-# npc:     84 88 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 34 E5 ?? ?? ?? ?? ?? ?? 20 D5 ?? ?? E?
-# monster: 84 88 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 00 00 00 00 7C D2 ?? ?? ?? ?? ?? ?? 20 D5 ?? ?? E?
-# party:   84 88 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 E4 D4 ?? ?? ?? ?? ?? ?? 20 D5 ?? ?? E?
-npc_monster_pattern = rb"\x84\x88..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00.......\x00\x00\x00\x00.\x00\x00\x00[\x34\x7C\xE4][\xE5\xD2\xD4]......\x20\xD5..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+# npc:     40 0B ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 0C 82 ?? ?? ?? ?? ?? ?? 44 70 ?? ?? E?
+# monster: 40 0B ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 08 70 ?? ?? ?? ?? ?? ?? 44 70 ?? ?? E3
+# party:   40 0B ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 80 72 ?? ?? ?? ?? ?? ?? 44 70 ?? ?? E?
+npc_monster_pattern = rb"\x40\x0B..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00.......\x00\x00\x00\x00.\x00\x00\x00[\x0C\x08\x80][\x82\x70\x72]......\x44\x70..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
 # pattern for concierge names (13 bytes)
-# 58 CB ?? ?? ?? ?? ?? ?? 20 D5 ?? ?? E?
-concierge_name_pattern = rb"\x58\xCB......\x20\xD5..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+# E4 68 ?? ?? ?? ?? ?? ?? 44 70 ?? ?? E?
+concierge_name_pattern = rb"\xE4\x68......\x44\x70..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
 # pattern for player names to rename. (49 bytes)
-# 84 88 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 E0 4F ?? 0? ?? ?? ?? ?? ?? ?? ?? 0? E?
-player_name_pattern = rb"\x84\x88..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xE0\x4F.[\x01\x02].......[\x01\x02][\xE3\xEF]"
+# 40 0B ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 EF ?? 0? ?? ?? ?? ?? ?? ?? ?? 0? E3
+player_name_pattern = rb"\x40\x0B..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xEF.[\x01\x02].......[\x01\x02][\xE3\xEF]"
 
 # pattern for sibling names to rename. (52 bytes)
 # 0? ?? 00 ?? 00 00 00 ?? ?? 00 02 ?? 00 ?? 00 ?? 00 00 00 00 00 ?? 00 00 00 00 00 ?? ?? ?? 00 ?? 00 ?? ?? ?? 00 ?? 00 ?? ?? 00 00 00 00 ?? ?? 00 00 00 00 E?
@@ -70,5 +101,5 @@ comm_name_pattern_2 = rb"\x09[\xE3\xEF].................\x00.................\x3
 
 # Main walkthrough text that loads on login. I can't figure out what function loads this on login,
 # so scanning for this for now. AC is also preventing this from just being accessible via hooks. (17 bytes)
-# A0 ?? ?? ?? 00 00 00 00 04 02 00 00 10 00 00 00 E?
-walkthrough_pattern = rb"\xA0...\x00\x00\x00\x00\x04\x02\x00\x00\x10\x00\x00\x00[\xE3\xE4\xE5\xE6\xE7\xE8\xE9]"
+# D0 ?? ?? ?? 00 00 00 00 04 02 00 00 10 00 00 00 E?
+walkthrough_pattern = rb"\xD0...\x00\x00\x00\x00\x04\x02\x00\x00\x10\x00\x00\x00[\xE3\xE4\xE5\xE6\xE7\xE8\xE9]"

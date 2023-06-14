@@ -1,3 +1,4 @@
+import re
 import sys
 import time
 from loguru import logger
@@ -139,9 +140,9 @@ def scan_for_npc_names():
     if npc_list := pattern_scan(pattern=npc_monster_pattern, return_multiple=True):
         for address in npc_list:
             npc_type = read_bytes(address + 36, 2)
-            if npc_type == b"\x34\xE5" or npc_type == b"\x7C\xD2":
+            if npc_type == b"\x0C\x82" or npc_type == b"\x08\x70":
                 data = "NPC"
-            elif npc_type == b"\xE4\xD4":
+            elif npc_type == b"\x80\x72":
                 data = "AI_NAME"
             else:
                 continue
@@ -193,10 +194,17 @@ def loop_scan_for_walkthrough():
     logger.info("Will watch for walkthrough text.")
 
     try:
+        pattern = re.compile(walkthrough_pattern[0:55])  # 55 sliced characters == 16 bytes
         while True:
             if address := pattern_scan(pattern=walkthrough_pattern):
                 prev_text = ""
                 while True:
+                    # check if the address is still valid by validating the pattern.
+                    # if not, we'll re-scan for it.
+                    verify = read_bytes(address, 16)
+                    if not pattern.match(verify):
+                        logger.debug("Lost walkthrough pattern. Starting scan again.")
+                        break
                     if text := read_string(address + 16):
                         if text != prev_text:
                             prev_text = text
@@ -219,17 +227,7 @@ def loop_scan_for_walkthrough():
                         else:
                             time.sleep(1)
             else:
-                time.sleep(0.5)
-    except pymem.exception.WinAPIError as e:
-        if "error_code: 299" in str(e):
-            logger.debug("WinApi error 299: Impartial read. Ignoring.")
-        elif "error_code: 5" in str(e):  # ERROR_ACCESS_DENIED. *usually* means the game client was closed
-            logger.error(f"Cannot find DQXGame.exe process. dqxclarity will exit.")
-            sys.exit(1)
-        else:
-            raise
-    except UnicodeDecodeError:
-        pass
+                time.sleep(1)
     except TypeError:
         logger.error(f"Cannot find DQXGame.exe process. dqxclarity will exit.")
         sys.exit(1)
@@ -264,19 +262,12 @@ def run_scans(player_names=True, npc_names=True, debug=False):
             if npc_names:
                 scan_for_npc_names()
                 scan_for_concierge_names()
-        except pymem.exception.WinAPIError as e:
-            if "error_code: 299" in str(e):
-                logger.debug("WinApi error 299: Impartial read. Ignoring.")
-                continue
-            elif "error_code: 5" in str(e):  # ERROR_ACCESS_DENIED. *usually* means the game client was closed
-                logger.error(f"Cannot find DQXGame.exe process. dqxclarity will exit.")
-                sys.exit(1)
-            else:
-                raise
         except UnicodeDecodeError:
             pass
         except TypeError:
             logger.error(f"Cannot find DQXGame.exe process. dqxclarity will exit.")
+            sys.exit(1)
+        except KeyboardInterrupt:
             sys.exit(1)
         except Exception as e:
             logger.error(f"Exception occurred:\n\n{e}")

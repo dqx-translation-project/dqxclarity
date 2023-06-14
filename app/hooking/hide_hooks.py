@@ -48,14 +48,15 @@ def load_hooks(hook_list: list, state_addr: int, player_names: bool, debug: bool
             logger.error(f"Unable to talk to DQXGame.exe. Exiting.")
             sys.exit()
         except pymem.exception.WinAPIError as e:
-            if "error_code: 299" in str(e):
+            if e.error_code == 299:
                 logger.debug("WinApi error 299: Impartial read. Ignoring.")
-        except Exception as e:
-            if "Unable to read memory at address" in str(e):
-                logger.error(f"Cannot find DQXGame.exe process. dqxclarity will exit.")
+            elif e.error_code == 5:
+                logger.debug("Cannot find DQXGame.exe process. dqxclarity will exit.")
                 sys.exit(1)
             else:
-                logger.error(f"Exception occurred. Unhooking.\n{e}")
-                for hook in hook_list:
-                    hook.disable()
-                sys.exit(1)
+                raise
+        except Exception as e:
+            logger.error(f"Exception occurred. Unhooking.\n{e}")
+            for hook in hook_list:
+                hook.disable()
+            sys.exit(1)
