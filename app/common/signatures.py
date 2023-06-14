@@ -57,6 +57,10 @@ menu_party_name_trigger = rb"\x8B\xCF\xFF\x75\x0C\x53\x50"
 # 8B 45 D8 3B 45 DC 8B 03 75 DE 56 FF 50 6C
 accept_quest_trigger = rb"\x8B\x45\xD8\x3B\x45\xDC\x8B\x03\x75\xDE\x56\xFF\x50\x6C"
 
+# a lot of network text that is drawn to the screen comes through this function
+# 8D 71 01 8B FF 8A 01 41 84 C0 75 F9 2B CE 51 51
+network_text_trigger = rb"\x8D\x71\x01\x8B\xFF\x8A\x01\x41\x84\xC0\x75\xF9\x2B\xCE\x51\x51"
+
 #############################################
 # "Patterns" seen to find various text.
 # Not code signatures, so these will likely

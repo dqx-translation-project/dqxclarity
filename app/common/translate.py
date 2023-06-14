@@ -211,7 +211,7 @@ def sqlite_write(source_text, table, translated_text, language, npc_name=""):
         updateQuery = f"UPDATE {table} SET {language} = '{escaped_text}' WHERE ja = '{source_text}'"
         if table == "dialog":
             insertQuery = f"INSERT INTO {table} (ja, npc_name, {language}) VALUES ('{source_text}', '{npc_name}', '{escaped_text}')"
-        elif table == "quests" or table == "walkthrough":
+        elif table in ["quests", "walkthrough", "story_so_far"]:
             insertQuery = f"INSERT INTO {table} (ja, {language}) VALUES ('{source_text}', '{escaped_text}')"
         else:
             raise Exception("Unknown table.")

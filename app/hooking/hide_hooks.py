@@ -55,6 +55,10 @@ def load_hooks(hook_list: list, state_addr: int, player_names: bool, debug: bool
                 sys.exit(1)
             else:
                 raise
+        except KeyboardInterrupt:
+            for hook in hook_list:
+                hook.disable()
+            sys.exit(1)
         except Exception as e:
             logger.error(f"Exception occurred. Unhooking.\n{e}")
             for hook in hook_list:
