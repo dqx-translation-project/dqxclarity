@@ -71,7 +71,7 @@ npc_monster_pattern = rb"\x40\x0B..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
 
 # pattern for concierge names (13 bytes)
 # E4 68 ?? ?? ?? ?? ?? ?? 44 70 ?? ?? E?
-concierge_name_pattern = rb"\x54\x68......\x44\x70..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+concierge_name_pattern = rb"\xE4\x68......\x44\x70..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
 # pattern for player names to rename. (49 bytes)
 # 40 0B ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 00 EF ?? 0? ?? ?? ?? ?? ?? ?? ?? 0? E3
