@@ -58,22 +58,31 @@ def scan_for_comm_names():
     Scans for addresses that are related to a specific
     pattern to translate player names in the comms window.
     """
-    comm_name_list_1 = pattern_scan(pattern=comm_name_pattern_1, use_regex=True, return_multiple=True)
-    comm_name_list_2 = pattern_scan(pattern=comm_name_pattern_2, use_regex=True, return_multiple=True)
-    comm_name_list_2_mod = []
-    for address in comm_name_list_2:
-        comm_name_list_2_mod.append(address + 1)
-    comm_names = comm_name_list_1 + comm_name_list_2_mod
-    for address in comm_names:
-        try:
-            ja_name = read_string(address)
-            romaji_name = convert_into_eng(ja_name)
-            if romaji_name != ja_name:
-                write_string(address, "\x04" + romaji_name)
-        except UnicodeDecodeError:
-            continue
-        except Exception as e:
-            logger.debug(f"Failed to write comms name at {str(hex(address))} for name {romaji_name}.")
+    try:
+        comm_name_list_1 = pattern_scan(pattern=comm_name_pattern_1, use_regex=True, return_multiple=True)
+        comm_name_list_2 = pattern_scan(pattern=comm_name_pattern_2, use_regex=True, return_multiple=True)
+        comm_name_list_2_mod = []
+        for address in comm_name_list_2:
+            comm_name_list_2_mod.append(address + 1)
+        comm_names = comm_name_list_1 + comm_name_list_2_mod
+        for address in comm_names:
+            try:
+                ja_name = read_string(address)
+                romaji_name = convert_into_eng(ja_name)
+                if romaji_name != ja_name:
+                    write_string(address, "\x04" + romaji_name)
+            except UnicodeDecodeError:
+                continue
+            except Exception as e:
+                logger.debug(f"Failed to write comms name at {str(hex(address))} for name {romaji_name}.")
+    except pymem.exception.WinAPIError as e:
+        if "error_code: 299" in str(e):
+            logger.debug("WinApi error 299: Impartial read. Ignoring.")
+        elif "error_code: 5" in str(e):  # ERROR_ACCESS_DENIED. *usually* means the game client was closed
+            logger.error(f"Cannot find DQXGame.exe process. dqxclarity will exit.")
+            sys.exit(1)
+        else:
+            raise
 
 
 def scan_for_sibling_names():
