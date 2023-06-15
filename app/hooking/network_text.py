@@ -57,12 +57,14 @@ class NetworkTextTranslate(object):
                 #identifier_bytes = read_bytes(self.var_address, 40)
                 #NetworkTextTranslate.logger.info(identifier_bytes.hex(' ', 1).upper())
             elif category == "M_kaisetubun":
-                story_desc = read_string(self.text_address)
-                translated = self.__translate_story(story_desc)
-                if translated:
-                    write_string(self.text_address, translated)
-                    NetworkTextTranslate.logger.info(f"Story description: \n{story_desc}")
-            return
+                pass
+                # TODO: story_so_far and monster trivia gets picked up here.
+                # story_desc = read_string(self.text_address)
+                # translated = self.__translate_story(story_desc)
+                # if translated:
+                #     write_string(self.text_address, translated)
+                #     NetworkTextTranslate.logger.info(f"Story description: \n{story_desc}")
+        return
 
 
     def __get_npc_names(self):
