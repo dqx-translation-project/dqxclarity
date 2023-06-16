@@ -165,9 +165,11 @@ if __name__ == "__main__":
             for id in data:
                 bar()
                 ja = next(iter(data.get(id).keys()))
-                output = sanitize_text(ja)
-                data[id][ja] = output
-                with open(file, "wb") as f:
-                    f.write(
-                        json.dumps(data, ensure_ascii=False, indent=2, sort_keys=False).encode("utf-8")
-                    )
+                en = data[id][ja]
+                if not en:
+                    output = sanitize_text(ja)
+                    data[id][ja] = output
+                    with open(file, "wb") as f:
+                        f.write(
+                            json.dumps(data, ensure_ascii=False, indent=2, sort_keys=False).encode("utf-8")
+                        )
