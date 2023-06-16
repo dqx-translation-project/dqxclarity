@@ -48,7 +48,8 @@ def translate(text: str) -> str:
         text=text,
         source_lang="ja",
         target_lang="en-us",
-        formality="prefer_less"
+        formality="prefer_less",
+        tag_handling="xml",
     )
     return response.text
 
@@ -99,7 +100,7 @@ def add_line_endings(text: str) -> str:
     :param text: Text to add the <br> tags to.
     :returns: A new string with the text broken up by <br> tags.
     """
-    count_list = [3, 7, 11, 15, 19, 23, 27, 31, 35, 39]
+    count_list = [ i for i in range(3, 500, 4) ] # 500 is arbitrary, but we should never hit this.
     split_text = text.split("\n")
     try:
         for i in count_list:
@@ -109,7 +110,6 @@ def add_line_endings(text: str) -> str:
         split_text = [ x for x in split_text if x ]
         output = "\n".join(split_text)
         return output
-    return text
 
 
 def sanitize_text(text: str) -> str:
@@ -149,6 +149,7 @@ def sanitize_text(text: str) -> str:
     if find_select:
         found_select_tag = find_select[0]
         output = output.split(found_select_tag)
+        output[0] = output[0].replace("\n", "")
         output[0] = output[0].rstrip() + "\n"
         output = found_select_tag.join(output)
     else:
@@ -174,10 +175,19 @@ def sanitize_text(text: str) -> str:
         output[0] = textwrap.fill(output[0], width=46, replace_whitespace=False)
         output[0] = add_line_endings(output[0])
         output[0] = output[0] + "\n"
+
+        # deepl occasionally indents our list lines.. even if they weren't originally there.
+        new_list = []
+        for line in output[1].split("\n"):
+            new_list.append(line.lstrip())
+        output[1] = "\n".join(new_list)
+
         output = found_select_tag.join(output)
     else:
         output = textwrap.fill(output, width=46, replace_whitespace=False)
+        print(output)
         output = add_line_endings(output)
+        print(output)
 
     # ensure the beginning of the string does not start with a newline
     output = output.lstrip()
@@ -235,7 +245,7 @@ if __name__ == "__main__":
                 if not en:
                     output = sanitize_text(ja)
                     data[id][ja] = output
-                    with open(file, "wb") as f:
-                        f.write(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=False).encode("utf-8"))
+                    # with open(file, "wb") as f:
+                    #     f.write(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=False).encode("utf-8"))
 
         get_remaining_keys_all()
