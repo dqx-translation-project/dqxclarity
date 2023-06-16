@@ -185,9 +185,7 @@ def sanitize_text(text: str) -> str:
         output = found_select_tag.join(output)
     else:
         output = textwrap.fill(output, width=46, replace_whitespace=False)
-        print(output)
         output = add_line_endings(output)
-        print(output)
 
     # ensure the beginning of the string does not start with a newline
     output = output.lstrip()
@@ -245,7 +243,7 @@ if __name__ == "__main__":
                 if not en:
                     output = sanitize_text(ja)
                     data[id][ja] = output
-                    # with open(file, "wb") as f:
-                    #     f.write(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=False).encode("utf-8"))
+                    with open(file, "wb") as f:
+                        f.write(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=False).encode("utf-8"))
 
         get_remaining_keys_all()
