@@ -179,6 +179,9 @@ def sanitize_text(text: str) -> str:
         output = textwrap.fill(output, width=46, replace_whitespace=False)
         output = add_line_endings(output)
 
+    # ensure the beginning of the string does not start with a newline
+    output = output.lstrip()
+
     # replace the placeholder tags inserted earlier with the proper tags
     # replace accented characters as the game can't handle them
     output = re.sub("<pplaceholdc>", "<pc>", output)
