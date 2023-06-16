@@ -35,21 +35,27 @@ def load_env():
     GLOSSARY = [ x for x in GLOSSARY.content.decode().split("\n") if x ]
 
 
-def translate(text: str) -> str:
+def translate(text: str, xml_handling: False) -> str:
     """
     Sends text to deepl to be translated.
 
     :param text: Text to send to DeepL.
+    :param xml_handling: Whether to tell DeepL to use xml_handling when handling tags.
     :returns: Translated text.
     """
     api_key = random.choice(DEEPL_KEYS)
     translator = deepl.Translator(api_key)
+    if xml_handling:
+        tag_handle = "xml"
+    else:
+        tag_handle = None
+
     response = translator.translate_text(
         text=text,
         source_lang="ja",
         target_lang="en-us",
         formality="prefer_less",
-        tag_handling="xml",
+        tag_handling=tag_handle,
     )
     return response.text
 
@@ -112,6 +118,36 @@ def add_line_endings(text: str) -> str:
         return output
 
 
+def wrap_text(text: str) -> str:
+    """
+    Wrap text to 46 characters per line, which is the maximum that will
+    fit in DQX's dialog window. Doesn't consider tags as characters.
+    """
+    # remove any styling/variable tags from the string before wrapping
+    tag_regex = re.compile(r"(<.*?>)")
+    tags = tag_regex.findall(text)
+    to_ignore = [
+        "<pplaceholdc>",
+        "<cplaceholds>",
+        "<kplaceholdy>"
+    ]
+
+    # replace all found tags with a control character
+    for tag in tags:
+        if tag in to_ignore:
+            continue
+        text = re.sub(tag, "|", text)
+
+    # wrap the text we have
+    text = textwrap.fill(text, width=46, replace_whitespace=False)
+
+    # replace the tags (in order) by swapping them with our control character
+    for tag in tags:
+        text = text.replace("|", tag, 1)
+
+    return text
+
+
 def sanitize_text(text: str) -> str:
     """
     Sanitizes text with a series of actions to make English text
@@ -142,6 +178,15 @@ def sanitize_text(text: str) -> str:
     # remove the full width space that starts on a new line
     output = re.sub("\n　", "　", output)
 
+    # <pc>, <cs_pchero>, <kyodai>
+    placeholder_tags = ["<pplaceholdc>", "<cplaceholds>", "<kplaceholdy>"]
+
+    # removes all of the honorifics added at the end of the tags
+    honorifics = ["さま", "君", "どの", "ちゃん", "くん", "様", "さーん", "殿", "さん",]
+    for tag in placeholder_tags:
+        for honorific in honorifics:
+            output = re.sub(f"{tag}{honorific}", f"{tag} ", output)
+
     # handle selection lists. we don't want to remove the newlines from them
     # as they need to be translated individually.
     select_regex = re.compile(r"(<select.*>)")
@@ -149,30 +194,28 @@ def sanitize_text(text: str) -> str:
     if find_select:
         found_select_tag = find_select[0]
         output = output.split(found_select_tag)
-        output[0] = output[0].replace("\n", "")
+        output[0] = output[0].replace("\n", "　")
         output[0] = output[0].rstrip() + "\n"
         output = found_select_tag.join(output)
+        xml_handling = True
     else:
-        output = output.replace("\n", "")
-
-    # <pc>, <cs_pchero>, <kyodai>
-    placeholder_tags = ["<pplaceholdc>", "<cplaceholds>", "<kplaceholdy>"]
-
-    # removes all of the honorifics added at the end of the tags
-    honorifics = ["さま", "君", "どの", "ちゃん", "くん", "様", "さーん", "殿", "さん"]
-    for tag in placeholder_tags:
-        for honorific in honorifics:
-            output = re.sub(f"{tag}{honorific}", tag, output)
+        output = output.replace("\n", "　")
+        xml_handling = False
 
     # pass string through our glossary and send to deepl
     output = glossary_replace(output)
-    output = translate(output)
+    output = translate(text=output, xml_handling=xml_handling)
+
+    # search for any weird space usage and remove it
+    output = re.sub("　 ", " ", output)
+    output = re.sub("　", " ", output)
+    output = re.sub("  ", "", output)
 
     # add our line endings here. before we do, we need to chop the string up
     # again in case we have a selection list.
     if find_select:
         output = output.split(found_select_tag)
-        output[0] = textwrap.fill(output[0], width=46, replace_whitespace=False)
+        output[0] = wrap_text(output[0])
         output[0] = add_line_endings(output[0])
         output[0] = output[0] + "\n"
 
@@ -184,7 +227,7 @@ def sanitize_text(text: str) -> str:
 
         output = found_select_tag.join(output)
     else:
-        output = textwrap.fill(output, width=46, replace_whitespace=False)
+        output = wrap_text(output)
         output = add_line_endings(output)
 
     # ensure the beginning of the string does not start with a newline
