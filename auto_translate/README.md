@@ -13,6 +13,7 @@ Supports multiple DeepL keys and randomizes which key to use in the list on each
 - Install requirements
     - `pip install -r requirements.txt`
 - Rename the file in this directory from `env` to `.env`
+- Put any json files you want translated into the `files` directory (from weblate's `en` directory)
 - Inside of the `.env` file, fill out your DeepL key(s) and a list of files you wish to have translated
     - example:
 
