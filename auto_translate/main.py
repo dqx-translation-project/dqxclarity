@@ -176,7 +176,7 @@ def sanitize_text(text: str) -> str:
         output[0] = add_line_endings(output[0])
         output[0] = output[0] + "\n"
 
-        # deepl occasionally indents our list lines.. even if they weren't originally there.
+        # deepl occasionally indents our list lines.. even if they weren't originally indented.
         new_list = []
         for line in output[1].split("\n"):
             new_list.append(line.lstrip())
