@@ -1,14 +1,17 @@
 import deepl
+import glob
+import json
 import os
 import random
+import re
 import sys
 import textwrap
 import unicodedata
-import json
-import re
+
 import requests
 from alive_progress import alive_bar
 from dotenv import load_dotenv
+
 from globals import GITHUB_CLARITY_GLOSSARY_URL
 
 
@@ -17,19 +20,14 @@ def load_env():
     Load global environment variables and download our glossary.
     """
     global DEEPL_KEYS
-    global FILES_TO_TRANSLATE
     global GLOSSARY
 
     load_dotenv()
 
     DEEPL_KEYS = [ x for x in json.loads(os.environ["DEEPL_KEYS"]) if x ]
-    FILES_TO_TRANSLATE = [ x for x in json.loads(os.environ["FILES_TO_TRANSLATE"]) if x ]
     GLOSSARY = requests.get(GITHUB_CLARITY_GLOSSARY_URL)
     if not DEEPL_KEYS:
         print("Provide at least one key in DEEPL_KEYS.")
-        sys.exit(1)
-    if not FILES_TO_TRANSLATE:
-        print("Provide at least one file in FILES_TO_TRANSLATE.")
         sys.exit(1)
     if GLOSSARY.status_code != 200:
         print("Did not get 200 from Github glossary URL.")
@@ -67,6 +65,15 @@ def get_remaining_limit(api_key: str) -> int:
     remaining_chars = usage._character.limit - usage._character.count
 
     return remaining_chars
+
+
+def get_remaining_keys_all():
+    """
+    Parses all keys configured in DEEPL_KEYS and returns the remaining num of characters.
+    """
+    for key in DEEPL_KEYS:
+        remaining = get_remaining_limit(key)
+        print(f"Key {key[0:5]}.. has {remaining} remaining characters.")
 
 
 def glossary_replace(text: str) -> str:
@@ -196,13 +203,27 @@ def read_file(file: str) -> dict:
     return data
 
 
+def estimate_characters(data: dict) -> int:
+    characters = ""
+    for id in data:
+        ja = next(iter(data.get(id).keys()))
+        en = data[id][ja]
+        if not en:
+            characters += ja
+    return len(characters)
+
+
 if __name__ == "__main__":
     load_env()
 
-    for file in FILES_TO_TRANSLATE:
-        data = read_file(f"files/{file}")
-        num_entries = len(data)
+    for file in glob.glob("files/*"):
+        get_remaining_keys_all()
 
+        data = read_file(file)
+        num_entries = len(data)
+        estimated_chars = estimate_characters(data)
+
+        print(f"Translating {os.path.basename(file)} with an estimated {estimated_chars} characters needed to be translated.")
         with alive_bar(total=num_entries, title="Translating..", theme="musical", length=20) as bar:
             for id in data:
                 bar()
@@ -212,6 +233,6 @@ if __name__ == "__main__":
                     output = sanitize_text(ja)
                     data[id][ja] = output
                     with open(file, "wb") as f:
-                        f.write(
-                            json.dumps(data, ensure_ascii=False, indent=2, sort_keys=False).encode("utf-8")
-                        )
+                        f.write(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=False).encode("utf-8"))
+
+        get_remaining_keys_all()
