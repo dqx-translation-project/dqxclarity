@@ -240,6 +240,8 @@ if __name__ == "__main__":
                 bar()
                 ja = next(iter(data.get(id).keys()))
                 en = data[id][ja]
+                if not ja:
+                    continue
                 if not en:
                     output = sanitize_text(ja)
                     data[id][ja] = output
