@@ -13,6 +13,9 @@ from globals import GITHUB_CLARITY_GLOSSARY_URL
 
 
 def load_env():
+    """
+    Load global environment variables and download our glossary.
+    """
     global DEEPL_KEYS
     global FILES_TO_TRANSLATE
     global GLOSSARY
@@ -35,6 +38,12 @@ def load_env():
 
 
 def translate(text: str) -> str:
+    """
+    Sends text to deepl to be translated.
+
+    :param text: Text to send to DeepL.
+    :returns: Translated text.
+    """
     api_key = random.choice(DEEPL_KEYS)
     translator = deepl.Translator(api_key)
     response = translator.translate_text(
@@ -47,6 +56,12 @@ def translate(text: str) -> str:
 
 
 def get_remaining_limit(api_key: str) -> int:
+    """
+    Returns remaining characters for a specified api key.
+
+    :param api_key: API key to check the remaining characters of.
+    :returns: Number of remaining characters.
+    """
     translator = deepl.Translator(api_key)
     usage = translator.get_usage()
     remaining_chars = usage._character.limit - usage._character.count
@@ -54,7 +69,13 @@ def get_remaining_limit(api_key: str) -> int:
     return remaining_chars
 
 
-def glossary_replace(text: str):
+def glossary_replace(text: str) -> str:
+    """
+    Does a find/replace of all strings in the glossary against a target string.
+
+    :param text: String that is parsed against the glossary with.
+    :returns: A new string that has been passed through the glossary.
+    """
     for record in GLOSSARY:
         k, v = record.split(",", 1)
         if v == "\"\"":  # check for glossary entries that have blank strings and re-assign
@@ -63,7 +84,14 @@ def glossary_replace(text: str):
     return text
 
 
-def add_line_endings(text: str):
+def add_line_endings(text: str) -> str:
+    """
+    Adds <br> flags every 3 lines to a string. Used to break up the
+    text in a dialog window.
+
+    :param text: Text to add the <br> tags to.
+    :returns: A new string with the text broken up by <br> tags.
+    """
     count_list = [3, 7, 11, 15, 19, 23, 27, 31, 35, 39]
     split_text = text.split("\n")
     try:
@@ -78,6 +106,14 @@ def add_line_endings(text: str):
 
 
 def sanitize_text(text: str) -> str:
+    """
+    Sanitizes text with a series of actions to make English text
+    render more comfortably in DQX. Also ensures the text is properly
+    parsed before sending off to DeepL to be machine translated.
+
+    :param text: Text to be sanitized.
+    :returns: A formatted string that is ready to be inserted into our JSON format.
+    """
     # manage our own line endings later
     output = re.sub("<br>", "　", text)
 
@@ -148,7 +184,13 @@ def sanitize_text(text: str) -> str:
     return output
 
 
-def read_file(file: str):
+def read_file(file: str) -> dict:
+    """
+    Returns data from a json file.
+
+    :param file: File to read.
+    :returns: A dict of the json data.
+    """
     with open(file, "r", encoding="utf-8") as f:
         data = json.loads(f.read())
     return data
