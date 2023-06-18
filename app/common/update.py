@@ -10,7 +10,9 @@ from common.constants import (
     GITHUB_CLARITY_NPC_JSON_URL,
     GITHUB_CLARITY_ITEMS_JSON_URL,
     GITHUB_CLARITY_KEY_ITEMS_JSON_URL,
-    GITHUB_CLARITY_QUESTS_REQUESTS_JSON_URL
+    GITHUB_CLARITY_QUESTS_REQUESTS_JSON_URL,
+    GITHUB_CLARITY_TEAM_QUESTS_JSON_URL,
+    GITHUB_CLARITY_MASTER_QUESTS_JSON_URL,
 )
 from common.lib import get_abs_path
 from loguru import logger
@@ -40,7 +42,9 @@ def download_custom_files():
             GITHUB_CLARITY_NPC_JSON_URL,
             GITHUB_CLARITY_ITEMS_JSON_URL,
             GITHUB_CLARITY_KEY_ITEMS_JSON_URL,
-            GITHUB_CLARITY_QUESTS_REQUESTS_JSON_URL
+            GITHUB_CLARITY_QUESTS_REQUESTS_JSON_URL,
+            GITHUB_CLARITY_TEAM_QUESTS_JSON_URL,
+            GITHUB_CLARITY_MASTER_QUESTS_JSON_URL
         ]:
             request = requests.get(url, timeout=15)
             if request.status_code == 200:

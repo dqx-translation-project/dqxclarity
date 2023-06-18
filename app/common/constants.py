@@ -7,3 +7,5 @@ GITHUB_CLARITY_NPC_JSON_URL = "https://raw.githubusercontent.com/dqx-translation
 GITHUB_CLARITY_ITEMS_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx_translations/main/json/_lang/en/subPackage05Client.json"
 GITHUB_CLARITY_KEY_ITEMS_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx_translations/main/json/_lang/en/subPackage41Client.win32.json"
 GITHUB_CLARITY_QUESTS_REQUESTS_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx_translations/main/json/_lang/en/eventTextSysQuestaClient.json"
+GITHUB_CLARITY_TEAM_QUESTS_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx-custom-translations/main/json/custom_team_quests.json"
+GITHUB_CLARITY_MASTER_QUESTS_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx-custom-translations/main/json/custom_master_quests.json"
