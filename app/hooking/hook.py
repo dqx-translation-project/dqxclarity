@@ -82,10 +82,7 @@ def quest_text_detour(simple_str_addr: int, debug=False):
     )
 
     eax = hook_obj.address_dict["attrs"]["eax"]
-    shellcode = quest_text_shellcode(
-        eax_address=eax,
-        debug=debug,
-    )
+    shellcode = quest_text_shellcode(address=eax, debug=debug)
     shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
     write_string(address=shellcode_addr, text=shellcode)
 
@@ -125,7 +122,7 @@ def accept_quest_detour(simple_str_addr: int, debug=False):
     )
 
     esi = hook_obj.address_dict["attrs"]["esi"]
-    shellcode = quest_text_shellcode(esi, debug=debug)
+    shellcode = quest_text_shellcode(address=esi, debug=debug)
     shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
     write_string(address=shellcode_addr, text=shellcode)
 
