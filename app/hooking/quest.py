@@ -127,10 +127,10 @@ class Quest(object):
         self.__write_repeat_quest_rewards()
 
 
-def quest_text_shellcode(eax_address: int, debug: bool) -> str:
+def quest_text_shellcode(address: int, debug: bool) -> str:
     """
     Returns shellcode for the translate function hook.
-    eax_address: Where text can be modified to be fed to the screen
+    address: Where text can be modified to be fed to the screen
     """
     import os
     local_paths = dumps(sys.path).replace("\\", "\\\\")
@@ -144,7 +144,7 @@ try:
     import sys
     sys.path = {local_paths}
     from hooking.quest import Quest
-    Quest({eax_address})
+    Quest({address})
 except Exception as e:
     with open("{log_path}", "a+") as f:
         f.write(str(e))
