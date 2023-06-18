@@ -28,7 +28,8 @@ class NetworkTextTranslate(object):
         "B_TARGET": "pc_name",
         "M_00": "string",  # generic string of several types (walkthrough, team quests, mail)
         "M_kaisetubun": "story_so_far",
-        "C_QUEST": "dracky_announcements"
+        "C_QUEST": "dracky_announcements_quest_complete",
+        "C_PC": "dracky_announcements_player_name",
     }
 
     def __init__(self, text_address, var_address):
@@ -43,7 +44,7 @@ class NetworkTextTranslate(object):
             if category == "B_TARGET_RPL":  # key used for 自分
                 write_string(self.text_address, "self")
                 return
-            elif category in ["M_pc", "M_npc", "B_ACTOR", "B_TARGET"]:  # npc or player names
+            elif category in ["M_pc", "M_npc", "B_ACTOR", "B_TARGET", "C_PC", "L_SENDER_NAME"]:  # npc or player names
                 name = read_string(self.text_address)
                 if name in NetworkTextTranslate.npc_names:
                     name_to_write = NetworkTextTranslate.npc_names[name]
