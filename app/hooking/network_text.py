@@ -17,7 +17,9 @@ class NetworkTextTranslate(object):
 
     misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
     logger = setup_logger("out", "/".join([get_abs_path(__file__), "../out.log"]))
+    custom_text_logger = setup_logger("out", "/".join([get_abs_path(__file__), "../custom_text.log"]))
     npc_names = None
+    m00_text = None
 
     translate = {
         "M_pc": "pc_name",
@@ -39,6 +41,9 @@ class NetworkTextTranslate(object):
         if NetworkTextTranslate.npc_names is None:
             NetworkTextTranslate.npc_names = self.__get_npc_names()
 
+        if NetworkTextTranslate.m00_text is None:
+            NetworkTextTranslate.m00_text = self.__get_m00_text()
+
         category = read_string(self.var_address + 40)  # var name is 40 bytes in
         if category in NetworkTextTranslate.translate:
             if category == "B_TARGET_RPL":  # key used for 自分
@@ -51,7 +56,14 @@ class NetworkTextTranslate(object):
                 else:
                     name_to_write = convert_into_eng(name)
                 write_string(self.text_address, name_to_write)
-            elif category == "M_00":
+            elif category in ["M_00", "C_QUEST"]:
+                m00_string = read_string(self.text_address)
+                if m00_string in NetworkTextTranslate.m00_text:
+                    to_write = NetworkTextTranslate.m00_text[m00_string]
+                    if to_write != "":
+                        write_string(self.text_address, to_write)
+                else:
+                    NetworkTextTranslate.custom_text_logger.info(f"--\n{m00_string}")
                 # can't figure out how to distinguish between strings, so we can't
                 # do anything with this right now.
                 pass
@@ -65,6 +77,8 @@ class NetworkTextTranslate(object):
                     translated = self.__translate_story(story_desc)
                     if translated:
                         write_string(self.text_address, translated)
+            else:
+                NetworkTextTranslate.logger.info(f"{category} :: {read_string(self.text_address)}")
         return
 
 
@@ -80,6 +94,16 @@ class NetworkTextTranslate(object):
         ])
 
         return npc_files
+
+
+    def __get_m00_text(self):
+        m00_text = merge_jsons([
+            f"{NetworkTextTranslate.misc_files}/custom_master_quests.json",
+            f"{NetworkTextTranslate.misc_files}/custom_team_quests.json",
+            f"{NetworkTextTranslate.misc_files}/eventTextSysQuestaClient.json"
+        ])
+
+        return m00_text
 
 
     def __translate_story(self, text: str):
