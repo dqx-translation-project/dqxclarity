@@ -4,7 +4,7 @@ import re
 import sys
 import textwrap
 from common.lib import get_abs_path, setup_logger, merge_jsons
-from common.memory import read_string, write_string, unpack_to_int
+from common.memory import read_string, write_string, unpack_to_int, read_bytes
 from common.translate import (
     Translate,
     sqlite_read,
@@ -26,7 +26,7 @@ class NetworkTextTranslate(object):
         "B_TARGET_RPL": "自分",
         "B_ACTOR": "pc_name",
         "B_TARGET": "pc_name",
-        "M_00": "string",  # generic string of several types (walkthrough, team quests)
+        "M_00": "string",  # generic string of several types (walkthrough, team quests, mail)
         "M_kaisetubun": "story_so_far",
         "C_QUEST": "dracky_announcements"
     }
@@ -50,20 +50,20 @@ class NetworkTextTranslate(object):
                 else:
                     name_to_write = convert_into_eng(name)
                 write_string(self.text_address, name_to_write)
-                NetworkTextTranslate.logger.info(f"Wrote string {name_to_write}")
             elif category == "M_00":
+                # can't figure out how to distinguish between strings, so we can't
+                # do anything with this right now.
                 pass
-                # TODO: need to figure out how to determine difference between string types
-                #identifier_bytes = read_bytes(self.var_address, 40)
-                #NetworkTextTranslate.logger.info(identifier_bytes.hex(' ', 1).upper())
             elif category == "M_kaisetubun":
-                pass
-                # TODO: story_so_far and monster trivia gets picked up here.
-                # story_desc = read_string(self.text_address)
-                # translated = self.__translate_story(story_desc)
-                # if translated:
-                #     write_string(self.text_address, translated)
-                #     NetworkTextTranslate.logger.info(f"Story description: \n{story_desc}")
+                # this captures story so far AND monster trivia.
+                # I don't know if this is a sure way to distinguish, but it
+                # works so far.
+                check_if_story = read_bytes(self.var_address + 36, 4)
+                if check_if_story == b"\xC0\x01\x00\x00":
+                    story_desc = read_string(self.text_address)
+                    translated = self.__translate_story(story_desc)
+                    if translated:
+                        write_string(self.text_address, translated)
         return
 
 
