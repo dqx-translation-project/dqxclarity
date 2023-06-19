@@ -17,7 +17,7 @@ class NetworkTextTranslate(object):
 
     misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
     logger = setup_logger("out", "/".join([get_abs_path(__file__), "../out.log"]))
-    custom_text_logger = setup_logger("out", "/".join([get_abs_path(__file__), "../custom_text.log"]))
+    custom_text_logger = setup_logger("text_logger", "/".join([get_abs_path(__file__), "../custom_text.log"]))
     npc_names = None
     m00_text = None
 
@@ -65,7 +65,7 @@ class NetworkTextTranslate(object):
                     if to_write != "":
                         write_string(self.text_address, to_write)
                 else:
-                    NetworkTextTranslate.custom_text_logger.debug(f"--\n>>m00_str:\n{m00_string}")
+                    NetworkTextTranslate.custom_text_logger.info(f"--\n>>m00_str:\n{m00_string}")
             elif category == "M_kaisetubun":
                 # this captures story so far AND monster trivia.
                 # I don't know if this is a sure way to distinguish, but it
@@ -77,7 +77,7 @@ class NetworkTextTranslate(object):
                     if translated:
                         write_string(self.text_address, translated)
         else:
-            NetworkTextTranslate.custom_text_logger.debug(f"--\n{category} :: {read_string(self.text_address)}")
+            NetworkTextTranslate.custom_text_logger.info(f"--\n{category} :: {read_string(self.text_address)}")
         return
 
 
