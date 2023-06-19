@@ -25,7 +25,7 @@ class NetworkTextTranslate(object):
         "M_pc": "pc_name",
         "M_npc": "npc_name",
         "L_SENDER_NAME": "mail_name",
-        "B_TARGET_RPL": "自分",
+        "B_TARGET_RPL": "spell_target",
         "B_ACTOR": "pc_name",
         "B_TARGET": "pc_name",
         "M_00": "string",  # generic string of several types (walkthrough, team quests, mail)
@@ -46,8 +46,10 @@ class NetworkTextTranslate(object):
 
         category = read_string(self.var_address + 40)  # var name is 40 bytes in
         if category in NetworkTextTranslate.translate:
-            if category == "B_TARGET_RPL":  # key used for 自分
-                write_string(self.text_address, "self")
+            if category == "B_TARGET_RPL":
+                self_text = read_string(self.text_address)
+                if self_text == "自分":
+                    write_string(self.text_address, "self")
                 return
             elif category in ["M_pc", "M_npc", "B_ACTOR", "B_TARGET", "C_PC", "L_SENDER_NAME"]:  # npc or player names
                 name = read_string(self.text_address)
@@ -63,10 +65,7 @@ class NetworkTextTranslate(object):
                     if to_write != "":
                         write_string(self.text_address, to_write)
                 else:
-                    NetworkTextTranslate.custom_text_logger.info(f"--\n{m00_string}")
-                # can't figure out how to distinguish between strings, so we can't
-                # do anything with this right now.
-                pass
+                    NetworkTextTranslate.custom_text_logger.debug(f"--\n>>m00_str:\n{m00_string}")
             elif category == "M_kaisetubun":
                 # this captures story so far AND monster trivia.
                 # I don't know if this is a sure way to distinguish, but it
@@ -77,8 +76,8 @@ class NetworkTextTranslate(object):
                     translated = self.__translate_story(story_desc)
                     if translated:
                         write_string(self.text_address, translated)
-            else:
-                NetworkTextTranslate.logger.info(f"{category} :: {read_string(self.text_address)}")
+        else:
+            NetworkTextTranslate.custom_text_logger.debug(f"--\n{category} :: {read_string(self.text_address)}")
         return
 
 
