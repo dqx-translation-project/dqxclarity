@@ -99,7 +99,9 @@ class NetworkTextTranslate(object):
         m00_text = merge_jsons([
             f"{NetworkTextTranslate.misc_files}/custom_master_quests.json",
             f"{NetworkTextTranslate.misc_files}/custom_team_quests.json",
-            f"{NetworkTextTranslate.misc_files}/eventTextSysQuestaClient.json"
+            f"{NetworkTextTranslate.misc_files}/eventTextSysQuestaClient.json",
+            f"{NetworkTextTranslate.misc_files}/custom_episode_request_book.json",
+            f"{NetworkTextTranslate.misc_files}/custom_trainee_logbook.json",
         ])
 
         return m00_text
