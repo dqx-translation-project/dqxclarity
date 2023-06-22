@@ -118,6 +118,46 @@ accept_quest_trigger = rb"\x8B\x45\xD8\x3B\x45\xDC\x8B\x03\x0F\x85....\xE9....\x
 #    DQXGame.exe.text+42DF2F - EB 79                 - jmp DQXGame.exe.text+42DFAA
 network_text_trigger = rb"\x8D\x71\x01\x8B\xFF\x8A\x01\x41\x84\xC0\x75\xF9\x2B\xCE\x51\x51"
 
+# player and sibling names on login. use this to figure out what the player is logged in as
+# 55 8B EC 56 8B F1 57 8B 46 58 85 C0
+# >> DQXGame.exe.text+4096C0 - 55                    - push ebp
+#    DQXGame.exe.text+4096C1 - 8B EC                 - mov ebp,esp
+#    DQXGame.exe.text+4096C3 - 56                    - push esi
+#    DQXGame.exe.text+4096C4 - 8B F1                 - mov esi,ecx
+#    DQXGame.exe.text+4096C6 - 57                    - push edi
+#    DQXGame.exe.text+4096C7 - 8B 46 58              - mov eax,[esi+58]
+#    DQXGame.exe.text+4096CA - 85 C0                 - test eax,eax
+#    DQXGame.exe.text+4096CC - 74 10                 - je DQXGame.exe.text+4096DE
+#    DQXGame.exe.text+4096CE - 50                    - push eax
+#    DQXGame.exe.text+4096CF - E8 EC38C3FF           - call DQXGame.exe.text+3CFC0
+#    DQXGame.exe.text+4096D4 - 83 C4 04              - add esp,04
+#    DQXGame.exe.text+4096D7 - C7 46 58 00000000     - mov [esi+58],00000000
+#    DQXGame.exe.text+4096DE - 6A 02                 - push 02
+#    DQXGame.exe.text+4096E0 - 68 B0000000           - push 000000B0
+#    DQXGame.exe.text+4096E5 - E8 365FC3FF           - call DQXGame.exe.text+3F620
+player_sibling_name_trigger = rb"\x55\x8B\xEC\x56\x8B\xF1\x57\x8B\x46\x58\x85\xC0"
+
+# monster and npc names pass through this. we could rename them here and completely
+# get rid of name scans.. BUT.. this gets scanned by the integrity check in combat.
+# 8B 45 0C 80 38 00 68 ?? ?? ?? ?? 89
+# >> DQXGame.exe.text+4FB38C4 - 8B 45 0C              - mov eax,[ebp+0C]
+#    DQXGame.exe.text+4FB38C7 - 80 38 00              - cmp byte ptr [eax],00
+#    DQXGame.exe.text+4FB38CA - 68 AB083501           - push DQXGame.exe.text+BDF8AB
+#    DQXGame.exe.text+4FB38CF - 89 44 24 FC           - mov [esp-04],eax
+#    DQXGame.exe.text+4FB38D3 - 8D 64 24 FC           - lea esp,[esp-04]
+#    DQXGame.exe.text+4FB38D7 - 8D 64 24 FC           - lea esp,[esp-04]
+#    DQXGame.exe.text+4FB38DB - 89 0C 24              - mov [esp],ecx
+#    DQXGame.exe.text+4FB38DE - 8B 44 24 08           - mov eax,[esp+08]
+#    DQXGame.exe.text+4FB38E2 - B9 600D8200           - mov ecx,DQXGame.exe.text+AFD60
+#    DQXGame.exe.text+4FB38E7 - 0F44 C1               - cmove eax,ecx
+#    DQXGame.exe.text+4FB38EA - 89 44 24 08           - mov [esp+08],eax
+#    DQXGame.exe.text+4FB38EE - 8B 0C 24              - mov ecx,[esp]
+#    DQXGame.exe.text+4FB38F1 - 8D 64 24 04           - lea esp,[esp+04]
+#    DQXGame.exe.text+4FB38F5 - 8D 64 24 04           - lea esp,[esp+04]
+#    DQXGame.exe.text+4FB38F9 - 8B 44 24 FC           - mov eax,[esp-04]
+#    DQXGame.exe.text+4FB38FD - 8D 64 24 04           - lea esp,[esp+04]
+npc_monster_names_trigger = rb"\x8B\x4E\x04\x83\xC4\x10\x8B\x81"
+
 #############################################
 # "Patterns" seen to find various text.
 # Not code signatures, so these will likely
