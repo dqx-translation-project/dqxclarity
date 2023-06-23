@@ -35,7 +35,7 @@ def load_env():
     GLOSSARY = [ x for x in GLOSSARY.content.decode().split("\n") if x ]
 
 
-def translate(text: str, xml_handling: False) -> str:
+def translate(text: str) -> str:
     """
     Sends text to deepl to be translated.
 
@@ -45,19 +45,17 @@ def translate(text: str, xml_handling: False) -> str:
     """
     api_key = random.choice(DEEPL_KEYS)
     translator = deepl.Translator(api_key)
-    if xml_handling:
-        tag_handle = "xml"
-    else:
-        tag_handle = None
 
     response = translator.translate_text(
         text=text,
         source_lang="ja",
         target_lang="en-us",
-        formality="prefer_less",
-        tag_handling=tag_handle,
+        preserve_formatting=True
     )
-    return response.text
+    text_results = []
+    for result in response:
+        text_results.append(result.text)
+    return text_results
 
 
 def get_remaining_limit(api_key: str) -> int:
@@ -123,29 +121,17 @@ def wrap_text(text: str) -> str:
     Wrap text to 46 characters per line, which is the maximum that will
     fit in DQX's dialog window. Doesn't consider tags as characters.
     """
-    # remove any styling/variable tags from the string before wrapping
-    tag_regex = re.compile(r"(<.*?>)")
-    tags = tag_regex.findall(text)
-    to_ignore = [
-        "<pplaceholdc>",
-        "<cplaceholds>",
-        "<kplaceholdy>"
-    ]
+    return textwrap.fill(text, width=46, replace_whitespace=False)
 
-    # replace all found tags with a control character
-    for tag in tags:
-        if tag in to_ignore:
-            continue
-        text = re.sub(tag, "|", text)
 
-    # wrap the text we have
-    text = textwrap.fill(text, width=46, replace_whitespace=False)
+def normalize_text(text: str) -> str: 
+    """
+    "Normalize" text by only using latin alphabet.
 
-    # replace the tags (in order) by swapping them with our control character
-    for tag in tags:
-        text = text.replace("|", tag, 1)
-
-    return text
+    :param text: Text to normalize
+    :returns: Normalized text.
+    """
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
 
 
 def sanitize_text(text: str) -> str:
@@ -158,91 +144,220 @@ def sanitize_text(text: str) -> str:
     :returns: A formatted string that is ready to be inserted into our JSON format.
     """
     # manage our own line endings later
-    output = re.sub("<br>", "　", text)
-
-    # ensures that when these tags are expanded to their actual names,
-    # we have appropriate room in the dialog window.
-    output = re.sub("<pc>", "<pplaceholdc>", output)
-    output = re.sub("<cs_pchero>", "<cplaceholds>", output)
-    output = re.sub("<kyodai>", "<kplaceholdy>", output)
+    output = text.replace("<br>", "　")
 
     # remove any tag alignments
     alignments = ["<center>", "<right>", "<left>"]
     for alignment in alignments:
-        output = re.sub(alignment, "", output)
+        output = output.replace(alignment, "")
 
     # remove any other oddities that don't look great in english
-    output = re.sub("「", "", output) # creates a single double quote
-    output = re.sub("…", "", output)
+    oddities = ["「", "…"]
+    for oddity in oddities:
+        output = output.replace(oddity, "")
 
     # remove the full width space that starts on a new line
-    output = re.sub("\n　", "　", output)
+    output = output.replace("\n　", "　")
 
-    # <pc>, <cs_pchero>, <kyodai>
-    placeholder_tags = ["<pplaceholdc>", "<cplaceholds>", "<kplaceholdy>"]
+    # replace any <color*> tags with & as they are part of the string
+    output = output.replace("<color_", "<&color_")
+
+    name_tags = ["<pc>", "<cs_pchero>", "<kyodai>"]
 
     # removes all of the honorifics added at the end of the tags
     honorifics = ["さま", "君", "どの", "ちゃん", "くん", "様", "さーん", "殿", "さん",]
-    for tag in placeholder_tags:
+    for tag in name_tags:
         for honorific in honorifics:
-            output = re.sub(f"{tag}{honorific}", f"{tag} ", output)
+            output = output.replace(f"{tag}{honorific}", tag)
 
-    # handle selection lists. we don't want to remove the newlines from them
-    # as they need to be translated individually.
-    select_regex = re.compile(r"(<select.*>)")
-    find_select = select_regex.findall(output)
-    if find_select:
-        found_select_tag = find_select[0]
-        output = output.split(found_select_tag)
-        output[0] = output[0].replace("\n", "　")
-        output[0] = output[0].rstrip() + "\n"
-        output = found_select_tag.join(output)
-        xml_handling = True
-    else:
-        output = output.replace("\n", "　")
-        xml_handling = False
+    # replace all variable name tags that expand to other text
+    output = swap_placeholder_tags(output)
 
-    # pass string through our glossary and send to deepl
+    # pass string through our glossary to replace any common words
     output = glossary_replace(output)
-    output = translate(text=output, xml_handling=xml_handling)
 
-    # search for any weird space usage and remove it
-    output = re.sub("　 ", " ", output)
-    output = re.sub("　", " ", output)
-    output = re.sub("  ", "", output)
+    # re-assign this string. this is now our "pristine" string we'll be using later.
+    pristine_str = output
 
-    # add our line endings here. before we do, we need to chop the string up
-    # again in case we have a selection list.
-    if find_select:
-        output = output.split(found_select_tag)
-        output[0] = wrap_text(output[0])
-        output[0] = add_line_endings(output[0])
-        output[0] = output[0] + "\n"
+    # get the text to translate, splitting on all tags that don't start with % or &
+    tag_re = re.compile("(<[^%&]*?>)")
+    select_re = re.compile(r"(<select.*>)")
+    str_split = [ x for x in re.split(tag_re, output) if x ]
 
-        # deepl occasionally indents our list lines.. even if they weren't originally indented.
-        new_list = []
-        for line in output[1].split("\n"):
-            new_list.append(line.lstrip())
-        output[1] = "\n".join(new_list)
+    count = 0
+    str_attrs = {}
 
-        output = found_select_tag.join(output)
+    # iterate over each string, handling based on condition
+    for str in str_split:
+        if not re.match(tag_re, str):
+
+            # sole new lines need to stay where they are.
+            if str == "\n":
+                continue
+
+            # capture position of the string and replace with placeholder text
+            pristine_str = pristine_str.replace(str, f"<replace_me_index_{count}>")
+
+            # <select*> lists always start with their first entry being a newline.
+            # if we see this, look back one index to see if we're inside a select tag.
+            if str.startswith("\n"):
+                lookback = str_split.index(str) - 1
+                if re.match(select_re, str_split[lookback]):
+                    str_attrs[count] = {
+                        "text": str,
+                        "is_list": True,
+                        "prepend_newline": False,
+                        "append_newline": False,
+                    }
+                    count += 1
+                    continue
+
+            # capture how the newline was originally placed
+            append_newline = False
+            if str.endswith("\n"):
+                append_newline = True
+            
+            prepend_newline = False
+            if str.startswith("\n"):
+                prepend_newline = True
+
+            str = str.replace("\n", "")
+
+            str_attrs[count] = {
+                "text": str,
+                "is_list": False,
+                "prepend_newline": prepend_newline,
+                "append_newline": append_newline,
+            }
+
+            count += 1
+
+    # translate our list of strings
+    to_translate = []
+    count = 0
+    for str in str_attrs:
+        to_translate.append(str_attrs[count]["text"])
+        count += 1
+    translated_list = translate(text=to_translate)
+
+    # update our str_attrs dict with the new, translated string
+    count = 0
+    for str in translated_list:
+        str_attrs[count]["text"] = str
+        count += 1
+
+    count = 0
+    # search for any weird space usage and remove it.
+    # this comes from deepl and are all scenarios that have been seen with
+    # translations coming back from machine translation.
+    for _ in str_attrs:
+        str_text = str_attrs[count]["text"]
+        str_text = str_text.replace("　 ", " ")
+        str_text = str_text.replace("　", " ")
+        str_text = str_text.replace("  ", "")
+
+        updated_str = normalize_text(str_text)
+        updated_str = updated_str.replace("<&color_", "<color_")  # put our color tag back.
+
+        if str_attrs[count]["is_list"]:
+            # select lists will always have more than 1 entry.. 
+            # leave selection lists alone. please don't fuck this up, deepl
+            updated_str = swap_placeholder_tags(updated_str, swap_back=True)
+
+            # deepl occasionally indents our list lines.. even though they weren't originally indented
+            updated_str = updated_str.replace("\n ", "\n")
+            pristine_str = pristine_str.replace(f"<replace_me_index_{count}>", updated_str)
+
+        else:
+            # wrap the text to 46 characters and inject <br>'s to break the text up
+            updated_str = wrap_text(updated_str)
+            updated_str = swap_placeholder_tags(updated_str, swap_back=True)
+            updated_str = add_line_endings(updated_str)
+            if str_attrs[count]["prepend_newline"]:
+                updated_str = "\n" + updated_str
+            if str_attrs[count]["append_newline"]:
+                updated_str += "\n"
+
+            pristine_str = pristine_str.replace(f"<replace_me_index_{count}>", updated_str)
+
+        count += 1
+
+    return pristine_str
+
+
+def swap_placeholder_tags(text: str, swap_back=False) -> str:
+    if not swap_back:
+        text = text.replace("<pc_hiryu>", "<&13_aaaaaaa>")
+        text = text.replace("<cs_pchero_hiryu>", "<&13_aaaaaab>")
+        text = text.replace("<cs_pchero_race>", "<&8_aaa>")
+        text = text.replace("<cs_pchero>", "<13_aaaaaac>")
+        text = text.replace("<kyodai_rel1>", "<&7_aa>")
+        text = text.replace("<kyodai_rel2>", "<&7_ab>")
+        text = text.replace("<kyodai_rel3>", "<&7_ac>")
+        text = text.replace("<pc_hometown>", "<&8_aab>")
+        text = text.replace("<pc_race>", "<&8_aac>")
+        text = text.replace("<pc_rel1>", "<&7_ad>")
+        text = text.replace("<pc_rel2>", "<&7_ae>")
+        text = text.replace("<pc_rel3>", "<&7_af")
+        text = text.replace("<kyodai>", "<&13_aaaaaac>")
+        text = text.replace("<pc>", "<&13_aaaaaad>")
+        text = text.replace("<client_pcname>", "<&13_aaaaaae>")
+        text = text.replace("<heart>", "<&2a>")
+        text = text.replace("<diamond>", "<&2b>")
+        text = text.replace("<spade>", "<&2c>")
+        text = text.replace("<clover>", "<&2d>")
+        text = text.replace("<r_triangle>", "<&2e>")
+        text = text.replace("<l_triangle>", "<&2f>")
+        text = text.replace("<half_star>", "<&2g>")
+        text = text.replace("<null_star>", "<&2h>")
+        text = text.replace("<npc>", "<&13_aaaaaaf>")
+        text = text.replace("<pc_syokugyo>", "<&13_aaaaaag>")
+        text = text.replace("<pc_original>", "<&13_aaaaaah>")
+        text = text.replace("<log_pc>", "<&13_aaaaaai>")
+        text = text.replace("<1st_title>", "<&20_aaaaaaaaaaaaaa>")
+        text = text.replace("<2nd_title>", "<&20_aaaaaaaaaaaaab>")
+        text = text.replace("<3rd_title>", "<&20_aaaaaaaaaaaaac>")
+        text = text.replace("<4th_title>", "<&20_aaaaaaaaaaaaad>")
+        text = text.replace("<5th_title>", "<&20_aaaaaaaaaaaaae>")
+        text = text.replace("<6th_title>", "<&20_aaaaaaaaaaaaaf>")
+        text = text.replace("<7th_title>", "<&20_aaaaaaaaaaaaag>")
     else:
-        output = wrap_text(output)
-        output = add_line_endings(output)
-
-    # ensure the beginning of the string does not start with a newline
-    output = output.lstrip()
-
-    # replace the placeholder tags inserted earlier with the proper tags
-    # replace accented characters as the game can't handle them
-    output = re.sub("<pplaceholdc>", "<pc>", output)
-    output = re.sub("<cplaceholds>", "<cs_pchero>", output)
-    output = re.sub("<kplaceholdy>", "<kyodai>", output)
-
-    # "normalize" string by removing non-latin characters from the string
-    output = unicodedata.normalize("NFKD", output).encode("ascii", "ignore").decode()
-
-    return output
+        text = text.replace("<&13_aaaaaaa>", "<pc_hiryu>")
+        text = text.replace("<&13_aaaaaab>", "<cs_pchero_hiryu>")
+        text = text.replace("<&8_aaa>", "<cs_pchero_race>")
+        text = text.replace("<13_aaaaaac>", "<cs_pchero>")
+        text = text.replace("<&7_aa>", "<kyodai_rel1>")
+        text = text.replace("<&7_ab>", "<kyodai_rel2>")
+        text = text.replace("<&7_ac>", "<kyodai_rel3>")
+        text = text.replace("<&8_aab>", "<pc_hometown>")
+        text = text.replace("<&8_aac>", "<pc_race>")
+        text = text.replace("<&7_ad>", "<pc_rel1>")
+        text = text.replace("<&7_ae>", "<pc_rel2>")
+        text = text.replace("<&7_af", "<pc_rel3>")
+        text = text.replace("<&13_aaaaaac>", "<kyodai>")
+        text = text.replace("<&13_aaaaaad>", "<pc>")
+        text = text.replace("<&13_aaaaaae>", "<client_pcname>")
+        text = text.replace("<&2a>", "<heart>")
+        text = text.replace("<&2b>", "<diamond>")
+        text = text.replace("<&2c>", "<spade>")
+        text = text.replace("<&2d>", "<clover>")
+        text = text.replace("<&2e>", "<r_triangle>")
+        text = text.replace("<&2f>", "<l_triangle>")
+        text = text.replace("<&2g>", "<half_star>")
+        text = text.replace("<&2h>", "<null_star>")
+        text = text.replace("<&13_aaaaaaf>", "<npc>")
+        text = text.replace("<&13_aaaaaag>", "<pc_syokugyo>")
+        text = text.replace("<&13_aaaaaah>", "<pc_original>")
+        text = text.replace("<&13_aaaaaai>", "<log_pc>")
+        text = text.replace("<&20_aaaaaaaaaaaaaa>", "<1st_title>")
+        text = text.replace("<&20_aaaaaaaaaaaaab>", "<2nd_title>")
+        text = text.replace("<&20_aaaaaaaaaaaaac>", "<3rd_title>")
+        text = text.replace("<&20_aaaaaaaaaaaaad>", "<4th_title>")
+        text = text.replace("<&20_aaaaaaaaaaaaae>", "<5th_title>")
+        text = text.replace("<&20_aaaaaaaaaaaaaf>", "<6th_title>")
+        text = text.replace("<&20_aaaaaaaaaaaaag>", "<7th_title>")
+    
+    return text
 
 
 def read_file(file: str) -> dict:
