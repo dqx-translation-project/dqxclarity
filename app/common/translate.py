@@ -718,3 +718,26 @@ def convert_into_eng(word: str) -> str:
                     return romaji_name[0:10]
             else:
                 return word
+
+
+def get_player_name() -> tuple:
+    """
+    Queries the player and sibling name from the database.
+    Returns a tuple of (player_name, sibling_name).
+    """
+    db_file = "/".join([get_abs_path(__file__), "../misc_files/clarity_dialog.db"])
+    conn = sqlite3.connect(db_file)
+    cursor = conn.cursor()
+
+    player_query = "SELECT name FROM player WHERE type = 'player'"
+    sibling_query = "SELECT name FROM player WHERE type = 'sibling'"
+
+    results = cursor.execute(player_query)
+    player = results.fetchone()[0]
+
+    results = cursor.execute(sibling_query)
+    sibling = results.fetchone()[0]
+
+    cursor.close()
+
+    return (player, sibling)
