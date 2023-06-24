@@ -1,7 +1,6 @@
 from json import dumps, loads
-import re
+import os
 import sys
-import textwrap
 from common.lib import get_abs_path, setup_logger
 from common.memory import read_string, write_string, unpack_to_int
 from common.translate import (
@@ -42,7 +41,6 @@ class Quest(object):
             Quest.quests = self.__read_file(f"{Quest.misc_files}/eventTextSysQuestaClient.json")
 
         self.write_to_game()
-        Quest.logger.info(f"Wrote to quest address: {self.address}")
 
 
     def __is_ja(self):
@@ -88,16 +86,19 @@ class Quest(object):
         ):
             return db_quest_text
 
-        full_text = re.sub("\n", " ", self.quest_desc)
-        if translation := translator.translate(full_text):
-            formatted_translation = textwrap.fill(translation, width=45, replace_whitespace=False)
+        if translation := translator.sanitize_and_translate(
+            self.quest_desc,
+            wrap_width=50,
+            max_lines=6,
+            add_brs=False
+        ):
             sqlite_write(
                 source_text=self.quest_desc,
                 table="quests",
-                translated_text=formatted_translation,
+                translated_text=translation,
                 language=Translate.region_code
             )
-            return formatted_translation
+            return translation
         return None
 
 
@@ -127,12 +128,11 @@ class Quest(object):
         self.__write_repeat_quest_rewards()
 
 
-def quest_text_shellcode(address: int, debug: bool) -> str:
+def quest_text_shellcode(address: int) -> str:
     """
     Returns shellcode for the translate function hook.
     address: Where text can be modified to be fed to the screen
     """
-    import os
     local_paths = dumps(sys.path).replace("\\", "\\\\")
     log_path = os.path.join(os.path.abspath('.'), 'out.log').replace("\\", "\\\\")
 
