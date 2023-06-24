@@ -119,21 +119,14 @@ class NetworkTextTranslate(object):
         ):
             return story_text
 
-        full_text = re.sub("\n", " ", text)
-        if translation := translator.translate(full_text):
-            formatted_translation = textwrap.fill(
-                translation, width=39,
-                replace_whitespace=False,
-                max_lines=8,
-                placeholder="..."
-            )
+        if translation := translator.sanitize_and_translate(text, wrap_width=39, max_lines=8, add_brs=False):
             sqlite_write(
                 source_text=text,
                 table="story_so_far",
-                translated_text=formatted_translation,
+                translated_text=translation,
                 language=Translate.region_code
             )
-            return formatted_translation
+            return translation
         return None
 
 
