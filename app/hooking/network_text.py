@@ -109,7 +109,11 @@ class NetworkTextTranslate(object):
 
     def __translate_story(self, text: str):
         """
-        tbd.
+        Looks up text in the story_so_far table for story text. If found, returns the text.
+        If not, translates it on the fly and writes it to memory.
+
+        :param text: Text of the current page of the story.
+        :returns: Translated text.
         """
         translator = Translate()
         if story_text := sqlite_read(
