@@ -82,7 +82,7 @@ def check_for_updates():
     if github_request.text != cur_ver:
         logger.warning(f"Clarity is out of date (Current: {str(cur_ver)}, Latest: {str(github_request.text)}).")
     else:
-        logger.info(f"Clarity is up to date! (Current version: {str(cur_ver)})")
+        logger.success(f"Clarity is up to date! (Current version: {str(cur_ver)})")
 
     return
 
@@ -105,7 +105,7 @@ def merge_local_db():
 
     with open(merge_file, "wb") as merge:
         merge.write(r.content)
-        logger.info("Database downloaded.")
+        logger.success("Database downloaded.")
 
     if os.path.exists(merge_file):
         wb = load_workbook(merge_file)
@@ -199,4 +199,4 @@ def merge_local_db():
         conn.commit()
         cursor.close()
 
-        logger.info(f"Records inserted: {str(records_inserted)} :: Records updated: {str(records_updated)}")
+        logger.success(f"Records inserted: {str(records_inserted)} :: Records updated: {str(records_updated)}")

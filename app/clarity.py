@@ -2,6 +2,7 @@ import re
 import sys
 import time
 from loguru import logger
+from common.lib import is_dqx_running
 
 from common.translate import (
     sqlite_read,
@@ -49,7 +50,7 @@ def scan_for_player_names():
             except UnicodeDecodeError:
                 continue
             except Exception as e:
-                logger.debug(f"Failed to write player name at {str(hex(address))} for name {romaji_name}.")
+                logger.debug(f"Failed to write player name at {str(hex(address))}. {e}")
 
 
 def scan_for_comm_names():
@@ -72,7 +73,7 @@ def scan_for_comm_names():
         except UnicodeDecodeError:
             continue
         except Exception as e:
-            logger.debug(f"Failed to write comms name at {str(hex(address))} for name {romaji_name}.")
+            logger.debug(f"Failed to write comms name at {str(hex(address))}. {e}")
 
 
 def scan_for_sibling_names():
@@ -90,14 +91,12 @@ def scan_for_sibling_names():
             romaji_player_name = convert_into_eng(ja_player_name)
             if romaji_sibling_name != ja_sibling_name:
                 write_string(sibling_name_address, "\x04" + romaji_sibling_name)
-                logger.debug(f"Wrote sibling name at {str(hex(address))} for name {romaji_sibling_name}.")
             if romaji_player_name != ja_player_name:
                 write_string(player_name_address, "\x04" + romaji_player_name)
-                logger.debug(f"Wrote player name at {str(hex(address))} for name {romaji_player_name}.")
         except UnicodeDecodeError:
-            logger.debug(f"UnicodeDecodeError: Failed to write sibling name at {str(hex(address))} for name {romaji_sibling_name}.")
-        except Exception as e:
-            logger.debug(f"Failed to write sibling name at {str(hex(address))} for name {romaji_sibling_name}.")
+            pass
+        except Exception:
+            logger.debug(f"Failed to write sibling name at {str(hex(address))}.")
 
 
 def scan_for_concierge_names():
@@ -109,9 +108,10 @@ def scan_for_concierge_names():
                 en_name = convert_into_eng(ja_name)
                 if en_name != ja_name:
                     write_string(name_addr, "\x04" + en_name)
-                    logger.debug(f"Wrote player name at {str(hex(address))} for name {en_name}.")
             except UnicodeDecodeError:
                 pass
+            except Exception as e:
+                logger.debug(f"Failed to write concierge name at {str(hex(address))}. {e}")
 
 
 def scan_for_npc_names():
@@ -145,17 +145,15 @@ def scan_for_npc_names():
                     if value:
                         try:
                             write_string(name_addr, value)
-                            logger.debug(f"Wrote NPC name at {str(hex(address))} for name {value}.")
                         except Exception as e:
-                            logger.debug(f"Failed to write {data} at {str(hex(address))} for name {value}.")
+                            logger.debug(f"Failed to write {data} at {str(hex(address))}. {e}")
             elif data == "AI_NAME":
                 en_name = convert_into_eng(name)
                 if en_name != name:
                     try:
                         write_string(name_addr, "\x04" + en_name)
-                        logger.debug(f"Wrote AI name at {str(hex(address))} for name {en_name}.")
                     except Exception as e:
-                        logger.debug(f"Failed to write {data} at {str(hex(address))} for name {en_name}.")
+                        logger.debug(f"Failed to write {data} at {str(hex(address))}. {e}")
 
 
 def scan_for_menu_ai_names():
@@ -170,9 +168,8 @@ def scan_for_menu_ai_names():
                 if romaji_name != ja_ai_name:
                     try:
                         write_string(ai_name_address, romaji_name)
-                        logger.debug(f"Wrote party member name at {str(hex(address))} for name {romaji_name}.")
                     except Exception as e:
-                        logger.debug(f"Failed to write party member name at {str(hex(address))} for name {romaji_name}.")
+                        logger.debug(f"Failed to write party member name at {str(hex(address))}. {e}")
 
 
 def loop_scan_for_walkthrough():
@@ -211,21 +208,24 @@ def loop_scan_for_walkthrough():
                                         add_brs=False
                                     )
                                     try:
-                                        sqlite_write(text, "walkthrough", translated_text, translator.region_code)
+                                        region = translator.region_code
+                                        if translator.region_code == "en-us":
+                                            region = "en"
+                                        sqlite_write(text, "walkthrough", translated_text, region)
                                         write_string(address + 16, translated_text)
                                         logger.debug("Wrote walkthrough.")
-                                    except Exception as e:
-                                        logger.debug(f"Failed to write walkthrough text at {str(hex(address))}.")
+                                    except Exception:
+                                        logger.exception("Failed to write walkthrough.")
                         else:
                             time.sleep(1)
             else:
                 time.sleep(1)
-    except TypeError:
-        logger.error(f"Cannot find DQXGame.exe process. dqxclarity will exit.")
-        sys.exit(1)
-    except Exception as e:
-        logger.error(f"Exception occurred:\n\n{e}")
-        sys.exit(1)
+    except Exception:
+        if is_dqx_running():
+            logger.exception("A problem with the walkthrough scanner was detected.")
+            sys.exit(1)
+        else:
+            sys.exit(0)
 
 
 def run_scans(player_names=True, npc_names=True, debug=False):
@@ -251,11 +251,12 @@ def run_scans(player_names=True, npc_names=True, debug=False):
                 scan_for_concierge_names()
         except UnicodeDecodeError:
             pass
-        except TypeError:
-            logger.error(f"Cannot find DQXGame.exe process. dqxclarity will exit.")
-            sys.exit(1)
         except KeyboardInterrupt:
             sys.exit(1)
         except Exception as e:
-            logger.error(f"Exception occurred:\n\n{e}")
-            sys.exit(1)
+            if is_dqx_running():
+                logger.exception("An exception occurred. dqxclarity will exit.")
+                sys.exit(1)
+            else:
+                logger.info("DQX has been closed. Exiting.")
+                sys.exit(0)

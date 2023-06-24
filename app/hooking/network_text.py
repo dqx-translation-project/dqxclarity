@@ -1,8 +1,7 @@
 from json import dumps
+from loguru import logger
 import os
-import re
 import sys
-import textwrap
 from common.lib import get_abs_path, setup_logger, merge_jsons
 from common.memory import read_string, write_string, unpack_to_int, read_bytes
 from common.translate import (
@@ -16,8 +15,7 @@ from common.translate import (
 class NetworkTextTranslate(object):
 
     misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
-    logger = setup_logger("out", "/".join([get_abs_path(__file__), "../out.log"]))
-    custom_text_logger = setup_logger("text_logger", "/".join([get_abs_path(__file__), "../custom_text.log"]))
+    custom_text_logger = setup_logger("text_logger", "/".join([get_abs_path(__file__), "../logs/custom_text.log"]))
     npc_names = None
     m00_text = None
 
@@ -75,6 +73,7 @@ class NetworkTextTranslate(object):
                     story_desc = read_string(self.text_address)
                     translated = self.__translate_story(story_desc)
                     if translated:
+                        logger.debug("Wrote story so far.")
                         write_string(self.text_address, translated)
         else:
             NetworkTextTranslate.custom_text_logger.info(f"--\n{category} :: {read_string(self.text_address)}")
@@ -134,10 +133,10 @@ class NetworkTextTranslate(object):
         return None
 
 
-def network_text_shellcode(ecx_address: int, esp_address, debug: bool) -> str:
+def network_text_shellcode(ecx_address: int, esp_address) -> str:
 
     local_paths = dumps(sys.path).replace("\\", "\\\\")
-    log_path = os.path.join(os.path.abspath('.'), 'out.log').replace("\\", "\\\\")
+    log_path = os.path.join(os.path.abspath('.'), 'logs\\console.log').replace("\\", "\\\\")
 
     shellcode = rf"""
 try:
@@ -150,5 +149,4 @@ except Exception as e:
     with open("{log_path}", "a+") as f:
         f.write(str(traceback.format_exc()))
     """
-
     return str(shellcode)

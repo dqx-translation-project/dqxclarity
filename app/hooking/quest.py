@@ -1,7 +1,7 @@
 from json import dumps, loads
 import os
 import sys
-from common.lib import get_abs_path, setup_logger
+from common.lib import get_abs_path
 from common.memory import read_string, write_string, unpack_to_int
 from common.translate import (
     detect_lang,
@@ -14,7 +14,6 @@ from common.translate import (
 class Quest(object):
 
     misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
-    logger = setup_logger("out", "/".join([get_abs_path(__file__), "../out.log"]))
     quests = None
 
     def __init__(self, address, debug=False):
@@ -134,7 +133,7 @@ def quest_text_shellcode(address: int) -> str:
     address: Where text can be modified to be fed to the screen
     """
     local_paths = dumps(sys.path).replace("\\", "\\\\")
-    log_path = os.path.join(os.path.abspath('.'), 'out.log').replace("\\", "\\\\")
+    log_path = os.path.join(os.path.abspath('.'), 'logs\\console.log').replace("\\", "\\\\")
 
     # Overwriting the process's sys.path with the one outside of the process
     # is required to run our imports and function code. It's also necessary to
@@ -142,12 +141,13 @@ def quest_text_shellcode(address: int) -> str:
     shellcode = f"""
 try:
     import sys
+    import traceback
     sys.path = {local_paths}
     from hooking.quest import Quest
     Quest({address})
 except Exception as e:
     with open("{log_path}", "a+") as f:
-        f.write(str(e))
+        f.write(str(traceback.format_exc()))
     """
 
     return str(shellcode)

@@ -42,7 +42,7 @@ class GetPlayer(object):
 def player_name_shellcode(eax_address: int) -> str:
 
     local_paths = dumps(sys.path).replace("\\", "\\\\")
-    log_path = os.path.join(os.path.abspath('.'), 'out.log').replace("\\", "\\\\")
+    log_path = os.path.join(os.path.abspath('.'), 'logs\\console.log').replace("\\", "\\\\")
 
     shellcode = rf"""
 try:

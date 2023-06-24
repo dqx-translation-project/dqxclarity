@@ -1,11 +1,19 @@
 from multiprocessing import Process
-import threading
 import sys
+import threading
 import time
-import click
 from loguru import logger
+import click
+from common.errors import MemoryReadError
+from common.lib import setup_logging, is_dqx_running
 from common.update import check_for_updates, download_custom_files
 from dqxcrypt.dqxcrypt import start_logger
+
+
+debug = False
+if "v" in sys.argv[1]:
+    debug = True
+setup_logging(debug=debug)
 
 # fmt: off
 @click.command()
@@ -28,14 +36,6 @@ def blast_off(
     community_logging=False,
     debug=False,
 ):
-    logger.remove()
-    if debug:
-        level = "DEBUG"
-        logger.add(sink="console.log", level=level)
-    else:
-        level = "INFO"
-        logger.add(sink="console.log", level=level)
-    logger.log(_Logger__level=level, _Logger__message="Clarity log started~!")
 
     logger.info("Getting started. DO NOT TOUCH THE GAME OR REMOVE YOUR MEMORY CARD.")
     if not disable_update_check:
@@ -61,15 +61,18 @@ def blast_off(
                 start_process(name="Walkthrough scanner", target=loop_scan_for_walkthrough, args=())
             if community_logging:
                 logger.info("Thanks for enabling logging!")
-                threading.Thread(name="Community logging", target=start_logger, args=()).start()
-
+                threading.Thread(name="Community logging", target=start_logger, args=(), daemon=True).start()
             start_process(name="Flavortown scanner", target=run_scans, args=(player_names, npc_names, debug))
             # fmt: on
 
-            logger.info("Done! Keep this window open (minimize it) and have fun on your adventure!")
-    except Exception as e:
-        logger.error(f"Can't find DQX process. Exiting. Error: {e}")
-        sys.exit()
+            logger.success("Done! Keep this window open (minimize it) and have fun on your adventure!")
+    except Exception:
+        if is_dqx_running():
+            logger.exception(f"An exception occurred. dqxclarity will exit.")
+            sys.exit(1)
+        else:
+            logger.info("DQX has been closed. Exiting.")
+            sys.exit(0)
 
 
 if __name__ == "__main__":

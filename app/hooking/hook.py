@@ -1,5 +1,4 @@
 import struct
-import sys
 import traceback
 from loguru import logger
 
@@ -38,13 +37,12 @@ def inject_python_dll():
         PYM_PROCESS.inject_python_interpreter()
         if PYM_PROCESS._python_injected:
             if PYM_PROCESS.py_run_simple_string:
-                logger.info(f"Python injected.")
+                logger.success(f"Python injected.")
                 return PYM_PROCESS.py_run_simple_string
         logger.error(f"Python dll failed to inject. Details:\n{PYM_PROCESS.__dict__}")
         return False
-    except Exception as e:
-        traceback.print_exc()
-        logger.error(f"Python dll failed to inject. Error: {e}\nDetails:\n{PYM_PROCESS.__dict__}")
+    except Exception:
+        logger.error(f"Python dll failed to inject. Error: \n{str(traceback.print_exc())}\nDetails:\n{PYM_PROCESS.__dict__}")
         return False
 
 
@@ -86,7 +84,7 @@ def quest_text_detour(simple_str_addr: int):
     return hook_obj
 
 
-def network_text_detour(simple_str_addr: int, debug=False):
+def network_text_detour(simple_str_addr: int):
     """
     tbd.
     """
@@ -95,11 +93,10 @@ def network_text_detour(simple_str_addr: int, debug=False):
         signature=network_text_trigger,
         num_bytes_to_steal=5,
         simple_str_addr=simple_str_addr,
-        debug=debug
     )
     ecx = hook_obj.address_dict["attrs"]["ecx"]
     esp = hook_obj.address_dict["attrs"]["esp"]
-    shellcode = network_text_shellcode(ecx, esp, debug=debug)
+    shellcode = network_text_shellcode(ecx, esp)
     shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
     write_string(address=shellcode_addr, text=shellcode)
 
@@ -159,7 +156,7 @@ def activate_hooks(player_names: bool, debug=False):
     hooks.append(translate_detour(simple_str_addr=simple_str_addr))
     hooks.append(quest_text_detour(simple_str_addr=simple_str_addr))
     hooks.append(player_name_detour(simple_str_addr=simple_str_addr))
-    hooks.append(network_text_detour(simple_str_addr=simple_str_addr, debug=debug))
+    hooks.append(network_text_detour(simple_str_addr=simple_str_addr))
 
     # construct our asm to detach hooks
     unhook_bytecode = b""

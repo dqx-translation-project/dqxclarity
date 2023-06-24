@@ -3,6 +3,7 @@ import sys
 import time
 from loguru import logger
 import pymem
+from common.lib import is_dqx_running
 from common.memory import read_bytes, write_bytes
 from clarity import scan_for_sibling_names, scan_for_comm_names
 
@@ -54,7 +55,8 @@ def load_hooks(hook_list: list, state_addr: int, player_names: bool, debug: bool
                 hook.disable()
             sys.exit(1)
         except Exception as e:
-            logger.error(f"Exception occurred. Unhooking.\n{e}")
-            for hook in hook_list:
-                hook.disable()
-            sys.exit(1)
+            if is_dqx_running():
+                logger.exception("An exception occurred. dqxclarity will exit.")
+                sys.exit(1)
+            else:
+                sys.exit(0)

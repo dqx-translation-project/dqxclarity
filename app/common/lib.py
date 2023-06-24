@@ -1,7 +1,11 @@
 import logging
+from loguru import logger
 import json
 import os
 import shutil
+import subprocess
+import sys
+import time
 from pathlib import Path
 
 
@@ -31,6 +35,26 @@ def delete_file(file):
         Path(file).unlink()
     except Exception:
         pass
+
+
+def setup_logging(debug=False):
+    """
+    Configure default logging to be used across this program.
+    """
+    log_path = "/".join([get_abs_path(__file__), "../logs"])
+    if not os.path.exists(log_path):
+        os.makedirs(log_path)
+
+    console = {"sink": sys.stderr, "level": "INFO"}
+    file = {"sink": f"{log_path}/console.log", "level": "INFO"}
+
+    if debug:
+        console["level"] = "DEBUG"
+        file["level"] = "DEBUG"
+
+    logger.configure(handlers=[console, file])
+
+    return
 
 
 def setup_logger(name, log_file, level=logging.INFO):
@@ -73,3 +97,12 @@ def merge_jsons(files: list):
 def get_abs_path(file: str):
     abs_path = os.path.abspath(os.path.join(os.path.dirname(file)))
     return abs_path.replace("\\", "/")
+
+
+def is_dqx_running():
+    #time.sleep(1)  # give the game a chance to close before we check.
+    # https://stackoverflow.com/a/29275361
+    call = 'TASKLIST', '/FI', 'imagename eq %s' % "DQXGame.exe"
+    output = subprocess.check_output(call).decode()
+    last_line = output.strip().split('\r\n')[-1]
+    return last_line.lower().startswith("DQXGame.exe".lower())

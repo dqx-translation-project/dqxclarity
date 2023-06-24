@@ -59,7 +59,7 @@ def translate_shellcode(esi_address: int) -> str:
     address: Where text can be modified to be fed to the screen
     """
     local_paths = dumps(sys.path).replace("\\", "\\\\")
-    log_path = os.path.join(os.path.abspath('.'), 'out.log').replace("\\", "\\\\")
+    log_path = os.path.join(os.path.abspath('.'), 'logs\\console.log').replace("\\", "\\\\")
 
     # Overwriting the process's sys.path with the one outside of the process
     # is required to run our imports and function code. It's also necessary to
@@ -67,12 +67,13 @@ def translate_shellcode(esi_address: int) -> str:
     shellcode = f"""
 try:
     import sys
+    import traceback
     sys.path = {local_paths}
     from hooking.dialog import Dialog
     Dialog({esi_address})
 except Exception as e:
     with open("{log_path}", "a+") as f:
-        f.write(str(e))
+        f.write(str(traceback.format_exc()))
     """
 
     return str(shellcode)
