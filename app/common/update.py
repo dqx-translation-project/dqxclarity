@@ -144,7 +144,7 @@ def merge_local_db():
                     cursor.execute(updateQuery)
                     records_updated += 1
             except sqlite3.Error as e:
-                raise Exception(f"Unable to write data to table: {e}")
+                logger.exception(f"Unable to write data to table: {e}")
 
         # Walkthrough insertion
         for rowNum in range(2, ws_walkthrough.max_row + 1):
@@ -166,7 +166,7 @@ def merge_local_db():
                     cursor.execute(updateQuery)
                     records_updated += 1
             except sqlite3.Error as e:
-                raise Exception(f"Unable to write data to table: {e}")
+                logger.exception(f"Unable to write data to table: {e}")
 
         # Quests insertion
         for rowNum in range(2, ws_quests.max_row + 1):
@@ -194,7 +194,7 @@ def merge_local_db():
                     cursor.execute(updateQuery)
                     records_updated += 1
             except sqlite3.Error as e:
-                raise Exception(f"Unable to write data to table: {e}")
+                logger.exception(f"Unable to write data to table: {e}")
 
         conn.commit()
         cursor.close()

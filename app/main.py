@@ -4,7 +4,6 @@ import threading
 import time
 from loguru import logger
 import click
-from common.errors import MemoryReadError
 from common.lib import setup_logging, is_dqx_running
 from common.update import check_for_updates, download_custom_files
 from dqxcrypt.dqxcrypt import start_logger

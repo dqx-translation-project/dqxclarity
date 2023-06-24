@@ -5,7 +5,6 @@ import os
 import shutil
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 
@@ -100,7 +99,6 @@ def get_abs_path(file: str):
 
 
 def is_dqx_running():
-    #time.sleep(1)  # give the game a chance to close before we check.
     # https://stackoverflow.com/a/29275361
     call = 'TASKLIST', '/FI', 'imagename eq %s' % "DQXGame.exe"
     output = subprocess.check_output(call).decode()
