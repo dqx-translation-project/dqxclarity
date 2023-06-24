@@ -455,7 +455,6 @@ def load_user_config():
         "googletranslatekey": "",
         "regioncode": "en",
     }
-    base_config["behavior"] = {"enabledialoglogging": "False"}
 
     def create_base_config():
         with open(filename, "w+") as configfile:
@@ -523,37 +522,29 @@ def determine_translation_service():
     to make translation calls.
     """
     config = load_user_config()
-    enabledeepltranslate = config["translation"]["enabledeepltranslate"]
+    enabledeepltranslate = eval(config["translation"]["enabledeepltranslate"])
     deepltranslatekey = config["translation"]["deepltranslatekey"]
-    enablegoogletranslate = config["translation"]["enablegoogletranslate"]
+    enablegoogletranslate = eval(config["translation"]["enablegoogletranslate"])
     googletranslatekey = config["translation"]["googletranslatekey"]
     regioncode = config["translation"]["regioncode"]
-    enabledialoglogging = config["behavior"]["enabledialoglogging"]
 
     reiterate = "Either open the user_settings.ini file in Notepad or use the API settings button in the DQXClarity launcher to set it up."
 
-    if enabledeepltranslate == "False" and enablegoogletranslate == "False":
+    if not enabledeepltranslate and not enablegoogletranslate:
         warning_message(
             title="[dqxclarity] No translation service enabled",
             message=f"You need to enable a translation service. {reiterate}\n\nCurrent values:\n\nenabledeepltranslate: {enabledeepltranslate}\nenablegoogletranslate: {enablegoogletranslate}",
             exit_prog=True,
         )
 
-    if enabledeepltranslate == "True" and enablegoogletranslate == "True":
+    if enabledeepltranslate and enablegoogletranslate:
         warning_message(
-            title="[dqxclarity] Too many translation serviced enabled",
+            title="[dqxclarity] Too many translation services enabled",
             message=f"Only enable one translation service. {reiterate}\n\nCurrent values:\n\nenabledeepltranslate: {enabledeepltranslate}\nenablegoogletranslate: {enablegoogletranslate}",
             exit_prog=True,
         )
 
-    if enabledeepltranslate != "True" and enabledeepltranslate != "False":
-        warning_message(
-            title="[dqxclarity] Misconfigured boolean",
-            message=f"Invalid value detected for enabledeepltranslate. {reiterate}\n\nValid values are: True, False\n\nCurrent values:\n\nenabledeepltranslate: {enabledeepltranslate}",
-            exit_prog=True,
-        )
-
-    if enablegoogletranslate != "True" and enablegoogletranslate != "False":
+    if not enablegoogletranslate and not enablegoogletranslate:
         warning_message(
             title="[dqxclarity] Misconfigured boolean",
             message=f"Invalid value detected for enablegoogletranslate. {reiterate}\n\nValid values are: True, False\n\nCurrent values:\n\nenablegoogletranslate: {enablegoogletranslate}",
@@ -567,21 +558,14 @@ def determine_translation_service():
             exit_prog=True,
         )
 
-    if enabledialoglogging != "True" and enabledialoglogging != "False":
-        warning_message(
-            title="[dqxclarity] Misconfigured boolean",
-            message=f"Invalid value detected for enabledialoglogging. {reiterate}\n\nValid values are: True, False\n\nCurrent values:\n\enabledialoglogging: {enabledialoglogging}",
-            exit_prog=True,
-        )
-
-    if enabledeepltranslate == "True" and deepltranslatekey == "":
+    if enabledeepltranslate and deepltranslatekey == "":
         warning_message(
             title="[dqxclarity] No DeepL key specified",
             message=f"DeepL is enabled, but no key was provided. {reiterate}",
             exit_prog=True,
         )
 
-    if enablegoogletranslate == "True" and googletranslatekey == "":
+    if enablegoogletranslate and googletranslatekey == "":
         warning_message(
             title="[dqxclarity] No Google API key specified",
             message=f"Google API is enabled, but no key was provided. {reiterate}",
@@ -589,15 +573,14 @@ def determine_translation_service():
         )
 
     dic = {}
-    if enabledeepltranslate == "True":
+    if enabledeepltranslate:
         dic["TranslateService"] = "deepl"
         dic["TranslateKey"] = deepltranslatekey
-    elif enablegoogletranslate == "True":
+    elif enablegoogletranslate:
         dic["TranslateService"] = "google"
         dic["TranslateKey"] = googletranslatekey
 
     dic["RegionCode"] = regioncode
-    dic["EnableDialogLogging"] = enabledialoglogging
 
     return dic
 
