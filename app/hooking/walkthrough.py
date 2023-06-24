@@ -36,7 +36,6 @@ try:
         write_bytes,
         read_string)
     from common.translate import (
-        sanitized_dialog_translate,
         sqlite_read,
         sqlite_write,
         detect_lang,
