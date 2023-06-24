@@ -2,7 +2,6 @@ import re
 import sys
 import time
 from loguru import logger
-import pymem
 
 from common.translate import (
     sqlite_read,
