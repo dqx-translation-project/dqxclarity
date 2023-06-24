@@ -209,6 +209,9 @@ class Translate():
         :param max_lines: The maximum amount of lines to return. Extra lines are truncated with "..."
         :param add_brs: Whether to inject "<br>" every three lines to break up text. Used for dialog mainly.
         """
+        if found := self.__search_excel_workbook(text):
+            return found
+
         # manage our own line endings later
         output = text.replace("<br>", "　")
 
@@ -351,6 +354,30 @@ class Translate():
             count += 1
 
         return pristine_str
+
+
+    def __search_excel_workbook(self, text: str):
+        """
+        Searches the merge.xlsx workbook for a string in the JP Text column.
+        If there's a match and the string "BAD STRING" is found in the Notes
+        column, this returns the contents in the "Fixed English Text" column.
+        This fixes instances of text where machine translation completely
+        screwed up the text and caused the game to have issues.
+
+        :param text: String to search
+        :returns: Returns either the English text or None if no match was found.
+        """
+        file = "/".join([get_abs_path(__file__), "../misc_files/merge.xlsx"])
+
+        if os.path.exists(file):
+            wb = load_workbook(file)
+            ws_dialogue = wb["Dialogue"]
+            for rowNum in range(2, ws_dialogue.max_row + 1):
+                jp_string = str(ws_dialogue.cell(row=rowNum, column=1).value)
+                bad_string_col = str(ws_dialogue.cell(row=rowNum, column=4).value)
+                if (jp_string in text) and ("BAD STRING" in bad_string_col):
+                    return str(ws_dialogue.cell(row=rowNum, column=3).value)
+        return None
 
 
 def sqlite_read(text_to_query, language, table):
@@ -651,21 +678,6 @@ def clean_up_and_return_items(text: str) -> str:
             else:
                 final_string += item + "\n"
     return final_string.rstrip()
-
-
-def deal_with_icky_strings(text) -> str:
-    fixed_string = ""
-    file = "/".join([get_abs_path(__file__), "../misc_files/merge.xlsx"])
-    if os.path.exists(file):
-        wb = load_workbook(file)
-        ws_dialogue = wb["Dialogue"]
-        for rowNum in range(2, ws_dialogue.max_row + 1):
-            jp_string = str(ws_dialogue.cell(row=rowNum, column=1).value)
-            bad_string_col = str(ws_dialogue.cell(row=rowNum, column=4).value)
-            if (jp_string in text) and ("BAD STRING" in bad_string_col):
-                fixed_string = str(ws_dialogue.cell(row=rowNum, column=3).value)
-
-    return fixed_string
 
 
 def detect_lang(text: str) -> bool:
