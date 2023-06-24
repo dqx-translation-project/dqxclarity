@@ -30,9 +30,12 @@ def blast_off(
 ):
     logger.remove()
     if debug:
-        logger.add(sys.stderr, level="DEBUG")
+        level = "DEBUG"
+        logger.add(sink="console.log", level=level)
     else:
-        logger.add(sys.stderr, level="INFO")
+        level = "INFO"
+        logger.add(sink="console.log", level=level)
+    logger.log(_Logger__level=level, _Logger__message="Clarity log started~!")
 
     logger.info("Getting started. DO NOT TOUCH THE GAME OR REMOVE YOUR MEMORY CARD.")
     if not disable_update_check:
