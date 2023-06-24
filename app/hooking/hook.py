@@ -46,7 +46,7 @@ def inject_python_dll():
         return False
 
 
-def translate_detour(simple_str_addr: int, debug=False):
+def translate_detour(simple_str_addr: int):
     """
     Hooks the dialog window to translate text and write English instead.
     """
@@ -55,21 +55,17 @@ def translate_detour(simple_str_addr: int, debug=False):
         signature=dialog_trigger,
         num_bytes_to_steal=10,
         simple_str_addr=simple_str_addr,
-        debug=debug,
     )
 
     esi = hook_obj.address_dict["attrs"]["esi"]
-    shellcode = translate_shellcode(
-        esi_address=esi,
-        debug=debug,
-    )
+    shellcode = translate_shellcode(esi_address=esi)
     shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
     write_string(address=shellcode_addr, text=shellcode)
 
     return hook_obj
 
 
-def quest_text_detour(simple_str_addr: int, debug=False):
+def quest_text_detour(simple_str_addr: int):
     """
     Hook the quest dialog window and translate to english.
     """
@@ -78,11 +74,10 @@ def quest_text_detour(simple_str_addr: int, debug=False):
         signature=quest_text_trigger,
         num_bytes_to_steal=6,
         simple_str_addr=simple_str_addr,
-        debug=debug,
     )
 
     eax = hook_obj.address_dict["attrs"]["eax"]
-    shellcode = quest_text_shellcode(address=eax, debug=debug)
+    shellcode = quest_text_shellcode(address=eax)
     shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
     write_string(address=shellcode_addr, text=shellcode)
 
@@ -109,7 +104,7 @@ def network_text_detour(simple_str_addr: int, debug=False):
     return hook_obj
 
 
-def accept_quest_detour(simple_str_addr: int, debug=False):
+def accept_quest_detour(simple_str_addr: int):
     """
     Detours function when you accept a quest and the quest text pops up on your screen.
     """
@@ -122,7 +117,7 @@ def accept_quest_detour(simple_str_addr: int, debug=False):
     )
 
     esi = hook_obj.address_dict["attrs"]["esi"]
-    shellcode = quest_text_shellcode(address=esi, debug=debug)
+    shellcode = quest_text_shellcode(address=esi)
     shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
     write_string(address=shellcode_addr, text=shellcode)
 
@@ -145,8 +140,8 @@ def activate_hooks(player_names: bool, debug=False):
 
     # activates all hooks. add any new hooks to this list
     hooks = []
-    hooks.append(translate_detour(simple_str_addr=simple_str_addr, debug=debug))
-    hooks.append(quest_text_detour(simple_str_addr=simple_str_addr, debug=debug))
+    hooks.append(translate_detour(simple_str_addr=simple_str_addr))
+    hooks.append(quest_text_detour(simple_str_addr=simple_str_addr))
     hooks.append(network_text_detour(simple_str_addr=simple_str_addr, debug=debug))
 
     # construct our asm to detach hooks
