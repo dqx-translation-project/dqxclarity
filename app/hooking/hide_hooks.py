@@ -16,12 +16,6 @@ def load_hooks(hook_list: list, state_addr: int, player_names: bool, debug: bool
     :param debug: Enable log debugging
     :returns: Nothing. This is an infinite loop that runs as a process
     """
-    logger.remove()
-    if debug:
-        logger.add(sys.stderr, level="DEBUG")
-    else:
-        logger.add(sys.stderr, level="INFO")
-
     # initially enable hooks
     for hook in hook_list:
         hook.enable()

@@ -28,6 +28,12 @@ def blast_off(
     community_logging=False,
     debug=False,
 ):
+    logger.remove()
+    if debug:
+        logger.add(sys.stderr, level="DEBUG")
+    else:
+        logger.add(sys.stderr, level="INFO")
+
     logger.info("Getting started. DO NOT TOUCH THE GAME OR REMOVE YOUR MEMORY CARD.")
     if not disable_update_check:
         check_for_updates()

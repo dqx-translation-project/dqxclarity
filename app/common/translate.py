@@ -544,13 +544,6 @@ def determine_translation_service():
             exit_prog=True,
         )
 
-    if not enablegoogletranslate and not enablegoogletranslate:
-        warning_message(
-            title="[dqxclarity] Misconfigured boolean",
-            message=f"Invalid value detected for enablegoogletranslate. {reiterate}\n\nValid values are: True, False\n\nCurrent values:\n\nenablegoogletranslate: {enablegoogletranslate}",
-            exit_prog=True,
-        )
-
     if deepltranslatekey == "" and googletranslatekey == "":
         warning_message(
             title="[dqxclarity] No API key configured",

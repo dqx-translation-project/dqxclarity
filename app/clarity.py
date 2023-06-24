@@ -236,11 +236,6 @@ def run_scans(player_names=True, npc_names=True, debug=False):
     :param npc_names: Run NPC name scans.
     :param communication_window: Run adhoc scans.
     """
-    logger.remove()
-    if debug:
-        logger.add(sys.stderr, level="DEBUG")
-    else:
-        logger.add(sys.stderr, level="INFO")
     if player_names:
         logger.info("Will watch and update player names.")
     if npc_names:

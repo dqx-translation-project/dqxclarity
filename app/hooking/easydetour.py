@@ -101,11 +101,6 @@ class EasyDetour:
         # write our new function to memory
         write_bytes(mov_insts_addr, bytecode)
 
-        logger.remove()
-        if self.debug:
-            logger.add(sys.stderr, level="DEBUG")
-        else:
-            logger.add(sys.stderr, level="INFO")
         logger.debug(
             f"{self.hook_name} :: hook ({hex(address_dict['attrs']['begin'])}) :: shellcode ({hex(address_dict['attrs']['shellcode'])}) :: detour ({hex(address_dict['attrs']['game_func'])})"
         )
