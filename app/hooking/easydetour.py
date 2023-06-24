@@ -14,7 +14,7 @@ class EasyDetour:
     :returns: Initiated EasyDetour object. Use enable() to turn on your detour and disable() to turn off
     """
 
-    def __init__(self, hook_name: str, signature: bytes, num_bytes_to_steal: int, simple_str_addr: int, debug: bool):
+    def __init__(self, hook_name: str, signature: bytes, num_bytes_to_steal: int, simple_str_addr: int, debug=False):
         self.hook_name = hook_name
         self.signature = signature
         self.num_bytes_to_steal = num_bytes_to_steal
