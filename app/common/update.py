@@ -105,7 +105,7 @@ def merge_local_db():
 
     with open(merge_file, "wb") as merge:
         merge.write(r.content)
-        logger.info("Local database file downloaded.")
+        logger.info("Database downloaded.")
 
     if os.path.exists(merge_file):
         wb = load_workbook(merge_file)
@@ -113,37 +113,28 @@ def merge_local_db():
         ws_walkthrough = wb["Walkthrough"]
         ws_quests = wb["Quests"]
 
-        ###Dialogue insertion
+        conn = sqlite3.connect(db_file)
+        cursor = conn.cursor()
+
+        # Dialogue insertion
         for rowNum in range(2, ws_dialogue.max_row + 1):
             source_text = ws_dialogue.cell(row=rowNum, column=1).value
             en_text = ws_dialogue.cell(row=rowNum, column=3).value
 
             escaped_text = en_text.replace("'", "''")
-            table = "dialog"
             npc_name = ""
-            language = "en"
-            # bad_string = "魔物の軍団は　撤退していった。"
-            bad_string = False
             bad_string_col = str(ws_dialogue.cell(row=rowNum, column=4).value)
-            if "BAD STRING" in bad_string_col:
-                bad_string = True
 
             try:
-                conn = sqlite3.connect(db_file)
-                if bad_string:
+                if "BAD STRING" in bad_string_col:
                     selectQuery = f"SELECT ja FROM dialog WHERE ja LIKE '%{source_text}%'"
+                    updateQuery = f"UPDATE dialog SET en = '{escaped_text}' WHERE ja LIKE '%{source_text}%'"
+                    insertQuery = ""
                 else:
                     selectQuery = f"SELECT ja FROM dialog WHERE ja = '{source_text}'"
-                if bad_string:
-                    updateQuery = f"UPDATE dialog SET en = '{escaped_text}' WHERE ja LIKE '%{source_text}%'"
-                else:
                     updateQuery = f"UPDATE dialog SET en = '{escaped_text}' WHERE ja = '{source_text}'"
-                if not bad_string:
                     insertQuery = f"INSERT INTO dialog (ja, npc_name, en) VALUES ('{source_text}', '{npc_name}', '{escaped_text}')"
-                else:
-                    insertQuery = ""
 
-                cursor = conn.cursor()
                 results = cursor.execute(selectQuery)
 
                 if results.fetchone() is None and insertQuery != "":
@@ -152,30 +143,20 @@ def merge_local_db():
                 else:
                     cursor.execute(updateQuery)
                     records_updated += 1
-
-                conn.commit()
-                cursor.close()
             except sqlite3.Error as e:
                 raise Exception(f"Unable to write data to table: {e}")
-            finally:
-                if conn:
-                    conn.close()
 
         # Walkthrough insertion
         for rowNum in range(2, ws_walkthrough.max_row + 1):
             source_text = ws_walkthrough.cell(row=rowNum, column=1).value
             en_text = ws_walkthrough.cell(row=rowNum, column=3).value
-
             escaped_text = en_text.replace("'", "''")
 
             try:
-                conn = sqlite3.connect(db_file)
                 selectQuery = f"SELECT ja FROM walkthrough WHERE ja = '{source_text}'"
-
                 updateQuery = f"UPDATE walkthrough SET en = '{escaped_text}' WHERE ja = '{source_text}'"
                 insertQuery = f"INSERT INTO walkthrough (ja, en) VALUES ('{source_text}', '{escaped_text}')"
 
-                cursor = conn.cursor()
                 results = cursor.execute(selectQuery)
 
                 if results.fetchone() is None:
@@ -184,42 +165,26 @@ def merge_local_db():
                 else:
                     cursor.execute(updateQuery)
                     records_updated += 1
-
-                conn.commit()
-                cursor.close()
             except sqlite3.Error as e:
                 raise Exception(f"Unable to write data to table: {e}")
-            finally:
-                if conn:
-                    conn.close()
-                    
+
         # Quests insertion
         for rowNum in range(2, ws_quests.max_row + 1):
             source_text = ws_quests.cell(row=rowNum, column=1).value
             en_text = ws_quests.cell(row=rowNum, column=3).value
-
             escaped_text = en_text.replace("'", "''")
-            
-            bad_string = False
             bad_string_col = str(ws_quests.cell(row=rowNum, column=4).value)
-            if "BAD STRING" in bad_string_col:
-                bad_string = True
 
             try:
-                conn = sqlite3.connect(db_file)
-                if bad_string:
+                if "BAD STRING" in bad_string_col:
                     selectQuery = f"SELECT ja FROM quests WHERE ja LIKE '%{source_text}%'"
                     updateQuery = f"UPDATE quests SET en = '{escaped_text}' WHERE ja LIKE '%{source_text}%'"
+                    insertQuery = ""
                 else:
                     selectQuery = f"SELECT ja FROM quests WHERE ja = '{source_text}'"
                     updateQuery = f"UPDATE quests SET en = '{escaped_text}' WHERE ja = '{source_text}'"
-                    
-                if not bad_string:
                     insertQuery = f"INSERT INTO quests (ja, en) VALUES ('{source_text}', '{escaped_text}')"
-                else:
-                    insertQuery = ""
 
-                cursor = conn.cursor()
                 results = cursor.execute(selectQuery)
 
                 if results.fetchone() is None:
@@ -228,14 +193,10 @@ def merge_local_db():
                 else:
                     cursor.execute(updateQuery)
                     records_updated += 1
-
-                conn.commit()
-                cursor.close()
             except sqlite3.Error as e:
                 raise Exception(f"Unable to write data to table: {e}")
-            finally:
-                if conn:
-                    conn.close()
 
-        logger.info(str(records_inserted) + " records were inserted into local db.")
-        logger.info(str(records_updated) + " records in local db were updated.")
+        conn.commit()
+        cursor.close()
+
+        logger.info(f"Records inserted: {str(records_inserted)} :: Records updated: {str(records_updated)}")
