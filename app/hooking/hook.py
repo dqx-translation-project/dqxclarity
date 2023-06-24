@@ -8,7 +8,8 @@ from common.signatures import (
     quest_text_trigger,
     integrity_check,
     accept_quest_trigger,
-    network_text_trigger
+    network_text_trigger,
+    player_sibling_name_trigger
 )
 
 from common.memory import (
@@ -24,6 +25,7 @@ from common.memory import (
 from hooking.dialog import translate_shellcode
 from hooking.quest import quest_text_shellcode
 from hooking.network_text import network_text_shellcode
+from hooking.player import player_name_shellcode
 from hooking.hide_hooks import load_hooks
 from hooking.easydetour import EasyDetour
 
@@ -124,15 +126,29 @@ def accept_quest_detour(simple_str_addr: int):
     return hook_obj
 
 
+def player_name_detour(simple_str_addr: int):
+    """
+    Detours function when you accept a quest and the quest text pops up on your screen.
+    """
+    hook_obj = EasyDetour(
+        hook_name="player_name",
+        signature=player_sibling_name_trigger,
+        num_bytes_to_steal=6,
+        simple_str_addr=simple_str_addr,
+    )
+
+    eax = hook_obj.address_dict["attrs"]["eax"]
+    shellcode = player_name_shellcode(eax_address=eax)
+    shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
+    write_string(address=shellcode_addr, text=shellcode)
+
+    return hook_obj
+
+
 def activate_hooks(player_names: bool, debug=False):
     """
     Activates all hooks and kicks off hook manager.
     """
-    logger.remove()
-    if debug:
-        logger.add(sys.stderr, level="DEBUG")
-    else:
-        logger.add(sys.stderr, level="INFO")
     simple_str_addr = inject_python_dll()
     if not simple_str_addr:
         logger.error("Since Python injection failed, we will not try to hook. Exiting.")
@@ -142,6 +158,7 @@ def activate_hooks(player_names: bool, debug=False):
     hooks = []
     hooks.append(translate_detour(simple_str_addr=simple_str_addr))
     hooks.append(quest_text_detour(simple_str_addr=simple_str_addr))
+    hooks.append(player_name_detour(simple_str_addr=simple_str_addr))
     hooks.append(network_text_detour(simple_str_addr=simple_str_addr, debug=debug))
 
     # construct our asm to detach hooks
