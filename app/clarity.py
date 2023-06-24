@@ -8,7 +8,7 @@ from common.translate import (
     sqlite_write,
     detect_lang,
     determine_translation_service,
-    sanitized_dialog_translate,
+    Translate,
     convert_into_eng,
 )
 
@@ -183,6 +183,8 @@ def loop_scan_for_walkthrough():
     api_details = determine_translation_service()
     logger.info("Will watch for walkthrough text.")
 
+    translator = Translate()
+
     try:
         pattern = re.compile(walkthrough_pattern[0:55])  # 55 sliced characters == 16 bytes
         while True:
@@ -203,13 +205,14 @@ def loop_scan_for_walkthrough():
                                 if result:
                                     write_string(address + 16, result)
                                 else:
-                                    translated_text = sanitized_dialog_translate(
-                                        text,
-                                        text_width=31,
+                                    translated_text = translator.sanitize_and_translate(
+                                        text=text,
+                                        wrap_width=31,
                                         max_lines=3,
+                                        add_brs=False
                                     )
                                     try:
-                                        sqlite_write(text, "walkthrough", translated_text, api_details["RegionCode"])
+                                        sqlite_write(text, "walkthrough", translated_text, translator.region_code)
                                         write_string(address + 16, translated_text)
                                         logger.debug("Wrote walkthrough.")
                                     except Exception as e:
