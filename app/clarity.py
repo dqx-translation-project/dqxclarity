@@ -111,7 +111,6 @@ def scan_for_concierge_names():
                     write_string(name_addr, "\x04" + en_name)
                     logger.debug(f"Wrote player name at {str(hex(address))} for name {en_name}.")
             except UnicodeDecodeError:
-                logger.debug(f"Failed to write concierge name at {str(hex(address))} for name {en_name}.")
                 pass
 
 
