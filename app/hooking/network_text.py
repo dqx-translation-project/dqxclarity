@@ -74,8 +74,12 @@ class NetworkTextTranslate(object):
                     story_desc = read_string(self.text_address)
                     translated = self.__translate_story(story_desc)
                     if translated:
+                        # we need to truncate the string if the length of the japanese
+                        # string is shorter than the english string, or we'll write over
+                        # game data and cause a crash.
+                        story_desc_len = len(bytes(story_desc, encoding="utf-8"))
                         logger.debug("Wrote story so far.")
-                        write_string(self.text_address, translated)
+                        write_string(self.text_address, translated[:story_desc_len])
         else:
             NetworkTextTranslate.custom_text_logger.info(f"--\n{category} :: {read_string(self.text_address)}")
         return
