@@ -4,9 +4,12 @@ import time
 from loguru import logger
 from common.lib import is_dqx_running
 
+from common.db_ops import (
+    sql_read,
+    sql_write,
+)
+
 from common.translate import (
-    sqlite_read,
-    sqlite_write,
     detect_lang,
     determine_translation_service,
     Translate,
@@ -197,7 +200,7 @@ def loop_scan_for_walkthrough():
                         if text != prev_text:
                             prev_text = text
                             if detect_lang(text):
-                                result = sqlite_read(text, "en", "walkthrough")
+                                result = sql_read(text=text, table="walkthrough", language=translator.region_code)
                                 if result:
                                     write_string(address + 16, result)
                                 else:
@@ -208,12 +211,13 @@ def loop_scan_for_walkthrough():
                                         add_brs=False
                                     )
                                     try:
-                                        region = translator.region_code
-                                        if translator.region_code == "en-us":
-                                            region = "en"
-                                        sqlite_write(text, "walkthrough", translated_text, region)
+                                        sql_write(
+                                            source_text=text,
+                                            translated_text=translated_text,
+                                            table="walkthrough",
+                                            language=translator.region_code
+                                        )
                                         write_string(address + 16, translated_text)
-                                        logger.debug("Wrote walkthrough.")
                                     except Exception:
                                         logger.exception("Failed to write walkthrough.")
                         else:

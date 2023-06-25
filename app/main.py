@@ -4,6 +4,7 @@ import threading
 import time
 from loguru import logger
 import click
+from common.db_ops import ensure_db_structure
 from common.lib import setup_logging, is_dqx_running
 from common.update import check_for_updates, download_custom_files
 from dqxcrypt.dqxcrypt import start_logger
@@ -40,6 +41,9 @@ def blast_off(
     if not disable_update_check:
         check_for_updates()
         download_custom_files()
+
+    logger.info("Ensuring db strucure.")
+    ensure_db_structure()
 
     try:
         if not disable_translations:

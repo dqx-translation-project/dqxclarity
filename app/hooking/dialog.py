@@ -1,7 +1,8 @@
 import sys
 import os
 from json import dumps
-from common.translate import Translate, sqlite_read, sqlite_write, detect_lang
+from common.db_ops import sql_read, sql_write
+from common.translate import Translate, detect_lang
 from common.memory import unpack_to_int, read_string, write_string
 
 
@@ -29,19 +30,18 @@ class Dialog(object):
 
 
     def __read_db(self, text: str):
-        result = sqlite_read(text_to_query=text, language=Dialog.region, table="dialog")
+        result = sql_read(text=text, table="dialog", language=Dialog.region)
         if result:
             return result
         return None
 
 
     def __write_db(self, source_text: str, translated_text: str):
-        return sqlite_write(
+        return sql_write(
             source_text=source_text,
-            table="dialog",
             translated_text=translated_text,
+            table="dialog",
             language=Dialog.region,
-            npc_name=""
         )
 
 

@@ -24,7 +24,6 @@ class GetPlayer(object):
 
         query = f"""
         BEGIN TRANSACTION;
-        CREATE TABLE IF NOT EXISTS 'player' ('type' TEXT NOT NULL, 'name' TEXT NOT NULL);
         DELETE FROM player;
         INSERT INTO player (type, name) VALUES
             ('player', '{player_name}'),

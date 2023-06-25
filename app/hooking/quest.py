@@ -1,13 +1,15 @@
 from json import dumps, loads
 import os
 import sys
+from common.db_ops import (
+    sql_read,
+    sql_write,
+)
 from common.lib import get_abs_path
 from common.memory import read_string, write_string, unpack_to_int
 from common.translate import (
     detect_lang,
     Translate,
-    sqlite_read,
-    sqlite_write,
     clean_up_and_return_items
 )
 
@@ -78,10 +80,10 @@ class Quest(object):
 
     def __translate_quest_desc(self):
         translator = Translate()
-        if db_quest_text := sqlite_read(
-            text_to_query=self.quest_desc,
+        if db_quest_text := sql_read(
+            text=self.quest_desc,
+            table="quests",
             language=Translate.region_code,
-            table="quests"
         ):
             return db_quest_text
 
@@ -91,10 +93,10 @@ class Quest(object):
             max_lines=6,
             add_brs=False
         ):
-            sqlite_write(
+            sql_write(
                 source_text=self.quest_desc,
-                table="quests",
                 translated_text=translation,
+                table="quests",
                 language=Translate.region_code
             )
             return translation

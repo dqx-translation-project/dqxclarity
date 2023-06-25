@@ -2,15 +2,16 @@ from json import dumps
 from loguru import logger
 import os
 import sys
+from common.db_ops import (
+    sql_read,
+    sql_write,
+)
 from common.lib import get_abs_path, setup_logger, merge_jsons
 from common.memory import read_string, write_string, unpack_to_int, read_bytes
 from common.translate import (
     Translate,
-    sqlite_read,
-    sqlite_write,
     convert_into_eng
 )
-
 
 class NetworkTextTranslate(object):
 
@@ -115,18 +116,18 @@ class NetworkTextTranslate(object):
         :returns: Translated text.
         """
         translator = Translate()
-        if story_text := sqlite_read(
-            text_to_query=text,
+        if story_text := sql_read(
+            text=text,
+            table="story_so_far",
             language=Translate.region_code,
-            table="story_so_far"
         ):
             return story_text
 
         if translation := translator.sanitize_and_translate(text, wrap_width=39, max_lines=8, add_brs=False):
-            sqlite_write(
+            sql_write(
                 source_text=text,
-                table="story_so_far",
                 translated_text=translation,
+                table="story_so_far",
                 language=Translate.region_code
             )
             return translation

@@ -148,7 +148,7 @@ def activate_hooks(player_names: bool, debug=False):
     """
     simple_str_addr = inject_python_dll()
     if not simple_str_addr:
-        logger.error("Since Python injection failed, we will not try to hook. Exiting.")
+        logger.exception("Since Python injection failed, we will not try to hook. Exiting.")
         return False
 
     # activates all hooks. add any new hooks to this list

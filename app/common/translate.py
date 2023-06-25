@@ -5,11 +5,11 @@ import shutil
 import unicodedata
 from common.errors import warning_message
 from common.lib import merge_jsons, get_abs_path
+from common.db_ops import init_db
 import os
 import langdetect
 import re
 import pykakasi
-import sqlite3
 from openpyxl import load_workbook
 import deepl
 from googleapiclient.discovery import build
@@ -36,14 +36,14 @@ class Translate():
 
 
     def deepl(self, text: list):
-        self.region_code = Translate.region_code
-        if self.region_code.lower() == "en":
-            self.region_code = "en-us"
+        region_code = Translate.region_code
+        if region_code.lower() == "en":
+            region_code = "en-us"
         translator = deepl.Translator(Translate.api_key)
         response = translator.translate_text(
             text=text,
             source_lang="ja",
-            target_lang=self.region_code,
+            target_lang=region_code,
             preserve_formatting=True
         )
         text_results = []
@@ -380,63 +380,6 @@ class Translate():
         return None
 
 
-def sqlite_read(text_to_query, language, table):
-    """Reads text from a SQLite table."""
-    escaped_text = text_to_query.replace("'", "''")
-
-    try:
-        db_file = "/".join([get_abs_path(__file__), "../misc_files/clarity_dialog.db"])
-        conn = sqlite3.connect(db_file)
-        cursor = conn.cursor()
-        selectQuery = f"SELECT {language} FROM {table} WHERE ja = '{escaped_text}'"
-        cursor.execute(selectQuery)
-        results = cursor.fetchone()
-
-        if results is not None:
-            return results[0].replace("''", "'")
-        else:
-            return None
-
-    except sqlite3.Error as e:
-        raise Exception(f"Failed to query {table}: {e}")
-    finally:
-        if conn:
-            conn.close()
-
-
-def sqlite_write(source_text, table, translated_text, language, npc_name=""):
-    """Writes or updates text to the SQLite database."""
-    escaped_text = translated_text.replace("'", "''")
-
-    try:
-        db_file = "/".join([get_abs_path(__file__), "../misc_files/clarity_dialog.db"])
-        conn = sqlite3.connect(db_file)
-        selectQuery = f"SELECT ja FROM {table} WHERE ja = '{source_text}'"
-        updateQuery = f"UPDATE {table} SET {language} = '{escaped_text}' WHERE ja = '{source_text}'"
-        if table == "dialog":
-            insertQuery = f"INSERT INTO {table} (ja, npc_name, {language}) VALUES ('{source_text}', '{npc_name}', '{escaped_text}')"
-        elif table in ["quests", "walkthrough", "story_so_far"]:
-            insertQuery = f"INSERT INTO {table} (ja, {language}) VALUES ('{source_text}', '{escaped_text}')"
-        else:
-            raise Exception("Unknown table.")
-
-        cursor = conn.cursor()
-        results = cursor.execute(selectQuery)
-
-        if results.fetchone() is None:
-            cursor.execute(insertQuery)
-        else:
-            cursor.execute(updateQuery)
-
-        conn.commit()
-        cursor.close()
-    except sqlite3.Error as e:
-        raise Exception(f"Unable to write data to table: {e}")
-    finally:
-        if conn:
-            conn.close()
-
-
 def load_user_config():
     """
     Returns a user's config settings.
@@ -725,9 +668,7 @@ def get_player_name() -> tuple:
     Queries the player and sibling name from the database.
     Returns a tuple of (player_name, sibling_name).
     """
-    db_file = "/".join([get_abs_path(__file__), "../misc_files/clarity_dialog.db"])
-    conn = sqlite3.connect(db_file)
-    cursor = conn.cursor()
+    conn, cursor = init_db()
 
     player_query = "SELECT name FROM player WHERE type = 'player'"
     sibling_query = "SELECT name FROM player WHERE type = 'sibling'"
@@ -738,6 +679,6 @@ def get_player_name() -> tuple:
     results = cursor.execute(sibling_query)
     sibling = results.fetchone()[0]
 
-    cursor.close()
+    conn.close()
 
     return (player, sibling)
