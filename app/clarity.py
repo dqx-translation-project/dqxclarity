@@ -130,9 +130,9 @@ def scan_for_npc_names():
     if npc_list := pattern_scan(pattern=npc_monster_pattern, return_multiple=True):
         for address in npc_list:
             npc_type = read_bytes(address + 36, 2)
-            if npc_type == b"\x0C\x82" or npc_type == b"\x08\x70":
+            if npc_type == b"\xDC\x71" or npc_type == b"\x7C\x5F":
                 data = "NPC"
-            elif npc_type == b"\x80\x72":
+            elif npc_type == b"\xF4\x61":
                 data = "AI_NAME"
             else:
                 continue
