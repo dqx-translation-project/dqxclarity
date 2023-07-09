@@ -31,7 +31,7 @@ class NetworkTextTranslate(object):
         "M_kaisetubun": "story_so_far",
         "C_QUEST": "dracky_announcements_quest_complete",
         "C_PC": "dracky_announcements_player_name",
-        "M_OWNER": "mail_owner"
+        "M_OWNER": "house_owner"
     }
 
     def __init__(self, text_address, var_address):
