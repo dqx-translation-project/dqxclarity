@@ -11,3 +11,5 @@ GITHUB_CLARITY_TEAM_QUESTS_JSON_URL = "https://raw.githubusercontent.com/dqx-tra
 GITHUB_CLARITY_MASTER_QUESTS_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx-custom-translations/main/json/custom_master_quests.json"
 GITHUB_CLARITY_EPISODE_REQUEST_BOOK_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx-custom-translations/main/json/custom_episode_request_book.json"
 GITHUB_CLARITY_TRAINEE_LOGBOOK_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx-custom-translations/main/json/custom_trainee_logbook.json"
+GITHUB_CLARITY_MAIL_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx-custom-translations/main/json/custom_mail.json"
+GITHUB_CLARITY_LOTTERY_PRIZES_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx-custom-translations/main/json/custom_lottery_prizes.json"

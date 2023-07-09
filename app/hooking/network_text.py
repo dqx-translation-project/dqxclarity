@@ -31,6 +31,7 @@ class NetworkTextTranslate(object):
         "M_kaisetubun": "story_so_far",
         "C_QUEST": "dracky_announcements_quest_complete",
         "C_PC": "dracky_announcements_player_name",
+        "M_OWNER": "mail_owner"
     }
 
     def __init__(self, text_address, var_address):
@@ -50,7 +51,7 @@ class NetworkTextTranslate(object):
                 if self_text == "自分":
                     write_string(self.text_address, "self")
                 return
-            elif category in ["M_pc", "M_npc", "B_ACTOR", "B_TARGET", "C_PC", "L_SENDER_NAME"]:  # npc or player names
+            elif category in ["M_pc", "M_npc", "B_ACTOR", "B_TARGET", "C_PC", "L_SENDER_NAME", "M_OWNER"]:  # npc or player names
                 name = read_string(self.text_address)
                 if name in NetworkTextTranslate.npc_names:
                     name_to_write = NetworkTextTranslate.npc_names[name]
@@ -106,6 +107,8 @@ class NetworkTextTranslate(object):
             f"{NetworkTextTranslate.misc_files}/eventTextSysQuestaClient.json",
             f"{NetworkTextTranslate.misc_files}/custom_episode_request_book.json",
             f"{NetworkTextTranslate.misc_files}/custom_trainee_logbook.json",
+            f"{NetworkTextTranslate.misc_files}/custom_mail.json",
+            f"{NetworkTextTranslate.misc_files}/custom_lottery_prizes.json",
         ])
 
         return m00_text

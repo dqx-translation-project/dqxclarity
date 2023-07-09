@@ -14,7 +14,9 @@ from common.constants import (
     GITHUB_CLARITY_TEAM_QUESTS_JSON_URL,
     GITHUB_CLARITY_MASTER_QUESTS_JSON_URL,
     GITHUB_CLARITY_EPISODE_REQUEST_BOOK_JSON_URL,
-    GITHUB_CLARITY_TRAINEE_LOGBOOK_JSON_URL
+    GITHUB_CLARITY_TRAINEE_LOGBOOK_JSON_URL,
+    GITHUB_CLARITY_MAIL_JSON_URL,
+    GITHUB_CLARITY_LOTTERY_PRIZES_JSON_URL,
 )
 from common.lib import get_abs_path
 from loguru import logger
@@ -39,6 +41,8 @@ def download_custom_files():
                 if obj.filename in ["merge.xlsx"]:
                     zfile.extract(obj, "misc_files")
 
+        # ok, this is getting out of hand
+        # TODO: Download the zip and get the jsons versus making 50 github calls
         for url in [
             GITHUB_CLARITY_MONSTERS_JSON_URL,
             GITHUB_CLARITY_NPC_JSON_URL,
@@ -48,7 +52,9 @@ def download_custom_files():
             GITHUB_CLARITY_TEAM_QUESTS_JSON_URL,
             GITHUB_CLARITY_MASTER_QUESTS_JSON_URL,
             GITHUB_CLARITY_EPISODE_REQUEST_BOOK_JSON_URL,
-            GITHUB_CLARITY_TRAINEE_LOGBOOK_JSON_URL
+            GITHUB_CLARITY_TRAINEE_LOGBOOK_JSON_URL,
+            GITHUB_CLARITY_MAIL_JSON_URL,
+            GITHUB_CLARITY_LOTTERY_PRIZES_JSON_URL
         ]:
             request = requests.get(url, timeout=15)
             if request.status_code == 200:
