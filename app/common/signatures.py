@@ -5,7 +5,7 @@
 
 # takes you to the section of the function where you can read where dialog is stored before
 # it's rendered to screen. captures npc text.
-# FF 77 08 C7 45 FC ?? ?? ?? ?? BB
+# FF 77 08 C7 45
 # 8D 64 24 FC 89 04 24 8D 64 24 FC E9 ?? ?? ?? ?? 3B -- better, but picked up by integrity scans in combat.
 #
 # Code around where we detour
