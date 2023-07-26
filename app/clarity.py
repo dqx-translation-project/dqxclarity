@@ -125,7 +125,7 @@ def scan_for_npc_names():
         f"{misc_files}/smldt_msg_pkg_NPC_DB.win32.json",
         f"{misc_files}/custom_npc_names.json"
     ])
-    translated_monster_names = f"{misc_files}/subPackage02Client.win32.json"
+    translated_monster_names = merge_jsons([f"{misc_files}/subPackage02Client.win32.json"])
 
     if npc_list := pattern_scan(pattern=npc_monster_pattern, return_multiple=True):
         for address in npc_list:
