@@ -75,26 +75,30 @@ def check_for_updates(update: bool):
         url = GITHUB_CLARITY_VERSION_UPDATE_URL
         github_request = requests.get(url)
     except requests.exceptions.RequestException as e:
-        logger.warning(f"Failed to check latest version. Running anyways. Message: {e}")
+        logger.warning(f"Failed to check latest version. Running anyways.\n{e}")
         return
 
-    release_version = github_request.json()["tag_name"]
-    if release_version.startswith("v"):
-        release_version = release_version[1:]
-    if release_version == cur_ver:
-        logger.success(f"Clarity is up to date! (Current version: {str(cur_ver)})")
-    else:
-        logger.warning(f"Clarity is out of date! (Current: {str(cur_ver)}, Latest: {str(release_version)}).")
-        if update:
-            install_path = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Python\PythonCore\3.11-32\InstallPath")
-            python_exe = winreg.QueryValueEx(install_path, "ExecutablePath")
-            if not python_exe:
-                logger.warning("Did not find Python exe! Clarity is unable to update and will continue without updating.")
-                return False
-            logger.info(f"Launching updater.")
-            Popen([python_exe[0], "../updater.py"])
-            sys.exit()
-    return
+    try:
+        release_version = github_request.json()["tag_name"]
+        if release_version.startswith("v"):
+            release_version = release_version[1:]
+        if release_version == cur_ver:
+            logger.success(f"Clarity is up to date! (Current version: {str(cur_ver)})")
+        else:
+            logger.warning(f"Clarity is out of date! (Current: {str(cur_ver)}, Latest: {str(release_version)}).")
+            if update:
+                install_path = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Python\PythonCore\3.11-32\InstallPath")
+                python_exe = winreg.QueryValueEx(install_path, "ExecutablePath")
+                if not python_exe:
+                    logger.warning("Did not find Python exe! Clarity is unable to update and will continue without updating.")
+                    return False
+                logger.info(f"Launching updater.")
+                Popen([python_exe[0], "../updater.py"])
+                sys.exit()
+        return
+    except Exception as e:
+        logger.warning(f"There was a problem checking trying to update. Clarity will continue without updating.\n{e}")
+        return
 
 
 def merge_local_db():
