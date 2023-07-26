@@ -16,7 +16,9 @@ from common.lib import get_abs_path
 from loguru import logger
 import os
 import sqlite3
+from subprocess import Popen
 import sys
+import winreg
 from zipfile import ZipFile as zip
 
 
@@ -54,8 +56,13 @@ def download_custom_files():
         sys.exit()
 
 
-def check_for_updates():
-    """Checks github for updates."""
+def check_for_updates(update: bool):
+    """
+    Checks to see if Clarity is running the latest version of itself.
+    If not, will launch updater.py and exit.
+
+    :param update: Whether or not to update after checking for updates.
+    """
     logger.info("Checking dqxclarity repo for updates...")
     if not os.path.exists("version.update"):
         logger.warning("Couldn't determine current version of dqxclarity. Running as is.")
@@ -71,11 +78,22 @@ def check_for_updates():
         logger.warning(f"Failed to check latest version. Running anyways. Message: {e}")
         return
 
-    if github_request.text != cur_ver:
-        logger.warning(f"Clarity is out of date (Current: {str(cur_ver)}, Latest: {str(github_request.text)}).")
+    release_version = github_request.json()["tag_name"]
+    if release_version.startswith("v"):
+        release_version = release_version[1:]
+    if release_version == cur_ver:
+        logger.success(f"Clarity is up to date! (Current version: {str(cur_ver)})")
     else:
-        logger.info(f"Clarity is up to date! (Current version: {str(cur_ver)})")
-
+        logger.warning(f"Clarity is out of date! (Current: {str(cur_ver)}, Latest: {str(release_version)}).")
+        if update:
+            install_path = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Python\PythonCore\3.11-32\InstallPath")
+            python_exe = winreg.QueryValueEx(install_path, "ExecutablePath")
+            if not python_exe:
+                logger.warning("Did not find Python exe! Clarity is unable to update and will continue without updating.")
+                return False
+            logger.info(f"Launching updater.")
+            Popen([python_exe[0], "../updater.py"])
+            sys.exit()
     return
 
 

@@ -30,7 +30,7 @@ def blast_off(
 ):
     logger.info("Getting started. DO NOT TOUCH THE GAME OR REMOVE YOUR MEMORY CARD.")
     if not disable_update_check:
-        check_for_updates()
+        check_for_updates(update=True)
         download_custom_files()
 
     try:

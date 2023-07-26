@@ -1,5 +1,5 @@
 GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL = "https://github.com/dqx-translation-project/dqx-custom-translations/archive/refs/heads/main.zip"
-GITHUB_CLARITY_VERSION_UPDATE_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqxclarity/main/version.update"
+GITHUB_CLARITY_VERSION_UPDATE_URL = "https://api.github.com/repos/dqx-translation-project/dqxclarity/releases/latest"
 GITHUB_CLARITY_MERGE_XLSX_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx-custom-translations/main/csv/merge.xlsx"
 GITHUB_CLARITY_GLOSSARY_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx-custom-translations/main/csv/glossary.csv"
 GITHUB_CLARITY_MONSTERS_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx_translations/main/json/_lang/en/subPackage02Client.win32.json"
