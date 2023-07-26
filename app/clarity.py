@@ -144,7 +144,7 @@ def scan_for_npc_names():
             name_addr = address + 48  # jump to name
             name = read_string(name_addr)
 
-            if data == "NPC" or data == "MONSTER":       
+            if data == "NPC" or data == "MONSTER":
                 if name in translated_names:
                     value = translated_names.get(name)
                     if value:
