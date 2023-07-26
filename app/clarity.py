@@ -132,8 +132,10 @@ def scan_for_npc_names():
             npc_type = read_bytes(address + 36, 2)
             if npc_type == b"\xBC\x71":
                 data = "NPC"
+                translated_names = translated_npc_names
             elif npc_type == b"\x6C\x5F":
                 data = "MONSTER"
+                translated_names = translated_monster_names
             elif npc_type == b"\xD4\x61":
                 data = "AI_NAME"
             else:
@@ -142,12 +144,7 @@ def scan_for_npc_names():
             name_addr = address + 48  # jump to name
             name = read_string(name_addr)
 
-            if data == "NPC" or data == "MONSTER":
-                translated_names = ''
-                if data == "NPC":
-                    translated_names = translated_npc_names
-                else:
-                    translated_names = translated_monster_names
+            if data == "NPC" or data == "MONSTER":       
                 if name in translated_names:
                     value = translated_names.get(name)
                     if value:
