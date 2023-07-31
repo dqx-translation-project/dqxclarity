@@ -6,6 +6,8 @@ Helpful scripts to run after patches to quickly find common patterns that dqxcla
 
 Searches for patterns configured for the `npc_monster_pattern` pattern. Writes the previous 49 bytes of the found string to a file to be used when figuring out the pattern.
 
+Usage:
+
 ```
 python -m venv venv
 .\venv\Scripts\activate
