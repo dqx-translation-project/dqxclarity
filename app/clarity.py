@@ -123,18 +123,22 @@ def scan_for_npc_names():
     Also finds names above your party members.
     """
     misc_files = "/".join([get_abs_path(__file__), "misc_files"])
-    translated_names = merge_jsons([
-        f"{misc_files}/subPackage02Client.win32.json",
+    translated_npc_names = merge_jsons([
         f"{misc_files}/smldt_msg_pkg_NPC_DB.win32.json",
         f"{misc_files}/custom_npc_names.json"
     ])
+    translated_monster_names = merge_jsons([f"{misc_files}/subPackage02Client.win32.json"])
 
     if npc_list := pattern_scan(pattern=npc_monster_pattern, return_multiple=True):
         for address in npc_list:
             npc_type = read_bytes(address + 36, 2)
-            if npc_type == b"\xDC\x71" or npc_type == b"\x7C\x5F":
+            if npc_type == b"\xBC\x71":
                 data = "NPC"
-            elif npc_type == b"\xF4\x61":
+                translated_names = translated_npc_names
+            elif npc_type == b"\x6C\x5F":
+                data = "MONSTER"
+                translated_names = translated_monster_names
+            elif npc_type == b"\xD4\x61":
                 data = "AI_NAME"
             else:
                 continue
@@ -142,7 +146,7 @@ def scan_for_npc_names():
             name_addr = address + 48  # jump to name
             name = read_string(name_addr)
 
-            if data == "NPC":
+            if data == "NPC" or data == "MONSTER":
                 if name in translated_names:
                     value = translated_names.get(name)
                     if value:

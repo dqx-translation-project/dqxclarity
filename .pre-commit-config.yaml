@@ -1,42 +1,29 @@
 repos:
-# Disabling pylint for now. Repo needs a good cleanup before we start enforcing this.
-# - repo: https://github.com/pycqa/pylint
-#   rev: '24eaec26f701cf8adddf27ffa8859e0bb5074a89' # v2.15.0 # pragma: allowlist secret
-#   hooks:
-#     - id: pylint
-#       name: pylint linting
-#       exclude: ^app/(pymem/|bms/|venv/|__pycache__/)
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: '3298ddab3c13dd77d6ce1fc0baf97691430d84b0' # v4.3.0 # pragma: allowlist secret
+  rev: v4.4.0
   hooks:
     - id: end-of-file-fixer
       name: Check for newline at end of file
-      exclude: ^version.update$
-    - id: fix-encoding-pragma
-      name: Looking for pragma encoding at top of file
-      args: ['--remove']
     - id: no-commit-to-branch
-      name: Ensure we aren't pushing to weblate/main
-      args: [--branch, weblate, --branch, main]
+      name: Ensure we don't push to main
+      args: [--branch, main]
     - id: requirements-txt-fixer
       name: Sort requirements.txt
     - id: check-json
       name: Checking json files for syntax issues
     - id: pretty-format-json
       name: Checking if json files need to be prettified
-      exclude: ^app/(bms/hyde_json_merge/)
       args: ['--autofix', '--indent', '2', '--no-ensure-ascii', '--no-sort-keys']
     - id: fix-byte-order-marker
       name: Checking if files are utf-8-bom encoded
-      exclude: ^json/_lang/en/glossary.csv$
+    - id: mixed-line-ending
+      name: Fix line endings
+      args: ['--fix', 'lf']
+    - id: debug-statements
+      name: Check for debug statements
 - repo: https://github.com/Yelp/detect-secrets
-  rev: '5348c62a100a1881b98ad9ec5b8855b524aaf8e7' # v1.3.0 # pragma: allowlist secret
+  rev: v1.4.0
   hooks:
     - id: detect-secrets
       name: Checking for potential passwords
       exclude: .*json-conv.deps.json$
-- repo: https://github.com/psf/black
-  rev: '2018e667a6a36ee3fbfa8041cd36512f92f60d49' # 22.8.0 # pragma: allowlist secret
-  hooks:
-    - id: black
-      name: Formatting Python files with black
