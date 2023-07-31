@@ -1,22 +1,14 @@
 from io import BytesIO
 from openpyxl import load_workbook
 import requests
-from common.errors import message_box_fatal_error
 from common.constants import (
     GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL,
     GITHUB_CLARITY_VERSION_UPDATE_URL,
-    GITHUB_CLARITY_MERGE_XLSX_URL,
     GITHUB_CLARITY_MONSTERS_JSON_URL,
     GITHUB_CLARITY_NPC_JSON_URL,
     GITHUB_CLARITY_ITEMS_JSON_URL,
     GITHUB_CLARITY_KEY_ITEMS_JSON_URL,
     GITHUB_CLARITY_QUESTS_REQUESTS_JSON_URL,
-    GITHUB_CLARITY_TEAM_QUESTS_JSON_URL,
-    GITHUB_CLARITY_MASTER_QUESTS_JSON_URL,
-    GITHUB_CLARITY_EPISODE_REQUEST_BOOK_JSON_URL,
-    GITHUB_CLARITY_TRAINEE_LOGBOOK_JSON_URL,
-    GITHUB_CLARITY_MAIL_JSON_URL,
-    GITHUB_CLARITY_LOTTERY_PRIZES_JSON_URL,
 )
 from common.lib import get_abs_path
 from loguru import logger
@@ -28,33 +20,25 @@ from zipfile import ZipFile as zip
 
 def download_custom_files():
     try:
-        logger.info("Downloading custom json files.")
+        logger.info("Downloading custom translation files from dqx-translation-project/dqx-custom-translations.")
         request = requests.get(GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL, timeout=15)
         if request.status_code == 200:
             zfile = zip(BytesIO(request.content))
+            directories = ["/csv/", "/json/"]
             for obj in zfile.infolist():
-                if obj.filename[-1] == "/":  # don't parse directories
-                    continue
-                obj.filename = os.path.basename(obj.filename)  # unzipped files copy zip folder structure, so re-assign filename to basename when we extract
-                if obj.filename == "glossary.csv" or "custom_" in obj.filename:
-                    zfile.extract(obj, "misc_files")
-                if obj.filename in ["merge.xlsx"]:
+                # only move files that are in the csv/json directories
+                if any([x in obj.filename for x in directories]) and not (obj.filename.endswith("/")):
+                    # hack: unzipped files copy zip folder structure, so re-assign filename to basename when we extract
+                    obj.filename = os.path.basename(obj.filename)
                     zfile.extract(obj, "misc_files")
 
-        # ok, this is getting out of hand
-        # TODO: Download the zip and get the jsons versus making 50 github calls
+        # dqx_translations is roughly 17MB~ right now. we only need 5 files from that repository, so download them individually.
         for url in [
             GITHUB_CLARITY_MONSTERS_JSON_URL,
             GITHUB_CLARITY_NPC_JSON_URL,
             GITHUB_CLARITY_ITEMS_JSON_URL,
             GITHUB_CLARITY_KEY_ITEMS_JSON_URL,
             GITHUB_CLARITY_QUESTS_REQUESTS_JSON_URL,
-            GITHUB_CLARITY_TEAM_QUESTS_JSON_URL,
-            GITHUB_CLARITY_MASTER_QUESTS_JSON_URL,
-            GITHUB_CLARITY_EPISODE_REQUEST_BOOK_JSON_URL,
-            GITHUB_CLARITY_TRAINEE_LOGBOOK_JSON_URL,
-            GITHUB_CLARITY_MAIL_JSON_URL,
-            GITHUB_CLARITY_LOTTERY_PRIZES_JSON_URL
         ]:
             request = requests.get(url, timeout=15)
             if request.status_code == 200:
@@ -69,7 +53,9 @@ def download_custom_files():
 
 
 def check_for_updates():
-    """Checks github for updates."""
+    """
+    Checks github for updates.
+    """
     logger.info("Checking dqxclarity repo for updates...")
     if not os.path.exists("version.update"):
         logger.warning("Couldn't determine current version of dqxclarity. Running as is.")
@@ -94,24 +80,17 @@ def check_for_updates():
 
 
 def merge_local_db():
+    """
+    We manage a file outside of this repository called merge.xlsx in dqx-custom-translations.
+    This interacts with that file by reading entries that have been manually translated
+    to fix bugs that machine translation introduced and inserts/updates the user's local database
+    with override entries from the xlsx file.
+    """
     merge_file = "/".join([get_abs_path(__file__), "../misc_files/merge.xlsx"])
     db_file = "/".join([get_abs_path(__file__), "../misc_files/clarity_dialog.db"])
 
     records_inserted = 0
     records_updated = 0
-
-    if os.path.exists(merge_file):
-        os.remove(merge_file)
-
-    try:
-        url = GITHUB_CLARITY_MERGE_XLSX_URL
-        r = requests.get(url, timeout=15)
-    except Exception as e:
-        message_box_fatal_error("Timeout", str(e))
-
-    with open(merge_file, "wb") as merge:
-        merge.write(r.content)
-        logger.success("Database downloaded.")
 
     if os.path.exists(merge_file):
         wb = load_workbook(merge_file)
