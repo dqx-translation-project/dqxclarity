@@ -78,10 +78,8 @@ if (Test-Path -Path "venv") {
     LogWrite "Creating virtual environment."
     & $PythonInstallPath -m venv venv
 	& .\venv\Scripts\activate
-    LogWrite "Updating pip and installation dependencies."
-    & .\venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel --quiet
     LogWrite "Installing dqxclarity dependencies."
-    & .\venv\Scripts\pip.exe install -r requirements.txt --quiet
+    & .\venv\Scripts\pip.exe install --disable-pip-version-check -r requirements.txt --quiet --use-pep517
 }
 
 LogWrite "Python install location: $PythonInstallPath"
