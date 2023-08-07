@@ -324,18 +324,19 @@ def download_dat_files():
             # Now let's download the data files
             try:
                 logger.info("Downloading DAT1 and IDX files.")
-                request = requests.get(GITHUB_CLARITY_DAT1_URL, timeout=15)
-                if request.status_code == 200:
+                dat_request = requests.get(GITHUB_CLARITY_DAT1_URL, timeout=15)
+                idx_request = requests.get(GITHUB_CLARITY_IDX_URL, timeout=15)
+                # Make sure both requests are good before we write the files
+                if dat_request.status_code == 200 and idx_request.status_code == 200:
                     with open(dqx_path + "\data00000000.win32.dat1", "w+b") as f:
                         f.write(request.content)
-                
-                request = requests.get(GITHUB_CLARITY_IDX_URL, timeout=15)
-                if request.status_code == 200:
-                     with open(dqx_path + "\data00000000.win32.idx", "w+b") as f:
+                    with open(dqx_path + "\data00000000.win32.idx", "w+b") as f:
                         f.write(request.content)
-                        
-                logger.success("Data files downloaded.")
-                
+                    logger.success("Data files downloaded.")
+                else:
+                    logger.error(f"Failed to download data files.")
+                    input("Press ENTER to exit.")
+                    sys.exit()              
             except Exception as e:
                 logger.error(f"Failed to download data files. Error: {e}")
                 input("Press ENTER to exit.")
