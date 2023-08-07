@@ -1,4 +1,4 @@
-$ClarityFlags = "-pnvcl" 
+$ClarityFlags = "-pnvcl"
 
 function LogWrite($string) {
    Write-Host $string -ForegroundColor "Yellow"

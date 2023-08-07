@@ -261,62 +261,87 @@ def merge_local_db():
         
 
 def download_dat_files():
+    """
+    Verifies the user's DQX install location and prompts
+    them to locate it if not found. Uses this location to
+    download the latest data files from the dqxclarity repo.
+    """
     config = load_user_config()
-    valid_directory = False
+    DAT0_FILE = "data00000000.win32.dat0"
+    IDX_FILE = "data00000000.win32.idx"
+    
+    # If user_settings.ini doesn't have the install directory
+    # set, let's set it now
     
     if not config["config"]["installdirectory"]:
     
-        #First, let's check the default location and see if it's installed there
-        path = 'C:/Program Files (x86)/SquareEnix/DRAGON QUEST X/Game/Content/Data'
+        # First, let's check the default location and see if it's installed there
+        default_path = 'C:/Program Files (x86)/SquareEnix/DRAGON QUEST X/Game/Content/Data'
         
-        if os.path.exists(path):
-            update_user_config('config', 'installdirectory', path)
+        if os.path.exists(default_path):
+            update_user_config('config', 'installdirectory', default_path)
         else:
-            #Doesn't exist. Let's prompt the user for it.
+            # Doesn't exist. Let's prompt the user for it
             warning_message(
             title="[dqxclarity] Couldn't Find Directory",
-            message="Could not find DQX directory. Please select\n\nthe Data folder located in your\n\nDQX install location."
-        )
+            message="Could not find DQX directory. Please select\nthe Data folder located in your\nDQX install location."
+            )    
             
-            path = askdirectory()
+            # Prompt the user to select their DQX data directory, and check
+            # if the dat0 file exists in this path. If it does, it *should* be legit.
+            # Keep prompting the user until the path is valid
+            while True:
+                dqx_path = askdirectory()
+                dat0_path = dqx_path + "/" + DAT0_FILE
+                
+                if os.path.isfile(dat0_path)
+                    update_user_config('config', 'installdirectory', dqx_path)
+                    break
+                else:
+                    warning_message(
+                        title="[dqxclarity] Invalid Directory",
+                        message="The path you provided is not a valid DQX path.\nPlease select the Data folder located\nin your DQX install location."
+                    )
+    
+    # We have an installation path, so let's check it
+    
+    if config["config"]["installdirectory"]:
+        
+        dqx_path = config["config"]["installdirectory"]
+        dat0_path = dqx_path + "/" + DAT0_FILE
+        
+        # If the dat0 file exists here, it should be legit
+        # and we can move on
+        
+        if os.path.isfile(dat0_path):
+            # First, let's check if an idx file backup already exists
+            idx_path = dqx_path + "/" + IDX_FILE + ".bak"
             
-            #Path looks legit.
-            if 'Game/Content/Data' in path:
-                update_user_config('config', 'installdirectory', path)
-                valid_directory = True
-            else:
-                message_box_fatal_error(
-                    title="[dqxclarity] Invalid Directory",
-                    message="The path you provided is not a valid DQX path.\n\nPlease try again."
-                )
-    else:
-        if 'Game/Content/Data' in config["config"]["installdirectory"]:
-            valid_directory = True
+            # If it doesn't, let's back it up first with a copy
+            if not os.path.isfile(idx_path):
+                shutil.copy(dqx_path + "/" + IDX_FILE, dqx_path + "/" + IDX_FILE + ".bak")
             
-    if valid_directory:
-        
-        #First, let's check if an idx file backup already exists
-        data_folder_path = config["config"]["installdirectory"]
-        idx_path = data_folder_path + "/data00000000.win32.idx.bak"
-        
-        #If it doesn't, let's back it up first
-        if not os.path.isfile(idx_path):
-            shutil.copy(data_folder_path + "/data00000000.win32.idx", data_folder_path + "/data00000000.win32.idx.bak")
-        
-        #Now let's download the files
-        try:
-            logger.info("Downloading DAT1 and IDX files.")
-            request = requests.get(GITHUB_CLARITY_DAT1_URL, timeout=15)
-            if request.status_code == 200:
-                with open(data_folder_path + "\data00000000.win32.dat1", "w+b") as f:
-                    f.write(request.content)
-            
-            request = requests.get(GITHUB_CLARITY_IDX_URL, timeout=15)
-            if request.status_code == 200:
-                 with open(data_folder_path + "\data00000000.win32.idx", "w+b") as f:
-                    f.write(request.content)
-        except Exception as e:
-            logger.error(f"Failed to download data files. Error: {e}")
-            input("Press ENTER to exit.")
-            sys.exit()        
-        
+            # Now let's download the data files
+            try:
+                logger.info("Downloading DAT1 and IDX files.")
+                request = requests.get(GITHUB_CLARITY_DAT1_URL, timeout=15)
+                if request.status_code == 200:
+                    with open(dqx_path + "\data00000000.win32.dat1", "w+b") as f:
+                        f.write(request.content)
+                
+                request = requests.get(GITHUB_CLARITY_IDX_URL, timeout=15)
+                if request.status_code == 200:
+                     with open(dqx_path + "\data00000000.win32.idx", "w+b") as f:
+                        f.write(request.content)
+                        
+                logger.success("Data files downloaded.")
+                
+            except Exception as e:
+                logger.error(f"Failed to download data files. Error: {e}")
+                input("Press ENTER to exit.")
+                sys.exit()
+        else:
+            message_box_fatal_error(
+                title="[dqxclarity] Invalid Directory",
+                message="The path you provided is not a valid DQX path.\nPlease point to the Data folder where your\nDQX install is located using the\nDQXClarity GUI or by editing your\nuser_settings.ini file."
+            )
