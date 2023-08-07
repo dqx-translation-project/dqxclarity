@@ -329,9 +329,9 @@ def download_dat_files():
                 # Make sure both requests are good before we write the files
                 if dat_request.status_code == 200 and idx_request.status_code == 200:
                     with open(dqx_path + "\data00000000.win32.dat1", "w+b") as f:
-                        f.write(request.content)
+                        f.write(dat_request.content)
                     with open(dqx_path + "\data00000000.win32.idx", "w+b") as f:
-                        f.write(request.content)
+                        f.write(idx_request.content)
                     logger.success("Data files downloaded.")
                 else:
                     logger.error(f"Failed to download data files.")
