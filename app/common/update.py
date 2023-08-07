@@ -267,8 +267,8 @@ def download_dat_files():
     download the latest data files from the dqxclarity repo.
     """
     config = load_user_config()
-    DAT0_FILE = "data00000000.win32.dat0"
-    IDX_FILE = "data00000000.win32.idx"
+    dat0_file = "data00000000.win32.dat0"
+    idx_file = "data00000000.win32.idx"
     
     # If user_settings.ini doesn't have the install directory
     # set, let's set it now
@@ -292,7 +292,7 @@ def download_dat_files():
             # Keep prompting the user until the path is valid
             while True:
                 dqx_path = askdirectory()
-                dat0_path = dqx_path + "/" + DAT0_FILE
+                dat0_path = dqx_path + "/" + dat0_file
                 
                 if os.path.isfile(dat0_path)
                     update_user_config('config', 'installdirectory', dqx_path)
@@ -308,18 +308,18 @@ def download_dat_files():
     if config["config"]["installdirectory"]:
         
         dqx_path = config["config"]["installdirectory"]
-        dat0_path = dqx_path + "/" + DAT0_FILE
+        dat0_path = dqx_path + "/" + dat0_file
         
         # If the dat0 file exists here, it should be legit
         # and we can move on
         
         if os.path.isfile(dat0_path):
             # First, let's check if an idx file backup already exists
-            idx_path = dqx_path + "/" + IDX_FILE + ".bak"
+            idx_path = dqx_path + "/" + idx_file + ".bak"
             
             # If it doesn't, let's back it up first with a copy
             if not os.path.isfile(idx_path):
-                shutil.copy(dqx_path + "/" + IDX_FILE, dqx_path + "/" + IDX_FILE + ".bak")
+                shutil.copy(dqx_path + "/" + idx_file, dqx_path + "/" + idx_file + ".bak")
             
             # Now let's download the data files
             try:
