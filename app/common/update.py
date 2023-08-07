@@ -283,8 +283,8 @@ def download_dat_files():
         else:
             # Doesn't exist. Let's prompt the user for it
             warning_message(
-            title="[dqxclarity] Couldn't Find Directory",
-            message="Could not find DQX directory. Please select\nthe Data folder located in your\nDQX install location."
+                title="[dqxclarity] Couldn't Find Directory",
+                message="Could not find DQX directory. Please select\nthe Data folder located in your\nDQX install location."
             )    
             
             # Prompt the user to select their DQX data directory, and check
