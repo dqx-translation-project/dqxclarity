@@ -252,6 +252,7 @@ def load_user_config():
         "regioncode": "en",
     }
     base_config["behavior"] = {"enabledialoglogging": "False"}
+    base_config["config"] = {"installdirectory": ""}
 
     def create_base_config():
         with open(filename, "w+") as configfile:

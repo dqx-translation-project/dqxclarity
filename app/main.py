@@ -4,7 +4,7 @@ import sys
 import time
 import click
 from loguru import logger
-from common.update import check_for_updates, download_custom_files
+from common.update import check_for_updates, download_custom_files, download_dat_files
 from dqxcrypt.dqxcrypt import start_logger
 
 # fmt: off
@@ -31,6 +31,7 @@ def blast_off(
     logger.info("Getting started. DO NOT TOUCH THE GAME OR REMOVE YOUR MEMORY CARD.")
     if not disable_update_check:
         check_for_updates(update=True)
+        download_dat_files()
         download_custom_files()
 
     try:

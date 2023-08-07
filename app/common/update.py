@@ -1,7 +1,7 @@
 from io import BytesIO
 from openpyxl import load_workbook
 import requests
-from common.errors import message_box_fatal_error
+from common.errors import message_box_fatal_error, warning_message
 from common.constants import (
     GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL,
     GITHUB_CLARITY_VERSION_UPDATE_URL,
@@ -10,7 +10,9 @@ from common.constants import (
     GITHUB_CLARITY_NPC_JSON_URL,
     GITHUB_CLARITY_ITEMS_JSON_URL,
     GITHUB_CLARITY_KEY_ITEMS_JSON_URL,
-    GITHUB_CLARITY_QUESTS_REQUESTS_JSON_URL
+    GITHUB_CLARITY_QUESTS_REQUESTS_JSON_URL,
+    GITHUB_CLARITY_DAT1_URL,
+    GITHUB_CLARITY_IDX_URL
 )
 from common.lib import get_abs_path
 from loguru import logger
@@ -20,6 +22,9 @@ from subprocess import Popen
 import sys
 import winreg
 from zipfile import ZipFile as zip
+from common.translate import load_user_config, update_user_config
+from tkinter.filedialog import askdirectory
+import shutil
 
 
 def download_custom_files():
@@ -253,3 +258,65 @@ def merge_local_db():
 
         logger.info(str(records_inserted) + " records were inserted into local db.")
         logger.info(str(records_updated) + " records in local db were updated.")
+        
+
+def download_dat_files():
+    config = load_user_config()
+    valid_directory = False
+    
+    if not config["config"]["installdirectory"]:
+    
+        #First, let's check the default location and see if it's installed there
+        path = 'C:/Program Files (x86)/SquareEnix/DRAGON QUEST X/Game/Content/Data'
+        
+        if os.path.exists(path):
+            update_user_config('config', 'installdirectory', path)
+        else:
+            #Doesn't exist. Let's prompt the user for it.
+            warning_message(
+            title="[dqxclarity] Couldn't Find Directory",
+            message="Could not find DQX directory. Please select\n\nthe Data folder located in your\n\nDQX install location."
+        )
+            
+            path = askdirectory()
+            
+            #Path looks legit.
+            if 'Game/Content/Data' in path:
+                update_user_config('config', 'installdirectory', path)
+                valid_directory = True
+            else:
+                message_box_fatal_error(
+                    title="[dqxclarity] Invalid Directory",
+                    message="The path you provided is not a valid DQX path.\n\nPlease try again."
+                )
+    else:
+        if 'Game/Content/Data' in config["config"]["installdirectory"]:
+            valid_directory = True
+            
+    if valid_directory:
+        
+        #First, let's check if an idx file backup already exists
+        data_folder_path = config["config"]["installdirectory"]
+        idx_path = data_folder_path + "/data00000000.win32.idx.bak"
+        
+        #If it doesn't, let's back it up first
+        if not os.path.isfile(idx_path):
+            shutil.copy(data_folder_path + "/data00000000.win32.idx", data_folder_path + "/data00000000.win32.idx.bak")
+        
+        #Now let's download the files
+        try:
+            logger.info("Downloading DAT1 and IDX files.")
+            request = requests.get(GITHUB_CLARITY_DAT1_URL, timeout=15)
+            if request.status_code == 200:
+                with open(data_folder_path + "\data00000000.win32.dat1", "w+b") as f:
+                    f.write(request.content)
+            
+            request = requests.get(GITHUB_CLARITY_IDX_URL, timeout=15)
+            if request.status_code == 200:
+                 with open(data_folder_path + "\data00000000.win32.idx", "w+b") as f:
+                    f.write(request.content)
+        except Exception as e:
+            logger.error(f"Failed to download data files. Error: {e}")
+            input("Press ENTER to exit.")
+            sys.exit()        
+        

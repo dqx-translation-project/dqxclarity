@@ -1,4 +1,4 @@
-$ClarityFlags = "-pnvcl"
+$ClarityFlags = "-pnvcl" 
 
 function LogWrite($string) {
    Write-Host $string -ForegroundColor "Yellow"
@@ -47,7 +47,7 @@ if (!$PythonInstallPath) {
             Exit
         } else {
             LogWrite "Launching Python 3.11 installer and installing Python for you. Please wait."
-            .\python-3.11.3.exe /passive InstallAllUsers=1 PrependPath=1 Include_doc=0 Include_tcltk=0 Include_test=0 Shortcuts=0 SimpleInstallDescription="Installing necessary components for dqxclarity." | Out-Null
+            .\python-3.11.3.exe /passive InstallAllUsers=1 PrependPath=1 Include_doc=0 Include_tcltk=1 Include_test=0 Shortcuts=0 SimpleInstallDescription="Installing necessary components for dqxclarity." | Out-Null
             $PythonInstallPath = PythonExePath
 
             if (!$PythonInstallPath) {
