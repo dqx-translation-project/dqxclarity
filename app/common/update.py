@@ -334,9 +334,7 @@ def download_dat_files():
                         f.write(idx_request.content)
                     logger.success("Data files downloaded.")
                 else:
-                    logger.error(f"Failed to download data files.")
-                    input("Press ENTER to exit.")
-                    sys.exit()              
+                    logger.error(f"Failed to download data files. Clarity will continue without downloading.")    
             except Exception as e:
                 logger.error(f"Failed to download data files. Error: {e}")
                 input("Press ENTER to exit.")
