@@ -294,7 +294,7 @@ def download_dat_files():
                 dqx_path = askdirectory()
                 dat0_path = dqx_path + "/" + dat0_file
                 
-                if os.path.isfile(dat0_path)
+                if os.path.isfile(dat0_path):
                     update_user_config('config', 'installdirectory', dqx_path)
                     break
                 else:

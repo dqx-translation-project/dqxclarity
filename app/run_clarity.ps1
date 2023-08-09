@@ -63,6 +63,45 @@ if (!$PythonInstallPath) {
     }
 }
 
+if (Test-Path -Path "venv") { # check to see if tkinter is installed
+	try {
+		& .\venv\Scripts\activate
+		& .\venv\Scripts\python.exe -c "import tkinter"
+	}
+	catch {
+		$Result = $Shell.popup("Python must be updated to install a new feature Clarity requires. Install now?",0,"Question",4+32)
+		if ($Result -eq 6) {
+			$ProgressPreference = "SilentlyContinue"  # workaround to faster download speeds using IWR
+			LogWrite "Downloading Python executable from the internet."
+			Invoke-WebRequest -Uri https://www.python.org/ftp/python/3.11.3/python-3.11.3.exe -OutFile python-3.11.3.exe
+			$PythonMD5 = Get-FileHash .\python-3.11.3.exe -Algorithm MD5
+			if ($PythonMD5.Hash -ne "691232496E346CE0860AEF052DD6844F") {
+				LogWrite "File download did not complete successfully. Please re-run this script and try again. $HelpMessage"
+				RemoveFile "python-3.11.3.exe"
+				Read-Host "Press ENTER to close."
+				Exit
+			} else {
+				LogWrite "Launching Python 3.11 installer and installing Python for you. Please wait."
+				.\python-3.11.3.exe /passive InstallAllUsers=1 PrependPath=1 Include_doc=0 Include_tcltk=1 Include_test=0 Shortcuts=0 SimpleInstallDescription="Installing necessary components for dqxclarity." | Out-Null
+				$PythonInstallPath = PythonExePath
+
+				if (!$PythonInstallPath) {
+					LogWrite "Failed to install Python. Please try again. $HelpMessage"
+					Read-Host "Press ENTER to close."
+					Exit
+				}
+			}
+		} else {
+			LogWrite "You selected 'No'. Clarity will not function correctly without this installation. Exiting."
+			Read-Host "Press ENTER to close."
+			Exit
+		}
+		RemoveFile "venv"
+		Read-Host "Press ENTER to close"
+		Exit
+	}
+}
+
 if (Test-Path -Path "venv") {
     try {
 		& .\venv\Scripts\activate
