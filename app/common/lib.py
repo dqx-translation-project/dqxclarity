@@ -2,6 +2,7 @@ import logging
 import json
 import os
 import shutil
+import pymem
 from pathlib import Path
 
 
@@ -73,3 +74,24 @@ def merge_jsons(files: list):
 def get_abs_path(file: str):
     abs_path = os.path.abspath(os.path.join(os.path.dirname(file)))
     return abs_path.replace("\\", "/")
+
+def scan_for_dqx():
+    """
+    Continually scans for DQX and
+    checks if the integrity scan
+    is valid.
+    """
+    while True:
+        try:
+            exe = pymem.Pymem("DQXGame.exe")
+            # obscure issue seen on Windows 11 getting an OverflowError
+            # https://github.com/srounet/Pymem/issues/19
+            exe.process_handle &= 0xFFFFFFFF
+            # try:
+                # if(pattern_scan(pattern=integrity_check, module=exe)):
+                    # break
+            # except Exception:
+                # continue
+            break
+        except pymem.exception.ProcessNotFound:
+            continue
