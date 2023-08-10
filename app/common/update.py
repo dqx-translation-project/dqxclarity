@@ -14,7 +14,7 @@ from common.constants import (
     GITHUB_CLARITY_DAT1_URL,
     GITHUB_CLARITY_IDX_URL
 )
-from common.lib import get_abs_path, process_exists
+from common.lib import get_abs_path, process_exists, check_if_running_as_admin
 from loguru import logger
 import os
 import sqlite3
@@ -267,10 +267,21 @@ def download_dat_files():
     download the latest data files from the dqxclarity repo.
     """
     if process_exists("DQXGame.exe"):
+        message = "Please close DQX before attempting to update the translated DAT/IDX file."
+        logger.error(message)
         message_box_fatal_error(
             title="DQXGame.exe is open",
-            message="Please close DQX before attempting to update the translated DAT/IDX file."
+            message=message
         )
+
+    if not check_if_running_as_admin():
+        message = "dqxclarity must be running as an administrator in order to update the translated DAT/IDX file. Please re-launch dqxclarity as an administrator and try again."
+        logger.error(message)
+        message_box_fatal_error(
+            title="Program not elevated",
+            message=message
+        )
+
     config = load_user_config()
     dat0_file = "data00000000.win32.dat0"
     idx_file = "data00000000.win32.idx"

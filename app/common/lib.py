@@ -1,3 +1,4 @@
+import ctypes
 import logging
 import json
 import os
@@ -82,3 +83,14 @@ def process_exists(process_name):
     output = subprocess.check_output(call).decode()
     last_line = output.strip().split('\r\n')[-1]
     return last_line.lower().startswith(process_name.lower())
+
+
+def check_if_running_as_admin():
+    """
+    Check if the user is running this script as an admin.
+    If not, return False.
+    """
+    is_admin = ctypes.windll.shell32.IsUserAnAdmin()
+    if is_admin == 1:
+        return True
+    return False
