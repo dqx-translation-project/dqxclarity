@@ -319,7 +319,8 @@ def download_dat_files():
             
             # If it doesn't, let's back it up first with a copy
             if not os.path.isfile(idx_path):
-                shutil.copy(dqx_path + "/" + idx_file, dqx_path + "/" + idx_file + ".bak")
+                src_file = dqx_path + "/" + idx_file
+                shutil.copy(src_file, f"{src_file}.bak")
             
             # Now let's download the data files
             try:

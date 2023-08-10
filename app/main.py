@@ -5,7 +5,6 @@ import time
 import click
 from loguru import logger
 from common.update import check_for_updates, download_custom_files, download_dat_files
-from common.lib import scan_for_dqx
 from dqxcrypt.dqxcrypt import start_logger
 
 # fmt: off
@@ -39,13 +38,7 @@ def blast_off(
         if not disable_translations:
             # Imports are done here as the program requires the game to be open otherwise.
             # This allows us to test config and translate settings without launching everything.
-            logger.info("Waiting for DQX to launch...")
-            scan_for_dqx()
-            from common.memory import pattern_scan
-            from common.signatures import integrity_check
-            while True:
-                if(pattern_scan(pattern=integrity_check, module="DQXGame.exe")):
-                    break
+
             from hooking.hook import activate_hooks
             from clarity import loop_scan_for_walkthrough, run_scans
 
