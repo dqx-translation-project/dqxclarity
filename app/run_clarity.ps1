@@ -49,18 +49,6 @@ function DownloadAndInstallPython() {
     }
 }
 
-function VerifyPythonVenv() {
-    try {
-		& .\venv\Scripts\activate
-        & .\venv\Scripts\python.exe -c "import click"
-    }
-    catch {
-        LogWrite "Virtual environment did not install correctly. Re-open dqxclarity to try again. $HelpMessage"
-        RemoveFile "venv"
-        PromptForInputAndExit
-    }
-}
-
 $ErrorActionPreference="SilentlyContinue"
 Stop-Transcript | Out-Null
 $ErrorActionPreference = "Continue"
