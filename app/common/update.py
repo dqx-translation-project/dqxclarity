@@ -267,7 +267,10 @@ def download_dat_files():
     download the latest data files from the dqxclarity repo.
     """
     if process_exists("DQXGame.exe"):
-        message_box_fatal_error("Please close DQX before attempting to update the translated DAT/IDX file.")
+        message_box_fatal_error(
+            title="DQXGame.exe is open",
+            message="Please close DQX before attempting to update the translated DAT/IDX file."
+        )
     config = load_user_config()
     dat0_file = "data00000000.win32.dat0"
     idx_file = "data00000000.win32.idx"
