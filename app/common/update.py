@@ -14,7 +14,7 @@ from common.constants import (
     GITHUB_CLARITY_DAT1_URL,
     GITHUB_CLARITY_IDX_URL
 )
-from common.lib import get_abs_path
+from common.lib import get_abs_path, process_exists
 from loguru import logger
 import os
 import sqlite3
@@ -266,6 +266,8 @@ def download_dat_files():
     them to locate it if not found. Uses this location to
     download the latest data files from the dqxclarity repo.
     """
+    if process_exists("DQXGame.exe"):
+        message_box_fatal_error("Please close DQX before attempting to update the translated DAT/IDX file.")
     config = load_user_config()
     dat0_file = "data00000000.win32.dat0"
     idx_file = "data00000000.win32.idx"
@@ -304,7 +306,6 @@ def download_dat_files():
                     )
     
     # We have an installation path, so let's check it
-    
     if config["config"]["installdirectory"]:
         
         dqx_path = config["config"]["installdirectory"]
@@ -338,10 +339,15 @@ def download_dat_files():
                     logger.error("Failed to download data files. Clarity will continue without downloading.")    
             except Exception as e:
                 logger.error(f"Failed to download data files. Error: {e}")
-                input("Press ENTER to exit.")
-                sys.exit()
         else:
             message_box_fatal_error(
                 title="[dqxclarity] Invalid Directory",
-                message="The path you provided is not a valid DQX path.\nPlease point to the Data folder where your\nDQX install is located using the\nDQXClarity GUI or by editing your\nuser_settings.ini file."
+                message="The path you provided is not a valid DQX path. Please point to the Data folder where your DQX install is located using the dqxclarity GUI or by editing your user_settings.ini file."
             )
+
+    warning_message(
+        title="Update completed",
+        message="Translated game files have been updated. Relaunch clarity with 'Update translated game files' unchecked and relaunch dqxclarity.",
+        exit_prog=True
+    )
+    input("Press ENTER to exit.")

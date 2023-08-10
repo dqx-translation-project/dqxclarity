@@ -7,7 +7,6 @@ from loguru import logger
 from common.update import check_for_updates, download_custom_files, download_dat_files
 from dqxcrypt.dqxcrypt import start_logger
 
-# fmt: off
 @click.command()
 @click.option('-v', '--debug', is_flag=True, help="Turns on additional logging to console.")
 @click.option('-u', '--disable-update-check', is_flag=True, help="Disables checking for updates on each launch.")
@@ -16,7 +15,7 @@ from dqxcrypt.dqxcrypt import start_logger
 @click.option('-n', '--npc-names', is_flag=True, help="Scans for NPC names and changes them to their Romaji counterpart.")
 @click.option('-l', '--community-logging', is_flag=True, help="Enables dumping important game information that the dqxclarity devs need to continue this project.")
 @click.option('-z', '--disable-translations', is_flag=True, help="Only runs initialization of dqxclarity, which checks for updates and validity of your user_settings.ini file.")
-# fmt: on
+@click.option('-d', '--update-dat', is_flag=True, help="Update the translated idx and dat file with the latest from Github. Requires the game to be closed. When toggled, this will only update the dat/idx. No other arguments will be processed. If you intend to fully run dqxclarity, don't toggle this.")
 
 
 def blast_off(
@@ -26,12 +25,14 @@ def blast_off(
     npc_names=False,
     disable_translations=False,
     community_logging=False,
+    update_dat=False,
     debug=False,
 ):
     logger.info("Getting started. DO NOT TOUCH THE GAME OR REMOVE YOUR MEMORY CARD.")
+    if update_dat:
+        download_dat_files()
     if not disable_update_check:
         check_for_updates(update=True)
-        download_dat_files()
         download_custom_files()
 
     try:
