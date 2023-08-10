@@ -66,7 +66,6 @@ if (!$PythonInstallPath) {
     $Result = $Shell.popup("Could not find Python 3.11 installation. Do you want to install it?",0,"Question",4+32)
 
     if ($Result -eq 6) {
-        Write-Host "test"
         DownloadAndInstallPython
     } else {
         LogWrite "You selected 'No'. Python 3.11 is required to use dqxclarity. Exiting."
@@ -77,31 +76,25 @@ if (!$PythonInstallPath) {
 
 # check if the user already has a virtual environment folder
 if (-not (Test-Path -Path "venv")) {
-    try {
-        LogWrite "Creating virtual environment."
-        & $PythonInstallPath -m venv venv
-    }
-    catch {
+    LogWrite "Creating virtual environment."
+    & $PythonInstallPath -m venv venv
+    if ($? -eq $False) {
         LogWrite "An error occurred during virtual environment initialization. Please try again. $HelpMessage"
-        $_
         RemoveFile "venv"
-        PromotForInputAndExit
+        PromptForInputAndExit
     }
 }
 
 # try to activate the found virtual environment
-try {
-    & .\venv\Scripts\activate
-}
-catch {
+& .\venv\Scripts\activate
+if ($? -eq $False) {
     LogWrite "Could not activate virtual environment. Please try again. $HelpMessage"
-    $_
     RemoveFile "venv"
-    PromotForInputAndExit
+    PromptForInputAndExit
 }
 
 # install tkinter if it's missing.
-# we use to automate installations without tkinter enabled, so we now need to check
+# we used to automate installations without tkinter enabled, so we now need to check
 # if it's installed. when we upgrade Python versions again, we can remove this block
 # and install tkinter by default.
 & .\venv\Scripts\python.exe -c "import tkinter" 2> $null
@@ -120,17 +113,20 @@ if ($? -eq $False) {
 }
 
 # install python dependencies
-try {
-    LogWrite "Updating pip and installation dependencies."
-    & .\venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel --quiet
-    LogWrite "Installing dqxclarity dependencies."
-    & .\venv\Scripts\pip.exe install -r requirements.txt --quiet
-}
-catch {
-    LogWrite "An error occurred during virtual environment initialization. Please try again. $HelpMessage"
-    $_
+LogWrite "Updating pip and installation dependencies."
+& .\venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel --quiet
+if ($? -eq $False) {
+    LogWrite "An error occurred during pip updates. Please try again. $HelpMessage"
     RemoveFile "venv"
-    PromotForInputAndExit
+    PromptForInputAndExit
+}
+
+LogWrite "Installing dqxclarity dependencies."
+& .\venv\Scripts\pip.exe install -r requirements.txt --quiet
+if ($? -eq $False) {
+    LogWrite "An error occurred during dependency installation. Please try again. $HelpMessage"
+    RemoveFile "venv"
+    PromptForInputAndExit
 }
 
 # verify dependencies installed correctly by attempting to import something that was installed.
