@@ -136,7 +136,6 @@ catch {
 # verify dependencies installed correctly by attempting to import something that was installed.
 & .\venv\Scripts\python.exe -c "import click" 2> $null
 if ($? -eq $False) {
-    DownloadAndInstallPython
     LogWrite "An error occurred while verifying dependency installation. Please try again. $HelpMessage"
     RemoveFile "venv"
     PromptForInputAndExit
