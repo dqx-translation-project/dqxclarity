@@ -98,7 +98,7 @@ def check_for_updates(update: bool):
                     logger.warning("Did not find Python exe! Clarity is unable to update and will continue without updating.")
                     return False
                 logger.info(f"Launching updater.")
-                Popen([python_exe[0], "../updater.py"])
+                Popen([python_exe[0], "./updater.py"])
                 sys.exit()
         return
     except Exception as e:
