@@ -79,7 +79,7 @@ if (!$PythonInstallPath) {
 
     if ($Result -eq 6) {
         Write-Host "test"
-        #DownloadAndInstallPython
+        DownloadAndInstallPython
     } else {
         LogWrite "You selected 'No'. Python 3.11 is required to use dqxclarity. Exiting."
         Read-Host "Press ENTER to close."
