@@ -104,8 +104,6 @@ comm_name_pattern_2 = rb"\x09[\xE3\xEF].................\x00.................\x3
 # D0 ?? ?? ?? 00 00 00 00 04 02 00 00 10 00 00 00 E?
 walkthrough_pattern = rb"\xD0...\x00\x00\x00\x00\x04\x02\x00\x00\x10\x00\x00\x00[\xE3\xE4\xE5\xE6\xE7\xE8\xE9]"
 
-# pattern for "Important Notice" text
-# 49 6D 70 6F 72 74 61 6E 74 20 4E 6F 74 69 63 65 ("Important Notice" text)
-# E5 8B 95 E7 94 BB E3 83 BB E7 94 9F E9 85 8D E4 BF A1 E3 82 92 E8 A1 8C E3 81 86 E9 9A 9B E3 81 AF (first line of Japanese text in notice box)
-# notice_string = rb"\x49\x6D\x70\x6F\x72\x74\x61\x6E\x74\x20\x4E\x6F\x74\x69\x63"
+# "動画・生配信を行う際は" found in notice box on login. Bytes are just the words encoded into utf-8
+# E5 8B 95 E7 94 BB E3 83 BB E7 94 9F E9 85 8D E4 BF A1 E3 82 92 E8 A1 8C E3 81 86 E9 9A 9B E3 81 AF
 notice_string = rb"\xE5\x8B\x95\xE7\x94\xBB\xE3\x83\xBB\xE7\x94\x9F\xE9\x85\x8D\xE4\xBF\xA1\xE3\x82\x92\xE8\xA1\x8C\xE3\x81\x86\xE9\x9A\x9B\xE3\x81\xAF"
