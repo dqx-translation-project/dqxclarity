@@ -358,10 +358,3 @@ def download_dat_files():
                 title="[dqxclarity] Invalid Directory",
                 message="The path you provided is not a valid DQX path. Please point to the Data folder where your DQX install is located using the dqxclarity GUI or by editing your user_settings.ini file."
             )
-
-    warning_message(
-        title="Update completed",
-        message="Translated game files have been updated. Relaunch clarity with 'Update translated game files' unchecked and relaunch dqxclarity.",
-        exit_prog=True
-    )
-    input("Press ENTER to exit.")
