@@ -112,7 +112,6 @@ def wait_for_dqx_to_launch() -> bool:
     from common.signatures import notice_string
     logger.success("DQXGame.exe found. Make sure you're on the \"Important notice\" screen.")
     while True:
-        scan = pattern_scan(pattern=notice_string)
-        if scan:
+        if pattern_scan(pattern=notice_string):
             logger.success("\"Important notice\" screen found.")
             return
