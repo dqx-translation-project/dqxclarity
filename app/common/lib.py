@@ -1,8 +1,10 @@
 import ctypes
 import logging
+from loguru import logger
 import json
 import os
 import shutil
+import time
 from pathlib import Path
 import subprocess
 
@@ -94,3 +96,23 @@ def check_if_running_as_admin():
     if is_admin == 1:
         return True
     return False
+
+
+def wait_for_dqx_to_launch() -> bool:
+    """
+    Scans for the DQXGame.exe process.
+    """
+    logger.info("Searching for DQXGame.exe.")
+    if process_exists("DQXGame.exe"):
+        logger.success("DQXGame.exe found.")
+        return
+    while not process_exists("DQXGame.exe"):
+        time.sleep(0.25)
+    from common.memory import pattern_scan
+    from common.signatures import notice_string
+    logger.success("DQXGame.exe found. Make sure you're on the \"Important notice\" screen.")
+    while True:
+        scan = pattern_scan(pattern=notice_string)
+        if scan:
+            logger.success("\"Important notice\" screen found.")
+            return

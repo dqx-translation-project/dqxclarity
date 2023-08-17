@@ -5,7 +5,7 @@ import time
 import click
 from loguru import logger
 from common.update import check_for_updates, download_custom_files, download_dat_files
-from common.lib import process_exists
+from common.lib import wait_for_dqx_to_launch
 from dqxcrypt.dqxcrypt import start_logger
 
 @click.command()
@@ -38,24 +38,10 @@ def blast_off(
 
     try:
         if not disable_translations:
+            wait_for_dqx_to_launch()
+
             # Imports are done here as the program requires the game to be open otherwise.
             # This allows us to test config and translate settings without launching everything.
-            if not process_exists("DQXGame.exe"):
-                logger.info("Waiting for DQX to launch...")
-                while not process_exists("DQXGame.exe"):
-                    if process_exists("DQXGame.exe"):
-                        break;
-                from common.memory import pattern_scan
-                from common.signatures import notice_string
-                while True:
-                    try:
-                        scan = pattern_scan(pattern=notice_string)
-                    except Exception:
-                        continue
-                    logger.info(scan)
-                    if(scan):
-                        break
-
             from hooking.hook import activate_hooks
             from clarity import loop_scan_for_walkthrough, run_scans
 
