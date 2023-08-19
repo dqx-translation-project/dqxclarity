@@ -113,17 +113,8 @@ if ($? -eq $False) {
     }
 }
 
-# install python dependencies
-LogWrite "Updating pip and installation dependencies."
-& .\venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel --quiet
-if ($? -eq $False) {
-    LogWrite "An error occurred during pip updates. Please try again. $HelpMessage"
-    RemoveFile "venv"
-    PromptForInputAndExit
-}
-
 LogWrite "Installing dqxclarity dependencies."
-& .\venv\Scripts\pip.exe install -r requirements.txt --quiet
+& .\venv\Scripts\pip.exe install --disable-pip-version-check -r requirements.txt --quiet --use-pep517
 if ($? -eq $False) {
     LogWrite "An error occurred during dependency installation. Please try again. $HelpMessage"
     RemoveFile "venv"
