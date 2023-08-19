@@ -31,7 +31,7 @@ function DownloadAndInstallPython() {
     Invoke-WebRequest -Uri https://www.python.org/ftp/python/3.11.3/python-3.11.3.exe -OutFile python-3.11.3.exe
 
     $PythonMD5 = Get-FileHash .\python-3.11.3.exe -Algorithm MD5
-    if ($PythonMD5.Hash -ne "691232496E346CE0860AEF052DD6844F") {
+    if ($PythonMD5.Hash -ne "691232496E346CE0860AEF052DD6844F") {  # pragma: allowlist secret
         LogWrite "File download did not complete successfully. Please re-run this script and try again. $HelpMessage"
         RemoveFile "python-3.11.3.exe"
         Read-Host "Press ENTER to close."
@@ -67,6 +67,7 @@ if (!$PythonInstallPath) {
 
     if ($Result -eq 6) {
         DownloadAndInstallPython
+        $PythonInstallPath = PythonExePath
     } else {
         LogWrite "You selected 'No'. Python 3.11 is required to use dqxclarity. Exiting."
         Read-Host "Press ENTER to close."
