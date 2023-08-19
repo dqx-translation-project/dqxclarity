@@ -284,77 +284,61 @@ def download_dat_files():
 
     config = load_user_config()
     dat0_file = "data00000000.win32.dat0"
-    idx_file = "data00000000.win32.idx"
-    
-    # If user_settings.ini doesn't have the install directory
-    # set, let's set it now
-    
-    if not config["config"]["installdirectory"]:
-    
-        # First, let's check the default location and see if it's installed there
-        default_path = 'C:/Program Files (x86)/SquareEnix/DRAGON QUEST X/Game/Content/Data'
-        
+    idx0_file = "data00000000.win32.idx"
+
+    install_directory = config["config"]["installdirectory"]
+
+    valid_path = False
+    if install_directory:
+        if os.path.isdir(install_directory):
+            logger.success("DQX game path is valid.")
+            valid_path = True
+
+    if not valid_path:
+        default_path = 'C:/Program Files (x86)/SquareEnix/DRAGON QUEST X'
         if os.path.exists(default_path):
             update_user_config('config', 'installdirectory', default_path)
         else:
-            # Doesn't exist. Let's prompt the user for it
             warning_message(
-                title="[dqxclarity] Couldn't Find Directory",
-                message="Could not find DQX directory. Please select\nthe Data folder located in your\nDQX install location."
-            )    
-            
-            # Prompt the user to select their DQX data directory, and check
-            # if the dat0 file exists in this path. If it does, it *should* be legit.
-            # Keep prompting the user until the path is valid
+                title="[dqxclarity] Couldn't Find DQX Directory",
+                message="Could not find DQX directory. Browse to the path where you installed the game and select the \"DRAGON QUEST X\" folder."
+            )
+
             while True:
                 dqx_path = askdirectory()
-                dat0_path = dqx_path + "/" + dat0_file
-                
+                dat0_path = "/".join([dqx_path, "Game/Content/Data", dat0_file])
+
                 if os.path.isfile(dat0_path):
                     update_user_config('config', 'installdirectory', dqx_path)
+                    logger.success("DQX path verified.")
                     break
                 else:
                     warning_message(
                         title="[dqxclarity] Invalid Directory",
-                        message="The path you provided is not a valid DQX path.\nPlease select the Data folder located\nin your DQX install location."
+                        message="The path you provided is not a valid DQX path.\nBrowse to the path where you installed the game and select the \"DRAGON QUEST X\" folder."
                     )
-    
-    # We have an installation path, so let's check it
-    if config["config"]["installdirectory"]:
-        
-        dqx_path = config["config"]["installdirectory"]
-        dat0_path = dqx_path + "/" + dat0_file
-        
-        # If the dat0 file exists here, it should be legit
-        # and we can move on
-        
-        if os.path.isfile(dat0_path):
-            # First, let's check if an idx file backup already exists
-            idx_path = dqx_path + "/" + idx_file + ".bak"
-            
-            # If it doesn't, let's back it up first with a copy
-            if not os.path.isfile(idx_path):
-                src_file = dqx_path + "/" + idx_file
-                shutil.copy(src_file, f"{src_file}.bak")
-            
-            # Now let's download the data files
-            try:
-                logger.info("Downloading DAT1 and IDX files.")
-                dat_request = requests.get(GITHUB_CLARITY_DAT1_URL, timeout=15)
-                idx_request = requests.get(GITHUB_CLARITY_IDX_URL, timeout=15)
-                # Make sure both requests are good before we write the files
-                if dat_request.status_code == 200 and idx_request.status_code == 200:
-                    with open(dqx_path + "\data00000000.win32.dat1", "w+b") as f:
-                        f.write(dat_request.content)
-                    with open(dqx_path + "\data00000000.win32.idx", "w+b") as f:
-                        f.write(idx_request.content)
-                    logger.success("Data files downloaded.")
-                else:
-                    logger.error("Failed to download data files. Clarity will continue without downloading.")    
-            except Exception as e:
-                logger.error(f"Failed to download data files. Error: {e}")
+
+    config = load_user_config()  # call this again in case we made changes above
+    dqx_path = "/".join([config['config']['installdirectory'], "Game/Content/Data"]) 
+    idx0_path = "/".join([dqx_path, idx0_file])
+
+    if not os.path.isfile(f"{idx0_path}.bak"):
+        logger.info(f"Did not find a backup of existing idx file. Backing up and renaming to {idx0_file}.bak")
+        shutil.copy(idx0_path, f"{idx0_path}.bak")
+
+    try:
+        logger.info("Downloading DAT1 and IDX files.")
+        dat_request = requests.get(GITHUB_CLARITY_DAT1_URL, timeout=10)
+        idx_request = requests.get(GITHUB_CLARITY_IDX_URL, timeout=10)
+
+        # Make sure both requests are good before we write the files
+        if dat_request.status_code == 200 and idx_request.status_code == 200:
+            with open(dqx_path + "/data00000000.win32.dat1", "w+b") as f:
+                f.write(dat_request.content)
+            with open(dqx_path + "/data00000000.win32.idx", "w+b") as f:
+                f.write(idx_request.content)
+            logger.success("Translation files downloaded.")
         else:
-            message_box_fatal_error(
-                title="[dqxclarity] Invalid Directory",
-                message="The path you provided is not a valid DQX path. Please point to the Data folder where your DQX install is located using the dqxclarity GUI or by editing your user_settings.ini file."
-            )
+            logger.error("Failed to download translation files. Clarity will continue without updating translation files")
+    except Exception as e:
+        logger.error(f"Failed to download data files. Error: {e}")
