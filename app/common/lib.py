@@ -1,8 +1,12 @@
+import ctypes
 import logging
+from loguru import logger
 import json
 import os
 import shutil
+import time
 from pathlib import Path
+import subprocess
 
 
 def read_json_file(file):
@@ -73,3 +77,41 @@ def merge_jsons(files: list):
 def get_abs_path(file: str):
     abs_path = os.path.abspath(os.path.join(os.path.dirname(file)))
     return abs_path.replace("\\", "/")
+
+
+def process_exists(process_name):
+    # https://stackoverflow.com/a/29275361
+    call = 'TASKLIST', '/FI', 'imagename eq %s' % process_name
+    output = subprocess.check_output(call).decode()
+    last_line = output.strip().split('\r\n')[-1]
+    return last_line.lower().startswith(process_name.lower())
+
+
+def check_if_running_as_admin():
+    """
+    Check if the user is running this script as an admin.
+    If not, return False.
+    """
+    is_admin = ctypes.windll.shell32.IsUserAnAdmin()
+    if is_admin == 1:
+        return True
+    return False
+
+
+def wait_for_dqx_to_launch() -> bool:
+    """
+    Scans for the DQXGame.exe process.
+    """
+    logger.info("Searching for DQXGame.exe.")
+    if process_exists("DQXGame.exe"):
+        logger.success("DQXGame.exe found.")
+        return
+    while not process_exists("DQXGame.exe"):
+        time.sleep(0.25)
+    from common.memory import pattern_scan
+    from common.signatures import notice_string
+    logger.success("DQXGame.exe found. Make sure you're on the \"Important notice\" screen.")
+    while True:
+        if pattern_scan(pattern=notice_string):
+            logger.success("\"Important notice\" screen found.")
+            return

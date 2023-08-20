@@ -252,6 +252,7 @@ def load_user_config():
         "regioncode": "en",
     }
     base_config["behavior"] = {"enabledialoglogging": "False"}
+    base_config["config"] = {"installdirectory": ""}
 
     def create_base_config():
         with open(filename, "w+") as configfile:
@@ -282,7 +283,7 @@ def load_user_config():
         create_base_config()
         warning_message(
             title="[dqxclarity] New config created",
-            message=f"We found a missing config value in your {filename}.\n\nYour old config has been renamed to {filename}.invalid in case you need to reference it.\n\nPlease relaunch dqxclarity after setting up your new configuration.",
+            message=f"We found a missing config value in your {filename}.\n\nYour old config has been renamed to {filename}.invalid in case you need to reference it.\n\nPlease relaunch dqxclarity.",
             exit_prog=True,
         )
 
