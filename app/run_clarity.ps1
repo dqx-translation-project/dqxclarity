@@ -25,7 +25,7 @@ function PromptForInputAndExit() {
     Exit
 }
 
-function DownloadAndInstallPython() {
+function DownloadPythonInstaller() {
     $ProgressPreference = "SilentlyContinue"  # workaround to faster download speeds using IWR
     LogWrite "Downloading Python executable from the internet."
     Invoke-WebRequest -Uri https://www.python.org/ftp/python/3.11.3/python-3.11.3.exe -OutFile python-3.11.3.exe
@@ -37,7 +37,9 @@ function DownloadAndInstallPython() {
         Read-Host "Press ENTER to close."
         Exit
     }
+}
 
+function InstallPython() {
     LogWrite "Launching Python 3.11 installer and installing Python for you. Please wait."
     .\python-3.11.3.exe /passive InstallAllUsers=1 PrependPath=1 Include_doc=0 Include_tcltk=1 Include_test=0 Shortcuts=0 SimpleInstallDescription="Installing necessary components for dqxclarity." | Out-Null
     $PythonInstallPath = PythonExePath
@@ -47,6 +49,11 @@ function DownloadAndInstallPython() {
         Read-Host "Press ENTER to close."
         Exit
     }
+}
+
+function UninstallPython() {
+    LogWrite "Uninstalling Python."
+    .\python-3.11.3.exe /uninstall | Out-Null
 }
 
 $ErrorActionPreference="SilentlyContinue"
@@ -66,7 +73,8 @@ if (!$PythonInstallPath) {
     $Result = $Shell.popup("Could not find Python 3.11 installation. Do you want to install it?",0,"Question",4+32)
 
     if ($Result -eq 6) {
-        DownloadAndInstallPython
+        DownloadPythonInstaller
+        InstallPython
         $PythonInstallPath = PythonExePath
     } else {
         LogWrite "You selected 'No'. Python 3.11 is required to use dqxclarity. Exiting."
@@ -101,9 +109,11 @@ if ($? -eq $False) {
 & .\venv\Scripts\python.exe -c "import tkinter" 2> $null
 if ($? -eq $False) {
     $Shell = New-Object -comobject "WScript.Shell"
-    $Result = $Shell.popup("Python must be updated to support a new feature Clarity requires. Install now?",0,"Question",4+32)
+    $Result = $Shell.popup("Python installation must be uninstalled and reinstalled to support a new feature Clarity requires. Install now?",0,"Question",4+32)
     if ($Result -eq 6) {
-        DownloadAndInstallPython
+        DownloadPythonInstaller
+        UninstallPython
+        InstallPython
         Write-Host "Clarity must be restarted to use the new changes. Please close Clarity and relaunch."
         RemoveFile "venv"
         PromptForInputAndExit
