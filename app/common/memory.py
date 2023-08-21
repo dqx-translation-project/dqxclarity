@@ -3,7 +3,7 @@ from common.errors import (
     FailedToReadAddress,
     MemoryReadError,
     MemoryWriteError,
-    message_box_fatal_error,
+    message_box,
 )
 from loguru import logger
 from pymem.pattern import pattern_scan_all, pattern_scan_module
@@ -24,7 +24,7 @@ def dqx_mem():
         exe.process_handle &= 0xFFFFFFFF
         return exe
     except pymem.exception.ProcessNotFound:
-        message_box_fatal_error("DQX not found", "Open DQX, get to the title screen and re-launch.")
+        message_box("DQX not found", "Open DQX, get to the title screen and re-launch.", exit_prog=True)
 
 
 def read_bytes(address: int, size: int):
