@@ -1,23 +1,22 @@
-from loguru import logger
-import struct
-import sys
-import pymem
-import pymem.process
-from pymem.pattern import pattern_scan_all, pattern_scan_module
-import pymem.exception
 from common.errors import (
     AddressOutOfRange,
+    FailedToReadAddress,
     MemoryReadError,
     MemoryWriteError,
-    FailedToReadAddress,
     message_box_fatal_error,
 )
+from loguru import logger
+from pymem.pattern import pattern_scan_all, pattern_scan_module
+
+import pymem
+import pymem.exception
+import pymem.process
+import struct
+import sys
 
 
 def dqx_mem():
-    """
-    Instantiates a pymem instance.
-    """
+    """Instantiates a pymem instance."""
     try:
         exe = pymem.Pymem("DQXGame.exe")
         # obscure issue seen on Windows 11 getting an OverflowError
@@ -29,8 +28,7 @@ def dqx_mem():
 
 
 def read_bytes(address: int, size: int):
-    """
-    Read n number of bytes at address.
+    """Read n number of bytes at address.
 
     Args:
         address: The address to start at
@@ -49,8 +47,7 @@ def read_bytes(address: int, size: int):
 
 
 def write_bytes(address: int, value: bytes):
-    """
-    Write bytes to memory at address.
+    """Write bytes to memory at address.
 
     Args:
         address: The address to write to
@@ -65,9 +62,7 @@ def write_bytes(address: int, value: bytes):
 
 
 def read_string(address: int):
-    """
-    Reads a string from memory at the given address.
-    """
+    """Reads a string from memory at the given address."""
     end_addr = address
 
     if end_addr is not None:
@@ -83,16 +78,12 @@ def read_string(address: int):
 
 
 def write_string(address: int, text: str):
-    """
-    Writes a null-terminated string to memory at the given address.
-    """
+    """Writes a null-terminated string to memory at the given address."""
     return PYM_PROCESS.write_string(address, text + "\x00")
 
 
 def pattern_scan(pattern: bytes, return_multiple=False, use_regex=False, module=None):
-    """
-    Scan for a byte pattern.
-    """
+    """Scan for a byte pattern."""
     try:
         if module is not None:
             return pattern_scan_module(
@@ -122,8 +113,7 @@ def pattern_scan(pattern: bytes, return_multiple=False, use_regex=False, module=
 
 
 def get_ptr_address(base, offsets):
-    """
-    Gets the address a pointer is pointing to.
+    """Gets the address a pointer is pointing to.
 
     Args:
         base: Base of the pointer
@@ -138,23 +128,22 @@ def get_ptr_address(base, offsets):
 
 
 def get_base_address(name="DQXGame.exe") -> int:
-    """
-    Returns the base address of a module. Defaults to DQXGame.exe.
+    """Returns the base address of a module.
+
+    Defaults to DQXGame.exe.
     """
     return pymem.process.module_from_name(PYM_PROCESS.process_handle, name).lpBaseOfDll
 
 
 def pack_to_int(address: int) -> bytes:
-    """
-    Packs the address into little endian and returns the appropriate bytes.
-    """
+    """Packs the address into little endian and returns the appropriate
+    bytes."""
     return struct.pack("<i", address)
 
 
 def unpack_to_int(address: int):
-    """
-    Unpacks the address from little endian and returns the appropriate bytes.
-    """
+    """Unpacks the address from little endian and returns the appropriate
+    bytes."""
     value = read_bytes(address, 4)
     unpacked_address = struct.unpack("<i", value)
 
@@ -162,16 +151,13 @@ def unpack_to_int(address: int):
 
 
 def allocate_memory(size: int) -> int:
-    """
-    Allocates a defined number of bytes into the target process.
-    """
+    """Allocates a defined number of bytes into the target process."""
     return PYM_PROCESS.allocate(size)
 
 
 def calc_rel_addr(origin_address: int, destination_address: int) -> bytes:
-    """
-    Calculates the difference between addresses to return the relative offset.
-    """
+    """Calculates the difference between addresses to return the relative
+    offset."""
 
     # jmp forward
     if origin_address < destination_address:
@@ -185,9 +171,7 @@ def calc_rel_addr(origin_address: int, destination_address: int) -> bytes:
 
 
 def get_hook_bytecode(hook_address: int):
-    """
-    Returns a formatted jump address for your hook.
-    """
+    """Returns a formatted jump address for your hook."""
     return b"\xE9" + pack_to_int(hook_address)
 
 

@@ -1,11 +1,12 @@
 from io import BytesIO
-import glob
+from urllib.request import Request, urlopen
 from zipfile import ZipFile as zip
+
+import glob
 import os
 import shutil
-import sys
 import subprocess
-from urllib.request import urlopen, Request
+import sys
 
 CLARITY_URL = "https://github.com/dqx-translation-project/dqxclarity/releases/latest/download/dqxclarity.zip"
 

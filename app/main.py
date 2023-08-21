@@ -1,12 +1,18 @@
-from multiprocessing import Process
-import threading
-import sys
-import time
-import click
-from loguru import logger
-from common.update import check_for_updates, download_custom_files, download_dat_files
 from common.lib import wait_for_dqx_to_launch
+from common.update import (
+    check_for_updates,
+    download_custom_files,
+    download_dat_files,
+)
 from dqxcrypt.dqxcrypt import start_logger
+from loguru import logger
+from multiprocessing import Process
+
+import click
+import sys
+import threading
+import time
+
 
 @click.command()
 @click.option('-v', '--debug', is_flag=True, help="Turns on additional logging to console.")
@@ -39,8 +45,8 @@ def blast_off(
 
         # Imports are done here as the program requires the game to be open otherwise.
         # This allows us to test config and translate settings without launching everything.
-        from hooking.hook import activate_hooks
         from clarity import loop_scan_for_walkthrough, run_scans
+        from hooking.hook import activate_hooks
 
         def start_process(name: str, target, args: tuple):
             p = Process(name=name, target=target, args=args)
