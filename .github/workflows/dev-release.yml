@@ -47,6 +47,6 @@ jobs:
         with:
           files: dqxclarity-dev-${{ env.SHORT_SHA }}.zip
           prerelease: true
-          tag_name: v${{ env.CURRENT_TAG }}-dev
+          tag_name: ${{ env.CURRENT_TAG }}-dev
           name: "Dev Build: ${{ env.CURRENT_TAG }}-dev-${{ env.SHORT_SHA }}"
           body: "This is a pre-release build! You don't want to download this!"
