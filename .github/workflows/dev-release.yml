@@ -1,29 +1,33 @@
 ---
-name: "dev-release"
+name: "dev-pre-release"
 
 on:
   push:
     branches:
-      - "dev"
+      - test-action
 
 jobs:
-  dev-release:
-    name: "Dev release"
-    runs-on: "ubuntu-latest"
+  dev-pre-release:
+    name: 'Dev pre-release'
+    runs-on: 'ubuntu-latest'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      - name: Clone dqx-translation-project/dqx_translations
-        uses: GuillaumeFalourd/clone-github-repo-action@v2
+      - name: Checkout dqx-translation-project/dqx_translations
+        uses: actions/checkout@v3
         with:
-          owner: "dqx-translation-project"
-          repository: "dqx_translations"
-      - name: Clone dqx-translation-project/dqx-custom-translations
-        uses: GuillaumeFalourd/clone-github-repo-action@v2
+          repository: 'dqx-translation-project/dqx_translations'
+          path: 'dqx_translations'
+      - name: Checkout dqx-translation-project/dqx-custom-translations
+        uses: actions/checkout@v3
         with:
-          owner: "dqx-translation-project"
-          repository: "dqx-custom-translations"
-      - name: Build dev package
+          repository: "dqx-translation-project/dqx-custom-translations"
+          path: 'dqx-custom-translations'
+      - name: Update GITHUB_ENV env
+        run: |
+          echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
+          echo "CURRENT_TAG=`git describe --tags --abbrev=0`" >> $GITHUB_ENV
+      - name: Build dev pre-release package
         run: |
           rsync -av --exclude="imgs/" app/* dqxclarity/;
           cp version.update requirements.txt user_settings.ini dqxclarity/;
@@ -35,29 +39,12 @@ jobs:
           cp -f dqx_translations/json/_lang/en/subPackage41Client.win32.json dqxclarity/misc_files;
           cp -f dqx_translations/json/_lang/en/subPackage02Client.win32.json dqxclarity/misc_files;
           cp -f dqx_translations/json/_lang/en/smldt_msg_pkg_NPC_DB.win32.json dqxclarity/misc_files;
-          zip -r dqxclarity.zip dqxclarity
-      - name: Set outputs
-        id: vars
-        run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
-      - name: Read version.update file
-        uses: juliangruber/read-file-action@v1
-        id: template
-        with:
-          path: ./version.update
-      - name: Get release version
-        id: bump_version
-        uses: christian-draeger/increment-semantic-version@1.0.2
-        with:
-          current-version: ${{ steps.template.outputs.content }}
-          version-fragment: "feature"
-      - name: Rename dqxclarity.zip to dev build
-        run: |
-          mv dqxclarity.zip dqxclarity-${{ steps.bump_version.outputs.next-version }}-dev-${{ steps.vars.outputs.sha_short }}.zip
+          zip -r dqxclarity-dev-$SHORT_SHA.zip dqxclarity
       - name: Creating dev release
         uses: softprops/action-gh-release@v1
         with:
-          files: dqxclarity-${{ steps.bump_version.outputs.next-version }}-dev-${{ steps.vars.outputs.sha_short }}.zip
+          files: dqxclarity-dev-$SHORT_SHA.zip
           prerelease: true
-          tag_name: v${{ steps.bump_version.outputs.next-version }}-dev
-          name: "Dev Build: ${{ steps.bump_version.outputs.next-version }}-dev-${{ steps.vars.outputs.sha_short }}"
-          generate_release_notes: true
+          tag_name: v$CURRENT_TAG-dev
+          name: "Dev Build: $CURRENT_TAG-dev-$SHORT_SHA"
+          body: "This is a pre-release build! You don't want to download this!"
