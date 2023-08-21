@@ -31,7 +31,7 @@ jobs:
       - name: Update GITHUB_ENV env
         run: |
           echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
-          echo "CURRENT_TAG=`git describe --tags $(git rev-list --tags) | grep -v dev | head -n1`" >> $GITHUB_ENV
+          echo "CURRENT_TAG=`git describe --tags $(git rev-list --tags) | grep -v dev | head -n1 | cut -d"-" -f1`" >> $GITHUB_ENV
 
       - name: Bump version.update
         if: startsWith(github.ref, 'refs/tags/v')
