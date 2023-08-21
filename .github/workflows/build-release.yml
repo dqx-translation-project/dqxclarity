@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-release-zip:
-    name: 'build-release-zip'
+    name: Build release zip
     runs-on: 'ubuntu-latest'
     steps:
       - name: Checkout repository
