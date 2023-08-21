@@ -211,14 +211,14 @@ def merge_local_db():
             finally:
                 if conn:
                     conn.close()
-                    
+
         # Quests insertion
         for rowNum in range(2, ws_quests.max_row + 1):
             source_text = ws_quests.cell(row=rowNum, column=1).value
             en_text = ws_quests.cell(row=rowNum, column=3).value
 
             escaped_text = en_text.replace("'", "''")
-            
+
             bad_string = False
             bad_string_col = str(ws_quests.cell(row=rowNum, column=4).value)
             if "BAD STRING" in bad_string_col:
@@ -232,7 +232,7 @@ def merge_local_db():
                 else:
                     selectQuery = f"SELECT ja FROM quests WHERE ja = '{source_text}'"
                     updateQuery = f"UPDATE quests SET en = '{escaped_text}' WHERE ja = '{source_text}'"
-                    
+
                 if not bad_string:
                     insertQuery = f"INSERT INTO quests (ja, en) VALUES ('{source_text}', '{escaped_text}')"
                 else:
@@ -258,7 +258,7 @@ def merge_local_db():
 
         logger.info(str(records_inserted) + " records were inserted into local db.")
         logger.info(str(records_updated) + " records in local db were updated.")
-        
+
 
 def download_dat_files():
     """
@@ -319,7 +319,7 @@ def download_dat_files():
                     )
 
     config = load_user_config()  # call this again in case we made changes above
-    dqx_path = "/".join([config['config']['installdirectory'], "Game/Content/Data"]) 
+    dqx_path = "/".join([config['config']['installdirectory'], "Game/Content/Data"])
     idx0_path = "/".join([dqx_path, idx0_file])
 
     if not os.path.isfile(f"{idx0_path}.bak"):

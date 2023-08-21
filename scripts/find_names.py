@@ -80,4 +80,4 @@ if __name__ == "__main__":
             write_to_file("Party members:\n---------------------\n")
             for result in results:
                 write_to_file(f"{result}\n")
-            write_to_file("\n")  
+            write_to_file("\n")

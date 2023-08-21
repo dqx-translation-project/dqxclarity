@@ -526,7 +526,7 @@ def convert_into_eng(word: str) -> str:
     interpunct_count = word.count("・")
     word_len = len(word)
     bad_word = False
-    
+
     if any(char in word for char in invalid_chars):
         return word
     else:

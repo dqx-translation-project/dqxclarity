@@ -124,7 +124,7 @@ def wrap_text(text: str) -> str:
     return textwrap.fill(text, width=46, replace_whitespace=False)
 
 
-def normalize_text(text: str) -> str: 
+def normalize_text(text: str) -> str:
     """
     "Normalize" text by only using latin alphabet.
 
@@ -216,7 +216,7 @@ def sanitize_text(text: str) -> str:
             append_newline = False
             if str.endswith("\n"):
                 append_newline = True
-            
+
             prepend_newline = False
             if str.startswith("\n"):
                 prepend_newline = True
@@ -260,7 +260,7 @@ def sanitize_text(text: str) -> str:
         updated_str = updated_str.replace("<&color_", "<color_")  # put our color tag back.
 
         if str_attrs[count]["is_list"]:
-            # select lists will always have more than 1 entry.. 
+            # select lists will always have more than 1 entry..
             # leave selection lists alone. please don't fuck this up, deepl
             updated_str = swap_placeholder_tags(updated_str, swap_back=True)
 
@@ -356,7 +356,7 @@ def swap_placeholder_tags(text: str, swap_back=False) -> str:
         text = text.replace("<&20_aaaaaaaaaaaaae>", "<5th_title>")
         text = text.replace("<&20_aaaaaaaaaaaaaf>", "<6th_title>")
         text = text.replace("<&20_aaaaaaaaaaaaag>", "<7th_title>")
-    
+
     return text
 
 

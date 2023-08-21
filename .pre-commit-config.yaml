@@ -15,15 +15,55 @@ repos:
       name: Checking if json files need to be prettified
       args: ['--autofix', '--indent', '2', '--no-ensure-ascii', '--no-sort-keys']
     - id: fix-byte-order-marker
-      name: Checking if files are utf-8-bom encoded
+      name: Remove UTF-8 byte order marker (BOM)
     - id: mixed-line-ending
       name: Fix line endings
       args: ['--fix', 'lf']
     - id: debug-statements
-      name: Check for debug statements
+      name: Check for debug/breakpoint statements
+    - id: check-yaml
+      name: Validate YAML
+    - id: trailing-whitespace
+      name: Check for trailing whitespace
+    - id: fix-encoding-pragma
+      name: Check for pragma encoding and remove
+      args: ['--remove']
+    - id: check-merge-conflict
+      name: Check for merge conflicts
+    - id: check-docstring-first
+      name: Ensuring code doesn't come before docstrings
+    - id: check-ast
+      name: Check if code parses as valid Python
 - repo: https://github.com/Yelp/detect-secrets
   rev: v1.4.0
   hooks:
     - id: detect-secrets
       name: Checking for potential passwords
       exclude: .*json-conv.deps.json$
+# - repo: https://github.com/asottile/add-trailing-comma
+#   rev: v3.0.1
+#   hooks:
+#   - id: add-trailing-comma
+#     name: Add trailing comma to calls/literals
+# - repo: https://github.com/asottile/pyupgrade
+#   rev: v3.10.1
+#   hooks:
+#   - id: pyupgrade
+#     name: Upgrade previous versioned Python syntax to newer version
+#     args: ['--py311-plus']
+# - repo: https://github.com/pycqa/isort
+#   rev: 5.12.0
+#   hooks:
+#     - id: isort
+#       name: Sort imports
+# - repo: https://github.com/PyCQA/docformatter
+#   rev: v1.7.1
+#   hooks:
+#   - id: docformatter
+#     name: Format docstrings
+# - repo: https://github.com/myint/eradicate
+#   rev: 2.2.0
+#   hooks:
+#   - id: eradicate
+#     name: Remove commented out code
+#     args: []
