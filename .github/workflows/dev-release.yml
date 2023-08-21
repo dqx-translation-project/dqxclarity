@@ -43,8 +43,8 @@ jobs:
       - name: Creating dev release
         uses: softprops/action-gh-release@v1
         with:
-          files: dqxclarity-dev-$SHORT_SHA.zip
+          files: dqxclarity-dev-${{ env.SHORT_SHA }}.zip
           prerelease: true
-          tag_name: v$CURRENT_TAG-dev
-          name: "Dev Build: $CURRENT_TAG-dev-$SHORT_SHA"
+          tag_name: v${{ env.CURRENT_TAG }}-dev
+          name: "Dev Build: ${{ env.CURRENT_TAG }}-dev-${{ env.SHORT_SHA }}"
           body: "This is a pre-release build! You don't want to download this!"
