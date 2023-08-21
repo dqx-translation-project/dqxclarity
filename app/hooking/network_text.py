@@ -1,19 +1,15 @@
+from common.db_ops import sql_read, sql_write
+from common.lib import get_abs_path, merge_jsons, setup_logger
+from common.memory import read_bytes, read_string, unpack_to_int, write_string
+from common.translate import convert_into_eng, Translate
 from json import dumps
 from loguru import logger
+
 import os
 import sys
-from common.db_ops import (
-    sql_read,
-    sql_write,
-)
-from common.lib import get_abs_path, setup_logger, merge_jsons
-from common.memory import read_string, write_string, unpack_to_int, read_bytes
-from common.translate import (
-    Translate,
-    convert_into_eng
-)
 
-class NetworkTextTranslate(object):
+
+class NetworkTextTranslate:
 
     misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
     custom_text_logger = setup_logger("text_logger", "/".join([get_abs_path(__file__), "../logs/custom_text.log"]))
@@ -87,9 +83,8 @@ class NetworkTextTranslate(object):
 
 
     def __get_npc_names(self):
-        """
-        Merges all NPC names/monster files to make one dict for searching.
-        """
+        """Merges all NPC names/monster files to make one dict for
+        searching."""
         npc_files = merge_jsons([
             f"{NetworkTextTranslate.misc_files}/custom_npc_names.json",
             f"{NetworkTextTranslate.misc_files}/custom_player_names.json",
@@ -115,9 +110,9 @@ class NetworkTextTranslate(object):
 
 
     def __translate_story(self, text: str):
-        """
-        Looks up text in the story_so_far table for story text. If found, returns the text.
-        If not, translates it on the fly and writes it to memory.
+        """Looks up text in the story_so_far table for story text. If found,
+        returns the text. If not, translates it on the fly and writes it to
+        memory.
 
         :param text: Text of the current page of the story.
         :returns: Translated text.

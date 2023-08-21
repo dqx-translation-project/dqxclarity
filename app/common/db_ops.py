@@ -1,12 +1,12 @@
-import sqlite3
-from loguru import logger
 from common.lib import get_abs_path
+from loguru import logger
+
+import sqlite3
 
 
 def init_db() -> object:
-    """
-    Returns a tuple of db (connection, cursor) to be used to execute queries against.
-    """
+    """Returns a tuple of db (connection, cursor) to be used to execute queries
+    against."""
     db_file = "/".join([get_abs_path(__file__), "../misc_files/clarity_dialog.db"])
     conn = sqlite3.connect(db_file)
     cursor = conn.cursor()
@@ -34,8 +34,7 @@ def ensure_db_structure():
 
 
 def sql_read(text: str, table: str, language: str) -> str:
-    """
-    Reads text from a SQLite table.
+    """Reads text from a SQLite table.
 
     :param text: Text to query against the database.
     :param table: Table to query against.
@@ -61,14 +60,14 @@ def sql_read(text: str, table: str, language: str) -> str:
 
 
 def sql_write(source_text, translated_text, table, language):
-    """
-    Writes or updates text to a SQLite table.
+    """Writes or updates text to a SQLite table.
 
     :param source_text: Text to search against the table.
     :param translated_text: Translated text to insert/update into the database.
     :param table: Table to insert the text into.
     :param language: The applicable language to insert the text into.
-    :returns: This function returns nothing; it only writes/updates to the database.
+    :returns: This function returns nothing; it only writes/updates to
+        the database.
     """
     try:
         conn, cursor = init_db()

@@ -1,11 +1,13 @@
+from common.lib import get_abs_path
+from common.memory import read_bytes, read_string, unpack_to_int
 from json import dumps
+
 import os
 import sqlite3
 import sys
-from common.lib import get_abs_path
-from common.memory import unpack_to_int, read_string, read_bytes
 
-class GetPlayer(object):
+
+class GetPlayer:
 
     def __init__(self, address, debug=False):
         if debug:
