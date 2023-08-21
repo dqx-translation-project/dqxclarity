@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # we want to collect tag info, so clone all history
       - name: Checkout dqx-translation-project/dqx_translations
         uses: actions/checkout@v3
         with:
@@ -26,8 +28,8 @@ jobs:
       - name: Update GITHUB_ENV env
         run: |
           echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV;
-          echo "CURRENT_TAG=`git describe --tags main | cut -d'-' -f1`" >> $GITHUB_ENV;
-          echo $CURRENT_TAG;
+          echo "CURRENT_TAG=`git describe --tags $(git rev-list --tags --max-count=1)`" >> $GITHUB_ENV
+          echo $CURRENT_TAG
       # - name: Build dev pre-release package
       #   run: |
       #     rsync -av --exclude="imgs/" app/* dqxclarity/;
