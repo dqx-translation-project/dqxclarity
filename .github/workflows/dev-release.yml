@@ -26,7 +26,7 @@ jobs:
       - name: Update GITHUB_ENV env
         run: |
           echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV;
-          echo "CURRENT_TAG=`git describe --tags main | cut -d'-' -f1" >> $GITHUB_ENV;
+          echo "CURRENT_TAG=`git describe --tags main | cut -d'-' -f1`" >> $GITHUB_ENV;
           echo $CURRENT_TAG;
       # - name: Build dev pre-release package
       #   run: |
