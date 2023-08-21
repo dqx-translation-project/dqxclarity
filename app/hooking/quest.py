@@ -1,18 +1,20 @@
+from common.lib import get_abs_path, setup_logger
+from common.memory import read_string, unpack_to_int, write_string
+from common.translate import (
+    clean_up_and_return_items,
+    detect_lang,
+    sqlite_read,
+    sqlite_write,
+    Translate,
+)
 from json import dumps, loads
+
 import re
 import sys
 import textwrap
-from common.lib import get_abs_path, setup_logger
-from common.memory import read_string, write_string, unpack_to_int
-from common.translate import (
-    detect_lang,
-    Translate,
-    sqlite_read,
-    sqlite_write,
-    clean_up_and_return_items
-)
 
-class Quest(object):
+
+class Quest:
 
     misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
     logger = setup_logger("out", "/".join([get_abs_path(__file__), "../out.log"]))
@@ -102,10 +104,8 @@ class Quest(object):
 
 
     def __read_file(self, file):
-        """
-        Reads a json file and returns a single key, value dict.
-        """
-        with open(file, "r", encoding="utf-8") as json_data:
+        """Reads a json file and returns a single key, value dict."""
+        with open(file, encoding="utf-8") as json_data:
             data = loads(json_data.read())
         new_dict = dict()
         for key in data:
@@ -128,8 +128,8 @@ class Quest(object):
 
 
 def quest_text_shellcode(eax_address: int, debug: bool) -> str:
-    """
-    Returns shellcode for the translate function hook.
+    """Returns shellcode for the translate function hook.
+
     eax_address: Where text can be modified to be fed to the screen
     """
     import os

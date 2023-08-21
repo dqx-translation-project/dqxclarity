@@ -1,16 +1,27 @@
-import sys
-from common.memory import pattern_scan, allocate_memory, pack_to_int, write_bytes, calc_rel_addr, read_bytes, dqx_mem
+from common.memory import (
+    allocate_memory,
+    calc_rel_addr,
+    dqx_mem,
+    pack_to_int,
+    pattern_scan,
+    read_bytes,
+    write_bytes,
+)
 from loguru import logger
+
+import sys
 
 
 class EasyDetour:
-    """
-    Creates a detour object that allows you to redirect code execution to your own via Python
+    """Creates a detour object that allows you to redirect code execution to
+    your own via Python.
 
     :param hook_name: Name of your hook
     :param signature: Bytes used to find the function you want to redirect
-    :param num_bytes_to_steal: Number of bytes to steal from the original func to be executed after your detour
-    :returns: Initiated EasyDetour object. Use enable() to turn on your detour and disable() to turn off
+    :param num_bytes_to_steal: Number of bytes to steal from the
+        original func to be executed after your detour
+    :returns: Initiated EasyDetour object. Use enable() to turn on your
+        detour and disable() to turn off
     """
 
     def __init__(self, hook_name: str, signature: bytes, num_bytes_to_steal: int, simple_str_addr: int, debug: bool):

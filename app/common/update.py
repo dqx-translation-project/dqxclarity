@@ -1,30 +1,31 @@
-from io import BytesIO
-from openpyxl import load_workbook
-import requests
-from common.errors import message_box_fatal_error, warning_message
 from common.constants import (
-    GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL,
-    GITHUB_CLARITY_VERSION_UPDATE_URL,
+    GITHUB_CLARITY_DAT1_URL,
+    GITHUB_CLARITY_IDX_URL,
+    GITHUB_CLARITY_ITEMS_JSON_URL,
+    GITHUB_CLARITY_KEY_ITEMS_JSON_URL,
     GITHUB_CLARITY_MERGE_XLSX_URL,
     GITHUB_CLARITY_MONSTERS_JSON_URL,
     GITHUB_CLARITY_NPC_JSON_URL,
-    GITHUB_CLARITY_ITEMS_JSON_URL,
-    GITHUB_CLARITY_KEY_ITEMS_JSON_URL,
     GITHUB_CLARITY_QUESTS_REQUESTS_JSON_URL,
-    GITHUB_CLARITY_DAT1_URL,
-    GITHUB_CLARITY_IDX_URL
+    GITHUB_CLARITY_VERSION_UPDATE_URL,
+    GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL,
 )
-from common.lib import get_abs_path, process_exists, check_if_running_as_admin
+from common.errors import message_box_fatal_error, warning_message
+from common.lib import check_if_running_as_admin, get_abs_path, process_exists
+from common.translate import load_user_config, update_user_config
+from io import BytesIO
 from loguru import logger
-import os
-import sqlite3
+from openpyxl import load_workbook
 from subprocess import Popen
+from tkinter.filedialog import askdirectory
+from zipfile import ZipFile as zip
+
+import os
+import requests
+import shutil
+import sqlite3
 import sys
 import winreg
-from zipfile import ZipFile as zip
-from common.translate import load_user_config, update_user_config
-from tkinter.filedialog import askdirectory
-import shutil
 
 
 def download_custom_files():
@@ -62,9 +63,8 @@ def download_custom_files():
 
 
 def check_for_updates(update: bool):
-    """
-    Checks to see if Clarity is running the latest version of itself.
-    If not, will launch updater.py and exit.
+    """Checks to see if Clarity is running the latest version of itself. If
+    not, will launch updater.py and exit.
 
     :param update: Whether or not to update after checking for updates.
     """
@@ -73,7 +73,7 @@ def check_for_updates(update: bool):
         logger.warning("Couldn't determine current version of dqxclarity. Running as is.")
         return
 
-    with open("version.update", "r") as file:
+    with open("version.update") as file:
         cur_ver = file.read().strip()
 
     try:
@@ -211,14 +211,14 @@ def merge_local_db():
             finally:
                 if conn:
                     conn.close()
-                    
+
         # Quests insertion
         for rowNum in range(2, ws_quests.max_row + 1):
             source_text = ws_quests.cell(row=rowNum, column=1).value
             en_text = ws_quests.cell(row=rowNum, column=3).value
 
             escaped_text = en_text.replace("'", "''")
-            
+
             bad_string = False
             bad_string_col = str(ws_quests.cell(row=rowNum, column=4).value)
             if "BAD STRING" in bad_string_col:
@@ -232,7 +232,7 @@ def merge_local_db():
                 else:
                     selectQuery = f"SELECT ja FROM quests WHERE ja = '{source_text}'"
                     updateQuery = f"UPDATE quests SET en = '{escaped_text}' WHERE ja = '{source_text}'"
-                    
+
                 if not bad_string:
                     insertQuery = f"INSERT INTO quests (ja, en) VALUES ('{source_text}', '{escaped_text}')"
                 else:
@@ -258,13 +258,14 @@ def merge_local_db():
 
         logger.info(str(records_inserted) + " records were inserted into local db.")
         logger.info(str(records_updated) + " records in local db were updated.")
-        
+
 
 def download_dat_files():
-    """
-    Verifies the user's DQX install location and prompts
-    them to locate it if not found. Uses this location to
-    download the latest data files from the dqxclarity repo.
+    """Verifies the user's DQX install location and prompts them to locate it
+    if not found.
+
+    Uses this location to download the latest data files from the
+    dqxclarity repo.
     """
     if process_exists("DQXGame.exe"):
         message = "Please close DQX before attempting to update the translated DAT/IDX file."
@@ -319,7 +320,7 @@ def download_dat_files():
                     )
 
     config = load_user_config()  # call this again in case we made changes above
-    dqx_path = "/".join([config['config']['installdirectory'], "Game/Content/Data"]) 
+    dqx_path = "/".join([config['config']['installdirectory'], "Game/Content/Data"])
     idx0_path = "/".join([dqx_path, idx0_file])
 
     if not os.path.isfile(f"{idx0_path}.bak"):

@@ -1,18 +1,19 @@
-import textwrap
-import json
-import configparser
-import shutil
-import unicodedata
 from common.errors import warning_message
-from common.lib import merge_jsons, get_abs_path
-import os
-import langdetect
-import re
-import pykakasi
-import sqlite3
-from openpyxl import load_workbook
-import deepl
+from common.lib import get_abs_path, merge_jsons
 from googleapiclient.discovery import build
+from openpyxl import load_workbook
+
+import configparser
+import deepl
+import json
+import langdetect
+import os
+import pykakasi
+import re
+import shutil
+import sqlite3
+import textwrap
+import unicodedata
 
 
 class Translate():
@@ -30,7 +31,7 @@ class Translate():
             Translate.region_code = self.translation_settings["RegionCode"]
 
         if Translate.glossary is None:
-            with open("/".join([get_abs_path(__file__), "../misc_files/glossary.csv"]), "r", encoding="utf-8") as f:
+            with open("/".join([get_abs_path(__file__), "../misc_files/glossary.csv"]), encoding="utf-8") as f:
                 strings = f.read()
                 Translate.glossary = [ x for x in strings.split("\n") if x ]
 
@@ -69,10 +70,9 @@ class Translate():
 
 
 def sanitized_dialog_translate(dialog_text, text_width=45, max_lines=None) -> str:
-    """
-    Does a bunch of text sanitization to handle tags seen in DQX, as well as automatically
-    splitting the text up into chunks to be fed into the in-game dialog window.
-    """
+    """Does a bunch of text sanitization to handle tags seen in DQX, as well as
+    automatically splitting the text up into chunks to be fed into the in-game
+    dialog window."""
     translator = Translate()
     bad_dialogue = False
     fixed_string = deal_with_icky_strings(dialog_text)
@@ -234,11 +234,9 @@ def sqlite_write(source_text, table, translated_text, language, npc_name=""):
 
 
 def load_user_config():
-    """
-    Returns a user's config settings.
-    If the config doesn't exist, a default config is generated.
-    If the user's config is missing values, we back up the old
-    config and generate a new default one for them.
+    """Returns a user's config settings. If the config doesn't exist, a default
+    config is generated. If the user's config is missing values, we back up the
+    old config and generate a new default one for them.
 
     :returns: Dict of config.
     """
@@ -299,8 +297,7 @@ def load_user_config():
 
 
 def update_user_config(section: str, key: str, value: str, filename="user_settings.ini"):
-    """
-    Updates an existing configuration option in a user's config.
+    """Updates an existing configuration option in a user's config.
 
     :param section: Section of the config
     :param key: Key in the section's config
@@ -315,10 +312,8 @@ def update_user_config(section: str, key: str, value: str, filename="user_settin
 
 
 def determine_translation_service():
-    """
-    Parses the user_settings file to get information needed
-    to make translation calls.
-    """
+    """Parses the user_settings file to get information needed to make
+    translation calls."""
     config = load_user_config()
     enabledeepltranslate = config["translation"]["enabledeepltranslate"]
     deepltranslatekey = config["translation"]["deepltranslatekey"]
@@ -367,7 +362,7 @@ def determine_translation_service():
     if enabledialoglogging != "True" and enabledialoglogging != "False":
         warning_message(
             title="[dqxclarity] Misconfigured boolean",
-            message=f"Invalid value detected for enabledialoglogging. {reiterate}\n\nValid values are: True, False\n\nCurrent values:\n\enabledialoglogging: {enabledialoglogging}",
+            message=f"Invalid value detected for enabledialoglogging. {reiterate}\n\nValid values are: True, False\n\nCurrent values:\nenabledialoglogging: {enabledialoglogging}",
             exit_prog=True,
         )
 
@@ -400,8 +395,7 @@ def determine_translation_service():
 
 
 def query_string_from_file(text: str, file: str) -> str:
-    """
-    Searches for a string from the specified json file and either returns
+    """Searches for a string from the specified json file and either returns
     the string or returns False if no match found.
 
     text: The text to search
@@ -418,8 +412,9 @@ def query_string_from_file(text: str, file: str) -> str:
 
 
 def clean_up_and_return_items(text: str) -> str:
-    """
-    Cleans up unnecessary text from item strings and searches for the name in items.json.
+    """Cleans up unnecessary text from item strings and searches for the name
+    in items.json.
+
     Used specifically for the quest window.
     """
     misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
@@ -437,7 +432,7 @@ def clean_up_and_return_items(text: str) -> str:
     final_string = ""
     for item in sanitized.split("\n"):
         quantity = ""
-        no_bullet = re.sub("(^\・)", "", item)
+        no_bullet = re.sub(r"(^\・)", "", item)
         points = no_bullet[6:18]
         if no_bullet.endswith("こ"):
             quantity = "(" + unicodedata.normalize("NFKC", no_bullet[-3:-1]) + ")"
@@ -493,8 +488,9 @@ def deal_with_icky_strings(text) -> str:
 
 
 def detect_lang(text: str) -> bool:
-    """
-    Detects if the language is Japanese or not. Returns bool.
+    """Detects if the language is Japanese or not.
+
+    Returns bool.
     """
     sanitized = re.sub("<.+?>", "", text)
     sanitized = re.sub("\n", "", sanitized)
@@ -507,14 +503,13 @@ def detect_lang(text: str) -> bool:
 
 
 def read_json_file(file):
-    with open(file, "r", encoding="utf-8") as json_data:
+    with open(file, encoding="utf-8") as json_data:
         return json.loads(json_data.read())
 
 
 def convert_into_eng(word: str) -> str:
-    """
-    Uses the pykakasi library to phonetically convert a
-    Japanese word (usually a name) into English.
+    """Uses the pykakasi library to phonetically convert a Japanese word
+    (usually a name) into English.
 
     :param word: Word to convert.
     :returns: Returns up to a 10 character name in English.
@@ -526,7 +521,7 @@ def convert_into_eng(word: str) -> str:
     interpunct_count = word.count("・")
     word_len = len(word)
     bad_word = False
-    
+
     if any(char in word for char in invalid_chars):
         return word
     else:

@@ -1,24 +1,21 @@
+from alive_progress import alive_bar
+from dotenv import load_dotenv
+from globals import GITHUB_CLARITY_GLOSSARY_URL
+
 import deepl
 import glob
 import json
 import os
 import random
 import re
+import requests
 import sys
 import textwrap
 import unicodedata
 
-import requests
-from alive_progress import alive_bar
-from dotenv import load_dotenv
-
-from globals import GITHUB_CLARITY_GLOSSARY_URL
-
 
 def load_env():
-    """
-    Load global environment variables and download our glossary.
-    """
+    """Load global environment variables and download our glossary."""
     global DEEPL_KEYS
     global GLOSSARY
 
@@ -36,8 +33,7 @@ def load_env():
 
 
 def translate(text: str) -> str:
-    """
-    Sends text to deepl to be translated.
+    """Sends text to deepl to be translated.
 
     :param text: Text to send to DeepL.
     :param xml_handling: Whether to tell DeepL to use xml_handling when handling tags.
@@ -59,8 +55,7 @@ def translate(text: str) -> str:
 
 
 def get_remaining_limit(api_key: str) -> int:
-    """
-    Returns remaining characters for a specified api key.
+    """Returns remaining characters for a specified api key.
 
     :param api_key: API key to check the remaining characters of.
     :returns: Number of remaining characters.
@@ -73,17 +68,16 @@ def get_remaining_limit(api_key: str) -> int:
 
 
 def get_remaining_keys_all():
-    """
-    Parses all keys configured in DEEPL_KEYS and returns the remaining num of characters.
-    """
+    """Parses all keys configured in DEEPL_KEYS and returns the remaining num
+    of characters."""
     for key in DEEPL_KEYS:
         remaining = get_remaining_limit(key)
         print(f"Key {key[0:5]}.. has {remaining} remaining characters.")
 
 
 def glossary_replace(text: str) -> str:
-    """
-    Does a find/replace of all strings in the glossary against a target string.
+    """Does a find/replace of all strings in the glossary against a target
+    string.
 
     :param text: String that is parsed against the glossary with.
     :returns: A new string that has been passed through the glossary.
@@ -97,9 +91,8 @@ def glossary_replace(text: str) -> str:
 
 
 def add_line_endings(text: str) -> str:
-    """
-    Adds <br> flags every 3 lines to a string. Used to break up the
-    text in a dialog window.
+    """Adds <br> flags every 3 lines to a string. Used to break up the text in
+    a dialog window.
 
     :param text: Text to add the <br> tags to.
     :returns: A new string with the text broken up by <br> tags.
@@ -117,16 +110,16 @@ def add_line_endings(text: str) -> str:
 
 
 def wrap_text(text: str) -> str:
-    """
-    Wrap text to 46 characters per line, which is the maximum that will
-    fit in DQX's dialog window. Doesn't consider tags as characters.
+    """Wrap text to 46 characters per line, which is the maximum that will fit
+    in DQX's dialog window.
+
+    Doesn't consider tags as characters.
     """
     return textwrap.fill(text, width=46, replace_whitespace=False)
 
 
-def normalize_text(text: str) -> str: 
-    """
-    "Normalize" text by only using latin alphabet.
+def normalize_text(text: str) -> str:
+    """"Normalize" text by only using latin alphabet.
 
     :param text: Text to normalize
     :returns: Normalized text.
@@ -135,13 +128,13 @@ def normalize_text(text: str) -> str:
 
 
 def sanitize_text(text: str) -> str:
-    """
-    Sanitizes text with a series of actions to make English text
-    render more comfortably in DQX. Also ensures the text is properly
-    parsed before sending off to DeepL to be machine translated.
+    """Sanitizes text with a series of actions to make English text render more
+    comfortably in DQX. Also ensures the text is properly parsed before sending
+    off to DeepL to be machine translated.
 
     :param text: Text to be sanitized.
-    :returns: A formatted string that is ready to be inserted into our JSON format.
+    :returns: A formatted string that is ready to be inserted into our
+        JSON format.
     """
     # manage our own line endings later
     output = text.replace("<br>", "　")
@@ -216,7 +209,7 @@ def sanitize_text(text: str) -> str:
             append_newline = False
             if str.endswith("\n"):
                 append_newline = True
-            
+
             prepend_newline = False
             if str.startswith("\n"):
                 prepend_newline = True
@@ -260,7 +253,7 @@ def sanitize_text(text: str) -> str:
         updated_str = updated_str.replace("<&color_", "<color_")  # put our color tag back.
 
         if str_attrs[count]["is_list"]:
-            # select lists will always have more than 1 entry.. 
+            # select lists will always have more than 1 entry..
             # leave selection lists alone. please don't fuck this up, deepl
             updated_str = swap_placeholder_tags(updated_str, swap_back=True)
 
@@ -356,18 +349,17 @@ def swap_placeholder_tags(text: str, swap_back=False) -> str:
         text = text.replace("<&20_aaaaaaaaaaaaae>", "<5th_title>")
         text = text.replace("<&20_aaaaaaaaaaaaaf>", "<6th_title>")
         text = text.replace("<&20_aaaaaaaaaaaaag>", "<7th_title>")
-    
+
     return text
 
 
 def read_file(file: str) -> dict:
-    """
-    Returns data from a json file.
+    """Returns data from a json file.
 
     :param file: File to read.
     :returns: A dict of the json data.
     """
-    with open(file, "r", encoding="utf-8") as f:
+    with open(file, encoding="utf-8") as f:
         data = json.loads(f.read())
     return data
 

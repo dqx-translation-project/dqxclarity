@@ -1,17 +1,18 @@
-import ctypes
-import logging
 from loguru import logger
+from pathlib import Path
+
+import ctypes
 import json
+import logging
 import os
 import shutil
-import time
-from pathlib import Path
 import subprocess
+import time
 
 
 def read_json_file(file):
     """Reads JSON file and returns content."""
-    with open(file, "r", encoding="utf-8") as json_data:
+    with open(file, encoding="utf-8") as json_data:
         return json.loads(json_data.read())
 
 
@@ -38,9 +39,7 @@ def delete_file(file):
 
 
 def setup_logger(name, log_file, level=logging.INFO):
-    """
-    Sets up a logger for hook shellcode.
-    """
+    """Sets up a logger for hook shellcode."""
     # pylint: disable=redefined-outer-name
     logging.basicConfig(format="%(message)s")
     formatter = logging.Formatter("%(message)s")
@@ -58,8 +57,7 @@ def setup_logger(name, log_file, level=logging.INFO):
 
 
 def merge_jsons(files: list):
-    """
-    Merge any number of json files to create a new dict.
+    """Merge any number of json files to create a new dict.
 
     :param files: List of files to merge
     :returns: New dict with merged changes
@@ -88,8 +86,8 @@ def process_exists(process_name):
 
 
 def check_if_running_as_admin():
-    """
-    Check if the user is running this script as an admin.
+    """Check if the user is running this script as an admin.
+
     If not, return False.
     """
     is_admin = ctypes.windll.shell32.IsUserAnAdmin()
@@ -99,9 +97,7 @@ def check_if_running_as_admin():
 
 
 def wait_for_dqx_to_launch() -> bool:
-    """
-    Scans for the DQXGame.exe process.
-    """
+    """Scans for the DQXGame.exe process."""
     logger.info("Searching for DQXGame.exe.")
     if process_exists("DQXGame.exe"):
         logger.success("DQXGame.exe found.")

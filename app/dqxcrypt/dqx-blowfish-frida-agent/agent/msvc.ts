@@ -55,5 +55,5 @@ export class MSVCVector {
         this.reserve(data.byteLength);
         this.#backing.writeByteArray(data);
         this.set_end(this.get_start().add(data.byteLength));
-    } 
+    }
 }
