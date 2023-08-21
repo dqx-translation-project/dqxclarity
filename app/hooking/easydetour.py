@@ -1,6 +1,15 @@
-import sys
-from common.memory import pattern_scan, allocate_memory, pack_to_int, write_bytes, calc_rel_addr, read_bytes, dqx_mem
+from common.memory import (
+    allocate_memory,
+    calc_rel_addr,
+    dqx_mem,
+    pack_to_int,
+    pattern_scan,
+    read_bytes,
+    write_bytes,
+)
 from loguru import logger
+
+import sys
 
 
 class EasyDetour:

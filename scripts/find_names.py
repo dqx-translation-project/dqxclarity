@@ -1,7 +1,6 @@
 import argparse
-import sys
 import pymem
-
+import sys
 
 # zone into megistris and stand at the entrance
 npc_names = [

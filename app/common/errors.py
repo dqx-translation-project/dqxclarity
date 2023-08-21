@@ -1,6 +1,7 @@
+from typing import Union
+
 import ctypes
 import sys
-from typing import Union
 
 
 def message_box_fatal_error(title, message):

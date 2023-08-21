@@ -1,16 +1,18 @@
+from common.lib import get_abs_path, setup_logger
+from common.memory import read_string, unpack_to_int, write_string
+from common.translate import (
+    clean_up_and_return_items,
+    detect_lang,
+    sqlite_read,
+    sqlite_write,
+    Translate,
+)
 from json import dumps, loads
+
 import re
 import sys
 import textwrap
-from common.lib import get_abs_path, setup_logger
-from common.memory import read_string, write_string, unpack_to_int
-from common.translate import (
-    detect_lang,
-    Translate,
-    sqlite_read,
-    sqlite_write,
-    clean_up_and_return_items
-)
+
 
 class Quest(object):
 

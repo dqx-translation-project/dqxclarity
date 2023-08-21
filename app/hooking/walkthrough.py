@@ -1,7 +1,8 @@
+from common.translate import Translate
 from json import dumps
+
 import os
 import sys
-from common.translate import Translate
 
 
 def walkthrough_shellcode(

@@ -1,10 +1,11 @@
+from clarity import scan_for_comm_names, scan_for_sibling_names
+from common.memory import read_bytes, write_bytes
+from loguru import logger
 from multiprocessing import Process
+
+import pymem
 import sys
 import time
-from loguru import logger
-import pymem
-from common.memory import read_bytes, write_bytes
-from clarity import scan_for_sibling_names, scan_for_comm_names
 
 
 def load_hooks(hook_list: list, state_addr: int, player_names: bool, debug: bool):

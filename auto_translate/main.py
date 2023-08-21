@@ -1,18 +1,17 @@
+from alive_progress import alive_bar
+from dotenv import load_dotenv
+from globals import GITHUB_CLARITY_GLOSSARY_URL
+
 import deepl
 import glob
 import json
 import os
 import random
 import re
+import requests
 import sys
 import textwrap
 import unicodedata
-
-import requests
-from alive_progress import alive_bar
-from dotenv import load_dotenv
-
-from globals import GITHUB_CLARITY_GLOSSARY_URL
 
 
 def load_env():

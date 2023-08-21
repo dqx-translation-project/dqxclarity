@@ -1,37 +1,29 @@
-import re
-import sys
-import time
-from loguru import logger
-import pymem
-
-from common.translate import (
-    sqlite_read,
-    sqlite_write,
-    detect_lang,
-    determine_translation_service,
-    sanitized_dialog_translate,
-    convert_into_eng,
-)
-
-from common.memory import (
-    read_bytes,
-    read_string,
-    write_string,
-    pattern_scan,
-)
-
+from common.lib import get_abs_path, merge_jsons
+from common.memory import pattern_scan, read_bytes, read_string, write_string
 from common.signatures import (
-    npc_monster_pattern,
+    comm_name_pattern_1,
+    comm_name_pattern_2,
     concierge_name_pattern,
     menu_ai_name_pattern,
+    npc_monster_pattern,
     player_name_pattern,
     sibling_name_pattern,
     walkthrough_pattern,
-    comm_name_pattern_1,
-    comm_name_pattern_2
 )
+from common.translate import (
+    convert_into_eng,
+    detect_lang,
+    determine_translation_service,
+    sanitized_dialog_translate,
+    sqlite_read,
+    sqlite_write,
+)
+from loguru import logger
 
-from common.lib import merge_jsons, get_abs_path
+import pymem
+import re
+import sys
+import time
 
 
 def scan_for_player_names():

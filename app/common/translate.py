@@ -1,18 +1,19 @@
-import textwrap
-import json
-import configparser
-import shutil
-import unicodedata
 from common.errors import warning_message
-from common.lib import merge_jsons, get_abs_path
-import os
-import langdetect
-import re
-import pykakasi
-import sqlite3
-from openpyxl import load_workbook
-import deepl
+from common.lib import get_abs_path, merge_jsons
 from googleapiclient.discovery import build
+from openpyxl import load_workbook
+
+import configparser
+import deepl
+import json
+import langdetect
+import os
+import pykakasi
+import re
+import shutil
+import sqlite3
+import textwrap
+import unicodedata
 
 
 class Translate():

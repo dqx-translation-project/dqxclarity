@@ -1,7 +1,8 @@
-import sys
-import os
-from json import dumps
 from common.translate import determine_translation_service, Translate
+from json import dumps
+
+import os
+import sys
 
 
 def translate_shellcode(esi_address: int, debug: bool) -> str:

@@ -1,30 +1,31 @@
-from io import BytesIO
-from openpyxl import load_workbook
-import requests
-from common.errors import message_box_fatal_error, warning_message
 from common.constants import (
-    GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL,
-    GITHUB_CLARITY_VERSION_UPDATE_URL,
+    GITHUB_CLARITY_DAT1_URL,
+    GITHUB_CLARITY_IDX_URL,
+    GITHUB_CLARITY_ITEMS_JSON_URL,
+    GITHUB_CLARITY_KEY_ITEMS_JSON_URL,
     GITHUB_CLARITY_MERGE_XLSX_URL,
     GITHUB_CLARITY_MONSTERS_JSON_URL,
     GITHUB_CLARITY_NPC_JSON_URL,
-    GITHUB_CLARITY_ITEMS_JSON_URL,
-    GITHUB_CLARITY_KEY_ITEMS_JSON_URL,
     GITHUB_CLARITY_QUESTS_REQUESTS_JSON_URL,
-    GITHUB_CLARITY_DAT1_URL,
-    GITHUB_CLARITY_IDX_URL
+    GITHUB_CLARITY_VERSION_UPDATE_URL,
+    GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL,
 )
-from common.lib import get_abs_path, process_exists, check_if_running_as_admin
+from common.errors import message_box_fatal_error, warning_message
+from common.lib import check_if_running_as_admin, get_abs_path, process_exists
+from common.translate import load_user_config, update_user_config
+from io import BytesIO
 from loguru import logger
-import os
-import sqlite3
+from openpyxl import load_workbook
 from subprocess import Popen
+from tkinter.filedialog import askdirectory
+from zipfile import ZipFile as zip
+
+import os
+import requests
+import shutil
+import sqlite3
 import sys
 import winreg
-from zipfile import ZipFile as zip
-from common.translate import load_user_config, update_user_config
-from tkinter.filedialog import askdirectory
-import shutil
 
 
 def download_custom_files():

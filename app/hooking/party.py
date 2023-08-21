@@ -1,6 +1,7 @@
-import sys
-import os
 from json import dumps
+
+import os
+import sys
 
 
 # this works, but we can't use it due to integrity checks.

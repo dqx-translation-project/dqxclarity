@@ -1,5 +1,6 @@
-import sys
 from dqxcrypt.frida_agent import FridaAgent
+
+import sys
 
 
 def start_logger():

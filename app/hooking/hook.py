@@ -1,29 +1,27 @@
+from common.memory import (
+    allocate_memory,
+    calc_rel_addr,
+    dqx_mem,
+    pattern_scan,
+    read_bytes,
+    write_bytes,
+    write_string,
+)
+from common.signatures import (
+    accept_quest_trigger,
+    dialog_trigger,
+    integrity_check,
+    quest_text_trigger,
+)
+from hooking.dialog import translate_shellcode
+from hooking.easydetour import EasyDetour
+from hooking.hide_hooks import load_hooks
+from hooking.quest import quest_text_shellcode
+from loguru import logger
+
 import struct
 import sys
 import traceback
-from loguru import logger
-
-from common.signatures import (
-    dialog_trigger,
-    quest_text_trigger,
-    integrity_check,
-    accept_quest_trigger,
-)
-
-from common.memory import (
-    dqx_mem,
-    write_bytes,
-    write_string,
-    calc_rel_addr,
-    pattern_scan,
-    allocate_memory,
-    read_bytes,
-)
-
-from hooking.dialog import translate_shellcode
-from hooking.quest import quest_text_shellcode
-from hooking.hide_hooks import load_hooks
-from hooking.easydetour import EasyDetour
 
 
 def inject_python_dll():
