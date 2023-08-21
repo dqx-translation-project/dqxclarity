@@ -1,4 +1,4 @@
-from common.errors import warning_message
+from common.errors import message_box
 from common.lib import get_abs_path, merge_jsons
 from googleapiclient.discovery import build
 from openpyxl import load_workbook
@@ -279,8 +279,8 @@ def load_user_config():
     if user_config_state == 1:
         shutil.copyfile(filename, f"{filename}.invalid")
         create_base_config()
-        warning_message(
-            title="[dqxclarity] New config created",
+        message_box(
+            title="New config created",
             message=f"We found a missing config value in your {filename}.\n\nYour old config has been renamed to {filename}.invalid in case you need to reference it.\n\nPlease relaunch dqxclarity.",
             exit_prog=True,
         )
@@ -325,57 +325,57 @@ def determine_translation_service():
     reiterate = "Either open the user_settings.ini file in Notepad or use the API settings button in the DQXClarity launcher to set it up."
 
     if enabledeepltranslate == "False" and enablegoogletranslate == "False":
-        warning_message(
-            title="[dqxclarity] No translation service enabled",
+        message_box(
+            title="No translation service enabled",
             message=f"You need to enable a translation service. {reiterate}\n\nCurrent values:\n\nenabledeepltranslate: {enabledeepltranslate}\nenablegoogletranslate: {enablegoogletranslate}",
             exit_prog=True,
         )
 
     if enabledeepltranslate == "True" and enablegoogletranslate == "True":
-        warning_message(
-            title="[dqxclarity] Too many translation serviced enabled",
+        message_box(
+            title="Too many translation serviced enabled",
             message=f"Only enable one translation service. {reiterate}\n\nCurrent values:\n\nenabledeepltranslate: {enabledeepltranslate}\nenablegoogletranslate: {enablegoogletranslate}",
             exit_prog=True,
         )
 
     if enabledeepltranslate != "True" and enabledeepltranslate != "False":
-        warning_message(
-            title="[dqxclarity] Misconfigured boolean",
+        message_box(
+            title="Misconfigured boolean",
             message=f"Invalid value detected for enabledeepltranslate. {reiterate}\n\nValid values are: True, False\n\nCurrent values:\n\nenabledeepltranslate: {enabledeepltranslate}",
             exit_prog=True,
         )
 
     if enablegoogletranslate != "True" and enablegoogletranslate != "False":
-        warning_message(
-            title="[dqxclarity] Misconfigured boolean",
+        message_box(
+            title="Misconfigured boolean",
             message=f"Invalid value detected for enablegoogletranslate. {reiterate}\n\nValid values are: True, False\n\nCurrent values:\n\nenablegoogletranslate: {enablegoogletranslate}",
             exit_prog=True,
         )
 
     if deepltranslatekey == "" and googletranslatekey == "":
-        warning_message(
-            title="[dqxclarity] No API key configured",
+        message_box(
+            title="No API key configured",
             message=f"You need to configure an API key. {reiterate}",
             exit_prog=True,
         )
 
     if enabledialoglogging != "True" and enabledialoglogging != "False":
-        warning_message(
-            title="[dqxclarity] Misconfigured boolean",
+        message_box(
+            title="Misconfigured boolean",
             message=f"Invalid value detected for enabledialoglogging. {reiterate}\n\nValid values are: True, False\n\nCurrent values:\nenabledialoglogging: {enabledialoglogging}",
             exit_prog=True,
         )
 
     if enabledeepltranslate == "True" and deepltranslatekey == "":
-        warning_message(
-            title="[dqxclarity] No DeepL key specified",
+        message_box(
+            title="No DeepL key specified",
             message=f"DeepL is enabled, but no key was provided. {reiterate}",
             exit_prog=True,
         )
 
     if enablegoogletranslate == "True" and googletranslatekey == "":
-        warning_message(
-            title="[dqxclarity] No Google API key specified",
+        message_box(
+            title="No Google API key specified",
             message=f"Google API is enabled, but no key was provided. {reiterate}",
             exit_prog=True,
         )

@@ -10,7 +10,7 @@ from common.constants import (
     GITHUB_CLARITY_VERSION_UPDATE_URL,
     GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL,
 )
-from common.errors import message_box_fatal_error, warning_message
+from common.errors import message_box
 from common.lib import check_if_running_as_admin, get_abs_path, process_exists
 from common.translate import load_user_config, update_user_config
 from io import BytesIO
@@ -120,7 +120,7 @@ def merge_local_db():
         url = GITHUB_CLARITY_MERGE_XLSX_URL
         r = requests.get(url, timeout=15)
     except Exception as e:
-        message_box_fatal_error("Timeout", str(e))
+        message_box("Timeout", str(e), exit_prog=True)
 
     with open(merge_file, "wb") as merge:
         merge.write(r.content)
@@ -270,7 +270,7 @@ def download_dat_files():
     if process_exists("DQXGame.exe"):
         message = "Please close DQX before attempting to update the translated DAT/IDX file."
         logger.error(message)
-        message_box_fatal_error(
+        message_box(
             title="DQXGame.exe is open",
             message=message
         )
@@ -278,7 +278,7 @@ def download_dat_files():
     if not check_if_running_as_admin():
         message = "dqxclarity must be running as an administrator in order to update the translated DAT/IDX file. Please re-launch dqxclarity as an administrator and try again."
         logger.error(message)
-        message_box_fatal_error(
+        message_box(
             title="Program not elevated",
             message=message
         )
@@ -300,8 +300,8 @@ def download_dat_files():
         if os.path.exists(default_path):
             update_user_config('config', 'installdirectory', default_path)
         else:
-            warning_message(
-                title="[dqxclarity] Couldn't Find DQX Directory",
+            message_box(
+                title="Couldn't Find DQX Directory",
                 message="Could not find DQX directory. Browse to the path where you installed the game and select the \"DRAGON QUEST X\" folder."
             )
 
@@ -314,8 +314,8 @@ def download_dat_files():
                     logger.success("DQX path verified.")
                     break
                 else:
-                    warning_message(
-                        title="[dqxclarity] Invalid Directory",
+                    message_box(
+                        title="Invalid Directory",
                         message="The path you provided is not a valid DQX path.\nBrowse to the path where you installed the game and select the \"DRAGON QUEST X\" folder."
                     )
 
