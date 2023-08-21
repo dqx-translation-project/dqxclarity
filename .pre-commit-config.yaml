@@ -40,12 +40,13 @@ repos:
     - id: detect-secrets
       name: Checking for potential passwords
       exclude: .*json-conv.deps.json$
-# - repo: https://github.com/asottile/pyupgrade
-#   rev: v3.10.1
-#   hooks:
-#   - id: pyupgrade
-#     name: Upgrade previous versioned Python syntax to newer version
-#     args: ['--py311-plus']
+- repo: https://github.com/asottile/pyupgrade
+  rev: v3.10.1
+  hooks:
+  - id: pyupgrade
+    name: Upgrade previous versioned Python syntax to newer version
+    args: ['--py311-plus']
+    exclude: ^app/pymem  # forked module
 - repo: https://github.com/pycqa/isort
   rev: 5.12.0
   hooks:

@@ -12,7 +12,7 @@ import time
 
 def read_json_file(file):
     """Reads JSON file and returns content."""
-    with open(file, "r", encoding="utf-8") as json_data:
+    with open(file, encoding="utf-8") as json_data:
         return json.loads(json_data.read())
 
 

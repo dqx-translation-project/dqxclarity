@@ -73,7 +73,7 @@ def check_for_updates(update: bool):
         logger.warning("Couldn't determine current version of dqxclarity. Running as is.")
         return
 
-    with open("version.update", "r") as file:
+    with open("version.update") as file:
         cur_ver = file.read().strip()
 
     try:

@@ -359,7 +359,7 @@ def read_file(file: str) -> dict:
     :param file: File to read.
     :returns: A dict of the json data.
     """
-    with open(file, "r", encoding="utf-8") as f:
+    with open(file, encoding="utf-8") as f:
         data = json.loads(f.read())
     return data
 

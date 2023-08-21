@@ -31,7 +31,7 @@ class Translate():
             Translate.region_code = self.translation_settings["RegionCode"]
 
         if Translate.glossary is None:
-            with open("/".join([get_abs_path(__file__), "../misc_files/glossary.csv"]), "r", encoding="utf-8") as f:
+            with open("/".join([get_abs_path(__file__), "../misc_files/glossary.csv"]), encoding="utf-8") as f:
                 strings = f.read()
                 Translate.glossary = [ x for x in strings.split("\n") if x ]
 
@@ -362,7 +362,7 @@ def determine_translation_service():
     if enabledialoglogging != "True" and enabledialoglogging != "False":
         warning_message(
             title="[dqxclarity] Misconfigured boolean",
-            message=f"Invalid value detected for enabledialoglogging. {reiterate}\n\nValid values are: True, False\n\nCurrent values:\n\enabledialoglogging: {enabledialoglogging}",
+            message=f"Invalid value detected for enabledialoglogging. {reiterate}\n\nValid values are: True, False\n\nCurrent values:\nenabledialoglogging: {enabledialoglogging}",
             exit_prog=True,
         )
 
@@ -432,7 +432,7 @@ def clean_up_and_return_items(text: str) -> str:
     final_string = ""
     for item in sanitized.split("\n"):
         quantity = ""
-        no_bullet = re.sub("(^\・)", "", item)
+        no_bullet = re.sub(r"(^\・)", "", item)
         points = no_bullet[6:18]
         if no_bullet.endswith("こ"):
             quantity = "(" + unicodedata.normalize("NFKC", no_bullet[-3:-1]) + ")"
@@ -503,7 +503,7 @@ def detect_lang(text: str) -> bool:
 
 
 def read_json_file(file):
-    with open(file, "r", encoding="utf-8") as json_data:
+    with open(file, encoding="utf-8") as json_data:
         return json.loads(json_data.read())
 
 

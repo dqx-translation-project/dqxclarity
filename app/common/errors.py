@@ -24,7 +24,7 @@ class AddressOutOfRange(ClarityError):
 class MemoryReadError(ClarityError):
     """Raised when we couldn't read memory."""
 
-    def __init__(self, address_or_message: Union[int, str]):
+    def __init__(self, address_or_message: int | str):
         if isinstance(address_or_message, int):
             super().__init__(f"Unable to read memory at address {address_or_message}.")
         else:
