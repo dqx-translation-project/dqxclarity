@@ -1,13 +1,12 @@
-from typing import Union
-
 import ctypes
 import sys
 
 
-def message_box_fatal_error(title, message):
-    """Generate error message to user and exit."""
-    ctypes.windll.user32.MessageBoxW(0, message, title, 0x1000)
-    sys.exit()
+def message_box(title: str, message: str, exit_prog: bool = False):
+    """Generate a topmost message box."""
+    ctypes.windll.user32.MessageBoxW(0, message, f"[dqxclarity] {title}", 0x1000)  # 0x1000 ensures a topmost window
+    if exit_prog:
+        sys.exit()
 
 
 class ClarityError(Exception):
@@ -54,15 +53,3 @@ class FailedToReadAddress(ClarityError):
 
 class PatternMultipleResults(ClarityError):
     """Raised when a pattern has more than one result."""
-
-
-def warning_message(title: str, message: str, exit_prog=False):
-    """Send a warning message box to the user and exit the program.
-
-    :param title: Title of the message box.
-    :param message: Message in the message box.
-    :param quit: Exit the program.
-    """
-    ctypes.windll.user32.MessageBoxW(0, message, title, 0x10)
-    if exit_prog:
-        sys.exit()
