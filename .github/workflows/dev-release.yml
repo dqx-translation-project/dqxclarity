@@ -84,6 +84,6 @@ jobs:
           files: dqxclarity.zip
           prerelease: false
           draft: false
-          tag_name: ${{ env.GITHUB_REF }}
-          name: 'Release: ${{ env.GITHUB_REF }}'
+          tag_name: ${{ github.ref }}
+          name: 'Release: ${{ github.ref }}'
           generate_release_notes: true
