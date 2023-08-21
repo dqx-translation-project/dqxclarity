@@ -1,5 +1,5 @@
 ---
-name: "dev-pre-release"
+name: "generate-release"
 
 on:
   push:
@@ -7,29 +7,37 @@ on:
       - test-action
 
 jobs:
-  dev-pre-release:
-    name: 'Dev pre-release'
+  generate-release:
+    name: 'Generate release'
     runs-on: 'ubuntu-latest'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
           fetch-depth: 0  # we want to collect tag info, so clone all history
+
       - name: Checkout dqx-translation-project/dqx_translations
         uses: actions/checkout@v3
         with:
           repository: 'dqx-translation-project/dqx_translations'
           path: 'dqx_translations'
+
       - name: Checkout dqx-translation-project/dqx-custom-translations
         uses: actions/checkout@v3
         with:
-          repository: "dqx-translation-project/dqx-custom-translations"
+          repository: 'dqx-translation-project/dqx-custom-translations'
           path: 'dqx-custom-translations'
+
       - name: Update GITHUB_ENV env
         run: |
           echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
           echo "CURRENT_TAG=`git describe --tags $(git rev-list --tags --max-count=1)`" >> $GITHUB_ENV
-      - name: Build dev pre-release package
+
+      - name: Bump version.update
+        # if: startsWith(github.ref, 'refs/tags/v')
+        run: echo $GITHUB_REF | cut -d"v" -f2 > version.update
+
+      - name: Build package
         run: |
           rsync -av --exclude="imgs/" app/* dqxclarity/;
           cp version.update requirements.txt user_settings.ini dqxclarity/;
@@ -41,12 +49,32 @@ jobs:
           cp -f dqx_translations/json/_lang/en/subPackage41Client.win32.json dqxclarity/misc_files;
           cp -f dqx_translations/json/_lang/en/subPackage02Client.win32.json dqxclarity/misc_files;
           cp -f dqx_translations/json/_lang/en/smldt_msg_pkg_NPC_DB.win32.json dqxclarity/misc_files;
-          zip -r dqxclarity-dev-$SHORT_SHA.zip dqxclarity
+
+      - name: Zip package (pre-release)
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        run: zip -r dqxclarity-dev-$SHORT_SHA.zip dqxclarity
+
+      - name: Zip package (release)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: zip -r dqxclarity.zip dqxclarity
+
       - name: Creating dev release
+        if: startsWith(github.ref, 'refs/tags/v') != true
         uses: softprops/action-gh-release@v1
         with:
           files: dqxclarity-dev-${{ env.SHORT_SHA }}.zip
           prerelease: true
           tag_name: ${{ env.CURRENT_TAG }}-dev
-          name: "Dev Build: ${{ env.CURRENT_TAG }}-dev-${{ env.SHORT_SHA }}"
+          name: 'Dev Build: ${{ env.CURRENT_TAG }}-dev-${{ env.SHORT_SHA }}'
           body: "This is a pre-release build! You don't want to download this!"
+
+      - name: Creating prod release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dqxclarity.zip
+          prerelease: false
+          draft: false
+          tag_name: ${{ env.GITHUB_REF }}
+          name: 'Release: ${{ env.GITHUB_REF }}'
+          generate_release_notes: true
