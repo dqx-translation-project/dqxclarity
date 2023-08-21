@@ -59,9 +59,3 @@ repos:
   - id: docformatter
     name: Format docstrings
     exclude: ^app/pymem  # forked module
-# - repo: https://github.com/myint/eradicate
-#   rev: 2.2.0
-#   hooks:
-#   - id: eradicate
-#     name: Remove commented out code
-#     args: []
