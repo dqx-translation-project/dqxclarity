@@ -1,14 +1,16 @@
 ---
-name: "generate-release"
+name: "build-release-zip"
 
 on:
   push:
     branches:
       - main
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
-  generate-release:
-    name: 'Generate release'
+  build-release-zip:
+    name: Build release zip
     runs-on: 'ubuntu-latest'
     steps:
       - name: Checkout repository
@@ -31,7 +33,8 @@ jobs:
       - name: Update GITHUB_ENV env
         run: |
           echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
-          echo "CURRENT_TAG=`git describe --tags $(git rev-list --tags) | grep -v dev | head -n1 | cut -d"-" -f1`" >> $GITHUB_ENV
+          echo "CURRENT_TAG=`git describe --always --tags $(git rev-list --tags) | grep -v 'dev' | grep -E '^v' | head -n1 | cut -d"-" -f1`" >> $GITHUB_ENV
+          echo "NEW_TAG=`echo ${GITHUB_REF} | cut -d"/" -f3`" >> $GITHUB_ENV
 
       - name: Bump version.update
         if: startsWith(github.ref, 'refs/tags/v')
@@ -77,6 +80,27 @@ jobs:
           name: 'Dev Build: ${{ env.CURRENT_TAG }}-dev'
           body: "This is a pre-release build! You don't want to download this!"
 
+      - name: Commit version.update to main
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: stefanzweifel/git-auto-commit-action@v4
+        id: auto-commit-action
+        with:
+          commit_message: 'Automated bump of version.update'
+          file_pattern: 'version.update'
+          branch: main
+
+      # probably a better way to do this. big no-no to move an existing tag,
+      # but there's no malicious stuff going on here. we just want the tag
+      # to include the updated version.update file and we're doing it strictly
+      # in CI. the tag is what triggers these steps and I don't want to manually
+      # update the version.update file before pushing the tag.
+      - name: Include previous commit in new tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          git checkout ${{ steps.auto-commit-action.outputs.commit_hash }}
+          git tag -f $NEW_TAG
+          git push --force origin $NEW_TAG
+
       - name: Creating prod release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v1
@@ -85,5 +109,5 @@ jobs:
           prerelease: false
           draft: false
           tag_name: ${{ github.ref }}
-          name: 'Release: ${{ github.ref }}'
+          name: 'Release: ${{ env.NEW_TAG }}'  # github.ref does not trim refs/tags/ when used here
           generate_release_notes: true

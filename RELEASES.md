@@ -2,11 +2,13 @@
 
 Releases are performed through Github Action workflows.
 
-- Ensure all changes to be released are in the `main` branch
-    - You can do this by opening a PR to merge `dev` -> `main`
-- Once PR is merged, ensure you have pulled down the latest `main` branch
+- All changes expected to be released should exist in `main`
+- Ensure you have pulled down the latest `main` branch
     - `git pull origin main`
-- Create the new tag (please prepend the tag with "v")
+- Create a new tag (make sure to prepend the tag with "v")
     - `git tag <version>` (ex: `git tag v4.0.0`)
 - Push the tag up
     - `git push origin <version>` (ex: `git push origin v4.0.0`)
+- This will trigger a Github Action named `build-release-zip`
+- After a minute or two, you'll see a new release generated with the tag that was pushed up
+- Either manually download the DAT/IDX file from the previous release and upload it to the new release, or navigate to the `etps` repository and kick off a manual workflow run to move the DAT/IDX to the new release
