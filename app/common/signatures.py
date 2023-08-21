@@ -5,7 +5,7 @@
 
 # takes you to the section of the function where you can read where dialog is stored before
 # it's rendered to screen. captures npc text.
-# FF 77 08 C7 45 FC ?? ?? ?? ?? BB
+# FF 77 08 C7 45
 # 8D 64 24 FC 89 04 24 8D 64 24 FC E9 ?? ?? ?? ?? 3B -- better, but picked up by integrity scans in combat.
 #
 # Code around where we detour
@@ -103,3 +103,7 @@ comm_name_pattern_2 = rb"\x09[\xE3\xEF].................\x00.................\x3
 # so scanning for this for now. AC is also preventing this from just being accessible via hooks. (17 bytes)
 # D0 ?? ?? ?? 00 00 00 00 04 02 00 00 10 00 00 00 E?
 walkthrough_pattern = rb"\xD0...\x00\x00\x00\x00\x04\x02\x00\x00\x10\x00\x00\x00[\xE3\xE4\xE5\xE6\xE7\xE8\xE9]"
+
+# "動画・生配信を行う際は" found in notice box on login. Bytes are just the words encoded into utf-8
+# E5 8B 95 E7 94 BB E3 83 BB E7 94 9F E9 85 8D E4 BF A1 E3 82 92 E8 A1 8C E3 81 86 E9 9A 9B E3 81 AF
+notice_string = rb"\xE5\x8B\x95\xE7\x94\xBB\xE3\x83\xBB\xE7\x94\x9F\xE9\x85\x8D\xE4\xBF\xA1\xE3\x82\x92\xE8\xA1\x8C\xE3\x81\x86\xE9\x9A\x9B\xE3\x81\xAF"
