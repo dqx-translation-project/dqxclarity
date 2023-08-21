@@ -1,4 +1,5 @@
 from io import BytesIO
+from locale import getencoding
 from urllib.request import Request, urlopen
 from zipfile import ZipFile as zip
 
@@ -14,7 +15,8 @@ CLARITY_URL = "https://github.com/dqx-translation-project/dqxclarity/releases/la
 def process_exists(process_name):
     # https://stackoverflow.com/a/29275361
     call = 'TASKLIST', '/FI', 'imagename eq %s' % process_name
-    output = subprocess.check_output(call).decode()
+    curr_locale = getencoding()
+    output = subprocess.check_output(call).decode(curr_locale)
     last_line = output.strip().split('\r\n')[-1]
     return last_line.lower().startswith(process_name.lower())
 
