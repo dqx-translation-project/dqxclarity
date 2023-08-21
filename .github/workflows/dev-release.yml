@@ -31,10 +31,10 @@ jobs:
       - name: Update GITHUB_ENV env
         run: |
           echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
-          echo "CURRENT_TAG=`git describe --tags $(git rev-list --tags --max-count=1)`" >> $GITHUB_ENV
+          echo "CURRENT_TAG=`gh api -X GET /repos/dqx-translation-project/dqxclarity/releases --jq='first(.[] | select(.prerelease==false) | .tag_name)'`" >> $GITHUB_ENV
 
       - name: Bump version.update
-        # if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v')
         run: echo $GITHUB_REF | cut -d"v" -f2 > version.update
 
       - name: Build package
@@ -65,7 +65,7 @@ jobs:
           files: dqxclarity-dev-${{ env.SHORT_SHA }}.zip
           prerelease: true
           tag_name: ${{ env.CURRENT_TAG }}-dev
-          name: 'Dev Build: ${{ env.CURRENT_TAG }}-dev-${{ env.SHORT_SHA }}'
+          name: 'Dev Build: ${{ env.CURRENT_TAG }}-dev'
           body: "This is a pre-release build! You don't want to download this!"
 
       - name: Creating prod release
