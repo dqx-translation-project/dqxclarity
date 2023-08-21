@@ -1,4 +1,5 @@
 from io import BytesIO
+from locale import getencoding
 from urllib.request import Request, urlopen
 from zipfile import ZipFile as zip
 
@@ -7,7 +8,6 @@ import os
 import shutil
 import subprocess
 import sys
-from locale import getencoding
 
 CLARITY_URL = "https://github.com/dqx-translation-project/dqxclarity/releases/latest/download/dqxclarity.zip"
 
