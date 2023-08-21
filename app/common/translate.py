@@ -1,18 +1,19 @@
-import textwrap
-import json
-import configparser
-import shutil
-import unicodedata
-from common.errors import warning_message
-from common.lib import merge_jsons, get_abs_path
 from common.db_ops import init_db
-import os
-import langdetect
-import re
-import pykakasi
-from openpyxl import load_workbook
-import deepl
+from common.errors import message_box
+from common.lib import get_abs_path, merge_jsons
 from googleapiclient.discovery import build
+from openpyxl import load_workbook
+
+import configparser
+import deepl
+import json
+import langdetect
+import os
+import pykakasi
+import re
+import shutil
+import textwrap
+import unicodedata
 
 
 class Translate():
@@ -30,7 +31,7 @@ class Translate():
             Translate.region_code = self.translation_settings["RegionCode"]
 
         if Translate.glossary is None:
-            with open("/".join([get_abs_path(__file__), "../misc_files/glossary.csv"]), "r", encoding="utf-8") as f:
+            with open("/".join([get_abs_path(__file__), "../misc_files/glossary.csv"]), encoding="utf-8") as f:
                 strings = f.read()
                 Translate.glossary = [ x for x in strings.split("\n") if x ]
 
@@ -71,8 +72,7 @@ class Translate():
 
 
     def __normalize_text(self, text: str) -> str:
-        """
-        "Normalize" text by only using latin alphabet.
+        """"Normalize" text by only using latin alphabet.
 
         :param text: Text to normalize
         :returns: Normalized text.
@@ -156,16 +156,13 @@ class Translate():
 
 
     def __wrap_text(self, text: str, width: int, max_lines=None) -> str:
-        """
-        Wrap text to n characters per line.
-        """
+        """Wrap text to n characters per line."""
         return textwrap.fill(text, width=width, max_lines=max_lines, replace_whitespace=False)
 
 
     def __add_line_endings(self, text: str) -> str:
-        """
-        Adds <br> flags every 3 lines to a string. Used to break up the
-        text in a dialog window.
+        """Adds <br> flags every 3 lines to a string. Used to break up the text
+        in a dialog window.
 
         :param text: Text to add the <br> tags to.
         :returns: A new string with the text broken up by <br> tags.
@@ -183,8 +180,8 @@ class Translate():
 
 
     def translate(self, text: list):
-        """
-        Translates a list of strings, passing them through our glossary first.
+        """Translates a list of strings, passing them through our glossary
+        first.
 
         :param text: List of text strings to be translated.
         :returns: A translated list of strings in the same order they were given.
@@ -201,13 +198,15 @@ class Translate():
 
 
     def sanitize_and_translate(self, text: str, wrap_width: int, max_lines=None, add_brs=True):
-        """
-        Sanitizes different tags and symbols, then translates the string.
+        """Sanitizes different tags and symbols, then translates the string.
 
         :param text: String to be translated.
-        :param wrap_width: How many characters the returning string should contain per line.
-        :param max_lines: The maximum amount of lines to return. Extra lines are truncated with "..."
-        :param add_brs: Whether to inject "<br>" every three lines to break up text. Used for dialog mainly.
+        :param wrap_width: How many characters the returning string
+                should contain per line.
+        :param max_lines: The maximum amount of lines to return. Extra
+                lines are truncated with "..."
+        :param add_brs: Whether to inject "<br>" every three lines to
+                break up text. Used for dialog mainly.
         """
         if found := self.__search_excel_workbook(text):
             return found
@@ -357,8 +356,7 @@ class Translate():
 
 
     def __search_excel_workbook(self, text: str):
-        """
-        Searches the merge.xlsx workbook for a string in the JP Text column.
+        """Searches the merge.xlsx workbook for a string in the JP Text column.
         If there's a match and the string "BAD STRING" is found in the Notes
         column, this returns the contents in the "Fixed English Text" column.
         This fixes instances of text where machine translation completely
@@ -381,11 +379,9 @@ class Translate():
 
 
 def load_user_config():
-    """
-    Returns a user's config settings.
-    If the config doesn't exist, a default config is generated.
-    If the user's config is missing values, we back up the old
-    config and generate a new default one for them.
+    """Returns a user's config settings. If the config doesn't exist, a default
+    config is generated. If the user's config is missing values, we back up the
+    old config and generate a new default one for them.
 
     :returns: Dict of config.
     """
@@ -398,6 +394,7 @@ def load_user_config():
         "googletranslatekey": "",
         "regioncode": "en",
     }
+    base_config["config"] = {"installdirectory": ""}
 
     def create_base_config():
         with open(filename, "w+") as configfile:
@@ -426,9 +423,9 @@ def load_user_config():
     if user_config_state == 1:
         shutil.copyfile(filename, f"{filename}.invalid")
         create_base_config()
-        warning_message(
-            title="[dqxclarity] New config created",
-            message=f"We found a missing config value in your {filename}.\n\nYour old config has been renamed to {filename}.invalid in case you need to reference it.\n\nPlease relaunch dqxclarity after setting up your new configuration.",
+        message_box(
+            title="New config created",
+            message=f"We found a missing config value in your {filename}.\n\nYour old config has been renamed to {filename}.invalid in case you need to reference it.\n\nPlease relaunch dqxclarity.",
             exit_prog=True,
         )
 
@@ -444,8 +441,7 @@ def load_user_config():
 
 
 def update_user_config(section: str, key: str, value: str, filename="user_settings.ini"):
-    """
-    Updates an existing configuration option in a user's config.
+    """Updates an existing configuration option in a user's config.
 
     :param section: Section of the config
     :param key: Key in the section's config
@@ -460,10 +456,8 @@ def update_user_config(section: str, key: str, value: str, filename="user_settin
 
 
 def determine_translation_service():
-    """
-    Parses the user_settings file to get information needed
-    to make translation calls.
-    """
+    """Parses the user_settings file to get information needed to make
+    translation calls."""
     config = load_user_config()
     enabledeepltranslate = eval(config["translation"]["enabledeepltranslate"])
     deepltranslatekey = config["translation"]["deepltranslatekey"]
@@ -474,36 +468,36 @@ def determine_translation_service():
     reiterate = "Either open the user_settings.ini file in Notepad or use the API settings button in the DQXClarity launcher to set it up."
 
     if not enabledeepltranslate and not enablegoogletranslate:
-        warning_message(
-            title="[dqxclarity] No translation service enabled",
+        message_box(
+            title="No translation service enabled",
             message=f"You need to enable a translation service. {reiterate}\n\nCurrent values:\n\nenabledeepltranslate: {enabledeepltranslate}\nenablegoogletranslate: {enablegoogletranslate}",
             exit_prog=True,
         )
 
     if enabledeepltranslate and enablegoogletranslate:
-        warning_message(
-            title="[dqxclarity] Too many translation services enabled",
+        message_box(
+            title="Too many translation services enabled",
             message=f"Only enable one translation service. {reiterate}\n\nCurrent values:\n\nenabledeepltranslate: {enabledeepltranslate}\nenablegoogletranslate: {enablegoogletranslate}",
             exit_prog=True,
         )
 
     if deepltranslatekey == "" and googletranslatekey == "":
-        warning_message(
-            title="[dqxclarity] No API key configured",
+        message_box(
+            title="No API key configured",
             message=f"You need to configure an API key. {reiterate}",
             exit_prog=True,
         )
 
     if enabledeepltranslate and deepltranslatekey == "":
-        warning_message(
-            title="[dqxclarity] No DeepL key specified",
+        message_box(
+            title="No DeepL key specified",
             message=f"DeepL is enabled, but no key was provided. {reiterate}",
             exit_prog=True,
         )
 
     if enablegoogletranslate and googletranslatekey == "":
-        warning_message(
-            title="[dqxclarity] No Google API key specified",
+        message_box(
+            title="No Google API key specified",
             message=f"Google API is enabled, but no key was provided. {reiterate}",
             exit_prog=True,
         )
@@ -522,8 +516,7 @@ def determine_translation_service():
 
 
 def query_string_from_file(text: str, file: str) -> str:
-    """
-    Searches for a string from the specified json file and either returns
+    """Searches for a string from the specified json file and either returns
     the string or returns False if no match found.
 
     text: The text to search
@@ -540,8 +533,9 @@ def query_string_from_file(text: str, file: str) -> str:
 
 
 def clean_up_and_return_items(text: str) -> str:
-    """
-    Cleans up unnecessary text from item strings and searches for the name in items.json.
+    """Cleans up unnecessary text from item strings and searches for the name
+    in items.json.
+
     Used specifically for the quest window.
     """
     misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
@@ -559,7 +553,7 @@ def clean_up_and_return_items(text: str) -> str:
     final_string = ""
     for item in sanitized.split("\n"):
         quantity = ""
-        no_bullet = re.sub("(^\・)", "", item)
+        no_bullet = re.sub(r"(^\・)", "", item)
         points = no_bullet[6:18]
         if no_bullet.endswith("こ"):
             quantity = "(" + unicodedata.normalize("NFKC", no_bullet[-3:-1]) + ")"
@@ -600,8 +594,9 @@ def clean_up_and_return_items(text: str) -> str:
 
 
 def detect_lang(text: str) -> bool:
-    """
-    Detects if the language is Japanese or not. Returns bool.
+    """Detects if the language is Japanese or not.
+
+    Returns bool.
     """
     sanitized = re.sub("<.+?>", "", text)
     sanitized = re.sub("\n", "", sanitized)
@@ -614,14 +609,13 @@ def detect_lang(text: str) -> bool:
 
 
 def read_json_file(file):
-    with open(file, "r", encoding="utf-8") as json_data:
+    with open(file, encoding="utf-8") as json_data:
         return json.loads(json_data.read())
 
 
 def convert_into_eng(word: str) -> str:
-    """
-    Uses the pykakasi library to phonetically convert a
-    Japanese word (usually a name) into English.
+    """Uses the pykakasi library to phonetically convert a Japanese word
+    (usually a name) into English.
 
     :param word: Word to convert.
     :returns: Returns up to a 10 character name in English.
@@ -633,7 +627,7 @@ def convert_into_eng(word: str) -> str:
     interpunct_count = word.count("・")
     word_len = len(word)
     bad_word = False
-    
+
     if any(char in word for char in invalid_chars):
         return word
     else:
@@ -664,8 +658,8 @@ def convert_into_eng(word: str) -> str:
 
 
 def get_player_name() -> tuple:
-    """
-    Queries the player and sibling name from the database.
+    """Queries the player and sibling name from the database.
+
     Returns a tuple of (player_name, sibling_name).
     """
     conn, cursor = init_db()

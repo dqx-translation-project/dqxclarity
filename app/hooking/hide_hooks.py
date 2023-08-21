@@ -1,19 +1,20 @@
+from clarity import scan_for_comm_names, scan_for_sibling_names
+from common.lib import process_exists
+from common.memory import read_bytes, write_bytes
+from loguru import logger
 from multiprocessing import Process
+
+import pymem
 import sys
 import time
-from loguru import logger
-import pymem
-from common.lib import is_dqx_running
-from common.memory import read_bytes, write_bytes
-from clarity import scan_for_sibling_names, scan_for_comm_names
 
 
 def load_hooks(hook_list: list, state_addr: int, player_names: bool, debug: bool):
-    """
-    Reload our hooks if they've been unhooked.
+    """Reload our hooks if they've been unhooked.
 
     :param hook_list: List of hook objects created by EasyDetour
-    :param state_addr: Address that the integrity check writes at to let us know when it's unhooked
+    :param state_addr: Address that the integrity check writes at to let
+        us know when it's unhooked
     :param debug: Enable log debugging
     :returns: Nothing. This is an infinite loop that runs as a process
     """
@@ -55,7 +56,7 @@ def load_hooks(hook_list: list, state_addr: int, player_names: bool, debug: bool
                 hook.disable()
             sys.exit(1)
         except Exception as e:
-            if is_dqx_running():
+            if not process_exists("DQXGame.exe"):
                 logger.exception("An exception occurred. dqxclarity will exit.")
                 sys.exit(1)
             else:

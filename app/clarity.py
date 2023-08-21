@@ -1,47 +1,32 @@
-import re
-import sys
-import time
-from loguru import logger
-from common.lib import is_dqx_running
-
-from common.db_ops import (
-    sql_read,
-    sql_write,
-)
-
-from common.translate import (
-    detect_lang,
-    determine_translation_service,
-    Translate,
-    convert_into_eng,
-)
-
-from common.memory import (
-    read_bytes,
-    read_string,
-    write_string,
-    pattern_scan,
-)
-
+from common.db_ops import sql_read, sql_write
+from common.lib import get_abs_path, merge_jsons, process_exists
+from common.memory import pattern_scan, read_bytes, read_string, write_string
 from common.signatures import (
-    npc_monster_pattern,
+    comm_name_pattern_1,
+    comm_name_pattern_2,
     concierge_name_pattern,
     menu_ai_name_pattern,
+    npc_monster_pattern,
     player_name_pattern,
     sibling_name_pattern,
     walkthrough_pattern,
-    comm_name_pattern_1,
-    comm_name_pattern_2
 )
+from common.translate import (
+    convert_into_eng,
+    detect_lang,
+    determine_translation_service,
+    Translate,
+)
+from loguru import logger
 
-from common.lib import merge_jsons, get_abs_path
+import re
+import sys
+import time
 
 
 def scan_for_player_names():
-    """
-    Scans for addresses that are related to a specific
-    pattern to translate player names.
-    """
+    """Scans for addresses that are related to a specific pattern to translate
+    player names."""
     if player_list := pattern_scan(pattern=player_name_pattern, return_multiple=True):
         for address in player_list:
             player_name_address = address + 48  # len of num of (player_name_pattern - 1)
@@ -57,10 +42,8 @@ def scan_for_player_names():
 
 
 def scan_for_comm_names():
-    """
-    Scans for addresses that are related to a specific
-    pattern to translate player names in the comms window.
-    """
+    """Scans for addresses that are related to a specific pattern to translate
+    player names in the comms window."""
     comm_name_list_1 = pattern_scan(pattern=comm_name_pattern_1, use_regex=True, return_multiple=True)
     comm_name_list_2 = pattern_scan(pattern=comm_name_pattern_2, use_regex=True, return_multiple=True)
     comm_name_list_2_mod = []
@@ -80,10 +63,8 @@ def scan_for_comm_names():
 
 
 def scan_for_sibling_names():
-    """
-    Scans for addresses that are related to a specific
-    pattern to translate sibling names.
-    """
+    """Scans for addresses that are related to a specific pattern to translate
+    sibling names."""
     if address := pattern_scan(pattern=sibling_name_pattern):
         sibling_name_address = address + 51  # len of num of (sibling_name_pattern - 1)
         player_name_address = address - 21 # Start of sibling_name_pattern - 21 (jump to player name)
@@ -118,10 +99,8 @@ def scan_for_concierge_names():
 
 
 def scan_for_npc_names():
-    """
-    Scan to look for NPC and monster names and translate them into English.
-    Also finds names above your party members.
-    """
+    """Scan to look for NPC names, monster names and names above your party
+    member's heads and translates them into English."""
     misc_files = "/".join([get_abs_path(__file__), "misc_files"])
     translated_npc_names = merge_jsons([
         f"{misc_files}/smldt_msg_pkg_NPC_DB.win32.json",
@@ -164,9 +143,8 @@ def scan_for_npc_names():
 
 
 def scan_for_menu_ai_names():
-    """
-    Scans for the walkthrough address and translates when found, then translates party members.
-    """
+    """Scans for the walkthrough address and translates when found, then
+    translates party members."""
     if ai_list := pattern_scan(pattern=menu_ai_name_pattern, return_multiple=True):
         for address in ai_list:
             ai_name_address = address + 57
@@ -180,9 +158,8 @@ def scan_for_menu_ai_names():
 
 
 def loop_scan_for_walkthrough():
-    """
-    Scans for the walkthrough address in an infinite loop and translates when found.
-    """
+    """Scans for the walkthrough address in an infinite loop and translates
+    when found."""
     api_details = determine_translation_service()
     logger.info("Will watch for walkthrough text.")
 
@@ -229,7 +206,7 @@ def loop_scan_for_walkthrough():
             else:
                 time.sleep(1)
     except Exception:
-        if is_dqx_running():
+        if not process_exists("DQXGame.exe"):
             logger.exception("A problem with the walkthrough scanner was detected.")
             sys.exit(1)
         else:
@@ -237,8 +214,7 @@ def loop_scan_for_walkthrough():
 
 
 def run_scans(player_names=True, npc_names=True, debug=False):
-    """
-    Run chosen scans.
+    """Run chosen scans.
 
     :param player_names: Run player name scans.
     :param npc_names: Run NPC name scans.
@@ -262,7 +238,7 @@ def run_scans(player_names=True, npc_names=True, debug=False):
         except KeyboardInterrupt:
             sys.exit(1)
         except Exception as e:
-            if is_dqx_running():
+            if not process_exists("DQXGame.exe"):
                 logger.exception("An exception occurred. dqxclarity will exit.")
                 sys.exit(1)
             else:

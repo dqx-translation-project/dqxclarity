@@ -1,12 +1,13 @@
-import sys
-import os
-from json import dumps
 from common.db_ops import sql_read, sql_write
-from common.translate import Translate, detect_lang
-from common.memory import unpack_to_int, read_string, write_string
+from common.memory import read_string, unpack_to_int, write_string
+from common.translate import detect_lang, Translate
+from json import dumps
+
+import os
+import sys
 
 
-class Dialog(object):
+class Dialog:
 
     translator = Translate()
     region = translator.region_code
@@ -54,8 +55,8 @@ class Dialog(object):
 
 
 def translate_shellcode(esi_address: int) -> str:
-    """
-    Returns shellcode for the translate function hook.
+    """Returns shellcode for the translate function hook.
+
     address: Where text can be modified to be fed to the screen
     """
     local_paths = dumps(sys.path).replace("\\", "\\\\")

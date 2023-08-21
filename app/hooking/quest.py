@@ -1,19 +1,16 @@
+from common.db_ops import sql_read, sql_write
+from common.lib import get_abs_path, setup_logger
+from common.memory import read_string, unpack_to_int, write_string
+from common.translate import clean_up_and_return_items, detect_lang, Translate
 from json import dumps, loads
-import os
-import sys
-from common.db_ops import (
-    sql_read,
-    sql_write,
-)
-from common.lib import get_abs_path
-from common.memory import read_string, write_string, unpack_to_int
-from common.translate import (
-    detect_lang,
-    Translate,
-    clean_up_and_return_items
-)
 
-class Quest(object):
+import os
+import re
+import sys
+import textwrap
+
+
+class Quest:
 
     misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
     quests = None
@@ -104,10 +101,8 @@ class Quest(object):
 
 
     def __read_file(self, file):
-        """
-        Reads a json file and returns a single key, value dict.
-        """
-        with open(file, "r", encoding="utf-8") as json_data:
+        """Reads a json file and returns a single key, value dict."""
+        with open(file, encoding="utf-8") as json_data:
             data = loads(json_data.read())
         new_dict = dict()
         for key in data:
@@ -130,8 +125,8 @@ class Quest(object):
 
 
 def quest_text_shellcode(address: int) -> str:
-    """
-    Returns shellcode for the translate function hook.
+    """Returns shellcode for the translate function hook.
+
     address: Where text can be modified to be fed to the screen
     """
     local_paths = dumps(sys.path).replace("\\", "\\\\")

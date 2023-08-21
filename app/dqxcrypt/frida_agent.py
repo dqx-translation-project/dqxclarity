@@ -13,7 +13,7 @@ class FridaAgent():
 
     def _get_agent_script(self):
         this_dir = os.path.split(__file__)[0]
-        with open(f'{this_dir}/dqx-blowfish-frida-agent/_agent.js', 'rt', encoding='utf-8') as f:
+        with open(f'{this_dir}/dqx-blowfish-frida-agent/_agent.js', encoding='utf-8') as f:
             return f.read()
 
     def attach_game(self):
@@ -40,7 +40,7 @@ class FridaAgent():
                 self.blowfish_log_file.flush()
 
         else:
-            print("Frida Agent: [%s] => %s" % (message, data))
+            print(f"Frida Agent: [{message}] => {data}")
 
     def detach_game(self):
         self.script.unload()

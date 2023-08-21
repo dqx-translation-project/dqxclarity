@@ -86,7 +86,7 @@ menu_party_name_trigger = rb"\x8B\xCF\xFF\x75\x0C\x53\x50"
 #    DQXGame.exe.text+BA3C5B - 8B 03                 - mov eax,[ebx]
 #    DQXGame.exe.text+BA3C5D - 0F85 97DB0800         - jne DQXGame.exe.text+C317FA
 #    DQXGame.exe.text+BA3C63 - E9 86D1CF07           - jmp DQXGame.exe.text+670DDEE
-#    DQXGame.exe.text+BA3C68 - CC                    - int 3 
+#    DQXGame.exe.text+BA3C68 - CC                    - int 3
 #    DQXGame.exe.text+BA3C69 - 48                    - dec eax
 #    DQXGame.exe.text+BA3C6A - 8D 64 24 FC           - lea esp,[esp-04]
 #    DQXGame.exe.text+BA3C6E - 89 04 24              - mov [esp],eax
@@ -163,7 +163,7 @@ npc_monster_names_trigger = rb"\x8B\x4E\x04\x83\xC4\x10\x8B\x81"
 # change and need to be updated on patches.
 #############################################
 
-# pattern for npc/monsters to rename. (49 bytes) 
+# pattern for npc/monsters to rename. (49 bytes)
 # npc:     F0 1C ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 BC 71 ?? ?? ?? ?? ?? ?? 74 58 ?? ?? E?
 # monster: F0 1C ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 6C 5F ?? ?? ?? ?? ?? ?? 74 58 ?? ?? E?
 # party:   F0 1C ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 D4 61 ?? ?? ?? ?? ?? ?? 74 58 ?? ?? E?
@@ -199,3 +199,7 @@ walkthrough_pattern = rb"\xD0...\x00\x00\x00\x00\x04\x02\x00\x00\x10\x00\x00\x00
 # player name in cutscenes. not used at the moment, but holding onto it for now.
 # EF ?? 01 ?? ?? ?? ?? 3C EF ?? 01
 player_name_cutscenes = rb"\xEF.\x01....\x3C\xEF.\x01"
+
+# "動画・生配信を行う際は" found in notice box on login. Bytes are just the words encoded into utf-8
+# E5 8B 95 E7 94 BB E3 83 BB E7 94 9F E9 85 8D E4 BF A1 E3 82 92 E8 A1 8C E3 81 86 E9 9A 9B E3 81 AF
+notice_string = rb"\xE5\x8B\x95\xE7\x94\xBB\xE3\x83\xBB\xE7\x94\x9F\xE9\x85\x8D\xE4\xBF\xA1\xE3\x82\x92\xE8\xA1\x8C\xE3\x81\x86\xE9\x9A\x9B\xE3\x81\xAF"

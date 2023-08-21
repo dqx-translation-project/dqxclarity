@@ -1,16 +1,20 @@
-import logging
+from locale import getencoding
 from loguru import logger
+from pathlib import Path
+
+import ctypes
 import json
+import logging
 import os
 import shutil
 import subprocess
 import sys
-from pathlib import Path
+import time
 
 
 def read_json_file(file):
     """Reads JSON file and returns content."""
-    with open(file, "r", encoding="utf-8") as json_data:
+    with open(file, encoding="utf-8") as json_data:
         return json.loads(json_data.read())
 
 
@@ -37,9 +41,7 @@ def delete_file(file):
 
 
 def setup_logging(debug=False):
-    """
-    Configure default logging to be used across this program.
-    """
+    """Configure default logging to be used across this program."""
     log_path = "/".join([get_abs_path(__file__), "../logs"])
     if not os.path.exists(log_path):
         os.makedirs(log_path)
@@ -57,9 +59,7 @@ def setup_logging(debug=False):
 
 
 def setup_logger(name, log_file, level=logging.INFO):
-    """
-    Sets up a logger for hook shellcode.
-    """
+    """Sets up a logger for hook shellcode."""
     # pylint: disable=redefined-outer-name
     logging.basicConfig(format="%(message)s")
     formatter = logging.Formatter("%(message)s")
@@ -77,8 +77,7 @@ def setup_logger(name, log_file, level=logging.INFO):
 
 
 def merge_jsons(files: list):
-    """
-    Merge any number of json files to create a new dict.
+    """Merge any number of json files to create a new dict.
 
     :param files: List of files to merge
     :returns: New dict with merged changes
@@ -98,9 +97,38 @@ def get_abs_path(file: str):
     return abs_path.replace("\\", "/")
 
 
-def is_dqx_running():
+def process_exists(process_name):
     # https://stackoverflow.com/a/29275361
-    call = 'TASKLIST', '/FI', 'imagename eq %s' % "DQXGame.exe"
-    output = subprocess.check_output(call).decode()
+    call = 'TASKLIST', '/FI', 'imagename eq %s' % process_name
+    curr_locale = getencoding()
+    output = subprocess.check_output(call).decode(curr_locale)
     last_line = output.strip().split('\r\n')[-1]
-    return last_line.lower().startswith("DQXGame.exe".lower())
+    return last_line.lower().startswith(process_name.lower())
+
+
+def check_if_running_as_admin():
+    """Check if the user is running this script as an admin.
+
+    If not, return False.
+    """
+    is_admin = ctypes.windll.shell32.IsUserAnAdmin()
+    if is_admin == 1:
+        return True
+    return False
+
+
+def wait_for_dqx_to_launch() -> bool:
+    """Scans for the DQXGame.exe process."""
+    logger.info("Searching for DQXGame.exe.")
+    if process_exists("DQXGame.exe"):
+        logger.success("DQXGame.exe found.")
+        return
+    while not process_exists("DQXGame.exe"):
+        time.sleep(0.25)
+    from common.memory import pattern_scan
+    from common.signatures import notice_string
+    logger.success("DQXGame.exe found. Make sure you're on the \"Important notice\" screen.")
+    while True:
+        if pattern_scan(pattern=notice_string):
+            logger.success("\"Important notice\" screen found.")
+            return
