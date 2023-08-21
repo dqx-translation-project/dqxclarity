@@ -63,9 +63,8 @@ def download_custom_files():
 
 
 def check_for_updates(update: bool):
-    """
-    Checks to see if Clarity is running the latest version of itself.
-    If not, will launch updater.py and exit.
+    """Checks to see if Clarity is running the latest version of itself. If
+    not, will launch updater.py and exit.
 
     :param update: Whether or not to update after checking for updates.
     """
@@ -262,10 +261,11 @@ def merge_local_db():
 
 
 def download_dat_files():
-    """
-    Verifies the user's DQX install location and prompts
-    them to locate it if not found. Uses this location to
-    download the latest data files from the dqxclarity repo.
+    """Verifies the user's DQX install location and prompts them to locate it
+    if not found.
+
+    Uses this location to download the latest data files from the
+    dqxclarity repo.
     """
     if process_exists("DQXGame.exe"):
         message = "Please close DQX before attempting to update the translated DAT/IDX file."

@@ -6,8 +6,8 @@ import sys
 
 # this works, but we can't use it due to integrity checks.
 def rename_party_members_shellcode(ebx_address: int, debug: bool) -> str:
-    """
-    Returns shellcode to rename party members into Romaji.
+    """Returns shellcode to rename party members into Romaji.
+
     ebx_address: Where text can be modified
     """
     local_paths = dumps(sys.path).replace("\\", "\\\\")

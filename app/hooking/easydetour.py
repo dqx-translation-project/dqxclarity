@@ -13,13 +13,15 @@ import sys
 
 
 class EasyDetour:
-    """
-    Creates a detour object that allows you to redirect code execution to your own via Python
+    """Creates a detour object that allows you to redirect code execution to
+    your own via Python.
 
     :param hook_name: Name of your hook
     :param signature: Bytes used to find the function you want to redirect
-    :param num_bytes_to_steal: Number of bytes to steal from the original func to be executed after your detour
-    :returns: Initiated EasyDetour object. Use enable() to turn on your detour and disable() to turn off
+    :param num_bytes_to_steal: Number of bytes to steal from the
+        original func to be executed after your detour
+    :returns: Initiated EasyDetour object. Use enable() to turn on your
+        detour and disable() to turn off
     """
 
     def __init__(self, hook_name: str, signature: bytes, num_bytes_to_steal: int, simple_str_addr: int, debug: bool):

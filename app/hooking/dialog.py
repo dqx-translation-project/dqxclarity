@@ -6,8 +6,8 @@ import sys
 
 
 def translate_shellcode(esi_address: int, debug: bool) -> str:
-    """
-    Returns shellcode for the translate function hook.
+    """Returns shellcode for the translate function hook.
+
     esi_address: Where text can be modified to be fed to the screen
     """
     local_paths = dumps(sys.path).replace("\\", "\\\\")

@@ -25,9 +25,7 @@ import traceback
 
 
 def inject_python_dll():
-    """
-    Injects a Python dll.
-    """
+    """Injects a Python dll."""
     try:
         PYM_PROCESS.inject_python_interpreter()
         if PYM_PROCESS._python_injected:
@@ -43,9 +41,7 @@ def inject_python_dll():
 
 
 def translate_detour(simple_str_addr: int, debug=False):
-    """
-    Hooks the dialog window to translate text and write English instead.
-    """
+    """Hooks the dialog window to translate text and write English instead."""
     hook_obj = EasyDetour(
         hook_name="game_dialog",
         signature=dialog_trigger,
@@ -66,9 +62,7 @@ def translate_detour(simple_str_addr: int, debug=False):
 
 
 def quest_text_detour(simple_str_addr: int, debug=False):
-    """
-    Hook the quest dialog window and translate to english.
-    """
+    """Hook the quest dialog window and translate to english."""
     hook_obj = EasyDetour(
         hook_name="quests",
         signature=quest_text_trigger,
@@ -89,9 +83,8 @@ def quest_text_detour(simple_str_addr: int, debug=False):
 
 
 def accept_quest_detour(simple_str_addr: int, debug=False):
-    """
-    Detours function when you accept a quest and the quest text pops up on your screen.
-    """
+    """Detours function when you accept a quest and the quest text pops up on
+    your screen."""
     hook_obj = EasyDetour(
         hook_name="accept_quest",
         signature=accept_quest_trigger,
@@ -109,9 +102,7 @@ def accept_quest_detour(simple_str_addr: int, debug=False):
 
 
 def activate_hooks(player_names: bool, debug=False):
-    """
-    Activates all hooks and kicks off hook manager.
-    """
+    """Activates all hooks and kicks off hook manager."""
     logger.remove()
     if debug:
         logger.add(sys.stderr, level="DEBUG")

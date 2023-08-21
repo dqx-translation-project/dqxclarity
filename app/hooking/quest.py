@@ -104,9 +104,7 @@ class Quest(object):
 
 
     def __read_file(self, file):
-        """
-        Reads a json file and returns a single key, value dict.
-        """
+        """Reads a json file and returns a single key, value dict."""
         with open(file, "r", encoding="utf-8") as json_data:
             data = loads(json_data.read())
         new_dict = dict()
@@ -130,8 +128,8 @@ class Quest(object):
 
 
 def quest_text_shellcode(eax_address: int, debug: bool) -> str:
-    """
-    Returns shellcode for the translate function hook.
+    """Returns shellcode for the translate function hook.
+
     eax_address: Where text can be modified to be fed to the screen
     """
     import os

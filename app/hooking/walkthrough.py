@@ -8,8 +8,8 @@ import sys
 def walkthrough_shellcode(
     esi_address: int, api_logging: str, debug: bool
 ) -> str:
-    """
-    Returns shellcode for the walkthrough function hook.
+    """Returns shellcode for the walkthrough function hook.
+
     ebx_address: Where text can be modified to be fed to the screen
     """
     local_paths = dumps(sys.path).replace("\\", "\\\\")

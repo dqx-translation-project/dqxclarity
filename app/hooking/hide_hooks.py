@@ -9,11 +9,11 @@ import time
 
 
 def load_hooks(hook_list: list, state_addr: int, player_names: bool, debug: bool):
-    """
-    Reload our hooks if they've been unhooked.
+    """Reload our hooks if they've been unhooked.
 
     :param hook_list: List of hook objects created by EasyDetour
-    :param state_addr: Address that the integrity check writes at to let us know when it's unhooked
+    :param state_addr: Address that the integrity check writes at to let
+        us know when it's unhooked
     :param debug: Enable log debugging
     :returns: Nothing. This is an infinite loop that runs as a process
     """
