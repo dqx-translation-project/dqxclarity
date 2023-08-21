@@ -58,6 +58,15 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: zip -r dqxclarity.zip dqxclarity
 
+      - name: Cleanup existing assets from dev release
+        if: startsWith(github.ref, 'refs/tags/v') != true
+        uses: mknejp/delete-release-assets@v1
+        continue-on-error: true  # tag or assets may not exist
+        with:
+          token: ${{ github.token }}
+          tag: ${{ env.CURRENT_TAG }}-dev
+          assets: '*.zip'
+
       - name: Creating dev release
         if: startsWith(github.ref, 'refs/tags/v') != true
         uses: softprops/action-gh-release@v1
