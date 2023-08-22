@@ -36,7 +36,8 @@ def translate(text: str) -> str:
     """Sends text to deepl to be translated.
 
     :param text: Text to send to DeepL.
-    :param xml_handling: Whether to tell DeepL to use xml_handling when handling tags.
+    :param xml_handling: Whether to tell DeepL to use xml_handling when
+        handling tags.
     :returns: Translated text.
     """
     api_key = random.choice(DEEPL_KEYS)

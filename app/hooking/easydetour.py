@@ -17,7 +17,8 @@ class EasyDetour:
     your own via Python.
 
     :param hook_name: Name of your hook
-    :param signature: Bytes used to find the function you want to redirect
+    :param signature: Bytes used to find the function you want to
+        redirect
     :param num_bytes_to_steal: Number of bytes to steal from the
         original func to be executed after your detour
     :returns: Initiated EasyDetour object. Use enable() to turn on your
