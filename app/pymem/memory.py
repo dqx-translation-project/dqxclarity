@@ -1,4 +1,5 @@
 import ctypes
+from locale import getencoding
 import struct
 
 import pymem.exception
@@ -1085,7 +1086,7 @@ def write_string(handle, address, bytecode):
         A boolean indicating a successful write.
     """
     if isinstance(bytecode, str):
-        bytecode = bytecode.encode()
+        bytecode = bytecode.encode(encoding=getencoding())
 
     return write_bytes(handle, address, bytecode, len(bytecode))
 
