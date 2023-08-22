@@ -63,7 +63,8 @@ def sql_write(source_text, translated_text, table, language):
     """Writes or updates text to a SQLite table.
 
     :param source_text: Text to search against the table.
-    :param translated_text: Translated text to insert/update into the database.
+    :param translated_text: Translated text to insert/update into the
+        database.
     :param table: Table to insert the text into.
     :param language: The applicable language to insert the text into.
     :returns: This function returns nothing; it only writes/updates to

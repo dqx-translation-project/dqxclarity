@@ -184,7 +184,8 @@ class Translate():
         first.
 
         :param text: List of text strings to be translated.
-        :returns: A translated list of strings in the same order they were given.
+        :returns: A translated list of strings in the same order they
+            were given.
         """
         count = 0
         for i in text:
@@ -363,7 +364,8 @@ class Translate():
         screwed up the text and caused the game to have issues.
 
         :param text: String to search
-        :returns: Returns either the English text or None if no match was found.
+        :returns: Returns either the English text or None if no match
+            was found.
         """
         file = "/".join([get_abs_path(__file__), "../misc_files/merge.xlsx"])
 
