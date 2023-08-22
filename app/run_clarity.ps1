@@ -86,9 +86,15 @@ if (!$PythonInstallPath) {
 # check if the user already has a virtual environment folder
 if (-not (Test-Path -Path "venv")) {
     LogWrite "Creating virtual environment."
-    & $PythonInstallPath -m venv venv
+    $CreateVenvOutput = & $PythonInstallPath -m venv venv 2>&1
     if ($? -eq $False) {
-        LogWrite "An error occurred during virtual environment initialization. Please try again. $HelpMessage"
+        LogWrite $CreateVenvOutput
+        if ($CreateVenvOutput -match "'--default-pip']' returned non-zero exit status 1.") {
+            LogWrite "It's highly likely that your antivirus is blocking Python from executing. You will need to add a folder exclusion to your anti-virus to exclude 'C:\Program Files (x86)\Python311-32' and '$PSScriptRoot'. Restart dqxclarity once these exclusions have been added."
+        }
+        else {
+            LogWrite "An error occurred during virtual environment initialization. Please try again. $HelpMessage"
+        }
         RemoveFile "venv"
         PromptForInputAndExit
     }
