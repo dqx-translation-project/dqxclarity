@@ -49,7 +49,9 @@ def scan_for_comm_names():
     comm_name_list_2_mod = []
     for address in comm_name_list_2:
         comm_name_list_2_mod.append(address + 1)
-    comm_names = comm_name_list_1 + comm_name_list_2_mod
+    comm_names = comm_name_list_2_mod
+    if comm_name_list_1:
+        comm_names += comm_name_list_1
     for address in comm_names:
         try:
             ja_name = read_string(address)
