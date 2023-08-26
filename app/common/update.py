@@ -39,6 +39,10 @@ def download_custom_files():
                 if any([x in obj.filename for x in directories]) and not (obj.filename.endswith("/")):
                     # hack: unzipped files copy zip folder structure, so re-assign filename to basename when we extract
                     obj.filename = os.path.basename(obj.filename)
+
+                    # extract already overwrites, but a user reported that they got a permission denied error.
+                    if os.path.exists(f"./misc_files/{obj.filename}"):
+                        os.remove(f"./misc_files/{obj.filename}")
                     zfile.extract(obj, "misc_files")
 
         # dqx_translations is roughly 17MB~ right now. we only need 5 files from that repository, so download them individually.
