@@ -1,0 +1,76 @@
+---
+  name: "Build zip for PR"
+
+  on:
+    issue_comment:
+      types: [created]
+
+  jobs:
+    build:
+      runs-on: ubuntu-latest
+      if: github.event.issue.pull_request && contains(github.event.comment.body, '/build')
+      steps:
+        - name: Fetch Branch Name
+          id: fetch-branch-name
+          uses: xt0rted/pull-request-comment-branch@v2
+
+        - name: Checkout PR branch (${{ steps.fetch-branch-name.outputs.head_ref }})
+          uses: actions/checkout@v3
+          with:
+            ref: ${{ steps.fetch-branch-name.outputs.head_ref }}
+
+        - name: Checkout dqx-translation-project/dqx_translations
+          uses: actions/checkout@v3
+          with:
+            repository: 'dqx-translation-project/dqx_translations'
+            path: 'dqx_translations'
+
+        - name: Checkout dqx-translation-project/dqx-custom-translations
+          uses: actions/checkout@v3
+          with:
+            repository: 'dqx-translation-project/dqx-custom-translations'
+            path: 'dqx-custom-translations'
+
+        - name: Create SHORT_SHA env
+          run: echo "SHORT_SHA=`echo ${{ steps.fetch-branch-name.outputs.head_sha }} | cut -c1-8`" >> $GITHUB_ENV
+
+        - name: Build package
+          run: |
+            rsync -av --exclude="imgs/" app/* dqxclarity/;
+            cp version.update requirements.txt user_settings.ini dqxclarity/;
+            cp clarity_dialog.db dqxclarity/misc_files;
+            cp -fr dqx-custom-translations/json/* dqxclarity/misc_files;
+            cp -f dqx-custom-translations/csv/glossary.csv dqxclarity/misc_files;
+            cp -f dqx_translations/json/_lang/en/eventTextSysQuestaClient.json dqxclarity/misc_files;
+            cp -f dqx_translations/json/_lang/en/subPackage05Client.json dqxclarity/misc_files;
+            cp -f dqx_translations/json/_lang/en/subPackage41Client.win32.json dqxclarity/misc_files;
+            cp -f dqx_translations/json/_lang/en/subPackage02Client.win32.json dqxclarity/misc_files;
+            cp -f dqx_translations/json/_lang/en/smldt_msg_pkg_NPC_DB.win32.json dqxclarity/misc_files;
+
+            zip -r dqxclarity-dev-${SHORT_SHA}.zip dqxclarity
+
+        - name: Upload zip as artifact
+          uses: actions/upload-artifact@v3
+          with:
+            name: dqxclarity-dev-${{ env.SHORT_SHA }}
+            path: dqxclarity-dev-${{ env.SHORT_SHA }}.zip
+            if-no-files-found: error
+
+        - name: Post comment to PR
+          uses: mshick/add-pr-comment@v2
+          with:
+            message: |
+              Link to workflow: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+              Click on the zip at the bottom of the workflow to download.
+            refresh-message-position: true
+            preformatted: false
+
+        # not working yet, have an open issue to hopefully fix
+        # https://github.com/aki77/delete-pr-comments-action/issues/82
+        # - name: Clean up build comments
+        #   uses: aki77/delete-pr-comments-action@v1
+        #   with:
+        #     token: ${{ secrets.GITHUB_TOKEN }}
+        #     bodyContains: |-
+        #       /build
+        #     noReply: 'true'
