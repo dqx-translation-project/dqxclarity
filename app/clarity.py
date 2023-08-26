@@ -223,7 +223,7 @@ def loop_scan_for_walkthrough():
             logger.exception("A problem with the walkthrough scanner was detected.")
             sys.exit(1)
         else:
-            sys.exit(0)
+            logger.exception("Problem detected running walkthrough scanner.")
 
 
 def run_scans(player_names=True, npc_names=True, debug=False):
