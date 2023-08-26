@@ -22,23 +22,26 @@ from loguru import logger
 import re
 import sys
 import time
+import traceback
 
 
 def scan_for_player_names():
     """Scans for addresses that are related to a specific pattern to translate
     player names."""
-    if player_list := pattern_scan(pattern=player_name_pattern, return_multiple=True):
-        for address in player_list:
-            player_name_address = address + 48  # len of num of (player_name_pattern - 1)
-            try:
-                ja_player_name = read_string(player_name_address)
-                romaji_name = convert_into_eng(ja_player_name)
-                if romaji_name != ja_player_name:
-                    write_string(player_name_address, "\x04" + romaji_name)
-            except UnicodeDecodeError:
-                continue
-            except Exception as e:
-                logger.debug(f"Failed to write player name at {str(hex(address))}. {e}")
+    for address in pattern_scan(pattern=player_name_pattern, return_multiple=True):
+        player_name_address = address + 48  # len of player_name_pattern - 1
+        try:
+            ja_name = read_string(player_name_address)
+            en_name = convert_into_eng(ja_name)
+            if en_name != ja_name:
+                # we use a leading x04 byte here as the game assumes all names that start
+                # with an english letter are GMs.
+                write_string(player_name_address, "\x04" + en_name)
+        except UnicodeDecodeError:
+            continue
+        except Exception:
+            logger.debug(f"Failed to write player name.\n{traceback.format_exc()}")
+            continue
 
 
 def scan_for_comm_names():
