@@ -95,18 +95,20 @@ def scan_for_sibling_name():
 
 
 def scan_for_concierge_names():
-    if concierge_names := pattern_scan(pattern=concierge_name_pattern, return_multiple=True):
-        for address in concierge_names:
-            name_addr = address + 12  # jump to name
-            try:
-                ja_name = read_string(name_addr)
-                en_name = convert_into_eng(ja_name)
-                if en_name != ja_name:
-                    write_string(name_addr, "\x04" + en_name)
-            except UnicodeDecodeError:
-                pass
-            except Exception as e:
-                logger.debug(f"Failed to write concierge name at {str(hex(address))}. {e}")
+    """Scans for addresses that are related to a specific pattern to translate
+    concierge names."""
+    for address in pattern_scan(pattern=concierge_name_pattern, return_multiple=True):
+        name_address = address + 12  # jump to name
+        try:
+            ja_name = read_string(name_address)
+            en_name = convert_into_eng(ja_name)
+            if en_name != ja_name:
+                write_string(name_address, "\x04" + en_name)
+        except UnicodeDecodeError:
+            pass
+        except Exception:
+            logger.debug(f"Failed to write concierge name at {hex(address)}.\n{traceback.format_exc()}")
+            continue
 
 
 def scan_for_npc_names():
