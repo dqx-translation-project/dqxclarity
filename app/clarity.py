@@ -156,26 +156,26 @@ def scan_for_npc_names():
 
 
 def scan_for_menu_ai_names():
-    """Scans for the walkthrough address and translates when found, then
-    translates party members."""
-    if ai_list := pattern_scan(pattern=menu_ai_name_pattern, return_multiple=True):
-        for address in ai_list:
-            ai_name_address = address + 57
-            if ja_ai_name := read_string(ai_name_address):
-                romaji_name = convert_into_eng(ja_ai_name)
-                if romaji_name != ja_ai_name:
-                    try:
-                        write_string(ai_name_address, romaji_name)
-                    except Exception as e:
-                        logger.debug(f"Failed to write party member name at {str(hex(address))}. {e}")
+    """Scans for addresses that are related to a specific pattern to translate
+    party member names in the party member panel."""
+    for address in pattern_scan(pattern=menu_ai_name_pattern, return_multiple=True):
+        name_address = address + 57
+        try:
+            ja_name = read_string(name_address)
+            en_name = convert_into_eng(ja_name)
+            if en_name != ja_name:
+                write_string(name_address, en_name)
+        except UnicodeDecodeError:
+            pass
+        except Exception:
+            logger.debug(f"Failed to write party member name at {hex(address)}.\n{traceback.format_exc()}")
+            continue
 
 
 def loop_scan_for_walkthrough():
     """Scans for the walkthrough address in an infinite loop and translates
     when found."""
-    api_details = determine_translation_service()
     logger.info("Will watch for walkthrough text.")
-
     translator = Translate()
 
     try:
