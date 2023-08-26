@@ -1,4 +1,4 @@
-from clarity import scan_for_comm_names, scan_for_sibling_names
+from clarity import scan_for_comm_names, scan_for_sibling_name
 from common.lib import process_exists
 from common.memory import read_bytes, write_bytes
 from loguru import logger
@@ -36,7 +36,7 @@ def load_hooks(hook_list: list, state_addr: int, player_names: bool, debug: bool
 
                 if player_names:
                     # since this timing is sensitive, kick these processes off in the background
-                    Process(name="Sibling scan", target=scan_for_sibling_names, args=()).start()
+                    Process(name="Sibling scan", target=scan_for_sibling_name, args=()).start()
                     Process(name="Comms scan", target=scan_for_comm_names, args=()).start()
                 logger.debug("Hooks enabled.")
             time.sleep(0.25)

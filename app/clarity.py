@@ -66,29 +66,32 @@ def scan_for_comm_names():
         except UnicodeDecodeError:
             continue
         except Exception:
-            logger.debug(f"Failed to write comms name at {hex(address)}. {traceback.format_exc()}")
+            logger.debug(f"Failed to write comms name at {hex(address)}.\n{traceback.format_exc()}")
             continue
 
 
-def scan_for_sibling_names():
+def scan_for_sibling_name():
     """Scans for addresses that are related to a specific pattern to translate
-    sibling names."""
+    the player's sibling name."""
     if address := pattern_scan(pattern=sibling_name_pattern):
-        sibling_name_address = address + 51  # len of num of (sibling_name_pattern - 1)
-        player_name_address = address - 21 # Start of sibling_name_pattern - 21 (jump to player name)
+        sibling_address = address + 51  # len of num of (sibling_name_pattern - 1)
+        player_address = address - 21  # start of sibling_name_pattern - 21 (jump to player name)
         try:
-            ja_sibling_name = read_string(sibling_name_address)
-            ja_player_name = read_string(player_name_address)
-            romaji_sibling_name = convert_into_eng(ja_sibling_name)
-            romaji_player_name = convert_into_eng(ja_player_name)
-            if romaji_sibling_name != ja_sibling_name:
-                write_string(sibling_name_address, "\x04" + romaji_sibling_name)
-            if romaji_player_name != ja_player_name:
-                write_string(player_name_address, "\x04" + romaji_player_name)
+            ja_sibling_name = read_string(sibling_address)
+            ja_player_name = read_string(player_address)
+
+            en_sibling_name = convert_into_eng(ja_sibling_name)
+            en_player_name = convert_into_eng(ja_player_name)
+
+            if en_sibling_name != ja_sibling_name:
+                write_string(sibling_address, "\x04" + en_sibling_name)
+
+            if en_player_name != ja_player_name:
+                write_string(player_address, "\x04" + en_player_name)
         except UnicodeDecodeError:
             pass
         except Exception:
-            logger.debug(f"Failed to write sibling name at {str(hex(address))}.")
+            logger.debug(f"Failed to write sibling name at {hex(address)}.\n{traceback.format_exc()}")
 
 
 def scan_for_concierge_names():
