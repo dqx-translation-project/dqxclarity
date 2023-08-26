@@ -103,8 +103,7 @@ def pattern_scan(pattern: bytes, return_multiple=False, use_regex=False, module=
                 use_regex=use_regex
             )
     except pymem.exception.WinAPIError as e:
-        if e.error_code == 299:
-            logger.debug("WinApi error 299: Impartial read. Ignoring.")
+        if e.error_code == 299:  # impartial read, just return none.
             return None
         else:
             if process_exists("DQXGame.exe"):
