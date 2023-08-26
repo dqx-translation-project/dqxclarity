@@ -47,24 +47,27 @@ def scan_for_player_names():
 def scan_for_comm_names():
     """Scans for addresses that are related to a specific pattern to translate
     player names in the comms window."""
-    comm_name_list_1 = pattern_scan(pattern=comm_name_pattern_1, use_regex=True, return_multiple=True)
-    comm_name_list_2 = pattern_scan(pattern=comm_name_pattern_2, use_regex=True, return_multiple=True)
-    comm_name_list_2_mod = []
-    for address in comm_name_list_2:
-        comm_name_list_2_mod.append(address + 1)
-    comm_names = comm_name_list_2_mod
-    if comm_name_list_1:
-        comm_names += comm_name_list_1
-    for address in comm_names:
+    comm_addresses = []
+
+    # the comm names were found to use two patterns. the first set we can use as is, the second set
+    # we need to jump ahead one byte before we r/w.
+    first_set = pattern_scan(pattern=comm_name_pattern_1, use_regex=True, return_multiple=True)
+    second_set = pattern_scan(pattern=comm_name_pattern_2, use_regex=True, return_multiple=True)
+    for address in first_set:
+        comm_addresses.append(address)
+    for address in second_set:
+        comm_addresses.append(address + 1)
+    for address in comm_addresses:
         try:
             ja_name = read_string(address)
-            romaji_name = convert_into_eng(ja_name)
-            if romaji_name != ja_name:
-                write_string(address, "\x04" + romaji_name)
+            en_name = convert_into_eng(ja_name)
+            if en_name != ja_name:
+                write_string(address, "\x04" + en_name)
         except UnicodeDecodeError:
             continue
-        except Exception as e:
-            logger.debug(f"Failed to write comms name at {str(hex(address))}. {e}")
+        except Exception:
+            logger.debug(f"Failed to write comms name at {hex(address)}. {traceback.format_exc()}")
+            continue
 
 
 def scan_for_sibling_names():
