@@ -1,0 +1,4 @@
+# there are too many users who manage to download the source code zip
+# instead of the deliverable zip asset that's shipped. this tells github
+# to generate a blank source code zip.
+* export-ignore
