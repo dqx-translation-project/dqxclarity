@@ -2,6 +2,7 @@ from common.db_ops import sql_read, sql_write
 from common.lib import get_abs_path, merge_jsons, setup_logger
 from common.memory import read_bytes, read_string, unpack_to_int, write_string
 from common.translate import convert_into_eng, Translate
+from glob import glob
 from json import dumps
 from loguru import logger
 
@@ -13,7 +14,6 @@ class NetworkTextTranslate:
 
     misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
     custom_text_logger = setup_logger("text_logger", "/".join([get_abs_path(__file__), "../logs/custom_text.log"]))
-    npc_names = None
     m00_text = None
 
     translate = {
@@ -34,11 +34,8 @@ class NetworkTextTranslate:
         self.text_address = unpack_to_int(text_address)
         self.var_address = unpack_to_int(var_address)
 
-        if NetworkTextTranslate.npc_names is None:
-            NetworkTextTranslate.npc_names = self.__get_npc_names()
-
         if NetworkTextTranslate.m00_text is None:
-            NetworkTextTranslate.m00_text = self.__get_m00_text()
+            NetworkTextTranslate.m00_text = self.__get_m00_strings()
 
         category = read_string(self.var_address + 40)  # var name is 40 bytes in
         if category in NetworkTextTranslate.translate:
@@ -49,8 +46,8 @@ class NetworkTextTranslate:
                 return
             elif category in ["M_pc", "M_npc", "B_ACTOR", "B_TARGET", "C_PC", "L_SENDER_NAME", "M_OWNER"]:  # npc or player names
                 name = read_string(self.text_address)
-                if name in NetworkTextTranslate.npc_names:
-                    name_to_write = NetworkTextTranslate.npc_names[name]
+                if name in NetworkTextTranslate.m00_text:
+                    name_to_write = NetworkTextTranslate.m00_text[name]
                 else:
                     name_to_write = convert_into_eng(name)
                 write_string(self.text_address, name_to_write)
@@ -82,31 +79,12 @@ class NetworkTextTranslate:
         return
 
 
-    def __get_npc_names(self):
-        """Merges all NPC names/monster files to make one dict for
-        searching."""
-        npc_files = merge_jsons([
-            f"{NetworkTextTranslate.misc_files}/custom_npc_names.json",
-            f"{NetworkTextTranslate.misc_files}/custom_player_names.json",
-            f"{NetworkTextTranslate.misc_files}/subPackage02Client.win32.json",
-            f"{NetworkTextTranslate.misc_files}/smldt_msg_pkg_NPC_DB.win32.json",
-        ])
+    def __get_m00_strings(self):
+        """Merges all jsons in the misc_files folder into one big dict."""
+        json_files = glob(f"{NetworkTextTranslate.misc_files}/*.json")
+        m00_strings = merge_jsons(json_files)
 
-        return npc_files
-
-
-    def __get_m00_text(self):
-        m00_text = merge_jsons([
-            f"{NetworkTextTranslate.misc_files}/custom_master_quests.json",
-            f"{NetworkTextTranslate.misc_files}/custom_team_quests.json",
-            f"{NetworkTextTranslate.misc_files}/eventTextSysQuestaClient.json",
-            f"{NetworkTextTranslate.misc_files}/custom_episode_request_book.json",
-            f"{NetworkTextTranslate.misc_files}/custom_trainee_logbook.json",
-            f"{NetworkTextTranslate.misc_files}/custom_mail.json",
-            f"{NetworkTextTranslate.misc_files}/custom_lottery_prizes.json",
-        ])
-
-        return m00_text
+        return m00_strings
 
 
     def __translate_story(self, text: str):
