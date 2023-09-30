@@ -1,5 +1,9 @@
 from common.db_ops import ensure_db_structure
-from common.lib import process_exists, setup_logging, wait_for_dqx_to_launch
+from common.lib import (
+    is_dqx_process_running,
+    setup_logging,
+    wait_for_dqx_to_launch,
+)
 from common.update import (
     check_for_updates,
     download_custom_files,
@@ -75,7 +79,7 @@ def blast_off(
 
         logger.success("Done! Keep this window open (minimize it) and have fun on your adventure!")
     except Exception as e:
-        if not process_exists("DQXGame.exe"):
+        if not is_dqx_process_running():
             logger.exception(f"An exception occurred. dqxclarity will exit.")
             sys.exit(1)
         else:

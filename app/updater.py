@@ -12,14 +12,23 @@ import sys
 CLARITY_URL = "https://github.com/dqx-translation-project/dqxclarity/releases/latest/download/dqxclarity.zip"
 
 
-def process_exists(process_name):
-    # https://stackoverflow.com/a/29275361
-    call = 'TASKLIST', '/FI', 'imagename eq %s' % process_name
-    curr_locale = getencoding()
-    output = subprocess.check_output(call).decode(curr_locale)
-    last_line = output.strip().split('\r\n')[-1]
-    return last_line.lower().startswith(process_name.lower())
+def decode_to_utf8(byte_str: bytes):
+    """Decodes a string of the current machine's encoding to utf-8."""
+    current_locale = getencoding()
+    return byte_str.decode(current_locale).encode().decode()
 
+
+def is_dqx_process_running():
+    # https://stackoverflow.com/a/29275361
+    # will only work on windows.
+    call = 'TASKLIST', '/FI', 'imagename eq DQXGame.exe'
+    output = decode_to_utf8(byte_str=subprocess.check_output(call))
+
+    # no matter what language we parse, the process name is always in latin characters
+    if "DQXGame.exe" in output:
+        return True
+
+    return False
 
 def kill_clarity_exe():
     os.system("taskkill /f /im DQXClarity.exe >nul 2>&1")
@@ -42,7 +51,7 @@ def delete_file(file: str):
         shutil.rmtree(file, ignore_errors=True)
 
 
-if process_exists("DQXGame.exe"):
+if is_dqx_process_running():
     input("Please close DQX before updating. Re-launch dqxclarity once the game has been closed.\n\nPress ENTER to close this window.")
     sys.exit()
 

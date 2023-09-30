@@ -5,7 +5,7 @@ from common.errors import (
     MemoryWriteError,
     message_box,
 )
-from common.lib import process_exists
+from common.lib import is_dqx_process_running
 from loguru import logger
 from pymem.pattern import pattern_scan_all, pattern_scan_module
 
@@ -106,7 +106,7 @@ def pattern_scan(pattern: bytes, return_multiple=False, use_regex=False, module=
         if e.error_code == 299:  # impartial read, just return none.
             return None
         else:
-            if process_exists("DQXGame.exe"):
+            if is_dqx_process_running():
                 logger.exception("An exception occurred. dqxclarity will exit.")
                 sys.exit(1)
             else:

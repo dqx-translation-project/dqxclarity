@@ -1,5 +1,5 @@
 from clarity import scan_for_comm_names, scan_for_sibling_name
-from common.lib import process_exists
+from common.lib import is_dqx_process_running
 from common.memory import read_bytes, write_bytes
 from loguru import logger
 from multiprocessing import Process
@@ -56,7 +56,7 @@ def load_hooks(hook_list: list, state_addr: int, player_names: bool, debug: bool
                 hook.disable()
             sys.exit(1)
         except Exception as e:
-            if not process_exists("DQXGame.exe"):
+            if not is_dqx_process_running():
                 logger.exception("An exception occurred. dqxclarity will exit.")
                 sys.exit(1)
             else:

@@ -10,7 +10,11 @@ from common.constants import (
     GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL,
 )
 from common.errors import message_box
-from common.lib import check_if_running_as_admin, get_abs_path, process_exists
+from common.lib import (
+    check_if_running_as_admin,
+    get_abs_path,
+    is_dqx_process_running,
+)
 from common.translate import load_user_config, update_user_config
 from io import BytesIO
 from loguru import logger
@@ -224,7 +228,7 @@ def download_dat_files():
     Uses this location to download the latest data files from the
     dqxclarity repo.
     """
-    if process_exists("DQXGame.exe"):
+    if is_dqx_process_running():
         message = "Please close DQX before attempting to update the translated DAT/IDX file."
         logger.error(message)
         message_box(

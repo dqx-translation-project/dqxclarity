@@ -97,13 +97,29 @@ def get_abs_path(file: str):
     return abs_path.replace("\\", "/")
 
 
-def process_exists(process_name):
+def decode_to_utf8(byte_str: bytes):
+    """Decodes a string of the current machine's encoding to utf-8."""
+    current_locale = getencoding()
+    return byte_str.decode(current_locale).encode().decode()
+
+
+def encode_to_utf8(string: str):
+    """Encodes a string of the current machine's encoding to utf-8."""
+    current_locale = getencoding()
+    return string.encode(current_locale).decode(current_locale).encode()
+
+
+def is_dqx_process_running():
     # https://stackoverflow.com/a/29275361
-    call = 'TASKLIST', '/FI', 'imagename eq %s' % process_name
-    curr_locale = getencoding()
-    output = subprocess.check_output(call).decode(curr_locale)
-    last_line = output.strip().split('\r\n')[-1]
-    return last_line.lower().startswith(process_name.lower())
+    # will only work on windows.
+    call = 'TASKLIST', '/FI', 'imagename eq DQXGame.exe'
+    output = decode_to_utf8(byte_str=subprocess.check_output(call))
+
+    # no matter what language we parse, the process name is always in latin characters
+    if "DQXGame.exe" in output:
+        return True
+
+    return False
 
 
 def check_if_running_as_admin():
@@ -111,6 +127,7 @@ def check_if_running_as_admin():
 
     If not, return False.
     """
+    # will only work on windows.
     is_admin = ctypes.windll.shell32.IsUserAnAdmin()
     if is_admin == 1:
         return True
@@ -120,10 +137,10 @@ def check_if_running_as_admin():
 def wait_for_dqx_to_launch() -> bool:
     """Scans for the DQXGame.exe process."""
     logger.info("Searching for DQXGame.exe.")
-    if process_exists("DQXGame.exe"):
+    if is_dqx_process_running():
         logger.success("DQXGame.exe found.")
         return
-    while not process_exists("DQXGame.exe"):
+    while not is_dqx_process_running():
         time.sleep(0.25)
     from common.memory import pattern_scan
     from common.signatures import notice_string

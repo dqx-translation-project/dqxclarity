@@ -1,5 +1,5 @@
 from common.db_ops import sql_read, sql_write
-from common.lib import get_abs_path, merge_jsons, process_exists
+from common.lib import get_abs_path, is_dqx_process_running, merge_jsons
 from common.memory import pattern_scan, read_bytes, read_string, write_string
 from common.signatures import (
     comm_name_pattern_1,
@@ -11,12 +11,7 @@ from common.signatures import (
     sibling_name_pattern,
     walkthrough_pattern,
 )
-from common.translate import (
-    convert_into_eng,
-    detect_lang,
-    determine_translation_service,
-    Translate,
-)
+from common.translate import convert_into_eng, detect_lang, Translate
 from loguru import logger
 
 import re
@@ -219,7 +214,7 @@ def loop_scan_for_walkthrough():
             else:
                 time.sleep(1)
     except Exception:
-        if not process_exists("DQXGame.exe"):
+        if not is_dqx_process_running():
             logger.exception("A problem with the walkthrough scanner was detected.")
             sys.exit(1)
         else:
@@ -251,7 +246,7 @@ def run_scans(player_names=True, npc_names=True, debug=False):
         except KeyboardInterrupt:
             sys.exit(1)
         except Exception as e:
-            if not process_exists("DQXGame.exe"):
+            if not is_dqx_process_running():
                 logger.exception("An exception occurred. dqxclarity will exit.")
                 sys.exit(1)
             else:
