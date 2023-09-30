@@ -47,10 +47,15 @@ def scan_for_comm_names():
 
     # the comm names were found to use two patterns. the first set we can use as is, the second set
     # we need to jump ahead one byte before we r/w.
-    if address := pattern_scan(pattern=comm_name_pattern_1, use_regex=True, return_multiple=True):
+    comm_names_1 = pattern_scan(pattern=comm_name_pattern_1, use_regex=True, return_multiple=True)
+    comm_names_2 = pattern_scan(pattern=comm_name_pattern_2, use_regex=True, return_multiple=True)
+
+    for address in comm_names_1:
         comm_addresses.append(address)
-    if address := pattern_scan(pattern=comm_name_pattern_2, use_regex=True, return_multiple=True):
+
+    for address in comm_names_2:
         comm_addresses.append(address + 1)
+
     for address in comm_addresses:
         try:
             ja_name = read_string(address)
@@ -59,8 +64,10 @@ def scan_for_comm_names():
                 write_string(address, "\x04" + en_name)
         except UnicodeDecodeError:
             continue
+        except TypeError:
+            continue
         except Exception:
-            logger.debug(f"Failed to write comms name at {hex(address)}.\n{traceback.format_exc()}")
+            logger.debug(f"Failed to write name.\n{traceback.format_exc()}")
             continue
 
 
@@ -85,7 +92,7 @@ def scan_for_sibling_name():
         except UnicodeDecodeError:
             pass
         except Exception:
-            logger.debug(f"Failed to write sibling name at {hex(address)}.\n{traceback.format_exc()}")
+            logger.debug(f"Failed to write name.\n{traceback.format_exc()}")
 
 
 def scan_for_concierge_names():
@@ -102,7 +109,7 @@ def scan_for_concierge_names():
             except UnicodeDecodeError:
                 pass
             except Exception:
-                logger.debug(f"Failed to write concierge name at {hex(address)}.\n{traceback.format_exc()}")
+                logger.debug(f"Failed to write name.\n{traceback.format_exc()}")
                 continue
 
 
@@ -140,14 +147,14 @@ def scan_for_npc_names():
                         try:
                             write_string(name_addr, value)
                         except Exception as e:
-                            logger.debug(f"Failed to write {data} at {str(hex(address))}. {e}")
+                            logger.debug(f"Failed to write {data}. {e}")
             elif data == "AI_NAME":
                 en_name = convert_into_eng(name)
                 if en_name != name:
                     try:
                         write_string(name_addr, "\x04" + en_name)
                     except Exception as e:
-                        logger.debug(f"Failed to write {data} at {str(hex(address))}. {e}")
+                        logger.debug(f"Failed to write {data}. {e}")
 
 
 def scan_for_menu_ai_names():
@@ -164,7 +171,7 @@ def scan_for_menu_ai_names():
             except UnicodeDecodeError:
                 pass
             except Exception:
-                logger.debug(f"Failed to write party member name at {hex(address)}.\n{traceback.format_exc()}")
+                logger.debug(f"Failed to write name.\n{traceback.format_exc()}")
                 continue
 
 
