@@ -23,20 +23,21 @@ import traceback
 def scan_for_player_names():
     """Scans for addresses that are related to a specific pattern to translate
     player names."""
-    for address in pattern_scan(pattern=player_name_pattern, return_multiple=True):
-        player_name_address = address + 48  # len of player_name_pattern - 1
-        try:
-            ja_name = read_string(player_name_address)
-            en_name = convert_into_eng(ja_name)
-            if en_name != ja_name:
-                # we use a leading x04 byte here as the game assumes all names that start
-                # with an english letter are GMs.
-                write_string(player_name_address, "\x04" + en_name)
-        except UnicodeDecodeError:
-            continue
-        except Exception:
-            logger.debug(f"Failed to write player name.\n{traceback.format_exc()}")
-            continue
+    if addresses := pattern_scan(pattern=player_name_pattern, return_multiple=True):
+        for address in addresses:
+            player_name_address = address + 48  # len of player_name_pattern - 1
+            try:
+                ja_name = read_string(player_name_address)
+                en_name = convert_into_eng(ja_name)
+                if en_name != ja_name:
+                    # we use a leading x04 byte here as the game assumes all names that start
+                    # with an english letter are GMs.
+                    write_string(player_name_address, "\x04" + en_name)
+            except UnicodeDecodeError:
+                continue
+            except Exception:
+                logger.debug(f"Failed to write player name.\n{traceback.format_exc()}")
+                continue
 
 
 def scan_for_comm_names():
@@ -46,11 +47,9 @@ def scan_for_comm_names():
 
     # the comm names were found to use two patterns. the first set we can use as is, the second set
     # we need to jump ahead one byte before we r/w.
-    first_set = pattern_scan(pattern=comm_name_pattern_1, use_regex=True, return_multiple=True)
-    second_set = pattern_scan(pattern=comm_name_pattern_2, use_regex=True, return_multiple=True)
-    for address in first_set:
+    if address := pattern_scan(pattern=comm_name_pattern_1, use_regex=True, return_multiple=True):
         comm_addresses.append(address)
-    for address in second_set:
+    if address := pattern_scan(pattern=comm_name_pattern_2, use_regex=True, return_multiple=True):
         comm_addresses.append(address + 1)
     for address in comm_addresses:
         try:
@@ -92,18 +91,19 @@ def scan_for_sibling_name():
 def scan_for_concierge_names():
     """Scans for addresses that are related to a specific pattern to translate
     concierge names."""
-    for address in pattern_scan(pattern=concierge_name_pattern, return_multiple=True):
-        name_address = address + 12  # jump to name
-        try:
-            ja_name = read_string(name_address)
-            en_name = convert_into_eng(ja_name)
-            if en_name != ja_name:
-                write_string(name_address, "\x04" + en_name)
-        except UnicodeDecodeError:
-            pass
-        except Exception:
-            logger.debug(f"Failed to write concierge name at {hex(address)}.\n{traceback.format_exc()}")
-            continue
+    if addresses := pattern_scan(pattern=concierge_name_pattern, return_multiple=True):
+        for address in addresses:
+            name_address = address + 12  # jump to name
+            try:
+                ja_name = read_string(name_address)
+                en_name = convert_into_eng(ja_name)
+                if en_name != ja_name:
+                    write_string(name_address, "\x04" + en_name)
+            except UnicodeDecodeError:
+                pass
+            except Exception:
+                logger.debug(f"Failed to write concierge name at {hex(address)}.\n{traceback.format_exc()}")
+                continue
 
 
 def scan_for_npc_names():
@@ -153,18 +153,19 @@ def scan_for_npc_names():
 def scan_for_menu_ai_names():
     """Scans for addresses that are related to a specific pattern to translate
     party member names in the party member panel."""
-    for address in pattern_scan(pattern=menu_ai_name_pattern, return_multiple=True):
-        name_address = address + 57
-        try:
-            ja_name = read_string(name_address)
-            en_name = convert_into_eng(ja_name)
-            if en_name != ja_name:
-                write_string(name_address, en_name)
-        except UnicodeDecodeError:
-            pass
-        except Exception:
-            logger.debug(f"Failed to write party member name at {hex(address)}.\n{traceback.format_exc()}")
-            continue
+    if addresses := pattern_scan(pattern=menu_ai_name_pattern, return_multiple=True):
+        for address in addresses:
+            name_address = address + 57
+            try:
+                ja_name = read_string(name_address)
+                en_name = convert_into_eng(ja_name)
+                if en_name != ja_name:
+                    write_string(name_address, en_name)
+            except UnicodeDecodeError:
+                pass
+            except Exception:
+                logger.debug(f"Failed to write party member name at {hex(address)}.\n{traceback.format_exc()}")
+                continue
 
 
 def loop_scan_for_walkthrough():
