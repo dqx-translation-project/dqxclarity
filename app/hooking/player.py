@@ -1,4 +1,4 @@
-from common.lib import get_abs_path
+from common.lib import encode_to_utf8, get_abs_path
 from common.memory import read_bytes, read_string, unpack_to_int
 from json import dumps
 
@@ -74,7 +74,7 @@ except Exception as e:
         f.write(str(traceback.format_exc()))
     """
 
-    return str(shellcode)
+    return encode_to_utf8(shellcode).decode()
 
 # 115 bytes - <kyodai_rel*> byte
 # 01 - older brother

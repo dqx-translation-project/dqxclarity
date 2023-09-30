@@ -1,13 +1,11 @@
 from common.db_ops import sql_read, sql_write
-from common.lib import get_abs_path, setup_logger
+from common.lib import encode_to_utf8, get_abs_path
 from common.memory import read_string, unpack_to_int, write_string
 from common.translate import clean_up_and_return_items, detect_lang, Translate
 from json import dumps, loads
 
 import os
-import re
 import sys
-import textwrap
 
 
 class Quest:
@@ -147,4 +145,4 @@ except Exception as e:
         f.write(str(traceback.format_exc()))
     """
 
-    return str(shellcode)
+    return encode_to_utf8(shellcode).decode()

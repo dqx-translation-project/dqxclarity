@@ -1,5 +1,5 @@
 from common.db_ops import sql_read, sql_write
-from common.lib import get_abs_path, merge_jsons, setup_logger
+from common.lib import encode_to_utf8, get_abs_path, merge_jsons, setup_logger
 from common.memory import read_bytes, read_string, unpack_to_int, write_string
 from common.translate import convert_into_eng, Translate
 from glob import glob
@@ -130,4 +130,5 @@ except Exception as e:
     with open("{log_path}", "a+") as f:
         f.write(str(traceback.format_exc()))
     """
-    return str(shellcode)
+
+    return encode_to_utf8(shellcode).decode()

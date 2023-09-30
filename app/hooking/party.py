@@ -1,6 +1,7 @@
 # import sys
 # import os
 # from json import dumps
+# from common.lib import encode_to_utf8
 
 
 # # this works, but we can't use it due to integrity checks.
@@ -40,4 +41,4 @@
 #         f.write(str(e))
 #     """
 
-#     return str(shellcode)
+#     return encode_to_utf8(shellcode).decode()
