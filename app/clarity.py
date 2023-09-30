@@ -246,7 +246,7 @@ def run_scans(player_names=True, npc_names=True, debug=False):
         except KeyboardInterrupt:
             sys.exit(1)
         except Exception as e:
-            if not is_dqx_process_running():
+            if is_dqx_process_running():
                 logger.exception("An exception occurred. dqxclarity will exit.")
                 sys.exit(1)
             else:
