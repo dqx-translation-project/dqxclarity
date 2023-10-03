@@ -136,7 +136,7 @@ def check_if_running_as_admin():
 
 def wait_for_dqx_to_launch() -> bool:
     """Scans for the DQXGame.exe process."""
-    logger.info("Searching for DQXGame.exe.")
+    logger.info("Launch DQX and log in to continue.")
     if is_dqx_process_running():
         logger.success("DQXGame.exe found.")
         return
