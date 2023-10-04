@@ -28,6 +28,13 @@ class NetworkTextTranslate:
         "C_QUEST": "dracky_announcements_quest_complete",
         "C_PC": "dracky_announcements_player_name",
         "M_OWNER": "house_owner"
+        "M_hiryu": "dragon_name",
+        "L_HIRYU": "dragon_name",
+        "L_HIRYU_NAME": "dragon_name",
+        "M_name": "pc_name",
+        "M_02": "Menu_Header",
+        "M_header": "Menu_Header",
+        "M_item": "mail_preview"
     }
 
     def __init__(self, text_address, var_address):
@@ -44,14 +51,14 @@ class NetworkTextTranslate:
                 if self_text == "自分":
                     write_string(self.text_address, "self")
                 return
-            elif category in ["M_pc", "M_npc", "B_ACTOR", "B_TARGET", "C_PC", "L_SENDER_NAME", "M_OWNER"]:  # npc or player names
+            elif category in ["M_pc", "M_npc", "B_ACTOR", "B_TARGET", "C_PC", "L_SENDER_NAME", "M_OWNER", "M_hiryu", "L_HIRYU", "L_HIRYU_NAME", "M_name"]:  # npc or player names
                 name = read_string(self.text_address)
                 if name in NetworkTextTranslate.m00_text:
                     name_to_write = NetworkTextTranslate.m00_text[name]
                 else:
                     name_to_write = convert_into_eng(name)
                 write_string(self.text_address, name_to_write)
-            elif category in ["M_00", "C_QUEST"]:
+            elif category in ["M_00", "C_QUEST", "M_02", "M_header", "M_item"]:
                 m00_string = read_string(self.text_address)
                 if m00_string in NetworkTextTranslate.m00_text:
                     to_write = NetworkTextTranslate.m00_text[m00_string]
