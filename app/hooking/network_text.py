@@ -27,7 +27,7 @@ class NetworkTextTranslate:
         "M_kaisetubun": "story_so_far",
         "C_QUEST": "dracky_announcements_quest_complete",
         "C_PC": "dracky_announcements_player_name",
-        "M_OWNER": "house_owner"
+        "M_OWNER": "house_owner",
         "M_hiryu": "dragon_name",
         "L_HIRYU": "dragon_name",
         "L_HIRYU_NAME": "dragon_name",
