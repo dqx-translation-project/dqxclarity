@@ -1,0 +1,24 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "labels": [
+    "renovate",
+    "dependencies",
+    "{{updateType}}",
+    "{{manager}}"
+  ],
+  "prConcurrentLimit": 0,
+  "enabledManagers": [
+    "pip_requirements",
+    "github-actions"
+  ],
+  "rebaseWhen": "conflicted",
+  "semanticCommits": "enabled",
+  "vulnerabilityAlerts": {
+    "addLabels": [
+      "security"
+    ]
+  },
+  "branchPrefix": "renovate/",
+  "prHourlyLimit": 6,
+  "dependencyDashboard": true
+}
