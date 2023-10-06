@@ -32,8 +32,8 @@ class NetworkTextTranslate:
         "L_HIRYU": "dragon_name",
         "L_HIRYU_NAME": "dragon_name",
         "M_name": "pc_name",
-        "M_02": "Menu_Header",
-        "M_header": "Menu_Header",
+        "M_02": "menu_header",
+        "M_header": "menu_header",
         "M_item": "mail_preview"
     }
 

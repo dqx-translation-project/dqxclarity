@@ -1,4 +1,5 @@
 from common.constants import (
+    GITHUB_CLARITY_CUTSCENE_JSON_URL,
     GITHUB_CLARITY_DAT1_URL,
     GITHUB_CLARITY_IDX_URL,
     GITHUB_CLARITY_ITEMS_JSON_URL,
@@ -49,13 +50,14 @@ def download_custom_files():
                         os.remove(f"./misc_files/{obj.filename}")
                     zfile.extract(obj, "misc_files")
 
-        # dqx_translations is roughly 17MB~ right now. we only need 5 files from that repository, so download them individually.
+        # dqx_translations is roughly 17MB~ right now. we only need these files from that repository.
         for url in [
             GITHUB_CLARITY_MONSTERS_JSON_URL,
             GITHUB_CLARITY_NPC_JSON_URL,
             GITHUB_CLARITY_ITEMS_JSON_URL,
             GITHUB_CLARITY_KEY_ITEMS_JSON_URL,
-            GITHUB_CLARITY_QUESTS_REQUESTS_JSON_URL
+            GITHUB_CLARITY_QUESTS_REQUESTS_JSON_URL,
+            GITHUB_CLARITY_CUTSCENE_JSON_URL
         ]:
             request = requests.get(url, timeout=15)
             if request.status_code == 200:
