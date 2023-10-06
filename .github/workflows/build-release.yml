@@ -14,18 +14,18 @@ jobs:
     runs-on: 'ubuntu-latest'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0  # we want to collect tag info, so clone all history
 
       - name: Checkout dqx-translation-project/dqx_translations
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: 'dqx-translation-project/dqx_translations'
           path: 'dqx_translations'
 
       - name: Checkout dqx-translation-project/dqx-custom-translations
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: 'dqx-translation-project/dqx-custom-translations'
           path: 'dqx-custom-translations'
