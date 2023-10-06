@@ -50,11 +50,13 @@ def scan_for_comm_names():
     comm_names_1 = pattern_scan(pattern=comm_name_pattern_1, use_regex=True, return_multiple=True)
     comm_names_2 = pattern_scan(pattern=comm_name_pattern_2, use_regex=True, return_multiple=True)
 
-    for address in comm_names_1:
-        comm_addresses.append(address)
+    if comm_names_1:
+        for address in comm_names_1:
+            comm_addresses.append(address)
 
-    for address in comm_names_2:
-        comm_addresses.append(address + 1)
+    if comm_names_2:
+        for address in comm_names_2:
+            comm_addresses.append(address + 1)
 
     for address in comm_addresses:
         try:
