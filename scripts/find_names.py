@@ -19,9 +19,7 @@ monster_names = [
 
 # add your party members here
 party_names = [
-    "ももちゃん",
-    "べっぴん",
-    "ミルラ",
+    "アカツキ"
 ]
 
 
