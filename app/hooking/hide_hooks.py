@@ -57,7 +57,7 @@ def load_hooks(hook_list: list, state_addr: int, player_names: bool):
             sys.exit(1)
         except Exception as e:
             if not is_dqx_process_running():
+                sys.exit(0)
+            else:
                 log.exception("An exception occurred. dqxclarity will exit.")
                 sys.exit(1)
-            else:
-                sys.exit(0)
