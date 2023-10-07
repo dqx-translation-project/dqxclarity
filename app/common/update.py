@@ -243,7 +243,8 @@ def download_dat_files():
         log.error(message)
         message_box(
             title="Program not elevated",
-            message=message
+            message=message,
+            exit_prog=True
         )
 
     config = load_user_config()
