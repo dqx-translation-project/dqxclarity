@@ -1,5 +1,5 @@
 from common.db_ops import sql_read, sql_write
-from common.lib import encode_to_utf8, get_abs_path
+from common.lib import encode_to_utf8, get_project_root
 from common.memory import read_string, unpack_to_int, write_string
 from common.translate import clean_up_and_return_items, detect_lang, Translate
 from json import dumps, loads
@@ -10,7 +10,7 @@ import sys
 
 class Quest:
 
-    misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
+    misc_files = get_project_root("misc_files")
     quests = None
 
     def __init__(self, address, debug=False):

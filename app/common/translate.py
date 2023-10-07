@@ -1,6 +1,6 @@
 from common.db_ops import init_db
 from common.errors import message_box
-from common.lib import get_abs_path, merge_jsons
+from common.lib import get_project_root, merge_jsons
 from googleapiclient.discovery import build
 from openpyxl import load_workbook
 
@@ -31,7 +31,7 @@ class Translate():
             Translate.region_code = self.translation_settings["RegionCode"]
 
         if Translate.glossary is None:
-            with open("/".join([get_abs_path(__file__), "../misc_files/glossary.csv"]), encoding="utf-8") as f:
+            with open(get_project_root("misc_files/glossary.csv"), encoding="utf-8") as f:
                 strings = f.read()
                 Translate.glossary = [ x for x in strings.split("\n") if x ]
 
@@ -367,7 +367,7 @@ class Translate():
         :returns: Returns either the English text or None if no match
             was found.
         """
-        file = "/".join([get_abs_path(__file__), "../misc_files/merge.xlsx"])
+        file = get_project_root("misc_files/merge.xlsx")
 
         if os.path.exists(file):
             wb = load_workbook(file)
@@ -387,7 +387,7 @@ def load_user_config():
 
     :returns: Dict of config.
     """
-    filename = "/".join([get_abs_path(__file__), "../user_settings.ini"])
+    filename = get_project_root("user_settings.ini")
     base_config = configparser.ConfigParser()
     base_config["translation"] = {
         "enabledeepltranslate": False,
@@ -524,7 +524,7 @@ def query_string_from_file(text: str, file: str) -> str:
     text: The text to search
     file: The name of the file (leave off the file extension)
     """
-    misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
+    misc_files = get_project_root("misc_files")
     data = read_json_file(misc_files + "/" + file + ".json")
 
     for item in data:
@@ -540,7 +540,7 @@ def clean_up_and_return_items(text: str) -> str:
 
     Used specifically for the quest window.
     """
-    misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
+    misc_files = get_project_root("misc_files")
     quest_rewards = merge_jsons([
         f"{misc_files}/subPackage41Client.win32.json",
         f"{misc_files}/subPackage05Client.json",
@@ -624,7 +624,7 @@ def convert_into_eng(word: str) -> str:
     """
     kks = pykakasi.kakasi()
     invalid_chars = ["[", "]", "[", "(", ")", "\\", "/", "*", "_", "+", "?", "$", "^", '"']
-    misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
+    misc_files = get_project_root("misc_files")
     player_names = merge_jsons([f"{misc_files}/custom_player_names.json", f"{misc_files}/custom_npc_names.json"])
     interpunct_count = word.count("・")
     word_len = len(word)

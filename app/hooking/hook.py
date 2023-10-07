@@ -1,3 +1,5 @@
+from common.errors import FailedToReadAddress
+from common.lib import setup_logging
 from common.memory import (
     allocate_memory,
     calc_rel_addr,
@@ -21,9 +23,9 @@ from hooking.hide_hooks import load_hooks
 from hooking.network_text import network_text_shellcode
 from hooking.player import player_name_shellcode
 from hooking.quest import quest_text_shellcode
-from loguru import logger
 
 import struct
+import sys
 import traceback
 
 
@@ -33,12 +35,12 @@ def inject_python_dll():
         PYM_PROCESS.inject_python_interpreter()
         if PYM_PROCESS._python_injected:
             if PYM_PROCESS.py_run_simple_string:
-                logger.success(f"Python injected.")
+                log.success(f"Python injected.")
                 return PYM_PROCESS.py_run_simple_string
-        logger.error(f"Python dll failed to inject. Details:\n{PYM_PROCESS.__dict__}")
+        log.error(f"Python dll failed to inject. Details:\n{PYM_PROCESS.__dict__}")
         return False
     except Exception:
-        logger.error(f"Python dll failed to inject. Error: \n{str(traceback.print_exc())}\nDetails:\n{PYM_PROCESS.__dict__}")
+        log.error(f"Python dll failed to inject. Error: \n{str(traceback.print_exc())}\nDetails:\n{PYM_PROCESS.__dict__}")
         return False
 
 
@@ -100,8 +102,7 @@ def accept_quest_detour(simple_str_addr: int):
         hook_name="accept_quest",
         signature=accept_quest_trigger,
         num_bytes_to_steal=6,
-        simple_str_addr=simple_str_addr,
-        debug=debug,
+        simple_str_addr=simple_str_addr
     )
 
     esi = hook_obj.address_dict["attrs"]["esi"]
@@ -130,11 +131,16 @@ def player_name_detour(simple_str_addr: int):
     return hook_obj
 
 
-def activate_hooks(player_names: bool, debug=False):
+def activate_hooks(player_names: bool):
     """Activates all hooks and kicks off hook manager."""
+    # configure logging. this function runs in multiprocessing, so it does not
+    # have the same access to the main log handler.
+    global log
+    log = setup_logging()
+
     simple_str_addr = inject_python_dll()
     if not simple_str_addr:
-        logger.exception("Since Python injection failed, we will not try to hook. Exiting.")
+        log.exception("Since Python injection failed, we will not try to hook. Exiting.")
         return False
 
     # activates all hooks. add any new hooks to this list
@@ -173,7 +179,11 @@ def activate_hooks(player_names: bool, debug=False):
     unhook_bytecode += b"\x01"  # 01 will tell us func was run
 
     # get bytes we want to steal and append to unhook bytecode
-    stolen_bytes = read_bytes(integrity_addr, 5)
+    try:
+        stolen_bytes = read_bytes(integrity_addr, 5)
+    except FailedToReadAddress:
+        log.error("**ATTENTION** Unable to find integrity address. If you closed dqxclarity and re-opened it, you will need to completely close the game first before re-running dqxclarity. Otherwise, something horrible has gone wrong.")
+        sys.exit(1)
     unhook_bytecode += stolen_bytes
 
     # calculate difference between addresses for jump and add to unhook bytecode
@@ -185,10 +195,10 @@ def activate_hooks(player_names: bool, debug=False):
     # finally, write our detour over the integrity function
     detour_bytecode = b"\xE9" + calc_rel_addr(integrity_addr, unhook_addr)
     write_bytes(integrity_addr, detour_bytecode)
-    logger.debug(f"unhook :: hook ({hex(unhook_addr)}) :: detour ({hex(integrity_addr)})")
-    logger.debug(f"state  :: addr ({hex(state_addr)})")
+    log.debug(f"unhook :: hook ({hex(unhook_addr)}) :: detour ({hex(integrity_addr)})")
+    log.debug(f"state  :: addr ({hex(state_addr)})")
 
-    load_hooks(hook_list=hooks, state_addr=state_addr, player_names=player_names, debug=debug)
+    load_hooks(hook_list=hooks, state_addr=state_addr, player_names=player_names)
 
 
 PYM_PROCESS = dqx_mem()

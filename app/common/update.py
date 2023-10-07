@@ -13,12 +13,12 @@ from common.constants import (
 from common.errors import message_box
 from common.lib import (
     check_if_running_as_admin,
-    get_abs_path,
+    get_project_root,
     is_dqx_process_running,
 )
 from common.translate import load_user_config, update_user_config
 from io import BytesIO
-from loguru import logger
+from loguru import logger as log
 from openpyxl import load_workbook
 from subprocess import Popen
 from tkinter.filedialog import askdirectory
@@ -34,7 +34,7 @@ import winreg
 
 def download_custom_files():
     try:
-        logger.info("Downloading custom translation files from dqx-translation-project/dqx-custom-translations.")
+        log.info("Downloading custom translation files from dqx-translation-project/dqx-custom-translations.")
         request = requests.get(GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL, timeout=15)
         if request.status_code == 200:
             zfile = zip(BytesIO(request.content))
@@ -61,12 +61,12 @@ def download_custom_files():
         ]:
             request = requests.get(url, timeout=15)
             if request.status_code == 200:
-                misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
+                misc_files = get_project_root("misc_files")
                 with open("/".join([misc_files, os.path.basename(url)]), "w+", encoding="utf-8") as f:
                     f.write(request.text)
         merge_local_db()
     except Exception as e:
-        logger.error(f"Failed to download custom files. Error: {e}")
+        log.error(f"Failed to download custom files. Error: {e}")
         input("Press ENTER to exit.")
         sys.exit()
 
@@ -77,9 +77,9 @@ def check_for_updates(update: bool):
 
     :param update: Whether or not to update after checking for updates.
     """
-    logger.info("Checking dqxclarity repo for updates...")
+    log.info("Checking dqxclarity repo for updates...")
     if not os.path.exists("version.update"):
-        logger.warning("Couldn't determine current version of dqxclarity. Running as is.")
+        log.warning("Couldn't determine current version of dqxclarity. Running as is.")
         return
 
     with open("version.update") as file:
@@ -89,7 +89,7 @@ def check_for_updates(update: bool):
         url = GITHUB_CLARITY_VERSION_UPDATE_URL
         github_request = requests.get(url)
     except requests.exceptions.RequestException as e:
-        logger.warning(f"Failed to check latest version. Running anyways.\n{e}")
+        log.warning(f"Failed to check latest version. Running anyways.\n{e}")
         return
 
     try:
@@ -97,21 +97,21 @@ def check_for_updates(update: bool):
         if release_version.startswith("v"):
             release_version = release_version[1:]
         if release_version == cur_ver:
-            logger.success(f"Clarity is up to date! (Current version: {str(cur_ver)})")
+            log.success(f"Clarity is up to date! (Current version: {str(cur_ver)})")
         else:
-            logger.warning(f"Clarity is out of date! (Current: {str(cur_ver)}, Latest: {str(release_version)}).")
+            log.warning(f"Clarity is out of date! (Current: {str(cur_ver)}, Latest: {str(release_version)}).")
             if update:
                 install_path = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Python\PythonCore\3.11-32\InstallPath")
                 python_exe = winreg.QueryValueEx(install_path, "ExecutablePath")
                 if not python_exe:
-                    logger.warning("Did not find Python exe! Clarity is unable to update and will continue without updating.")
+                    log.warning("Did not find Python exe! Clarity is unable to update and will continue without updating.")
                     return False
-                logger.info(f"Launching updater.")
+                log.info(f"Launching updater.")
                 Popen([python_exe[0], "./updater.py"])
                 sys.exit()
         return
     except Exception as e:
-        logger.warning(f"There was a problem checking trying to update. Clarity will continue without updating.\n{e}")
+        log.warning(f"There was a problem checking trying to update. Clarity will continue without updating.\n{e}")
         return
 
 
@@ -124,8 +124,8 @@ def merge_local_db():
     and inserts/updates the user's local database with override entries
     from the xlsx file.
     """
-    merge_file = "/".join([get_abs_path(__file__), "../misc_files/merge.xlsx"])
-    db_file = "/".join([get_abs_path(__file__), "../misc_files/clarity_dialog.db"])
+    merge_file = get_project_root("misc_files/merge.xlsx")
+    db_file = get_project_root("misc_files/clarity_dialog.db")
 
     records_inserted = 0
     records_updated = 0
@@ -167,7 +167,7 @@ def merge_local_db():
                     cursor.execute(updateQuery)
                     records_updated += 1
             except sqlite3.Error as e:
-                logger.exception(f"Unable to write data to table.")
+                log.exception(f"Unable to write data to table.")
 
         # Walkthrough insertion
         for rowNum in range(2, ws_walkthrough.max_row + 1):
@@ -189,7 +189,7 @@ def merge_local_db():
                     cursor.execute(updateQuery)
                     records_updated += 1
             except sqlite3.Error as e:
-                logger.exception(f"Unable to write data to table.")
+                log.exception(f"Unable to write data to table.")
 
         # Quests insertion
         for rowNum in range(2, ws_quests.max_row + 1):
@@ -218,9 +218,9 @@ def merge_local_db():
                     cursor.execute(updateQuery)
                     records_updated += 1
             except sqlite3.Error as e:
-                logger.exception(f"Unable to write data to table.")
+                log.exception(f"Unable to write data to table.")
 
-        logger.success(f"Records inserted: {str(records_inserted)} :: Records updated: {str(records_updated)}")
+        log.success(f"Records inserted: {str(records_inserted)} :: Records updated: {str(records_updated)}")
 
 
 def download_dat_files():
@@ -232,7 +232,7 @@ def download_dat_files():
     """
     if is_dqx_process_running():
         message = "Please close DQX before attempting to update the translated DAT/IDX file."
-        logger.error(message)
+        log.error(message)
         message_box(
             title="DQXGame.exe is open",
             message=message
@@ -240,7 +240,7 @@ def download_dat_files():
 
     if not check_if_running_as_admin():
         message = "dqxclarity must be running as an administrator in order to update the translated DAT/IDX file. Please re-launch dqxclarity as an administrator and try again."
-        logger.error(message)
+        log.error(message)
         message_box(
             title="Program not elevated",
             message=message
@@ -255,7 +255,7 @@ def download_dat_files():
     valid_path = False
     if install_directory:
         if os.path.isdir(install_directory):
-            logger.success("DQX game path is valid.")
+            log.success("DQX game path is valid.")
             valid_path = True
 
     if not valid_path:
@@ -274,7 +274,7 @@ def download_dat_files():
 
                 if os.path.isfile(dat0_path):
                     update_user_config('config', 'installdirectory', dqx_path)
-                    logger.success("DQX path verified.")
+                    log.success("DQX path verified.")
                     break
                 else:
                     message_box(
@@ -287,11 +287,11 @@ def download_dat_files():
     idx0_path = "/".join([dqx_path, idx0_file])
 
     if not os.path.isfile(f"{idx0_path}.bak"):
-        logger.info(f"Did not find a backup of existing idx file. Backing up and renaming to {idx0_file}.bak")
+        log.info(f"Did not find a backup of existing idx file. Backing up and renaming to {idx0_file}.bak")
         shutil.copy(idx0_path, f"{idx0_path}.bak")
 
     try:
-        logger.info("Downloading DAT1 and IDX files.")
+        log.info("Downloading DAT1 and IDX files.")
         dat_request = requests.get(GITHUB_CLARITY_DAT1_URL, timeout=10)
         idx_request = requests.get(GITHUB_CLARITY_IDX_URL, timeout=10)
 
@@ -301,8 +301,8 @@ def download_dat_files():
                 f.write(dat_request.content)
             with open(dqx_path + "/data00000000.win32.idx", "w+b") as f:
                 f.write(idx_request.content)
-            logger.success("Translation files downloaded.")
+            log.success("Translation files downloaded.")
         else:
-            logger.error("Failed to download translation files. Clarity will continue without updating translation files")
+            log.error("Failed to download translation files. Clarity will continue without updating translation files")
     except Exception as e:
-        logger.error(f"Failed to download data files. Error: {e}")
+        log.error(f"Failed to download data files. Error: {e}")

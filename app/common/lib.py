@@ -1,14 +1,14 @@
 from locale import getencoding
-from loguru import logger
+from loguru import logger as log
 from pathlib import Path
 
 import ctypes
+import datetime
 import json
 import logging
 import os
 import shutil
 import subprocess
-import sys
 import time
 
 
@@ -40,22 +40,12 @@ def delete_file(file):
         pass
 
 
-def setup_logging(debug=False):
-    """Configure default logging to be used across this program."""
-    log_path = "/".join([get_abs_path(__file__), "../logs"])
-    if not os.path.exists(log_path):
-        os.makedirs(log_path)
+def setup_logging():
+    """Configures logging for dqxclarity."""
+    log_path = get_project_root("logs/console.log")
+    log.add(sink=log_path, level="DEBUG")
 
-    console = {"sink": sys.stderr, "level": "INFO"}
-    file = {"sink": f"{log_path}/console.log", "level": "INFO"}
-
-    if debug:
-        console["level"] = "DEBUG"
-        file["level"] = "DEBUG"
-
-    logger.configure(handlers=[console, file])
-
-    return
+    return log
 
 
 def setup_logger(name, log_file, level=logging.INFO):
@@ -66,14 +56,14 @@ def setup_logger(name, log_file, level=logging.INFO):
     handler = logging.FileHandler(log_file, encoding="utf-8")
     handler.setFormatter(formatter)
 
-    logger = logging.getLogger(name)
-    if logger.hasHandlers():
-        logger.handlers.clear()
+    log_handle = logging.getLogger(name)
+    if log_handle.hasHandlers():
+        log_handle.handlers.clear()
 
-    logger.setLevel(level)
-    logger.addHandler(handler)
+    log_handle.setLevel(level)
+    log_handle.addHandler(handler)
 
-    return logger
+    return log_handle
 
 
 def merge_jsons(files: list):
@@ -92,9 +82,17 @@ def merge_jsons(files: list):
     return merged_changes
 
 
-def get_abs_path(file: str):
-    abs_path = os.path.abspath(os.path.join(os.path.dirname(file)))
-    return abs_path.replace("\\", "/")
+def get_project_root(add_file=None):
+    """Returns the absolute path of the project root. If add_file is called,
+    appends add_file to the end of the absolute path.
+
+    :param file: File to add to absolute path.
+    :returns: Absolute path to the project root or file.
+    """
+    abs_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/")
+    if add_file:
+        abs_path = "/".join([abs_path, add_file])
+    return abs_path
 
 
 def decode_to_utf8(byte_str: bytes):
@@ -110,6 +108,7 @@ def encode_to_utf8(string: str):
 
 
 def is_dqx_process_running():
+    """Returns True if DQX is currently running."""
     # https://stackoverflow.com/a/29275361
     # will only work on windows.
     call = 'TASKLIST', '/FI', 'imagename eq DQXGame.exe'
@@ -136,16 +135,16 @@ def check_if_running_as_admin():
 
 def wait_for_dqx_to_launch() -> bool:
     """Scans for the DQXGame.exe process."""
-    logger.info("Launch DQX and log in to continue.")
+    log.info("Launch DQX and log in to continue.")
     if is_dqx_process_running():
-        logger.success("DQXGame.exe found.")
+        log.success("DQXGame.exe found.")
         return
     while not is_dqx_process_running():
         time.sleep(0.25)
     from common.memory import pattern_scan
     from common.signatures import notice_string
-    logger.success("DQXGame.exe found. Make sure you're on the \"Important notice\" screen.")
+    log.success("DQXGame.exe found. Make sure you're on the \"Important notice\" screen.")
     while True:
         if pattern_scan(pattern=notice_string):
-            logger.success("\"Important notice\" screen found.")
+            log.success("\"Important notice\" screen found.")
             return

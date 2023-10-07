@@ -1,5 +1,5 @@
-from common.lib import get_abs_path
-from loguru import logger
+from common.lib import get_project_root
+from loguru import logger as log
 
 import sqlite3
 
@@ -7,7 +7,7 @@ import sqlite3
 def init_db() -> object:
     """Returns a tuple of db (connection, cursor) to be used to execute queries
     against."""
-    db_file = "/".join([get_abs_path(__file__), "../misc_files/clarity_dialog.db"])
+    db_file = get_project_root("misc_files/clarity_dialog.db")
     conn = sqlite3.connect(db_file)
     cursor = conn.cursor()
     return (conn, cursor)
@@ -53,7 +53,7 @@ def sql_read(text: str, table: str, language: str) -> str:
         else:
             return None
     except sqlite3.Error:
-        logger.exception(f"Failed to query {table}.")
+        log.exception(f"Failed to query {table}.")
     finally:
         if conn:
             conn.close()
@@ -85,7 +85,7 @@ def sql_write(source_text, translated_text, table, language):
 
         conn.commit()
     except sqlite3.Error as e:
-        logger.exception(f"Unable to write data to {table}.")
+        log.exception(f"Unable to write data to {table}.")
     finally:
         if conn:
             conn.close()

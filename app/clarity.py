@@ -1,5 +1,10 @@
 from common.db_ops import sql_read, sql_write
-from common.lib import get_abs_path, is_dqx_process_running, merge_jsons
+from common.lib import (
+    get_project_root,
+    is_dqx_process_running,
+    merge_jsons,
+    setup_logging,
+)
 from common.memory import pattern_scan, read_bytes, read_string, write_string
 from common.signatures import (
     comm_name_pattern_1,
@@ -12,7 +17,6 @@ from common.signatures import (
     walkthrough_pattern,
 )
 from common.translate import convert_into_eng, detect_lang, Translate
-from loguru import logger
 
 import re
 import sys
@@ -36,7 +40,7 @@ def scan_for_player_names():
             except UnicodeDecodeError:
                 continue
             except Exception:
-                logger.debug(f"Failed to write player name.\n{traceback.format_exc()}")
+                log.debug(f"Failed to write player name.\n{traceback.format_exc()}")
                 continue
 
 
@@ -69,7 +73,7 @@ def scan_for_comm_names():
         except TypeError:
             continue
         except Exception:
-            logger.debug(f"Failed to write name.\n{traceback.format_exc()}")
+            log.debug(f"Failed to write name.\n{traceback.format_exc()}")
             continue
 
 
@@ -94,7 +98,7 @@ def scan_for_sibling_name():
         except UnicodeDecodeError:
             pass
         except Exception:
-            logger.debug(f"Failed to write name.\n{traceback.format_exc()}")
+            log.debug(f"Failed to write name.\n{traceback.format_exc()}")
 
 
 def scan_for_concierge_names():
@@ -111,14 +115,14 @@ def scan_for_concierge_names():
             except UnicodeDecodeError:
                 pass
             except Exception:
-                logger.debug(f"Failed to write name.\n{traceback.format_exc()}")
+                log.debug(f"Failed to write name.\n{traceback.format_exc()}")
                 continue
 
 
 def scan_for_npc_names():
     """Scan to look for NPC names, monster names and names above your party
     member's heads and translates them into English."""
-    misc_files = "/".join([get_abs_path(__file__), "misc_files"])
+    misc_files = get_project_root("misc_files")
     translated_npc_names = merge_jsons([
         f"{misc_files}/smldt_msg_pkg_NPC_DB.win32.json",
         f"{misc_files}/custom_npc_names.json"
@@ -149,14 +153,14 @@ def scan_for_npc_names():
                         try:
                             write_string(name_addr, value)
                         except Exception as e:
-                            logger.debug(f"Failed to write {data}. {e}")
+                            log.debug(f"Failed to write {data}. {e}")
             elif data == "AI_NAME":
                 en_name = convert_into_eng(name)
                 if en_name != name:
                     try:
                         write_string(name_addr, "\x04" + en_name)
                     except Exception as e:
-                        logger.debug(f"Failed to write {data}. {e}")
+                        log.debug(f"Failed to write {data}. {e}")
 
 
 def scan_for_menu_ai_names():
@@ -173,14 +177,19 @@ def scan_for_menu_ai_names():
             except UnicodeDecodeError:
                 pass
             except Exception:
-                logger.debug(f"Failed to write name.\n{traceback.format_exc()}")
+                log.debug(f"Failed to write name.\n{traceback.format_exc()}")
                 continue
 
 
 def loop_scan_for_walkthrough():
     """Scans for the walkthrough address in an infinite loop and translates
     when found."""
-    logger.info("Will watch for walkthrough text.")
+    # configure logging. this function runs in multiprocessing, so it does not
+    # have the same access to the main log handler.
+    global log
+    log = setup_logging()
+
+    log.info("Will watch for walkthrough text.")
     translator = Translate()
 
     try:
@@ -193,7 +202,7 @@ def loop_scan_for_walkthrough():
                     # if not, we'll re-scan for it.
                     verify = read_bytes(address, 16)
                     if not pattern.match(verify):
-                        logger.debug("Lost walkthrough pattern. Starting scan again.")
+                        log.debug("Lost walkthrough pattern. Starting scan again.")
                         break
                     if text := read_string(address + 16):
                         if text != prev_text:
@@ -218,30 +227,35 @@ def loop_scan_for_walkthrough():
                                         )
                                         write_string(address + 16, translated_text)
                                     except Exception:
-                                        logger.exception("Failed to write walkthrough.")
+                                        log.exception("Failed to write walkthrough.")
                         else:
                             time.sleep(1)
             else:
                 time.sleep(1)
     except Exception:
         if not is_dqx_process_running():
-            logger.exception("A problem with the walkthrough scanner was detected.")
+            log.exception("A problem with the walkthrough scanner was detected.")
             sys.exit(1)
         else:
-            logger.exception("Problem detected running walkthrough scanner.")
+            log.exception("Problem detected running walkthrough scanner.")
 
 
-def run_scans(player_names=True, npc_names=True, debug=False):
+def run_scans(player_names=True, npc_names=True):
     """Run chosen scans.
 
     :param player_names: Run player name scans.
     :param npc_names: Run NPC name scans.
     :param communication_window: Run adhoc scans.
     """
+    # configure logging. this function runs in multiprocessing, so it does not
+    # have the same access to the main log handler.
+    global log
+    log = setup_logging()
+
     if player_names:
-        logger.info("Will watch and update player names.")
+        log.info("Will watch and update player names.")
     if npc_names:
-        logger.info("Will watch and update NPCs.")
+        log.info("Will watch and update NPCs.")
 
     while True:
         try:
@@ -257,8 +271,8 @@ def run_scans(player_names=True, npc_names=True, debug=False):
             sys.exit(1)
         except Exception as e:
             if is_dqx_process_running():
-                logger.exception("An exception occurred. dqxclarity will exit.")
+                log.exception("An exception occurred. dqxclarity will exit.")
                 sys.exit(1)
             else:
-                logger.info("DQX has been closed. Exiting.")
+                log.info("DQX has been closed. Exiting.")
                 sys.exit(0)

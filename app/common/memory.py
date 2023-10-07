@@ -6,7 +6,7 @@ from common.errors import (
     message_box,
 )
 from common.lib import is_dqx_process_running
-from loguru import logger
+from loguru import logger as log
 from pymem.pattern import pattern_scan_all, pattern_scan_module
 
 import pymem
@@ -107,7 +107,7 @@ def pattern_scan(pattern: bytes, return_multiple=False, use_regex=False, module=
             return None
         else:
             if is_dqx_process_running():
-                logger.exception("An exception occurred. dqxclarity will exit.")
+                log.exception("An exception occurred. dqxclarity will exit.")
                 sys.exit(1)
             else:
                 sys.exit(0)

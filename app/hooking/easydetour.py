@@ -6,7 +6,7 @@ from common.memory import (
     read_bytes,
     write_bytes,
 )
-from loguru import logger
+from loguru import logger as log
 
 
 class EasyDetour:
@@ -23,12 +23,11 @@ class EasyDetour:
         detour and disable() to turn off
     """
 
-    def __init__(self, hook_name: str, signature: bytes, num_bytes_to_steal: int, simple_str_addr: int, debug=False):
+    def __init__(self, hook_name: str, signature: bytes, num_bytes_to_steal: int, simple_str_addr: int):
         self.hook_name = hook_name
         self.signature = signature
         self.num_bytes_to_steal = num_bytes_to_steal
         self.simple_str_addr = simple_str_addr
-        self.debug = debug
         self.address_dict = self.write_detour()
 
     def get_signature_address(self):
@@ -110,7 +109,7 @@ class EasyDetour:
         # write our new function to memory
         write_bytes(mov_insts_addr, bytecode)
 
-        logger.debug(
+        log.debug(
             f"{self.hook_name} :: hook ({hex(address_dict['attrs']['begin'])}) :: shellcode ({hex(address_dict['attrs']['shellcode'])}) :: detour ({hex(address_dict['attrs']['game_func'])})"
         )
 

@@ -1,4 +1,4 @@
-from common.lib import encode_to_utf8, get_abs_path, merge_jsons
+from common.lib import encode_to_utf8, get_project_root, merge_jsons
 from common.memory import read_bytes, read_string, unpack_to_int
 from common.translate import convert_into_eng
 from json import dumps
@@ -40,7 +40,7 @@ class GetPlayer:
 
 
     def __get_en_player_name(self, player_name: str):
-        player_file = "/".join([get_abs_path(__file__), "../misc_files/custom_player_names.json"])
+        player_file = get_project_root("misc_files/custom_player_names.json")
         players = merge_jsons([player_file])
 
         if player_name in players:
@@ -50,7 +50,7 @@ class GetPlayer:
 
 
     def __write_player(self):
-        db_file = "/".join([get_abs_path(__file__), "../misc_files/clarity_dialog.db"])
+        db_file = get_project_root("misc_files/clarity_dialog.db")
 
         query = f"""
         BEGIN TRANSACTION;
@@ -110,8 +110,8 @@ class GetPlayer:
 
 
     def __load_dialog_into_db(self):
-        merge_file = "/".join([get_abs_path(__file__), "../misc_files/merge.xlsx"])
-        db_file = "/".join([get_abs_path(__file__), "../misc_files/clarity_dialog.db"])
+        merge_file = get_project_root("misc_files/merge.xlsx")
+        db_file = get_project_root("misc_files/clarity_dialog.db")
 
         #if os.path.exists(merge_file) and os.path.exists(db_file):
         workbook = load_workbook(merge_file)
