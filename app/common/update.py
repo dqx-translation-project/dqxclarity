@@ -161,7 +161,6 @@ def merge_local_db():
                 results = cursor.execute(selectQuery)
 
                 if results.fetchone() is None and insertQuery != "":
-                    print(insertQuery)
                     cursor.execute(insertQuery)
                     records_inserted += 1
                 else:
