@@ -220,6 +220,7 @@ def merge_local_db():
             except sqlite3.Error as e:
                 log.exception(f"Unable to write data to table.")
 
+        conn.close()
         log.success(f"Records inserted: {str(records_inserted)} :: Records updated: {str(records_updated)}")
 
 
