@@ -220,13 +220,13 @@ def merge_local_db():
                     records_updated += 1
             except sqlite3.Error as e:
                 log.exception(f"Unable to write data to table.")
-                
+
          # Story So Far insertion
         for rowNum in range(2, ws_story.max_row + 1):
             source_text = ws_story.cell(row=rowNum, column=1).value
             en_text = ws_story.cell(row=rowNum, column=2).value
             escaped_text = en_text.replace("'", "''")
-            
+
             bad_string_col = str(ws_story.cell(row=rowNum, column=4).value)
 
             try:
