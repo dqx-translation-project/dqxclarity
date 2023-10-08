@@ -1,5 +1,6 @@
+from common.db_ops import init_db
 from common.errors import message_box
-from common.lib import get_abs_path, merge_jsons
+from common.lib import get_project_root, merge_jsons
 from googleapiclient.discovery import build
 from openpyxl import load_workbook
 
@@ -11,7 +12,6 @@ import os
 import pykakasi
 import re
 import shutil
-import sqlite3
 import textwrap
 import unicodedata
 
@@ -31,24 +31,35 @@ class Translate():
             Translate.region_code = self.translation_settings["RegionCode"]
 
         if Translate.glossary is None:
-            with open("/".join([get_abs_path(__file__), "../misc_files/glossary.csv"]), encoding="utf-8") as f:
+            with open(get_project_root("misc_files/glossary.csv"), encoding="utf-8") as f:
                 strings = f.read()
                 Translate.glossary = [ x for x in strings.split("\n") if x ]
 
 
-    def deepl(self, text: str):
-        self.region_code = Translate.region_code
-        if self.region_code.lower() == "en":
-            self.region_code = "en-us"
+    def deepl(self, text: list):
+        region_code = Translate.region_code
+        if region_code.lower() == "en":
+            region_code = "en-us"
         translator = deepl.Translator(Translate.api_key)
-        response = translator.translate_text(text=text, source_lang="ja", target_lang=self.region_code)
-        return response.text
+        response = translator.translate_text(
+            text=text,
+            source_lang="ja",
+            target_lang=region_code,
+            preserve_formatting=True
+        )
+        text_results = []
+        for result in response:
+            text_results.append(result.text)
+        return text_results
 
 
-    def google(self, text: str):
+    def google(self, text: list):
         service = build("translate", "v2", developerKey=Translate.api_key)
-        response = service.translations().list(source="ja", target="en", format="text", q=[text]).execute()
-        return response["translations"][0]["translatedText"]
+        response = service.translations().list(source="ja", target="en", format="text", q=text).execute()
+        text_results = []
+        for result in response["translations"]:
+            text_results.append(result["translatedText"])
+        return text_results
 
 
     def __glossify(self, text):
@@ -60,8 +71,126 @@ class Translate():
         return text
 
 
-    def translate(self, text: str):
-        text = self.__glossify(text)
+    def __normalize_text(self, text: str) -> str:
+        """"Normalize" text by only using latin alphabet.
+
+        :param text: Text to normalize
+        :returns: Normalized text.
+        """
+        return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+
+
+    def __swap_placeholder_tags(self, text: str, swap_back=False) -> str:
+        if not swap_back:
+            text = text.replace("<pc_hiryu>", "<&13_aaaaaaa>")
+            text = text.replace("<cs_pchero_hiryu>", "<&13_aaaaaab>")
+            text = text.replace("<cs_pchero_race>", "<&8_aaa>")
+            text = text.replace("<cs_pchero>", "<13_aaaaaac>")
+            text = text.replace("<kyodai_rel1>", "<&7_aa>")
+            text = text.replace("<kyodai_rel2>", "<&7_ab>")
+            text = text.replace("<kyodai_rel3>", "<&7_ac>")
+            text = text.replace("<pc_hometown>", "<&8_aab>")
+            text = text.replace("<pc_race>", "<&8_aac>")
+            text = text.replace("<pc_rel1>", "<&7_ad>")
+            text = text.replace("<pc_rel2>", "<&7_ae>")
+            text = text.replace("<pc_rel3>", "<&7_af")
+            text = text.replace("<kyodai>", "<&13_aaaaaac>")
+            text = text.replace("<pc>", "<&13_aaaaaad>")
+            text = text.replace("<client_pcname>", "<&13_aaaaaae>")
+            text = text.replace("<heart>", "<&2a>")
+            text = text.replace("<diamond>", "<&2b>")
+            text = text.replace("<spade>", "<&2c>")
+            text = text.replace("<clover>", "<&2d>")
+            text = text.replace("<r_triangle>", "<&2e>")
+            text = text.replace("<l_triangle>", "<&2f>")
+            text = text.replace("<half_star>", "<&2g>")
+            text = text.replace("<null_star>", "<&2h>")
+            text = text.replace("<npc>", "<&13_aaaaaaf>")
+            text = text.replace("<pc_syokugyo>", "<&13_aaaaaag>")
+            text = text.replace("<pc_original>", "<&13_aaaaaah>")
+            text = text.replace("<log_pc>", "<&13_aaaaaai>")
+            text = text.replace("<1st_title>", "<&20_aaaaaaaaaaaaaa>")
+            text = text.replace("<2nd_title>", "<&20_aaaaaaaaaaaaab>")
+            text = text.replace("<3rd_title>", "<&20_aaaaaaaaaaaaac>")
+            text = text.replace("<4th_title>", "<&20_aaaaaaaaaaaaad>")
+            text = text.replace("<5th_title>", "<&20_aaaaaaaaaaaaae>")
+            text = text.replace("<6th_title>", "<&20_aaaaaaaaaaaaaf>")
+            text = text.replace("<7th_title>", "<&20_aaaaaaaaaaaaag>")
+        else:
+            text = text.replace("<&13_aaaaaaa>", "<pc_hiryu>")
+            text = text.replace("<&13_aaaaaab>", "<cs_pchero_hiryu>")
+            text = text.replace("<&8_aaa>", "<cs_pchero_race>")
+            text = text.replace("<13_aaaaaac>", "<cs_pchero>")
+            text = text.replace("<&7_aa>", "<kyodai_rel1>")
+            text = text.replace("<&7_ab>", "<kyodai_rel2>")
+            text = text.replace("<&7_ac>", "<kyodai_rel3>")
+            text = text.replace("<&8_aab>", "<pc_hometown>")
+            text = text.replace("<&8_aac>", "<pc_race>")
+            text = text.replace("<&7_ad>", "<pc_rel1>")
+            text = text.replace("<&7_ae>", "<pc_rel2>")
+            text = text.replace("<&7_af", "<pc_rel3>")
+            text = text.replace("<&13_aaaaaac>", "<kyodai>")
+            text = text.replace("<&13_aaaaaad>", "<pc>")
+            text = text.replace("<&13_aaaaaae>", "<client_pcname>")
+            text = text.replace("<&2a>", "<heart>")
+            text = text.replace("<&2b>", "<diamond>")
+            text = text.replace("<&2c>", "<spade>")
+            text = text.replace("<&2d>", "<clover>")
+            text = text.replace("<&2e>", "<r_triangle>")
+            text = text.replace("<&2f>", "<l_triangle>")
+            text = text.replace("<&2g>", "<half_star>")
+            text = text.replace("<&2h>", "<null_star>")
+            text = text.replace("<&13_aaaaaaf>", "<npc>")
+            text = text.replace("<&13_aaaaaag>", "<pc_syokugyo>")
+            text = text.replace("<&13_aaaaaah>", "<pc_original>")
+            text = text.replace("<&13_aaaaaai>", "<log_pc>")
+            text = text.replace("<&20_aaaaaaaaaaaaaa>", "<1st_title>")
+            text = text.replace("<&20_aaaaaaaaaaaaab>", "<2nd_title>")
+            text = text.replace("<&20_aaaaaaaaaaaaac>", "<3rd_title>")
+            text = text.replace("<&20_aaaaaaaaaaaaad>", "<4th_title>")
+            text = text.replace("<&20_aaaaaaaaaaaaae>", "<5th_title>")
+            text = text.replace("<&20_aaaaaaaaaaaaaf>", "<6th_title>")
+            text = text.replace("<&20_aaaaaaaaaaaaag>", "<7th_title>")
+
+        return text
+
+
+    def __wrap_text(self, text: str, width: int, max_lines=None) -> str:
+        """Wrap text to n characters per line."""
+        return textwrap.fill(text, width=width, max_lines=max_lines, replace_whitespace=False)
+
+
+    def __add_line_endings(self, text: str) -> str:
+        """Adds <br> flags every 3 lines to a string. Used to break up the text
+        in a dialog window.
+
+        :param text: Text to add the <br> tags to.
+        :returns: A new string with the text broken up by <br> tags.
+        """
+        count_list = [ i for i in range(3, 500, 4) ] # 500 is arbitrary, but we should never hit this.
+        split_text = text.split("\n")
+        try:
+            for i in count_list:
+                _ = split_text[i]
+                split_text.insert(i, "<br>")
+        except IndexError:
+            split_text = [ x for x in split_text if x ]
+            output = "\n".join(split_text)
+            return output
+
+
+    def translate(self, text: list):
+        """Translates a list of strings, passing them through our glossary
+        first.
+
+        :param text: List of text strings to be translated.
+        :returns: A translated list of strings in the same order they
+            were given.
+        """
+        count = 0
+        for i in text:
+            text[count] = self.__glossify(i)
+            count += 1
         if Translate.service == "deepl":
             return self.deepl(text)
         if Translate.service == "google":
@@ -69,168 +198,186 @@ class Translate():
         return None
 
 
-def sanitized_dialog_translate(dialog_text, text_width=45, max_lines=None) -> str:
-    """Does a bunch of text sanitization to handle tags seen in DQX, as well as
-    automatically splitting the text up into chunks to be fed into the in-game
-    dialog window."""
-    translator = Translate()
-    bad_dialogue = False
-    fixed_string = deal_with_icky_strings(dialog_text)
+    def sanitize_and_translate(self, text: str, wrap_width: int, max_lines=None, add_brs=True):
+        """Sanitizes different tags and symbols, then translates the string.
 
-    # icky_string = "魔物の軍団は　撤退していった。"
-    if fixed_string:
-        bad_dialogue = True
+        :param text: String to be translated.
+        :param wrap_width: How many characters the returning string
+                should contain per line.
+        :param max_lines: The maximum amount of lines to return. Extra
+                lines are truncated with "..."
+        :param add_brs: Whether to inject "<br>" every three lines to
+                break up text. Used for dialog mainly.
+        """
+        if found := self.__search_excel_workbook(text):
+            return found
 
-    if detect_lang(dialog_text):
-        if not bad_dialogue:
-            output = re.sub("<br>", " ", dialog_text)
-            output = re.split(r"(<.+?>)", output)
-            final_string = ""
-            for item in output:
-                if item == "":
+        # manage our own line endings later
+        output = text.replace("<br>", "　")
+
+        # remove any tag alignments
+        alignments = ["<center>", "<right>", "<left>"]
+        for alignment in alignments:
+            output = output.replace(alignment, "")
+
+        # remove any other oddities that don't look great in english
+        oddities = ["「", "…"]
+        for oddity in oddities:
+            output = output.replace(oddity, "")
+
+        # remove the full width space that starts on a new line
+        output = output.replace("\n　", "　")
+
+        # replace any <color*> tags with & as they are part of the string
+        output = output.replace("<color_", "<&color_")
+
+        name_tags = ["<pc>", "<cs_pchero>", "<kyodai>"]
+
+        # removes all of the honorifics added at the end of the tags
+        honorifics = ["さま", "君", "どの", "ちゃん", "くん", "様", "さーん", "殿", "さん",]
+        for tag in name_tags:
+            for honorific in honorifics:
+                output = output.replace(f"{tag}{honorific}", tag)
+
+        # replace all variable name tags that expand to other text
+        output = self.__swap_placeholder_tags(output)
+
+        # pass string through our glossary to replace any common words
+        output = self.__glossify(output)
+
+        # re-assign this string. this is now our "pristine" string we'll be using later.
+        pristine_str = output
+
+        # get the text to translate, splitting on all tags that don't start with % or &
+        tag_re = re.compile("(<[^%&]*?>)")
+        select_re = re.compile(r"(<select.*>)")
+        str_split = [ x for x in re.split(tag_re, output) if x ]
+
+        count = 0
+        str_attrs = {}
+
+        # iterate over each string, handling based on condition
+        for str in str_split:
+            if not re.match(tag_re, str):
+
+                # sole new lines need to stay where they are.
+                if str == "\n":
                     continue
-                if item == "<br>":  # we'll manage our own line breaks later
-                    final_string += " "
-                    continue
-                alignment = [
-                    "<center>",
-                    "<right>",
-                ]  # center and right aligned text doesn't work well in this game with ascii
-                if item in alignment:
-                    final_string += ""
-                    continue
-                if re.findall("<(.*?)>", item, re.DOTALL) or item == "\n":
-                    final_string += item
-                else:
-                    # lists don't have puncuation. remove new lines before sending to translate
-                    puncs = ["。", "？", "！"]
-                    if any(x in item for x in puncs):
-                        sanitized = re.sub("\n", " ", item) + "\n"
-                        sanitized = re.sub("\u3000", " ", sanitized)  # replace full width spaces with ascii spaces
-                        sanitized = re.sub(
-                            "「", "", sanitized
-                        )  # these create a single double quote, which look weird in english
-                        sanitized = re.sub("…", "", sanitized)  # elipsis doesn't look natural
-                        sanitized = re.sub(
-                            "", "", sanitized
-                        )  # romaji player names use this. remove as it messes up the translation
-                        translation = translator.translate(sanitized)
-                        translation = translation.strip()
-                        translation = re.sub(
-                            "   ", " ", translation
-                        )  # translation sometimes comes back with a strange number of spaces
-                        translation = re.sub("  ", " ", translation)
-                        translation = textwrap.fill(
-                            translation, width=text_width, replace_whitespace=False, max_lines=max_lines
-                        )
 
-                        # figure out where to put <br> to break up text
-                        count = 1
-                        count_list = [3, 6, 9, 12, 15, 18, 21, 24, 27, 30]
-                        for line in translation.split("\n"):
-                            final_string += line
-                            if count in count_list:
-                                final_string += "\n<br>\n"
-                            else:
-                                final_string += "\n"
-                            count += 1
+                # capture position of the string and replace with placeholder text
+                pristine_str = pristine_str.replace(str, f"<replace_me_index_{count}>")
 
-                    else:
-                        sanitized = item
-                        sanitized = re.sub("\u3000", " ", sanitized)  # replace full width spaces with ascii spaces
-                        sanitized = re.sub(
-                            "「", "", sanitized
-                        )  # these create a single double quote, which look weird in english
-                        sanitized = re.sub("…", "", sanitized)  # elipsis doesn't look natural with english
-                        translation = translator.translate(sanitized)
-                        final_string += translation
-
-                    def rreplace(s, old, new, occurrence):
-                        li = s.rsplit(old, occurrence)
-                        return new.join(li)
-
-                    # this cleans up any blank newlines
-                    final_string = "\n".join([ll.rstrip() for ll in final_string.splitlines() if ll.strip()])
-
-                    # the above code adds a line break every 3 lines, but doesn't account for the last section
-                    # of dialog that doesn't need a <br> if it's just one window of dialog, so remove it
-                    final_string_count = final_string.count("\n")
-                    count = 0
-                    for line in final_string.split("\n"):
-                        if count == final_string_count:
-                            if "<br>" in line:
-                                final_string = rreplace(final_string, "<br>", "", 1)
-                                final_string = "\n".join(
-                                    [ll.rstrip() for ll in final_string.splitlines() if ll.strip()]
-                                )
+                # <select*> lists always start with their first entry being a newline.
+                # if we see this, look back one index to see if we're inside a select tag.
+                if str.startswith("\n"):
+                    lookback = str_split.index(str) - 1
+                    if re.match(select_re, str_split[lookback]):
+                        str_attrs[count] = {
+                            "text": str,
+                            "is_list": True,
+                            "prepend_newline": False,
+                            "append_newline": False,
+                        }
                         count += 1
+                        continue
 
-                    # remove accented characters as the game can't handle them
-                    # unfortunately, this might make reading the game in other languages confusing or inaccurate,
-                    # but the game only displays japanese and ascii.
-                    final_string = unicodedata.normalize("NFKD", final_string).encode("ascii", "ignore").decode()
-            return final_string
-        else:
-            return fixed_string
-    else:
-        return dialog_text
+                # capture how the newline was originally placed
+                append_newline = False
+                if str.endswith("\n"):
+                    append_newline = True
+
+                prepend_newline = False
+                if str.startswith("\n"):
+                    prepend_newline = True
+
+                str = str.replace("\n", "")
+
+                str_attrs[count] = {
+                    "text": str,
+                    "is_list": False,
+                    "prepend_newline": prepend_newline,
+                    "append_newline": append_newline,
+                }
+
+                count += 1
+
+        # translate our list of strings
+        to_translate = []
+        count = 0
+        for str in str_attrs:
+            to_translate.append(str_attrs[count]["text"])
+            count += 1
+        translated_list = self.translate(text=to_translate)
+
+        # update our str_attrs dict with the new, translated string
+        count = 0
+        for str in translated_list:
+            str_attrs[count]["text"] = str
+            count += 1
+
+        count = 0
+        # search for any weird space usage and remove it.
+        # this comes from deepl and are all scenarios that have been seen with
+        # translations coming back from machine translation.
+        for _ in str_attrs:
+            str_text = str_attrs[count]["text"]
+            str_text = str_text.replace("　 ", " ")
+            str_text = str_text.replace("　", " ")
+            str_text = str_text.replace("  ", "")
+
+            updated_str = self.__normalize_text(str_text)
+            updated_str = updated_str.replace("<&color_", "<color_")  # put our color tag back.
+
+            if str_attrs[count]["is_list"]:
+                # select lists will always have more than 1 entry..
+                # leave selection lists alone. please don't fuck this up, deepl
+                updated_str = self.__swap_placeholder_tags(updated_str, swap_back=True)
+
+                # deepl occasionally indents our list lines.. even though they weren't originally indented
+                updated_str = updated_str.replace("\n ", "\n")
+                pristine_str = pristine_str.replace(f"<replace_me_index_{count}>", updated_str)
+
+            else:
+                # wrap the text and inject <br>'s to break the text up
+                updated_str = self.__wrap_text(updated_str, width=wrap_width, max_lines=max_lines)
+                updated_str = self.__swap_placeholder_tags(updated_str, swap_back=True)
+
+                if add_brs:
+                    updated_str = self.__add_line_endings(updated_str)
+                if str_attrs[count]["prepend_newline"]:
+                    updated_str = "\n" + updated_str
+                if str_attrs[count]["append_newline"]:
+                    updated_str += "\n"
+
+                pristine_str = pristine_str.replace(f"<replace_me_index_{count}>", updated_str)
+
+            count += 1
+
+        return pristine_str
 
 
-def sqlite_read(text_to_query, language, table):
-    """Reads text from a SQLite table."""
-    escaped_text = text_to_query.replace("'", "''")
+    def __search_excel_workbook(self, text: str):
+        """Searches the merge.xlsx workbook for a string in the JP Text column.
+        If there's a match and the string "BAD STRING" is found in the Notes
+        column, this returns the contents in the "Fixed English Text" column.
+        This fixes instances of text where machine translation completely
+        screwed up the text and caused the game to have issues.
 
-    try:
-        db_file = "/".join([get_abs_path(__file__), "../misc_files/clarity_dialog.db"])
-        conn = sqlite3.connect(db_file)
-        cursor = conn.cursor()
-        selectQuery = f"SELECT {language} FROM {table} WHERE ja = '{escaped_text}'"
-        cursor.execute(selectQuery)
-        results = cursor.fetchone()
+        :param text: String to search
+        :returns: Returns either the English text or None if no match
+            was found.
+        """
+        file = get_project_root("misc_files/merge.xlsx")
 
-        if results is not None:
-            return results[0].replace("''", "'")
-        else:
-            return None
-
-    except sqlite3.Error as e:
-        raise Exception(f"Failed to query {table}: {e}")
-    finally:
-        if conn:
-            conn.close()
-
-
-def sqlite_write(source_text, table, translated_text, language, npc_name=""):
-    """Writes or updates text to the SQLite database."""
-    escaped_text = translated_text.replace("'", "''")
-
-    try:
-        db_file = "/".join([get_abs_path(__file__), "../misc_files/clarity_dialog.db"])
-        conn = sqlite3.connect(db_file)
-        selectQuery = f"SELECT ja FROM {table} WHERE ja = '{source_text}'"
-        updateQuery = f"UPDATE {table} SET {language} = '{escaped_text}' WHERE ja = '{source_text}'"
-        if table == "dialog":
-            insertQuery = f"INSERT INTO {table} (ja, npc_name, {language}) VALUES ('{source_text}', '{npc_name}', '{escaped_text}')"
-        elif table == "quests" or table == "walkthrough":
-            insertQuery = f"INSERT INTO {table} (ja, {language}) VALUES ('{source_text}', '{escaped_text}')"
-        else:
-            raise Exception("Unknown table.")
-
-        cursor = conn.cursor()
-        results = cursor.execute(selectQuery)
-
-        if results.fetchone() is None:
-            cursor.execute(insertQuery)
-        else:
-            cursor.execute(updateQuery)
-
-        conn.commit()
-        cursor.close()
-    except sqlite3.Error as e:
-        raise Exception(f"Unable to write data to table: {e}")
-    finally:
-        if conn:
-            conn.close()
+        if os.path.exists(file):
+            wb = load_workbook(file)
+            ws_dialogue = wb["Dialogue"]
+            for rowNum in range(2, ws_dialogue.max_row + 1):
+                jp_string = str(ws_dialogue.cell(row=rowNum, column=1).value)
+                bad_string_col = str(ws_dialogue.cell(row=rowNum, column=4).value)
+                if (jp_string in text) and ("BAD STRING" in bad_string_col):
+                    return str(ws_dialogue.cell(row=rowNum, column=3).value)
+        return None
 
 
 def load_user_config():
@@ -240,7 +387,7 @@ def load_user_config():
 
     :returns: Dict of config.
     """
-    filename = "/".join([get_abs_path(__file__), "../user_settings.ini"])
+    filename = get_project_root("user_settings.ini")
     base_config = configparser.ConfigParser()
     base_config["translation"] = {
         "enabledeepltranslate": False,
@@ -249,7 +396,6 @@ def load_user_config():
         "googletranslatekey": "",
         "regioncode": "en",
     }
-    base_config["behavior"] = {"enabledialoglogging": "False"}
     base_config["config"] = {"installdirectory": ""}
 
     def create_base_config():
@@ -315,40 +461,25 @@ def determine_translation_service():
     """Parses the user_settings file to get information needed to make
     translation calls."""
     config = load_user_config()
-    enabledeepltranslate = config["translation"]["enabledeepltranslate"]
+    enabledeepltranslate = eval(config["translation"]["enabledeepltranslate"])
     deepltranslatekey = config["translation"]["deepltranslatekey"]
-    enablegoogletranslate = config["translation"]["enablegoogletranslate"]
+    enablegoogletranslate = eval(config["translation"]["enablegoogletranslate"])
     googletranslatekey = config["translation"]["googletranslatekey"]
     regioncode = config["translation"]["regioncode"]
-    enabledialoglogging = config["behavior"]["enabledialoglogging"]
 
     reiterate = "Either open the user_settings.ini file in Notepad or use the API settings button in the DQXClarity launcher to set it up."
 
-    if enabledeepltranslate == "False" and enablegoogletranslate == "False":
+    if not enabledeepltranslate and not enablegoogletranslate:
         message_box(
             title="No translation service enabled",
             message=f"You need to enable a translation service. {reiterate}\n\nCurrent values:\n\nenabledeepltranslate: {enabledeepltranslate}\nenablegoogletranslate: {enablegoogletranslate}",
             exit_prog=True,
         )
 
-    if enabledeepltranslate == "True" and enablegoogletranslate == "True":
+    if enabledeepltranslate and enablegoogletranslate:
         message_box(
-            title="Too many translation serviced enabled",
+            title="Too many translation services enabled",
             message=f"Only enable one translation service. {reiterate}\n\nCurrent values:\n\nenabledeepltranslate: {enabledeepltranslate}\nenablegoogletranslate: {enablegoogletranslate}",
-            exit_prog=True,
-        )
-
-    if enabledeepltranslate != "True" and enabledeepltranslate != "False":
-        message_box(
-            title="Misconfigured boolean",
-            message=f"Invalid value detected for enabledeepltranslate. {reiterate}\n\nValid values are: True, False\n\nCurrent values:\n\nenabledeepltranslate: {enabledeepltranslate}",
-            exit_prog=True,
-        )
-
-    if enablegoogletranslate != "True" and enablegoogletranslate != "False":
-        message_box(
-            title="Misconfigured boolean",
-            message=f"Invalid value detected for enablegoogletranslate. {reiterate}\n\nValid values are: True, False\n\nCurrent values:\n\nenablegoogletranslate: {enablegoogletranslate}",
             exit_prog=True,
         )
 
@@ -359,21 +490,14 @@ def determine_translation_service():
             exit_prog=True,
         )
 
-    if enabledialoglogging != "True" and enabledialoglogging != "False":
-        message_box(
-            title="Misconfigured boolean",
-            message=f"Invalid value detected for enabledialoglogging. {reiterate}\n\nValid values are: True, False\n\nCurrent values:\nenabledialoglogging: {enabledialoglogging}",
-            exit_prog=True,
-        )
-
-    if enabledeepltranslate == "True" and deepltranslatekey == "":
+    if enabledeepltranslate and deepltranslatekey == "":
         message_box(
             title="No DeepL key specified",
             message=f"DeepL is enabled, but no key was provided. {reiterate}",
             exit_prog=True,
         )
 
-    if enablegoogletranslate == "True" and googletranslatekey == "":
+    if enablegoogletranslate and googletranslatekey == "":
         message_box(
             title="No Google API key specified",
             message=f"Google API is enabled, but no key was provided. {reiterate}",
@@ -381,15 +505,14 @@ def determine_translation_service():
         )
 
     dic = {}
-    if enabledeepltranslate == "True":
+    if enabledeepltranslate:
         dic["TranslateService"] = "deepl"
         dic["TranslateKey"] = deepltranslatekey
-    elif enablegoogletranslate == "True":
+    elif enablegoogletranslate:
         dic["TranslateService"] = "google"
         dic["TranslateKey"] = googletranslatekey
 
     dic["RegionCode"] = regioncode
-    dic["EnableDialogLogging"] = enabledialoglogging
 
     return dic
 
@@ -401,7 +524,7 @@ def query_string_from_file(text: str, file: str) -> str:
     text: The text to search
     file: The name of the file (leave off the file extension)
     """
-    misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
+    misc_files = get_project_root("misc_files")
     data = read_json_file(misc_files + "/" + file + ".json")
 
     for item in data:
@@ -417,7 +540,7 @@ def clean_up_and_return_items(text: str) -> str:
 
     Used specifically for the quest window.
     """
-    misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
+    misc_files = get_project_root("misc_files")
     quest_rewards = merge_jsons([
         f"{misc_files}/subPackage41Client.win32.json",
         f"{misc_files}/subPackage05Client.json",
@@ -472,21 +595,6 @@ def clean_up_and_return_items(text: str) -> str:
     return final_string.rstrip()
 
 
-def deal_with_icky_strings(text) -> str:
-    fixed_string = ""
-    file = "/".join([get_abs_path(__file__), "../misc_files/merge.xlsx"])
-    if os.path.exists(file):
-        wb = load_workbook(file)
-        ws_dialogue = wb["Dialogue"]
-        for rowNum in range(2, ws_dialogue.max_row + 1):
-            jp_string = str(ws_dialogue.cell(row=rowNum, column=1).value)
-            bad_string_col = str(ws_dialogue.cell(row=rowNum, column=4).value)
-            if (jp_string in text) and ("BAD STRING" in bad_string_col):
-                fixed_string = str(ws_dialogue.cell(row=rowNum, column=3).value)
-
-    return fixed_string
-
-
 def detect_lang(text: str) -> bool:
     """Detects if the language is Japanese or not.
 
@@ -516,7 +624,7 @@ def convert_into_eng(word: str) -> str:
     """
     kks = pykakasi.kakasi()
     invalid_chars = ["[", "]", "[", "(", ")", "\\", "/", "*", "_", "+", "?", "$", "^", '"']
-    misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
+    misc_files = get_project_root("misc_files")
     player_names = merge_jsons([f"{misc_files}/custom_player_names.json", f"{misc_files}/custom_npc_names.json"])
     interpunct_count = word.count("・")
     word_len = len(word)
@@ -549,3 +657,24 @@ def convert_into_eng(word: str) -> str:
                     return romaji_name[0:10]
             else:
                 return word
+
+
+def get_player_name() -> tuple:
+    """Queries the player and sibling name from the database.
+
+    Returns a tuple of (player_name, sibling_name).
+    """
+    conn, cursor = init_db()
+
+    player_query = "SELECT name FROM player WHERE type = 'player'"
+    sibling_query = "SELECT name FROM player WHERE type = 'sibling'"
+
+    results = cursor.execute(player_query)
+    player = results.fetchone()[0]
+
+    results = cursor.execute(sibling_query)
+    sibling = results.fetchone()[0]
+
+    conn.close()
+
+    return (player, sibling)

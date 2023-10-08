@@ -1,3 +1,5 @@
+from common.errors import FailedToReadAddress
+from common.lib import setup_logging
 from common.memory import (
     allocate_memory,
     calc_rel_addr,
@@ -11,13 +13,16 @@ from common.signatures import (
     accept_quest_trigger,
     dialog_trigger,
     integrity_check,
+    network_text_trigger,
+    player_sibling_name_trigger,
     quest_text_trigger,
 )
 from hooking.dialog import translate_shellcode
 from hooking.easydetour import EasyDetour
 from hooking.hide_hooks import load_hooks
+from hooking.network_text import network_text_shellcode
+from hooking.player import player_name_shellcode
 from hooking.quest import quest_text_shellcode
-from loguru import logger
 
 import struct
 import sys
@@ -30,93 +35,120 @@ def inject_python_dll():
         PYM_PROCESS.inject_python_interpreter()
         if PYM_PROCESS._python_injected:
             if PYM_PROCESS.py_run_simple_string:
-                logger.info(f"Python injected.")
+                log.success(f"Python injected.")
                 return PYM_PROCESS.py_run_simple_string
-        logger.error(f"Python dll failed to inject. Details:\n{PYM_PROCESS.__dict__}")
+        log.error(f"Python dll failed to inject. Details:\n{PYM_PROCESS.__dict__}")
         return False
-    except Exception as e:
-        traceback.print_exc()
-        logger.error(f"Python dll failed to inject. Error: {e}\nDetails:\n{PYM_PROCESS.__dict__}")
+    except Exception:
+        log.error(f"Python dll failed to inject. Error: \n{str(traceback.print_exc())}\nDetails:\n{PYM_PROCESS.__dict__}")
         return False
 
 
-def translate_detour(simple_str_addr: int, debug=False):
+def translate_detour(simple_str_addr: int):
     """Hooks the dialog window to translate text and write English instead."""
     hook_obj = EasyDetour(
         hook_name="game_dialog",
         signature=dialog_trigger,
         num_bytes_to_steal=10,
         simple_str_addr=simple_str_addr,
-        debug=debug,
     )
 
     esi = hook_obj.address_dict["attrs"]["esi"]
-    shellcode = translate_shellcode(
-        esi_address=esi,
-        debug=debug,
-    )
+    shellcode = translate_shellcode(esi_address=esi)
     shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
     write_string(address=shellcode_addr, text=shellcode)
 
     return hook_obj
 
 
-def quest_text_detour(simple_str_addr: int, debug=False):
+def quest_text_detour(simple_str_addr: int):
     """Hook the quest dialog window and translate to english."""
     hook_obj = EasyDetour(
         hook_name="quests",
         signature=quest_text_trigger,
         num_bytes_to_steal=6,
         simple_str_addr=simple_str_addr,
-        debug=debug,
     )
 
     eax = hook_obj.address_dict["attrs"]["eax"]
-    shellcode = quest_text_shellcode(
-        eax_address=eax,
-        debug=debug,
-    )
+    shellcode = quest_text_shellcode(address=eax)
     shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
     write_string(address=shellcode_addr, text=shellcode)
 
     return hook_obj
 
 
-def accept_quest_detour(simple_str_addr: int, debug=False):
+def network_text_detour(simple_str_addr: int):
+    """tbd."""
+    hook_obj = EasyDetour(
+        hook_name="network_text",
+        signature=network_text_trigger,
+        num_bytes_to_steal=5,
+        simple_str_addr=simple_str_addr,
+    )
+    ecx = hook_obj.address_dict["attrs"]["ecx"]
+    esp = hook_obj.address_dict["attrs"]["esp"]
+    shellcode = network_text_shellcode(ecx, esp)
+    shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
+    write_string(address=shellcode_addr, text=shellcode)
+
+    return hook_obj
+
+
+def accept_quest_detour(simple_str_addr: int):
     """Detours function when you accept a quest and the quest text pops up on
     your screen."""
     hook_obj = EasyDetour(
         hook_name="accept_quest",
         signature=accept_quest_trigger,
         num_bytes_to_steal=6,
-        simple_str_addr=simple_str_addr,
-        debug=debug,
+        simple_str_addr=simple_str_addr
     )
 
     esi = hook_obj.address_dict["attrs"]["esi"]
-    shellcode = quest_text_shellcode(esi, debug=debug)
+    shellcode = quest_text_shellcode(address=esi)
     shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
     write_string(address=shellcode_addr, text=shellcode)
 
     return hook_obj
 
 
-def activate_hooks(player_names: bool, debug=False):
+def player_name_detour(simple_str_addr: int):
+    """Detours function when you accept a quest and the quest text pops up on
+    your screen."""
+    hook_obj = EasyDetour(
+        hook_name="player_name",
+        signature=player_sibling_name_trigger,
+        num_bytes_to_steal=6,
+        simple_str_addr=simple_str_addr,
+    )
+
+    eax = hook_obj.address_dict["attrs"]["eax"]
+    shellcode = player_name_shellcode(eax_address=eax)
+    shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
+    write_string(address=shellcode_addr, text=shellcode)
+
+    return hook_obj
+
+
+def activate_hooks(player_names: bool):
     """Activates all hooks and kicks off hook manager."""
-    logger.remove()
-    if debug:
-        logger.add(sys.stderr, level="DEBUG")
-    else:
-        logger.add(sys.stderr, level="INFO")
+    # configure logging. this function runs in multiprocessing, so it does not
+    # have the same access to the main log handler.
+    global log
+    log = setup_logging()
+
     simple_str_addr = inject_python_dll()
     if not simple_str_addr:
-        logger.error("Since Python injection failed, we will not try to hook. Exiting.")
+        log.exception("Since Python injection failed, we will not try to hook. Exiting.")
         return False
 
     # activates all hooks. add any new hooks to this list
     hooks = []
-    hooks.append(translate_detour(simple_str_addr=simple_str_addr, debug=debug))
-    hooks.append(quest_text_detour(simple_str_addr=simple_str_addr, debug=debug))
+    hooks.append(translate_detour(simple_str_addr=simple_str_addr))
+    hooks.append(quest_text_detour(simple_str_addr=simple_str_addr))
+    hooks.append(player_name_detour(simple_str_addr=simple_str_addr))
+    hooks.append(network_text_detour(simple_str_addr=simple_str_addr))
 
     # construct our asm to detach hooks
     unhook_bytecode = b""
@@ -147,7 +179,11 @@ def activate_hooks(player_names: bool, debug=False):
     unhook_bytecode += b"\x01"  # 01 will tell us func was run
 
     # get bytes we want to steal and append to unhook bytecode
-    stolen_bytes = read_bytes(integrity_addr, 5)
+    try:
+        stolen_bytes = read_bytes(integrity_addr, 5)
+    except FailedToReadAddress:
+        log.error("**ATTENTION** Unable to find integrity address. If you closed dqxclarity and re-opened it, you will need to completely close the game first before re-running dqxclarity. Otherwise, something horrible has gone wrong.")
+        sys.exit(1)
     unhook_bytecode += stolen_bytes
 
     # calculate difference between addresses for jump and add to unhook bytecode
@@ -159,10 +195,10 @@ def activate_hooks(player_names: bool, debug=False):
     # finally, write our detour over the integrity function
     detour_bytecode = b"\xE9" + calc_rel_addr(integrity_addr, unhook_addr)
     write_bytes(integrity_addr, detour_bytecode)
-    logger.debug(f"unhook :: hook ({hex(unhook_addr)}) :: detour ({hex(integrity_addr)})")
-    logger.debug(f"state  :: addr ({hex(state_addr)})")
+    log.debug(f"unhook :: hook ({hex(unhook_addr)}) :: detour ({hex(integrity_addr)})")
+    log.debug(f"state  :: addr ({hex(state_addr)})")
 
-    load_hooks(hook_list=hooks, state_addr=state_addr, player_names=player_names, debug=debug)
+    load_hooks(hook_list=hooks, state_addr=state_addr, player_names=player_names)
 
 
 PYM_PROCESS = dqx_mem()

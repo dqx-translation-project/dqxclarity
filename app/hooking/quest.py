@@ -1,23 +1,16 @@
-from common.lib import get_abs_path, setup_logger
+from common.db_ops import sql_read, sql_write
+from common.lib import encode_to_utf8, get_project_root
 from common.memory import read_string, unpack_to_int, write_string
-from common.translate import (
-    clean_up_and_return_items,
-    detect_lang,
-    sqlite_read,
-    sqlite_write,
-    Translate,
-)
+from common.translate import clean_up_and_return_items, detect_lang, Translate
 from json import dumps, loads
 
-import re
+import os
 import sys
-import textwrap
 
 
 class Quest:
 
-    misc_files = "/".join([get_abs_path(__file__), "../misc_files"])
-    logger = setup_logger("out", "/".join([get_abs_path(__file__), "../out.log"]))
+    misc_files = get_project_root("misc_files")
     quests = None
 
     def __init__(self, address, debug=False):
@@ -44,7 +37,6 @@ class Quest:
             Quest.quests = self.__read_file(f"{Quest.misc_files}/eventTextSysQuestaClient.json")
 
         self.write_to_game()
-        Quest.logger.info(f"Wrote to quest address: {self.address}")
 
 
     def __is_ja(self):
@@ -83,23 +75,26 @@ class Quest:
 
     def __translate_quest_desc(self):
         translator = Translate()
-        if db_quest_text := sqlite_read(
-            text_to_query=self.quest_desc,
+        if db_quest_text := sql_read(
+            text=self.quest_desc,
+            table="quests",
             language=Translate.region_code,
-            table="quests"
         ):
             return db_quest_text
 
-        full_text = re.sub("\n", " ", self.quest_desc)
-        if translation := translator.translate(full_text):
-            formatted_translation = textwrap.fill(translation, width=45, replace_whitespace=False)
-            sqlite_write(
+        if translation := translator.sanitize_and_translate(
+            self.quest_desc,
+            wrap_width=50,
+            max_lines=6,
+            add_brs=False
+        ):
+            sql_write(
                 source_text=self.quest_desc,
+                translated_text=translation,
                 table="quests",
-                translated_text=formatted_translation,
                 language=Translate.region_code
             )
-            return formatted_translation
+            return translation
         return None
 
 
@@ -127,14 +122,13 @@ class Quest:
         self.__write_repeat_quest_rewards()
 
 
-def quest_text_shellcode(eax_address: int, debug: bool) -> str:
+def quest_text_shellcode(address: int) -> str:
     """Returns shellcode for the translate function hook.
 
-    eax_address: Where text can be modified to be fed to the screen
+    address: Where text can be modified to be fed to the screen
     """
-    import os
     local_paths = dumps(sys.path).replace("\\", "\\\\")
-    log_path = os.path.join(os.path.abspath('.'), 'out.log').replace("\\", "\\\\")
+    log_path = os.path.join(os.path.abspath('.'), 'logs\\console.log').replace("\\", "\\\\")
 
     # Overwriting the process's sys.path with the one outside of the process
     # is required to run our imports and function code. It's also necessary to
@@ -142,12 +136,13 @@ def quest_text_shellcode(eax_address: int, debug: bool) -> str:
     shellcode = f"""
 try:
     import sys
+    import traceback
     sys.path = {local_paths}
     from hooking.quest import Quest
-    Quest({eax_address})
+    Quest({address})
 except Exception as e:
     with open("{log_path}", "a+") as f:
-        f.write(str(e))
+        f.write(str(traceback.format_exc()))
     """
 
-    return str(shellcode)
+    return encode_to_utf8(shellcode).decode()

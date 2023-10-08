@@ -1,15 +1,12 @@
 from common.memory import (
     allocate_memory,
     calc_rel_addr,
-    dqx_mem,
     pack_to_int,
     pattern_scan,
     read_bytes,
     write_bytes,
 )
-from loguru import logger
-
-import sys
+from loguru import logger as log
 
 
 class EasyDetour:
@@ -21,16 +18,16 @@ class EasyDetour:
         redirect
     :param num_bytes_to_steal: Number of bytes to steal from the
         original func to be executed after your detour
+    :param simple_str_addr: Address of where Py_SimpleString is
     :returns: Initiated EasyDetour object. Use enable() to turn on your
         detour and disable() to turn off
     """
 
-    def __init__(self, hook_name: str, signature: bytes, num_bytes_to_steal: int, simple_str_addr: int, debug: bool):
+    def __init__(self, hook_name: str, signature: bytes, num_bytes_to_steal: int, simple_str_addr: int):
         self.hook_name = hook_name
         self.signature = signature
         self.num_bytes_to_steal = num_bytes_to_steal
         self.simple_str_addr = simple_str_addr
-        self.debug = debug
         self.address_dict = self.write_detour()
 
     def get_signature_address(self):
@@ -112,12 +109,7 @@ class EasyDetour:
         # write our new function to memory
         write_bytes(mov_insts_addr, bytecode)
 
-        logger.remove()
-        if self.debug:
-            logger.add(sys.stderr, level="DEBUG")
-        else:
-            logger.add(sys.stderr, level="INFO")
-        logger.debug(
+        log.debug(
             f"{self.hook_name} :: hook ({hex(address_dict['attrs']['begin'])}) :: shellcode ({hex(address_dict['attrs']['shellcode'])}) :: detour ({hex(address_dict['attrs']['game_func'])})"
         )
 

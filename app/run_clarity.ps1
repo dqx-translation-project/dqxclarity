@@ -59,7 +59,8 @@ function UninstallPython() {
 $ErrorActionPreference="SilentlyContinue"
 Stop-Transcript | Out-Null
 $ErrorActionPreference = "Continue"
-Start-Transcript -path console.log
+New-Item -ItemType Directory -Force -Path logs/ | Out-Null
+Start-Transcript -path logs/startup.log
 
 $HelpMessage = "If you need help, please join the DQX Discord and post your question in the #clarity-questions channel. https://discord.gg/dragonquestx"
 

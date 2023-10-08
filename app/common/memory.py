@@ -5,7 +5,8 @@ from common.errors import (
     MemoryWriteError,
     message_box,
 )
-from loguru import logger
+from common.lib import is_dqx_process_running
+from loguru import logger as log
 from pymem.pattern import pattern_scan_all, pattern_scan_module
 
 import pymem
@@ -102,14 +103,15 @@ def pattern_scan(pattern: bytes, return_multiple=False, use_regex=False, module=
                 use_regex=use_regex
             )
     except pymem.exception.WinAPIError as e:
-        if e.error_code == 299:
-            logger.debug("WinApi error 299: Impartial read. Ignoring.")
+        if e.error_code == 299:  # impartial read, just return none.
             return None
-        elif e.error_code == 5:  # ERROR_ACCESS_DENIED. *usually* means the game client was closed
-            logger.error(f"Cannot find DQXGame.exe process. dqxclarity will exit.")
-            sys.exit(1)
         else:
-            raise
+            if is_dqx_process_running():
+                log.exception("An exception occurred. dqxclarity will exit.")
+                sys.exit(1)
+            else:
+                sys.exit(0)
+
 
 
 def get_ptr_address(base, offsets):
