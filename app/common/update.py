@@ -161,6 +161,7 @@ def merge_local_db():
                 results = cursor.execute(selectQuery)
 
                 if results.fetchone() is None and insertQuery != "":
+                    print(insertQuery)
                     cursor.execute(insertQuery)
                     records_inserted += 1
                 else:
@@ -220,6 +221,7 @@ def merge_local_db():
             except sqlite3.Error as e:
                 log.exception(f"Unable to write data to table.")
 
+        conn.commit()
         conn.close()
         log.success(f"Records inserted: {str(records_inserted)} :: Records updated: {str(records_updated)}")
 
