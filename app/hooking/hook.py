@@ -131,7 +131,7 @@ def player_name_detour(simple_str_addr: int):
     return hook_obj
 
 
-def activate_hooks(player_names: bool):
+def activate_hooks(player_names: bool, communication_window: bool):
     """Activates all hooks and kicks off hook manager."""
     # configure logging. this function runs in multiprocessing, so it does not
     # have the same access to the main log handler.
@@ -145,10 +145,12 @@ def activate_hooks(player_names: bool):
 
     # activates all hooks. add any new hooks to this list
     hooks = []
-    hooks.append(translate_detour(simple_str_addr=simple_str_addr))
-    hooks.append(quest_text_detour(simple_str_addr=simple_str_addr))
     hooks.append(player_name_detour(simple_str_addr=simple_str_addr))
     hooks.append(network_text_detour(simple_str_addr=simple_str_addr))
+
+    if communication_window:
+        hooks.append(translate_detour(simple_str_addr=simple_str_addr))
+        hooks.append(quest_text_detour(simple_str_addr=simple_str_addr))
 
     # construct our asm to detach hooks
     unhook_bytecode = b""

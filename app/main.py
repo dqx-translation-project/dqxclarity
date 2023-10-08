@@ -1,10 +1,5 @@
 from common.db_ops import ensure_db_structure
-from common.lib import (
-    get_project_root,
-    is_dqx_process_running,
-    setup_logging,
-    wait_for_dqx_to_launch,
-)
+from common.lib import get_project_root, setup_logging, wait_for_dqx_to_launch
 from common.update import (
     check_for_updates,
     download_custom_files,
@@ -18,7 +13,6 @@ import click
 import sys
 import threading
 import time
-import traceback
 
 
 # fmt: off
@@ -76,8 +70,9 @@ def blast_off(
             while not p.is_alive():
                 time.sleep(0.25)
 
+        start_process(name="Hook loader", target=activate_hooks, args=(player_names,communication_window,))
+
         if communication_window:
-            start_process(name="Hook loader", target=activate_hooks, args=(player_names,))
             start_process(name="Walkthrough scanner", target=loop_scan_for_walkthrough, args=())
 
         if community_logging:
