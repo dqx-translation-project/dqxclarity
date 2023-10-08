@@ -469,24 +469,10 @@ def determine_translation_service():
 
     reiterate = "Either open the user_settings.ini file in Notepad or use the API settings button in the DQXClarity launcher to set it up."
 
-    if not enabledeepltranslate and not enablegoogletranslate:
-        message_box(
-            title="No translation service enabled",
-            message=f"You need to enable a translation service. {reiterate}\n\nCurrent values:\n\nenabledeepltranslate: {enabledeepltranslate}\nenablegoogletranslate: {enablegoogletranslate}",
-            exit_prog=True,
-        )
-
     if enabledeepltranslate and enablegoogletranslate:
         message_box(
             title="Too many translation services enabled",
             message=f"Only enable one translation service. {reiterate}\n\nCurrent values:\n\nenabledeepltranslate: {enabledeepltranslate}\nenablegoogletranslate: {enablegoogletranslate}",
-            exit_prog=True,
-        )
-
-    if deepltranslatekey == "" and googletranslatekey == "":
-        message_box(
-            title="No API key configured",
-            message=f"You need to configure an API key. {reiterate}",
             exit_prog=True,
         )
 
