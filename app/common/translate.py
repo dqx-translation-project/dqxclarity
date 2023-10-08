@@ -457,9 +457,13 @@ def update_user_config(section: str, key: str, value: str, filename="user_settin
         config.write(configfile)
 
 
-def determine_translation_service():
+def determine_translation_service(communication_window_enabled=False):
     """Parses the user_settings file to get information needed to make
-    translation calls."""
+    translation calls.
+
+    :param communication_window_enabled: If True, will verify that a
+        service is enabled and a key is entered.
+    """
     config = load_user_config()
     enabledeepltranslate = eval(config["translation"]["enabledeepltranslate"])
     deepltranslatekey = config["translation"]["deepltranslatekey"]
@@ -489,6 +493,14 @@ def determine_translation_service():
             message=f"Google API is enabled, but no key was provided. {reiterate}",
             exit_prog=True,
         )
+
+    if communication_window_enabled:
+        if not enabledeepltranslate and not enablegoogletranslate:
+            message_box(
+                title="No translation service is configured",
+                message=f"You enabled API translation, but didn't enable a service. Please configure a service and relaunch. {reiterate}",
+                exit_prog=True,
+            )
 
     dic = {}
     if enabledeepltranslate:
