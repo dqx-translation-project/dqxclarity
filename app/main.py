@@ -1,5 +1,6 @@
 from common.db_ops import ensure_db_structure
 from common.lib import get_project_root, setup_logging, wait_for_dqx_to_launch
+from common.translate import determine_translation_service
 from common.update import (
     check_for_updates,
     download_custom_files,
@@ -54,6 +55,9 @@ def blast_off(
 
     log.info("Ensuring db structure.")
     ensure_db_structure()
+
+    log.info("Checking user_settings.ini.")
+    determine_translation_service()
 
     try:
         wait_for_dqx_to_launch()
