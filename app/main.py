@@ -57,7 +57,7 @@ def blast_off(
     ensure_db_structure()
 
     log.info("Checking user_settings.ini.")
-    determine_translation_service()
+    determine_translation_service(communication_window_enabled=communication_window)
 
     try:
         wait_for_dqx_to_launch()
