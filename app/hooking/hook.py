@@ -17,12 +17,8 @@ from common.signatures import (
     player_sibling_name_trigger,
     quest_text_trigger,
 )
-from hooking.dialog import translate_shellcode
 from hooking.easydetour import EasyDetour
 from hooking.hide_hooks import load_hooks
-from hooking.network_text import network_text_shellcode
-from hooking.player import player_name_shellcode
-from hooking.quest import quest_text_shellcode
 
 import struct
 import sys
@@ -46,6 +42,8 @@ def inject_python_dll():
 
 def translate_detour(simple_str_addr: int):
     """Hooks the dialog window to translate text and write English instead."""
+    from hooking.dialog import translate_shellcode
+
     hook_obj = EasyDetour(
         hook_name="game_dialog",
         signature=dialog_trigger,
@@ -63,6 +61,8 @@ def translate_detour(simple_str_addr: int):
 
 def quest_text_detour(simple_str_addr: int):
     """Hook the quest dialog window and translate to english."""
+    from hooking.quest import quest_text_shellcode
+
     hook_obj = EasyDetour(
         hook_name="quests",
         signature=quest_text_trigger,
@@ -80,6 +80,8 @@ def quest_text_detour(simple_str_addr: int):
 
 def network_text_detour(simple_str_addr: int):
     """tbd."""
+    from hooking.network_text import network_text_shellcode
+
     hook_obj = EasyDetour(
         hook_name="network_text",
         signature=network_text_trigger,
@@ -116,6 +118,8 @@ def accept_quest_detour(simple_str_addr: int):
 def player_name_detour(simple_str_addr: int):
     """Detours function when you accept a quest and the quest text pops up on
     your screen."""
+    from hooking.player import player_name_shellcode
+
     hook_obj = EasyDetour(
         hook_name="player_name",
         signature=player_sibling_name_trigger,
