@@ -135,6 +135,7 @@ def merge_local_db():
         ws_dialogue = wb["Dialogue"]
         ws_walkthrough = wb["Walkthrough"]
         ws_quests = wb["Quests"]
+        ws_story = wb["Story So Far"]
 
         conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
@@ -208,6 +209,35 @@ def merge_local_db():
                     selectQuery = f"SELECT ja FROM quests WHERE ja = '{source_text}'"
                     updateQuery = f"UPDATE quests SET en = '{escaped_text}' WHERE ja = '{source_text}'"
                     insertQuery = f"INSERT INTO quests (ja, en) VALUES ('{source_text}', '{escaped_text}')"
+
+                results = cursor.execute(selectQuery)
+
+                if results.fetchone() is None:
+                    cursor.execute(insertQuery)
+                    records_inserted += 1
+                else:
+                    cursor.execute(updateQuery)
+                    records_updated += 1
+            except sqlite3.Error as e:
+                log.exception(f"Unable to write data to table.")
+                
+         # Story So Far insertion
+        for rowNum in range(2, ws_story.max_row + 1):
+            source_text = ws_story.cell(row=rowNum, column=1).value
+            en_text = ws_story.cell(row=rowNum, column=2).value
+            escaped_text = en_text.replace("'", "''")
+            
+            bad_string_col = str(ws_story.cell(row=rowNum, column=4).value)
+
+            try:
+                if "BAD STRING" in bad_string_col:
+                    selectQuery = f"SELECT ja FROM story_so_far WHERE ja LIKE '%{source_text}%'"
+                    updateQuery = f"UPDATE story_so_far SET en = '{escaped_text}' WHERE ja LIKE '%{source_text}%'"
+                    insertQuery = ""
+                else:
+                    selectQuery = f"SELECT ja FROM story_so_far WHERE ja = '{source_text}'"
+                    updateQuery = f"UPDATE story_so_far SET en = '{escaped_text}' WHERE ja = '{source_text}'"
+                    insertQuery = f"INSERT INTO story_so_far (ja, en) VALUES ('{source_text}', '{escaped_text}')"
 
                 results = cursor.execute(selectQuery)
 
