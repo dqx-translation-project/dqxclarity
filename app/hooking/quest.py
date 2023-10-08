@@ -84,7 +84,7 @@ class Quest:
 
         if translation := translator.sanitize_and_translate(
             self.quest_desc,
-            wrap_width=50,
+            wrap_width=49,
             max_lines=6,
             add_brs=False
         ):
