@@ -1,5 +1,5 @@
 from clarity import scan_for_comm_names, scan_for_sibling_name
-from common.lib import is_dqx_process_running, setup_logging
+from common.lib import is_dqx_process_running
 from common.memory import read_bytes, write_bytes
 from loguru import logger as log
 from multiprocessing import Process
@@ -42,13 +42,12 @@ def load_hooks(hook_list: list, state_addr: int, player_names: bool):
             time.sleep(0.25)
         except TypeError:
             log.error(f"Unable to talk to DQXGame.exe. Exiting.")
-            sys.exit()
+            sys.exit(1)
         except pymem.exception.WinAPIError as e:
+            if not is_dqx_process_running():
+                sys.exit(0)
             if e.error_code == 299:
-                log.debug("WinApi error 299: Impartial read. Ignoring.")
-            elif e.error_code == 5:
-                log.debug("Cannot find DQXGame.exe process. dqxclarity will exit.")
-                sys.exit(1)
+                continue
             else:
                 raise
         except KeyboardInterrupt:
