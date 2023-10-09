@@ -1,4 +1,5 @@
 from common.db_ops import sql_read, sql_write
+from common.errors import MemoryReadError
 from common.lib import (
     get_project_root,
     is_dqx_process_running,
@@ -17,6 +18,7 @@ from common.signatures import (
     walkthrough_pattern,
 )
 from common.translate import convert_into_eng, detect_lang, Translate
+from pymem.exception import WinAPIError
 
 import re
 import sys
@@ -232,12 +234,21 @@ def loop_scan_for_walkthrough():
                             time.sleep(1)
             else:
                 time.sleep(1)
+    except WinAPIError as e:
+        if e.error_code == 299: # usually means the user closed the game.
+            if not is_dqx_process_running():
+                sys.exit(0)
+            raise(e)
+    except MemoryReadError as e:
+        if not is_dqx_process_running():
+            sys.exit(0)
+        raise(e)
     except Exception:
         if not is_dqx_process_running():
-            log.exception("A problem with the walkthrough scanner was detected.")
-            sys.exit(1)
+            sys.exit(0)
         else:
-            log.exception("Problem detected running walkthrough scanner.")
+            log.exception("Problem was detected with the walkthrough scanner.")
+            sys.exit(1)
 
 
 def run_scans(player_names=True, npc_names=True):
