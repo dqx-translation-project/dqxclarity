@@ -82,7 +82,7 @@ jobs:
 
       - name: Commit version.update to main
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: stefanzweifel/git-auto-commit-action@v4
+        uses: stefanzweifel/git-auto-commit-action@v5
         id: auto-commit-action
         with:
           commit_message: 'Automated bump of version.update'
