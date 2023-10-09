@@ -15,18 +15,18 @@
           uses: xt0rted/pull-request-comment-branch@v2
 
         - name: Checkout PR branch (${{ steps.fetch-branch-name.outputs.head_ref }})
-          uses: actions/checkout@v3
+          uses: actions/checkout@v4
           with:
             ref: ${{ steps.fetch-branch-name.outputs.head_ref }}
 
         - name: Checkout dqx-translation-project/dqx_translations
-          uses: actions/checkout@v3
+          uses: actions/checkout@v4
           with:
             repository: 'dqx-translation-project/dqx_translations'
             path: 'dqx_translations'
 
         - name: Checkout dqx-translation-project/dqx-custom-translations
-          uses: actions/checkout@v3
+          uses: actions/checkout@v4
           with:
             repository: 'dqx-translation-project/dqx-custom-translations'
             path: 'dqx-custom-translations'
