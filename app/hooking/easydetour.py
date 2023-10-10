@@ -1,11 +1,4 @@
-from common.memory import (
-    allocate_memory,
-    calc_rel_addr,
-    pack_to_int,
-    pattern_scan,
-    read_bytes,
-    write_bytes,
-)
+from common.memory import MemWriter
 from loguru import logger as log
 
 
@@ -24,6 +17,7 @@ class EasyDetour:
     """
 
     def __init__(self, hook_name: str, signature: bytes, num_bytes_to_steal: int, simple_str_addr: int):
+        self.proc = MemWriter()
         self.hook_name = hook_name
         self.signature = signature
         self.num_bytes_to_steal = num_bytes_to_steal
@@ -31,27 +25,27 @@ class EasyDetour:
         self.address_dict = self.write_detour()
 
     def get_signature_address(self):
-        return pattern_scan(pattern=self.signature, module="DQXGame.exe")
+        return self.proc.pattern_scan(pattern=self.signature, module="DQXGame.exe")
 
     def get_stolen_bytes(self):
-        return read_bytes(self.get_signature_address(), self.num_bytes_to_steal)
+        return self.proc.read_bytes(self.get_signature_address(), self.num_bytes_to_steal)
 
     def write_detour(self):
-        mov_insts_addr = allocate_memory(150)  # allocate memory for our bytecode
-        backup_values_addr = allocate_memory(50)  # allocate memory to back up existing register values
-        shellcode_addr = allocate_memory(2048)  # where our shellcode will be
+        mov_insts_addr = self.proc.allocate_memory(150)  # allocate memory for our bytecode
+        backup_values_addr = self.proc.allocate_memory(50)  # allocate memory to back up existing register values
+        shellcode_addr = self.proc.allocate_memory(2048)  # where our shellcode will be
         pyrun_func_addr = self.simple_str_addr
 
         # fmt: off
         # bytecode to back up the existing memory registers by mov'ing to remote address
-        bytecode = b"\xA3" + pack_to_int(backup_values_addr) + b"\x90" # mov [reg_values], eax then nop
-        bytecode += b"\x89\x1D" + pack_to_int(backup_values_addr + 4)  # mov [reg_values+6], ebx
-        bytecode += b"\x89\x0D" + pack_to_int(backup_values_addr + 8)  # mov [reg_values+12], ecx
-        bytecode += b"\x89\x15" + pack_to_int(backup_values_addr + 12) # mov [reg_values+18], edx
-        bytecode += b"\x89\x35" + pack_to_int(backup_values_addr + 16) # mov [reg_values+24], esi
-        bytecode += b"\x89\x3D" + pack_to_int(backup_values_addr + 20) # mov [reg_values+30], edi
-        bytecode += b"\x89\x2D" + pack_to_int(backup_values_addr + 24) # mov [reg_values+36], ebp
-        bytecode += b"\x89\x25" + pack_to_int(backup_values_addr + 28) # mov [reg_values+42], esp
+        bytecode = b"\xA3" + self.proc.pack_to_int(backup_values_addr) + b"\x90" # mov [reg_values], eax then nop
+        bytecode += b"\x89\x1D" + self.proc.pack_to_int(backup_values_addr + 4)  # mov [reg_values+6], ebx
+        bytecode += b"\x89\x0D" + self.proc.pack_to_int(backup_values_addr + 8)  # mov [reg_values+12], ecx
+        bytecode += b"\x89\x15" + self.proc.pack_to_int(backup_values_addr + 12) # mov [reg_values+18], edx
+        bytecode += b"\x89\x35" + self.proc.pack_to_int(backup_values_addr + 16) # mov [reg_values+24], esi
+        bytecode += b"\x89\x3D" + self.proc.pack_to_int(backup_values_addr + 20) # mov [reg_values+30], edi
+        bytecode += b"\x89\x2D" + self.proc.pack_to_int(backup_values_addr + 24) # mov [reg_values+36], ebp
+        bytecode += b"\x89\x25" + self.proc.pack_to_int(backup_values_addr + 28) # mov [reg_values+42], esp
 
         # capture what we have so far
         address_dict = {
@@ -74,21 +68,21 @@ class EasyDetour:
         }
 
         # push our shellcode to py_run_simplestring
-        bytecode += b"\x68" + bytes(pack_to_int(shellcode_addr))  # push shellcode_addr
-        bytecode += b"\xE8" + calc_rel_addr(address_dict["attrs"]["run_our_code"] + 5, pyrun_func_addr)  # push py_run_simple_string_addr
+        bytecode += b"\x68" + bytes(self.proc.pack_to_int(shellcode_addr))  # push shellcode_addr
+        bytecode += b"\xE8" + self.proc.calc_rel_addr(address_dict["attrs"]["run_our_code"] + 5, pyrun_func_addr)  # push py_run_simple_string_addr
 
         address_dict["attrs"]["after_our_code"] = mov_insts_addr + len(bytecode)  # address after our code gets executed
 
         # fmt: off
         # bytecode to restore the registers back to before our code was run
-        bytecode += b"\xA1" + pack_to_int(backup_values_addr) + b"\x90"  # mov eax, [backup_values_addr] then nop
-        bytecode += b"\x8B\x1D" + pack_to_int(backup_values_addr + 4)    # mov ebx, [backup_values_addr+6]
-        bytecode += b"\x8B\x0D" + pack_to_int(backup_values_addr + 8)    # mov ecx, [backup_values_addr+12]
-        bytecode += b"\x8B\x15" + pack_to_int(backup_values_addr + 12)   # mov edx, [backup_values_addr+18]
-        bytecode += b"\x8B\x35" + pack_to_int(backup_values_addr + 16)   # mov esi, [backup_values_addr+24]
-        bytecode += b"\x8B\x3D" + pack_to_int(backup_values_addr + 20)   # mov edi, [backup_values_addr+30]
-        bytecode += b"\x8B\x2D" + pack_to_int(backup_values_addr + 24)   # mov ebp, [backup_values_addr+36]
-        bytecode += b"\x8B\x25" + pack_to_int(backup_values_addr + 28)   # mov esp, [backup_values_addr+42]
+        bytecode += b"\xA1" + self.proc.pack_to_int(backup_values_addr) + b"\x90"  # mov eax, [backup_values_addr] then nop
+        bytecode += b"\x8B\x1D" + self.proc.pack_to_int(backup_values_addr + 4)    # mov ebx, [backup_values_addr+6]
+        bytecode += b"\x8B\x0D" + self.proc.pack_to_int(backup_values_addr + 8)    # mov ecx, [backup_values_addr+12]
+        bytecode += b"\x8B\x15" + self.proc.pack_to_int(backup_values_addr + 12)   # mov edx, [backup_values_addr+18]
+        bytecode += b"\x8B\x35" + self.proc.pack_to_int(backup_values_addr + 16)   # mov esi, [backup_values_addr+24]
+        bytecode += b"\x8B\x3D" + self.proc.pack_to_int(backup_values_addr + 20)   # mov edi, [backup_values_addr+30]
+        bytecode += b"\x8B\x2D" + self.proc.pack_to_int(backup_values_addr + 24)   # mov ebp, [backup_values_addr+36]
+        bytecode += b"\x8B\x25" + self.proc.pack_to_int(backup_values_addr + 28)   # mov esp, [backup_values_addr+42]
 
         address_dict["attrs"]["after_restore"] = mov_insts_addr + len(bytecode)  # address after we restore the memory registers
         # fmt: on
@@ -102,12 +96,12 @@ class EasyDetour:
             count = self.num_bytes_to_steal - 5
         else:
             count = 0
-        bytecode += b"\xE9" + calc_rel_addr(
+        bytecode += b"\xE9" + self.proc.calc_rel_addr(
             address_dict["attrs"]["after_restore"] + self.num_bytes_to_steal, address_dict["attrs"]["game_func"] + count
         )
 
         # write our new function to memory
-        write_bytes(mov_insts_addr, bytecode)
+        self.proc.write_bytes(mov_insts_addr, bytecode)
 
         log.debug(
             f"{self.hook_name} :: hook ({hex(address_dict['attrs']['begin'])}) :: shellcode ({hex(address_dict['attrs']['shellcode'])}) :: detour ({hex(address_dict['attrs']['game_func'])})"
@@ -117,13 +111,13 @@ class EasyDetour:
 
     def enable(self):
         addresses = self.address_dict["attrs"]
-        bytecode = b"\xE9" + calc_rel_addr(addresses["game_func"], addresses["begin"])
+        bytecode = b"\xE9" + self.proc.calc_rel_addr(addresses["game_func"], addresses["begin"])
         if self.num_bytes_to_steal > 5:
             count = self.num_bytes_to_steal - 5
             for i in range(count):
                 bytecode += b"\x90"
-        write_bytes(addresses["game_func"], bytecode)
+        self.proc.write_bytes(addresses["game_func"], bytecode)
 
     def disable(self):
         addresses = self.address_dict["attrs"]
-        write_bytes(addresses["game_func"], addresses["game_bytes"])
+        self.proc.write_bytes(addresses["game_func"], addresses["game_bytes"])

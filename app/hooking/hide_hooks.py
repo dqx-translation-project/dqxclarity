@@ -1,6 +1,6 @@
 from clarity import scan_for_comm_names, scan_for_sibling_name
-from common.lib import is_dqx_process_running
-from common.memory import read_bytes, write_bytes
+from common.memory import MemWriter
+from common.process import is_dqx_process_running
 from loguru import logger as log
 from multiprocessing import Process
 
@@ -19,12 +19,13 @@ def load_hooks(hook_list: list, state_addr: int, player_names: bool):
     :returns: Nothing. This is an infinite loop that runs as a process
     """
     # initially enable hooks
+    writer = MemWriter()
     for hook in hook_list:
         hook.enable()
 
     while True:
         try:
-            curr_state = read_bytes(state_addr, 1)
+            curr_state = writer.read_bytes(state_addr, 1)
             if curr_state == b"\x01":  # we've been unhooked
                 log.debug("Hooks disabled.")
                 # these integrity scans happen pretty much instantly after we've noticed.
@@ -32,7 +33,7 @@ def load_hooks(hook_list: list, state_addr: int, player_names: bool):
                 time.sleep(1)
                 for hook in hook_list:
                     hook.enable()
-                write_bytes(state_addr, b"\x00")  # reset our state byte since we're hooked again
+                writer.write_bytes(state_addr, b"\x00")  # reset our state byte since we're hooked again
 
                 if player_names:
                     # since this timing is sensitive, kick these processes off in the background

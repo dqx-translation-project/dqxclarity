@@ -1,5 +1,5 @@
 from common.lib import encode_to_utf8, get_project_root, merge_jsons
-from common.memory import read_bytes, read_string, unpack_to_int
+from common.memory import MemWriter
 from common.translate import convert_into_eng
 from json import dumps
 from openpyxl import load_workbook
@@ -12,14 +12,16 @@ import sys
 class GetPlayer:
 
     def __init__(self, address, debug=False):
+        self.proc = MemWriter()
+
         if debug:
             self.address = address
         else:
-            self.address = unpack_to_int(address)
+            self.address = self.proc.unpack_to_int(address)
 
-        self.ja_player_name = read_string(self.address + 24)
+        self.ja_player_name = self.proc.read_string(self.address + 24)
         self.en_player_name = self.__get_en_player_name(player_name=self.ja_player_name)
-        self.ja_sibling_name = read_string(self.address + 96)
+        self.ja_sibling_name = self.proc.read_string(self.address + 96)
         self.en_sibling_name = self.__get_en_player_name(player_name=self.ja_sibling_name)
         self.sibling_relationship = self.__determine_sibling_relationship()
 
@@ -28,7 +30,7 @@ class GetPlayer:
 
 
     def __determine_sibling_relationship(self):
-        check_byte = read_bytes(self.address + 96 + 19, size=1)
+        check_byte = self.proc.read_bytes(self.address + 96 + 19, size=1)
         if check_byte == b"\x01":
             return "older_brother"
         if check_byte == b"\x02":

@@ -1,6 +1,6 @@
 from common.db_ops import sql_read, sql_write
 from common.lib import encode_to_utf8
-from common.memory import read_string, unpack_to_int, write_string
+from common.memory import MemWriter
 from common.translate import detect_lang, Translate
 from json import dumps
 
@@ -14,21 +14,22 @@ class Dialog:
     region = translator.region_code
 
     def __init__(self, address, debug=False):
+        writer = MemWriter()
         if debug:
             self.address = address
         else:
-            self.address = unpack_to_int(address)
+            self.address = writer.unpack_to_int(address)
 
-        self.text = read_string(self.address)
+        self.text = writer.read_string(self.address)
         if detect_lang(self.text):
             db_result = self.__read_db(self.text)
             if db_result:
-                write_string(self.address, text=db_result)
+                writer.write_string(self.address, text=db_result)
             else:
                 translated_text = self.__translate(self.text)
                 if translated_text:
                     self.__write_db(source_text=self.text, translated_text=translated_text)
-                    write_string(self.address, text=translated_text)
+                    writer.write_string(self.address, text=translated_text)
 
 
     def __read_db(self, text: str):

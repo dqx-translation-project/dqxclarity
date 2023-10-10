@@ -1,5 +1,7 @@
+from clarity import loop_scan_for_walkthrough, run_scans
 from common.db_ops import ensure_db_structure
-from common.lib import get_project_root, setup_logging, wait_for_dqx_to_launch
+from common.lib import get_project_root, setup_logging
+from common.process import wait_for_dqx_to_launch
 from common.translate import determine_translation_service
 from common.update import (
     check_for_updates,
@@ -7,6 +9,7 @@ from common.update import (
     download_dat_files,
 )
 from dqxcrypt.dqxcrypt import start_logger
+from hooking.hook import activate_hooks
 from multiprocessing import Process
 from pathlib import Path
 
@@ -61,11 +64,6 @@ def blast_off(
 
     try:
         wait_for_dqx_to_launch()
-
-        # Imports are done here as the program requires the game to be open otherwise.
-        # This allows us to test config and translate settings without launching everything.
-        from clarity import loop_scan_for_walkthrough, run_scans
-        from hooking.hook import activate_hooks
 
         def start_process(name: str, target, args: tuple):
             p = Process(name=name, target=target, args=args)
