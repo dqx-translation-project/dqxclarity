@@ -46,7 +46,7 @@ jobs:
           cp version.update requirements.txt user_settings.ini dqxclarity/;
           cp clarity_dialog.db dqxclarity/misc_files;
           cp -fr dqx-custom-translations/json/* dqxclarity/misc_files;
-          cp -f dqx-custom-translations/csv/glossary.csv dqxclarity/misc_files;
+          cp -f dqx-custom-translations/csv/* dqxclarity/misc_files;
           cp -f dqx_translations/json/_lang/en/eventTextSysQuestaClient.json dqxclarity/misc_files;
           cp -f dqx_translations/json/_lang/en/subPackage05Client.json dqxclarity/misc_files;
           cp -f dqx_translations/json/_lang/en/subPackage41Client.win32.json dqxclarity/misc_files;
