@@ -12,14 +12,16 @@ class Quest:
 
     misc_files = get_project_root("misc_files")
     quests = None
+    writer = None
 
     def __init__(self, address, debug=False):
-        self.proc = MemWriter()
+        if not Quest.writer:
+            Quest.writer = MemWriter()
 
         if debug:
             self.address = address
         else:
-            self.address = self.proc.unpack_to_int(address)
+            self.address = Quest.writer.unpack_to_int(address)
 
         self.subquest_name_address = self.address + 20
         self.quest_name_address = self.address + 76
@@ -27,11 +29,11 @@ class Quest:
         self.quest_rewards_address = self.address + 640
         self.quest_repeat_rewards_address = self.address + 744
 
-        self.subquest_name = self.proc.read_string(self.subquest_name_address)
-        self.quest_name = self.proc.read_string(self.quest_name_address)
-        self.quest_desc = self.proc.read_string(self.quest_desc_address)
-        self.quest_rewards = self.proc.read_string(self.quest_rewards_address)
-        self.quest_repeat_rewards = self.proc.read_string(self.quest_repeat_rewards_address)
+        self.subquest_name = Quest.writer.read_string(self.subquest_name_address)
+        self.quest_name = Quest.writer.read_string(self.quest_name_address)
+        self.quest_desc = Quest.writer.read_string(self.quest_desc_address)
+        self.quest_rewards = Quest.writer.read_string(self.quest_rewards_address)
+        self.quest_repeat_rewards = Quest.writer.read_string(self.quest_repeat_rewards_address)
 
         self.is_ja = self.__is_ja()
 
@@ -48,31 +50,31 @@ class Quest:
     def __write_subquest_name(self):
         if self.is_ja:
             if data := self.__query_quest(self.subquest_name):
-                self.proc.write_string(address=self.subquest_name_address, text=data)
+                Quest.writer.write_string(address=self.subquest_name_address, text=data)
 
 
     def __write_quest_name(self):
         if self.is_ja:
             if data := self.__query_quest(self.quest_name):
-                self.proc.write_string(address=self.quest_name_address, text=data)
+                Quest.writer.write_string(address=self.quest_name_address, text=data)
 
 
     def __write_quest_desc(self):
         if self.is_ja:
             if data := self.__translate_quest_desc():
-                self.proc.write_string(address=self.quest_desc_address, text=data)
+                Quest.writer.write_string(address=self.quest_desc_address, text=data)
 
 
     def __write_quest_rewards(self):
         if self.is_ja:
             if data := clean_up_and_return_items(self.quest_rewards):
-                self.proc.write_string(address=self.quest_rewards_address, text=data)
+                Quest.writer.write_string(address=self.quest_rewards_address, text=data)
 
 
     def __write_repeat_quest_rewards(self):
         if self.is_ja:
             if data := clean_up_and_return_items(self.quest_repeat_rewards):
-                self.proc.write_string(address=self.quest_repeat_rewards_address, text=data)
+                Quest.writer.write_string(address=self.quest_repeat_rewards_address, text=data)
 
 
     def __translate_quest_desc(self):
