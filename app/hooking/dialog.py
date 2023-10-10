@@ -12,24 +12,26 @@ class Dialog:
 
     translator = Translate()
     region = translator.region_code
+    writer = None
 
     def __init__(self, address, debug=False):
-        writer = MemWriter()
+        if not Dialog.writer:
+            Dialog.writer = MemWriter()
         if debug:
             self.address = address
         else:
-            self.address = writer.unpack_to_int(address)
+            self.address = Dialog.writer.unpack_to_int(address)
 
-        self.text = writer.read_string(self.address)
+        self.text = Dialog.writer.read_string(self.address)
         if detect_lang(self.text):
             db_result = self.__read_db(self.text)
             if db_result:
-                writer.write_string(self.address, text=db_result)
+                Dialog.writer.write_string(self.address, text=db_result)
             else:
                 translated_text = self.__translate(self.text)
                 if translated_text:
                     self.__write_db(source_text=self.text, translated_text=translated_text)
-                    writer.write_string(self.address, text=translated_text)
+                    Dialog.writer.write_string(self.address, text=translated_text)
 
 
     def __read_db(self, text: str):
