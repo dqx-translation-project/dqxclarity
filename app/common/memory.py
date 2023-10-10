@@ -1,11 +1,4 @@
-from common.errors import (
-    AddressOutOfRange,
-    FailedToReadAddress,
-    MemoryReadError,
-    MemoryWriteError,
-    message_box,
-)
-from common.lib import is_dqx_process_running
+from common.errors import AddressOutOfRange, MemoryReadError, MemoryWriteError
 from loguru import logger as log
 from pymem.pattern import pattern_scan_all, pattern_scan_module
 
@@ -16,165 +9,162 @@ import struct
 import sys
 
 
-def dqx_mem():
-    """Instantiates a pymem instance."""
-    try:
-        exe = pymem.Pymem("DQXGame.exe")
+class MemWriter:
+
+    def __init__(self):
+        self.proc = self.attach()
+
+
+    def attach(self):
+        proc = pymem.Pymem("DQXGame.exe")
         # obscure issue seen on Windows 11 getting an OverflowError
         # https://github.com/srounet/Pymem/issues/19
-        exe.process_handle &= 0xFFFFFFFF
-        return exe
-    except pymem.exception.ProcessNotFound:
-        message_box("DQX not found", "Open DQX, get to the title screen and re-launch.", exit_prog=True)
+        proc.process_handle &= 0xFFFFFFFF
+
+        return proc
 
 
-def read_bytes(address: int, size: int):
-    """Read n number of bytes at address.
+    def read_bytes(self, address: int, size: int):
+        """Read n number of bytes at address.
 
-    Args:
-        address: The address to start at
-        bytes_to_read: Number of bytes to read from start of address
-    """
-    if address is None:
-        raise FailedToReadAddress(address)
+        Args:
+            address: The address to start at
+            bytes_to_read: Number of bytes to read from start of address
+        """
+        if not 0 < address <= 0x7FFFFFFF:
+            raise AddressOutOfRange(address)
 
-    if not 0 < address <= 0x7FFFFFFF:
-        raise AddressOutOfRange(address)
-
-    try:
-        return PYM_PROCESS.read_bytes(address, size)
-    except Exception as e:
-        raise MemoryReadError(address) from e
+        try:
+            return self.proc.read_bytes(address, size)
+        except Exception as e:
+            raise MemoryReadError(address) from e
 
 
-def write_bytes(address: int, value: bytes):
-    """Write bytes to memory at address.
+    def write_bytes(self, address: int, value: bytes):
+        """Write bytes to memory at address.
 
-    Args:
-        address: The address to write to
-        value: The bytes to write
-    """
-    size = len(value)
+        Args:
+            address: The address to write to
+            value: The bytes to write
+        """
+        size = len(value)
 
-    try:
-        PYM_PROCESS.write_bytes(address, value, size)
-    except Exception as e:
-        raise MemoryWriteError(address) from e
-
-
-def read_string(address: int):
-    """Reads a string from memory at the given address."""
-    end_addr = address
-
-    if end_addr is not None:
-        while True:
-            result = PYM_PROCESS.read_bytes(end_addr, 1)
-            end_addr = end_addr + 1
-            if result == b"\x00":
-                bytes_to_read = end_addr - address
-                break
-
-        return PYM_PROCESS.read_string(address, bytes_to_read)
-    return None
+        try:
+            self.proc.write_bytes(address, value, size)
+        except Exception as e:
+            raise MemoryWriteError(address) from e
 
 
-def write_string(address: int, text: str):
-    """Writes a null-terminated string to memory at the given address."""
-    return PYM_PROCESS.write_string(address, text + "\x00")
+    def read_string(self, address: int):
+        """Reads a string from memory at the given address."""
+        end_addr = address
+
+        if end_addr is not None:
+            while True:
+                result = self.proc.read_bytes(end_addr, 1)
+                end_addr = end_addr + 1
+                if result == b"\x00":
+                    bytes_to_read = end_addr - address
+                    break
+
+            return self.proc.read_string(address, bytes_to_read)
+        return None
 
 
-def pattern_scan(pattern: bytes, return_multiple=False, use_regex=False, module=None):
-    """Scan for a byte pattern."""
-    try:
-        if module is not None:
-            return pattern_scan_module(
-                handle=PYM_PROCESS.process_handle,
-                pattern=pattern,
-                return_multiple=return_multiple,
-                module=pymem.process.module_from_name(PYM_PROCESS.process_handle, module),
-                use_regex=use_regex
-            )
-        else:
-            return pattern_scan_all(
-                handle=PYM_PROCESS.process_handle,
-                pattern=pattern,
-                all_protections=False,
-                return_multiple=return_multiple,
-                use_regex=use_regex
-            )
-    except pymem.exception.WinAPIError as e:
-        if e.error_code == 299:  # impartial read, just return none.
-            return None
-        else:
-            if is_dqx_process_running():
-                log.exception("An exception occurred. dqxclarity will exit.")
-                sys.exit(1)
+    def write_string(self, address: int, text: str):
+        """Writes a null-terminated string to memory at the given address."""
+        return self.proc.write_string(address, text + "\x00")
+
+
+    def pattern_scan(self, pattern: bytes, return_multiple=False, use_regex=False, module=None):
+        """Scan for a byte pattern."""
+        try:
+            if module is not None:
+                return pattern_scan_module(
+                    handle=self.proc.process_handle,
+                    pattern=pattern,
+                    return_multiple=return_multiple,
+                    module=pymem.process.module_from_name(self.proc.process_handle, module),
+                    use_regex=use_regex
+                )
             else:
-                sys.exit(0)
+                return pattern_scan_all(
+                    handle=self.proc.process_handle,
+                    pattern=pattern,
+                    all_protections=False,
+                    return_multiple=return_multiple,
+                    use_regex=use_regex
+                )
+        except pymem.exception.WinAPIError as e:
+            if e.error_code == 299:  # impartial read, just return none.
+                return None
+            else:
+                from common.process import is_dqx_process_running
+                if is_dqx_process_running():
+                    log.exception("An exception occurred. dqxclarity will exit.")
+                    sys.exit(1)
+                else:
+                    sys.exit(0)
 
 
+    def get_ptr_address(self, base: int, offsets: list):
+        """Gets the address a pointer is pointing to.
 
-def get_ptr_address(base, offsets):
-    """Gets the address a pointer is pointing to.
+        Args:
+            base: Base of the pointer
+            offsets: List of offsets
+        """
+        addr = self.proc.read_int(base)
+        for offset in offsets:
+            if offset != offsets[-1]:
+                addr = self.proc.read_int(addr + offset)
 
-    Args:
-        base: Base of the pointer
-        offsets: List of offsets
-    """
-    addr = PYM_PROCESS.read_int(base)
-    for offset in offsets:
-        if offset != offsets[-1]:
-            addr = PYM_PROCESS.read_int(addr + offset)
-
-    return addr + offsets[-1]
-
-
-def get_base_address(name="DQXGame.exe") -> int:
-    """Returns the base address of a module.
-
-    Defaults to DQXGame.exe.
-    """
-    return pymem.process.module_from_name(PYM_PROCESS.process_handle, name).lpBaseOfDll
+        return addr + offsets[-1]
 
 
-def pack_to_int(address: int) -> bytes:
-    """Packs the address into little endian and returns the appropriate
-    bytes."""
-    return struct.pack("<i", address)
+    def get_base_address(self, name="DQXGame.exe") -> int:
+        """Returns the base address of a module.
+
+        Defaults to DQXGame.exe.
+        """
+        return pymem.process.module_from_name(self.proc.process_handle, name).lpBaseOfDll
 
 
-def unpack_to_int(address: int):
-    """Unpacks the address from little endian and returns the appropriate
-    bytes."""
-    value = read_bytes(address, 4)
-    unpacked_address = struct.unpack("<i", value)
-
-    return unpacked_address[0]
+    def pack_to_int(self, address: int) -> bytes:
+        """Packs the address into little endian and returns the appropriate
+        bytes."""
+        return struct.pack("<i", address)
 
 
-def allocate_memory(size: int) -> int:
-    """Allocates a defined number of bytes into the target process."""
-    return PYM_PROCESS.allocate(size)
+    def unpack_to_int(self, address: int):
+        """Unpacks the address from little endian and returns the appropriate
+        bytes."""
+        value = self.read_bytes(address, 4)
+        unpacked_address = struct.unpack("<i", value)
+
+        return unpacked_address[0]
 
 
-def calc_rel_addr(origin_address: int, destination_address: int) -> bytes:
-    """Calculates the difference between addresses to return the relative
-    offset."""
-
-    # jmp forward
-    if origin_address < destination_address:
-        return bytes(pack_to_int(abs(origin_address - destination_address + 5)))
-
-    # jmp backwards
-    else:
-        offset = -abs(origin_address - destination_address)
-        unsigned_offset = offset + 2**32
-        return unsigned_offset.to_bytes(4, "little")
+    def allocate_memory(self, size: int) -> int:
+        """Allocates a defined number of bytes into the target process."""
+        return self.proc.allocate(size)
 
 
-def get_hook_bytecode(hook_address: int):
-    """Returns a formatted jump address for your hook."""
-    return b"\xE9" + pack_to_int(hook_address)
+    def calc_rel_addr(self, origin_address: int, destination_address: int) -> bytes:
+        """Calculates the difference between addresses to return the relative
+        offset."""
+
+        # jmp forward
+        if origin_address < destination_address:
+            return bytes(self.pack_to_int(abs(origin_address - destination_address + 5)))
+
+        # jmp backwards
+        else:
+            offset = -abs(origin_address - destination_address)
+            unsigned_offset = offset + 2**32
+            return unsigned_offset.to_bytes(4, "little")
 
 
-PYM_PROCESS = dqx_mem()
+    def get_hook_bytecode(self, hook_address: int):
+        """Returns a formatted jump address for your hook."""
+        return b"\xE9" + self.pack_to_int(hook_address)

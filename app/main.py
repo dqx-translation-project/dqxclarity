@@ -1,5 +1,6 @@
 from common.db_ops import ensure_db_structure
-from common.lib import get_project_root, setup_logging, wait_for_dqx_to_launch
+from common.lib import get_project_root, setup_logging
+from common.process import wait_for_dqx_to_launch
 from common.translate import determine_translation_service
 from common.update import (
     check_for_updates,

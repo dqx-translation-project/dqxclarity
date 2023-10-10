@@ -5,7 +5,7 @@ from common.lib import (
     merge_jsons,
     setup_logger,
 )
-from common.memory import read_string, unpack_to_int, write_string
+from common.memory import MemWriter
 from common.translate import convert_into_eng, detect_lang
 from glob import glob
 from json import dumps
@@ -42,39 +42,40 @@ class NetworkTextTranslate:
     }
 
     def __init__(self, text_address, var_address):
-        self.text_address = unpack_to_int(text_address)
-        self.var_address = unpack_to_int(var_address)
+        self.proc = MemWriter()
+        self.text_address = self.proc.unpack_to_int(text_address)
+        self.var_address = self.proc.unpack_to_int(var_address)
 
         if NetworkTextTranslate.m00_text is None:
             NetworkTextTranslate.m00_text = self.__get_m00_strings()
 
-        category = read_string(self.var_address + 40)  # var name is 40 bytes in
+        category = self.proc.read_string(self.var_address + 40)  # var name is 40 bytes in
         if category in NetworkTextTranslate.translate:
             if category == "B_TARGET_RPL":
-                self_text = read_string(self.text_address)
+                self_text = self.proc.read_string(self.text_address)
                 if self_text == "自分":
-                    write_string(self.text_address, "self")
+                    self.proc.write_string(self.text_address, "self")
                 return
             elif category in ["M_pc", "M_npc", "B_ACTOR", "B_TARGET", "C_PC", "L_SENDER_NAME", "M_OWNER", "M_hiryu", "L_HIRYU", "L_HIRYU_NAME", "M_name"]:  # npc or player names
-                name = read_string(self.text_address)
+                name = self.proc.read_string(self.text_address)
                 if name in NetworkTextTranslate.m00_text:
                     name_to_write = NetworkTextTranslate.m00_text[name]
                 else:
                     name_to_write = convert_into_eng(name)
-                write_string(self.text_address, name_to_write)
+                self.proc.write_string(self.text_address, name_to_write)
             elif category in ["M_00", "C_QUEST", "M_02", "M_header", "M_item"]:
-                m00_string = read_string(self.text_address)
+                m00_string = self.proc.read_string(self.text_address)
                 if m00_string in NetworkTextTranslate.m00_text:
                     to_write = NetworkTextTranslate.m00_text[m00_string]
                     if to_write != "":
-                        write_string(self.text_address, to_write)
+                        self.proc.write_string(self.text_address, to_write)
                 else:
                     NetworkTextTranslate.custom_text_logger.info(f"--\n>>m00_str ::\n{m00_string}")
             elif category == "M_kaisetubun":
                 # this captures story so far AND monster trivia.
                 # unfortunately, unsure of how to figure out which one is focused
                 # on story_so_far, but if it isn't in the db, we will just log it.
-                story_desc = read_string(self.text_address)
+                story_desc = self.proc.read_string(self.text_address)
                 if detect_lang(story_desc):
                     translated = self.__translate_story(story_desc)
                     if translated:
@@ -82,11 +83,11 @@ class NetworkTextTranslate:
                         # string is shorter than the english string, or we'll write over
                         # game data and cause a crash.
                         story_desc_len = len(bytes(story_desc, encoding="utf-8"))
-                        write_string(self.text_address, translated[:story_desc_len])
+                        self.proc.write_string(self.text_address, translated[:story_desc_len])
                     else:
                         NetworkTextTranslate.custom_text_logger.info(f"--\n{category} ::\n{story_desc}")
         else:
-            NetworkTextTranslate.custom_text_logger.info(f"--\n{category} ::\n{read_string(self.text_address)}")
+            NetworkTextTranslate.custom_text_logger.info(f"--\n{category} ::\n{self.proc.read_string(self.text_address)}")
         return
 
 

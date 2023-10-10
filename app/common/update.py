@@ -11,11 +11,8 @@ from common.constants import (
     GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL,
 )
 from common.errors import message_box
-from common.lib import (
-    check_if_running_as_admin,
-    get_project_root,
-    is_dqx_process_running,
-)
+from common.lib import get_project_root
+from common.process import check_if_running_as_admin, is_dqx_process_running
 from common.translate import load_user_config, update_user_config
 from io import BytesIO
 from loguru import logger as log
