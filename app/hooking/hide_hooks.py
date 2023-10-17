@@ -27,7 +27,6 @@ def load_hooks(hook_list: list, state_addr: int, player_names: bool):
         try:
             curr_state = writer.read_bytes(state_addr, 1)
             if curr_state == b"\x01":  # we've been unhooked
-                log.debug("Hooks disabled.")
                 # these integrity scans happen pretty much instantly after we've noticed.
                 # let's just give it a moment to be safe and then we'll rehook
                 time.sleep(1)
@@ -39,7 +38,6 @@ def load_hooks(hook_list: list, state_addr: int, player_names: bool):
                     # since this timing is sensitive, kick these processes off in the background
                     Process(name="Sibling scan", target=scan_for_sibling_name, args=()).start()
                     Process(name="Comms scan", target=scan_for_comm_names, args=()).start()
-                log.debug("Hooks enabled.")
             time.sleep(0.25)
         except TypeError:
             log.error(f"Unable to talk to DQXGame.exe. Exiting.")
