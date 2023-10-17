@@ -51,45 +51,56 @@ class NetworkTextTranslate:
         if NetworkTextTranslate.m00_text is None:
             NetworkTextTranslate.m00_text = self.__get_m00_strings()
 
-        category = NetworkTextTranslate.writer.read_string(self.var_address + 40)  # var name is 40 bytes in
+        var_name = self.var_address + 40
+
+        try:
+            category = NetworkTextTranslate.writer.read_string(var_name)
+            text = NetworkTextTranslate.writer.read_string(self.text_address)
+        except UnicodeDecodeError:
+            category = ""
+            text = ""
+
         if category in NetworkTextTranslate.translate:
+            # "self" text when a player/monster uses a spell/skill on themselves
             if category == "B_TARGET_RPL":
-                self_text = NetworkTextTranslate.writer.read_string(self.text_address)
-                if self_text == "自分":
+                if text == "自分":
                     NetworkTextTranslate.writer.write_string(self.text_address, "self")
-                return
-            elif category in ["M_pc", "M_npc", "B_ACTOR", "B_TARGET", "C_PC", "L_SENDER_NAME", "M_OWNER", "M_hiryu", "L_HIRYU", "L_HIRYU_NAME", "M_name"]:  # npc or player names
-                name = NetworkTextTranslate.writer.read_string(self.text_address)
-                if name in NetworkTextTranslate.m00_text:
-                    name_to_write = NetworkTextTranslate.m00_text[name]
+
+            # npc or player names
+            elif category in ["M_pc", "M_npc", "B_ACTOR", "B_TARGET", "C_PC", "L_SENDER_NAME", "M_OWNER", "M_hiryu", "L_HIRYU", "L_HIRYU_NAME", "M_name"]:
+                if text in NetworkTextTranslate.m00_text:
+                    name_to_write = NetworkTextTranslate.m00_text[text]
                 else:
-                    name_to_write = convert_into_eng(name)
+                    name_to_write = convert_into_eng(text)
                 NetworkTextTranslate.writer.write_string(self.text_address, name_to_write)
+
+            # generic string
             elif category in ["M_00", "C_QUEST", "M_02", "M_header", "M_item"]:
-                m00_string = NetworkTextTranslate.writer.read_string(self.text_address)
-                if m00_string in NetworkTextTranslate.m00_text:
-                    to_write = NetworkTextTranslate.m00_text[m00_string]
+                if text in NetworkTextTranslate.m00_text:
+                    to_write = NetworkTextTranslate.m00_text[text]
                     if to_write != "":
                         NetworkTextTranslate.writer.write_string(self.text_address, to_write)
                 else:
-                    NetworkTextTranslate.custom_text_logger.info(f"--\n>>m00_str ::\n{m00_string}")
+                    NetworkTextTranslate.custom_text_logger.info(f"--\n>>m00_str ::\n{text}")
+
+            # this captures story so far AND monster trivia.
+            # unfortunately, unsure of how to figure out which one is focused
+            # on story_so_far, but if it isn't in the db, we will just log it.
             elif category == "M_kaisetubun":
-                # this captures story so far AND monster trivia.
-                # unfortunately, unsure of how to figure out which one is focused
-                # on story_so_far, but if it isn't in the db, we will just log it.
-                story_desc = NetworkTextTranslate.writer.read_string(self.text_address)
-                if detect_lang(story_desc):
-                    translated = self.__translate_story(story_desc)
+                if detect_lang(text):
+                    translated = self.__translate_story(text)
                     if translated:
                         # we need to truncate the string if the length of the japanese
                         # string is shorter than the english string, or we'll write over
                         # game data and cause a crash.
-                        story_desc_len = len(bytes(story_desc, encoding="utf-8"))
+                        story_desc_len = len(bytes(text, encoding="utf-8"))
                         NetworkTextTranslate.writer.write_string(self.text_address, translated[:story_desc_len])
                     else:
-                        NetworkTextTranslate.custom_text_logger.info(f"--\n{category} ::\n{story_desc}")
+                        NetworkTextTranslate.custom_text_logger.info(f"--\n{category} ::\n{text}")
         else:
-            NetworkTextTranslate.custom_text_logger.info(f"--\n{category} ::\n{NetworkTextTranslate.writer.read_string(self.text_address)}")
+            if category and text:
+                NetworkTextTranslate.custom_text_logger.info(f"--\n{category} ::\n{text}")
+
         return
 
 
