@@ -42,13 +42,6 @@ def load_hooks(hook_list: list, state_addr: int, player_names: bool):
         except TypeError:
             log.error(f"Unable to talk to DQXGame.exe. Exiting.")
             sys.exit(1)
-        except pymem.exception.WinAPIError as e:
-            if not is_dqx_process_running():
-                sys.exit(0)
-            if e.error_code == 299:
-                continue
-            else:
-                raise
         except KeyboardInterrupt:
             for hook in hook_list:
                 hook.disable()

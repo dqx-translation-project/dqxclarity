@@ -78,35 +78,22 @@ class MemWriter:
 
     def pattern_scan(self, pattern: bytes, return_multiple=False, use_regex=False, module=None):
         """Scan for a byte pattern."""
-        try:
-            if module is not None:
-                return pattern_scan_module(
-                    handle=self.proc.process_handle,
-                    pattern=pattern,
-                    return_multiple=return_multiple,
-                    module=pymem.process.module_from_name(self.proc.process_handle, module),
-                    use_regex=use_regex
-                )
-            else:
-                return pattern_scan_all(
-                    handle=self.proc.process_handle,
-                    pattern=pattern,
-                    all_protections=False,
-                    return_multiple=return_multiple,
-                    use_regex=use_regex
-                )
-        except pymem.exception.WinAPIError as e:
-            if e.error_code == 299:  # impartial read, just return none.
-                log.debug("WinAPI Error 299")
-                return None
-            else:
-                from common.process import is_dqx_process_running
-                if is_dqx_process_running():
-                    log.exception("An exception occurred. dqxclarity will exit.")
-                    sys.exit(1)
-                else:
-                    sys.exit(0)
-
+        if module is not None:
+            return pattern_scan_module(
+                handle=self.proc.process_handle,
+                pattern=pattern,
+                return_multiple=return_multiple,
+                module=pymem.process.module_from_name(self.proc.process_handle, module),
+                use_regex=use_regex
+            )
+        else:
+            return pattern_scan_all(
+                handle=self.proc.process_handle,
+                pattern=pattern,
+                all_protections=False,
+                return_multiple=return_multiple,
+                use_regex=use_regex
+            )
 
     def get_ptr_address(self, base: int, offsets: list):
         """Gets the address a pointer is pointing to.
