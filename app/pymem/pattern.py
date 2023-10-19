@@ -49,7 +49,7 @@ def scan_pattern_page(handle, address, pattern, *, all_protections=True, use_reg
     if mbi.state != pymem.ressources.structure.MEMORY_STATE.MEM_COMMIT or mbi.protect not in allowed_protections:
         return next_region, None
 
-    page_bytes = pymem.memory.read_bytes(handle, address, mbi.RegionSize)
+    page_bytes = pymem.memory.read_bytes(handle, address, mbi.RegionSize - (address - mbi.BaseAddress))
 
     if not return_multiple:
         found = None

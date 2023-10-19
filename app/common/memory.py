@@ -97,6 +97,7 @@ class MemWriter:
                 )
         except pymem.exception.WinAPIError as e:
             if e.error_code == 299:  # impartial read, just return none.
+                log.debug("WinAPI Error 299")
                 return None
             else:
                 from common.process import is_dqx_process_running
