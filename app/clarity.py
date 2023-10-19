@@ -237,11 +237,6 @@ def loop_scan_for_walkthrough():
                             time.sleep(1)
             else:
                 time.sleep(1)
-    except WinAPIError as e:
-        if e.error_code == 299: # usually means the user closed the game.
-            if not is_dqx_process_running():
-                sys.exit(0)
-            raise(e)
     except MemoryReadError as e:
         if not is_dqx_process_running():
             sys.exit(0)
@@ -283,10 +278,9 @@ def run_scans(player_names=True, npc_names=True):
             pass
         except KeyboardInterrupt:
             sys.exit(1)
-        except Exception as e:
+        except Exception:
             if is_dqx_process_running():
                 log.exception("An exception occurred. dqxclarity will exit.")
                 sys.exit(1)
             else:
-                log.info("DQX has been closed. Exiting.")
                 sys.exit(0)
