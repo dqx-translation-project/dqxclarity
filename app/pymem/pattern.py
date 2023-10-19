@@ -49,7 +49,12 @@ def scan_pattern_page(handle, address, pattern, *, all_protections=True, use_reg
     if mbi.state != pymem.ressources.structure.MEMORY_STATE.MEM_COMMIT or mbi.protect not in allowed_protections:
         return next_region, None
 
-    page_bytes = pymem.memory.read_bytes(handle, address, mbi.RegionSize)
+    try:
+        page_bytes = pymem.memory.read_bytes(handle, address, mbi.RegionSize)
+    except pymem.exception.WinAPIError as e:
+        if e.error_code == 299: # hiding an issue where memory changes between query and read
+            return next_region, None
+        raise pymem.exception.MemoryReadError(address, mbi.RegionSize, e.error_code)
 
     if not return_multiple:
         found = None
