@@ -134,7 +134,12 @@ def scan_for_npc_names():
 
     if npc_list := writer.pattern_scan(pattern=npc_monster_pattern, return_multiple=True):
         for address in npc_list:
-            npc_type = writer.read_bytes(address + 36, 2)
+            try:
+                npc_type = writer.read_bytes(address + 36, 2)
+            except Exception as e:
+                log.debug("Failed to read npc_type. Skipping")
+                continue
+
             if npc_type == b"\x68\x0C":
                 data = "NPC"
                 translated_names = translated_npc_names
@@ -144,19 +149,26 @@ def scan_for_npc_names():
             elif npc_type == b"\x60\xFC":
                 data = "AI_NAME"
             else:
+                log.debug(f"{hex(address)} did not match a data type.")
                 continue
 
             name_addr = address + 48  # jump to name
-            name = writer.read_string(name_addr)
+
+            try:
+                name = writer.read_string(name_addr)
+            except Exception as e:
+                log.debug(f"Failed to read {data} name. Skipping.")
+                continue
 
             if data == "NPC" or data == "MONSTER":
-                if name in translated_names:
-                    value = translated_names.get(name)
-                    if value:
-                        try:
-                            writer.write_string(name_addr, value)
-                        except Exception as e:
-                            log.debug(f"Failed to write {data}. {e}")
+                value = translated_names.get(name)
+                if value:
+                    try:
+                        writer.write_string(name_addr, value)
+                    except Exception as e:
+                        log.debug(f"Failed to write {data}. {e}")
+                else:
+                    log.debug(f"{name} not in translated_names.")
             elif data == "AI_NAME":
                 en_name = convert_into_eng(name)
                 if en_name != name:
@@ -164,6 +176,12 @@ def scan_for_npc_names():
                         writer.write_string(name_addr, "\x04" + en_name)
                     except Exception as e:
                         log.debug(f"Failed to write {data}. {e}")
+                else:
+                    log.debug("EN name already matches. Will not write.")
+            else:
+                log.debug("No data type matched.")
+    else:
+        log.debug("No NPCs found.")
 
 
 def scan_for_menu_ai_names():
@@ -268,6 +286,7 @@ def run_scans(player_names=True, npc_names=True):
 
     while True:
         try:
+            log.debug("Still scanning..")
             if player_names:
                 scan_for_player_names()
                 scan_for_menu_ai_names()
