@@ -67,11 +67,13 @@ class GetPlayer:
         END TRANSACTION;
         """
 
-        conn = sqlite3.connect(db_file)
-        cursor = conn.cursor()
-        cursor.executescript(query)
-        conn.commit()
-        cursor.close()
+        try:
+            conn = sqlite3.connect(db_file)
+            cursor = conn.cursor()
+            cursor.executescript(query)
+            conn.commit()
+        finally:
+            conn.close()
 
 
     def __replace_with_en_names(self, string: str):
@@ -133,12 +135,13 @@ class GetPlayer:
                 worksheet.cell(row=row_num, column=1).value.replace("'", "''"))
 
             # if data in fixed english translation column, use it
-            if worksheet.cell(row=row_num, column=3).value:
-                en_text = self.__replace_with_en_names(
-                    worksheet.cell(row=row_num, column=3).value.replace("'", "''"))
+            if fixed_text := worksheet.cell(row=row_num, column=3).value:
+                en_text = self.__replace_with_en_names(fixed_text.replace("'", "''"))
+            elif deepl_text := worksheet.cell(row=row_num, column=2).value:
+                en_text = self.__replace_with_en_names(deepl_text.replace("'", "''"))
             else:
-                en_text = self.__replace_with_en_names(
-                    worksheet.cell(row=row_num, column=2).value.replace("'", "''"))
+                # no entry for either type. just use the japanese
+                en_text = ja_text
 
             query = f"INSERT INTO story_so_far (ja, en) VALUES ('{ja_text}', '{en_text}')"
             cursor.execute(query)
