@@ -14,7 +14,7 @@ from common.signatures import (
     walkthrough_pattern,
 )
 from common.translate import convert_into_eng, detect_lang, Translate
-from pymem.exception import WinAPIError
+from pymem.exception import MemoryReadError, WinAPIError
 
 import re
 import sys
@@ -38,6 +38,13 @@ def scan_for_player_names():
                     writer.write_string(player_name_address, "\x04" + en_name)
             except UnicodeDecodeError:
                 continue
+            except MemoryReadError:
+                continue
+            except WinAPIError as e:
+                if e.error_code == 299:
+                    continue
+                else:
+                    raise e
             except Exception:
                 log.debug(f"Failed to write player name.\n{traceback.format_exc()}")
                 continue
@@ -72,6 +79,13 @@ def scan_for_comm_names():
             continue
         except TypeError:
             continue
+        except MemoryReadError:
+            continue
+        except WinAPIError as e:
+            if e.error_code == 299:
+                continue
+            else:
+                raise e
         except Exception:
             log.debug(f"Failed to write name.\n{traceback.format_exc()}")
             continue
@@ -98,6 +112,13 @@ def scan_for_sibling_name():
                 writer.write_string(player_address, "\x04" + en_player_name)
         except UnicodeDecodeError:
             pass
+        except MemoryReadError:
+            pass
+        except WinAPIError as e:
+            if e.error_code == 299:
+                pass
+            else:
+                raise e
         except Exception:
             log.debug(f"Failed to write name.\n{traceback.format_exc()}")
 
@@ -115,7 +136,14 @@ def scan_for_concierge_names():
                 if en_name != ja_name:
                     writer.write_string(name_address, "\x04" + en_name)
             except UnicodeDecodeError:
-                pass
+                continue
+            except MemoryReadError:
+                continue
+            except WinAPIError as e:
+                if e.error_code == 299:
+                    continue
+                else:
+                    raise e
             except Exception:
                 log.debug(f"Failed to write name.\n{traceback.format_exc()}")
                 continue
@@ -135,13 +163,13 @@ def scan_for_npc_names():
     if npc_list := writer.pattern_scan(pattern=npc_monster_pattern, return_multiple=True):
         for address in npc_list:
             npc_type = writer.read_bytes(address + 36, 2)
-            if npc_type == b"\x68\x0C":
+            if npc_type == b"\x4C\x07":
                 data = "NPC"
                 translated_names = translated_npc_names
-            elif npc_type == b"\xF4\xF9":
+            elif npc_type == b"\x34\xF5":
                 data = "MONSTER"
                 translated_names = translated_monster_names
-            elif npc_type == b"\x60\xFC":
+            elif npc_type == b"\xA0\xF7":
                 data = "AI_NAME"
             else:
                 continue
@@ -179,7 +207,14 @@ def scan_for_menu_ai_names():
                 if en_name != ja_name:
                     writer.write_string(name_address, en_name)
             except UnicodeDecodeError:
-                pass
+                continue
+            except MemoryReadError:
+                continue
+            except WinAPIError as e:
+                if e.error_code == 299:
+                    continue
+                else:
+                    raise e
             except Exception:
                 log.debug(f"Failed to write name.\n{traceback.format_exc()}")
                 continue
@@ -241,6 +276,11 @@ def loop_scan_for_walkthrough():
         if not is_dqx_process_running():
             sys.exit(0)
         raise(e)
+    except WinAPIError as e:
+        if e.error_code == 299:
+            pass
+        else:
+            raise e
     except Exception:
         if not is_dqx_process_running():
             sys.exit(0)
@@ -276,6 +316,15 @@ def run_scans(player_names=True, npc_names=True):
                 scan_for_concierge_names()
         except UnicodeDecodeError:
             pass
+        except MemoryReadError:
+            continue
+        except WinAPIError as e:
+            if e.error_code == 299:  # memory page changed
+                continue
+            elif e.error_code == 5:  # game closed
+                continue
+            else:
+                raise e
         except KeyboardInterrupt:
             sys.exit(1)
         except Exception:
