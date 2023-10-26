@@ -1,4 +1,4 @@
-from common.db_ops import sql_read, sql_write
+from common.db_ops import init_db, sql_read
 from common.lib import encode_to_utf8
 from common.memory import MemWriter
 from common.translate import detect_lang, Translate
@@ -14,24 +14,39 @@ class Dialog:
     region = translator.region_code
     writer = None
 
-    def __init__(self, address, debug=False):
+    def __init__(self, text_address: int, npc_address: int, debug=False):
         if not Dialog.writer:
             Dialog.writer = MemWriter()
         if debug:
-            self.address = address
+            self.text_address = text_address
+            self.npc_address = npc_address
         else:
-            self.address = Dialog.writer.unpack_to_int(address)
+            self.text_address = Dialog.writer.unpack_to_int(text_address)
+            self.npc_address = Dialog.writer.unpack_to_int(npc_address)
 
-        self.text = Dialog.writer.read_string(self.address)
+        self.text = Dialog.writer.read_string(self.text_address)
+        self.npc_name = self.__get_npc_name()
+
         if detect_lang(self.text):
             db_result = self.__read_db(self.text)
             if db_result:
-                Dialog.writer.write_string(self.address, text=db_result)
+                Dialog.writer.write_string(self.text_address, text=db_result)
             else:
-                translated_text = self.__translate(self.text)
-                if translated_text:
-                    self.__write_db(source_text=self.text, translated_text=translated_text)
-                    Dialog.writer.write_string(self.address, text=translated_text)
+                self.translated_text = self.__translate(self.text)
+                if self.translated_text:
+                    self.__write_db()
+                    Dialog.writer.write_string(self.text_address, text=self.translated_text)
+
+
+    def __get_npc_name(self):
+        esp_addr = Dialog.writer.unpack_to_int(self.npc_address + 8) # esp+8
+        try:
+            npc_name = Dialog.writer.read_string(esp_addr)
+            if not npc_name:
+                npc_name = "No_NPC"
+        except:
+            npc_name = "No_NPC"
+        return npc_name
 
 
     def __read_db(self, text: str):
@@ -41,13 +56,24 @@ class Dialog:
         return None
 
 
-    def __write_db(self, source_text: str, translated_text: str):
-        return sql_write(
-            source_text=source_text,
-            translated_text=translated_text,
-            table="dialog",
-            language=Dialog.region,
-        )
+    def __write_db(self):
+        try:
+            conn, cursor = init_db()
+            escaped_text = self.translated_text.replace("'", "''")
+            select_query = f"SELECT ja FROM dialog WHERE ja = '{self.text}'"
+            update_query = f"UPDATE dialog SET {Dialog.region} = '{escaped_text}' WHERE ja = '{self.text}'"
+            insert_query = f"INSERT INTO dialog (ja, npc_name, {Dialog.region}) VALUES ('{self.text}', '{self.npc_name}', '{escaped_text}')"
+            results = cursor.execute(select_query)
+
+            if results.fetchone() is None:
+                cursor.execute(insert_query)
+            else:
+                cursor.execute(update_query)
+
+            conn.commit()
+        finally:
+            if conn:
+                conn.close()
 
 
     def __translate(self, text: str):
@@ -58,7 +84,7 @@ class Dialog:
         return translated_text
 
 
-def translate_shellcode(esi_address: int) -> str:
+def translate_shellcode(esi_address: int, esp_address: int) -> str:
     """Returns shellcode for the translate function hook.
 
     address: Where text can be modified to be fed to the screen
@@ -75,7 +101,7 @@ try:
     import traceback
     sys.path = {local_paths}
     from hooking.dialog import Dialog
-    Dialog({esi_address})
+    Dialog({esi_address}, {esp_address})
 except Exception as e:
     with open("{log_path}", "a+") as f:
         f.write(str(traceback.format_exc()))

@@ -48,7 +48,8 @@ def translate_detour(simple_str_addr: int):
     )
 
     esi = hook_obj.address_dict["attrs"]["esi"]
-    shellcode = translate_shellcode(esi_address=esi)
+    esp = hook_obj.address_dict["attrs"]["esp"]
+    shellcode = translate_shellcode(esi_address=esi, esp_address=esp)
     shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
     writer.write_string(address=shellcode_addr, text=shellcode)
 
