@@ -91,12 +91,6 @@ def get_project_root(add_file=None):
     return abs_path
 
 
-def decode_to_utf8(byte_str: bytes):
-    """Decodes a string of the current machine's encoding to utf-8."""
-    current_locale = getencoding()
-    return byte_str.decode(current_locale).encode().decode()
-
-
 def encode_to_utf8(string: str):
     """Encodes a string of the current machine's encoding to utf-8."""
     current_locale = getencoding()

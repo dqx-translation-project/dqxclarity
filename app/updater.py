@@ -12,23 +12,17 @@ import sys
 CLARITY_URL = "https://github.com/dqx-translation-project/dqxclarity/releases/latest/download/dqxclarity.zip"
 
 
-def decode_to_utf8(byte_str: bytes):
-    """Decodes a string of the current machine's encoding to utf-8."""
-    current_locale = getencoding()
-    return byte_str.decode(current_locale).encode().decode()
-
-
 def is_dqx_process_running():
+    """Returns True if DQX is currently running."""
     # https://stackoverflow.com/a/29275361
     # will only work on windows.
     call = 'TASKLIST', '/FI', 'imagename eq DQXGame.exe'
-    output = decode_to_utf8(byte_str=subprocess.check_output(call))
-
-    # no matter what language we parse, the process name is always in latin characters
+    output = subprocess.run(call, capture_output=True, text=True).stdout
     if "DQXGame.exe" in output:
         return True
 
     return False
+
 
 def kill_clarity_exe():
     os.system("taskkill /f /im DQXClarity.exe >nul 2>&1")
