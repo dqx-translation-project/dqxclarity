@@ -14,6 +14,7 @@ from common.signatures import (
     walkthrough_pattern,
 )
 from common.translate import convert_into_eng, detect_lang, Translate
+from loguru import logger as log
 from pymem.exception import MemoryReadError, WinAPIError
 
 import re
@@ -35,7 +36,9 @@ def scan_for_player_names():
                 if en_name != ja_name:
                     # we use a leading x04 byte here as the game assumes all names that start
                     # with an english letter are GMs.
-                    writer.write_string(player_name_address, "\x04" + en_name)
+                    reread = writer.read_string(player_name_address)
+                    if ja_name == reread:
+                        writer.write_string(player_name_address, "\x04" + en_name)
             except UnicodeDecodeError:
                 continue
             except MemoryReadError:
@@ -74,7 +77,9 @@ def scan_for_comm_names():
             ja_name = writer.read_string(address)
             en_name = convert_into_eng(ja_name)
             if en_name != ja_name:
-                writer.write_string(address, "\x04" + en_name)
+                reread = writer.read_string(address)
+                if ja_name == reread:
+                    writer.write_string(address, "\x04" + en_name)
         except UnicodeDecodeError:
             continue
         except TypeError:
@@ -134,7 +139,9 @@ def scan_for_concierge_names():
                 ja_name = writer.read_string(name_address)
                 en_name = convert_into_eng(ja_name)
                 if en_name != ja_name:
-                    writer.write_string(name_address, "\x04" + en_name)
+                    reread = writer.read_string(name_address)
+                    if ja_name == reread:
+                        writer.write_string(name_address, "\x04" + en_name)
             except UnicodeDecodeError:
                 continue
             except MemoryReadError:
@@ -182,14 +189,25 @@ def scan_for_npc_names():
                     value = translated_names.get(name)
                     if value:
                         try:
-                            writer.write_string(name_addr, value)
+                            reread = writer.read_string(name_addr)
+                            if reread == name:
+                                writer.write_string(name_addr, value)
                         except Exception as e:
                             log.debug(f"Failed to write {data}. {e}")
+                if value := translated_names.get(name):
+                    try:
+                        reread = writer.read_string(name_addr)
+                        if reread == name:
+                            writer.write_string(name_addr, value)
+                    except Exception as e:
+                        log.debug(f"Failed to write {data}. {e}")
             elif data == "AI_NAME":
                 en_name = convert_into_eng(name)
                 if en_name != name:
                     try:
-                        writer.write_string(name_addr, "\x04" + en_name)
+                        reread = writer.read_string(name_addr)
+                        if reread == name:
+                            writer.write_string(name_addr, "\x04" + en_name)
                     except Exception as e:
                         log.debug(f"Failed to write {data}. {e}")
 
@@ -205,7 +223,9 @@ def scan_for_menu_ai_names():
                 ja_name = writer.read_string(name_address)
                 en_name = convert_into_eng(ja_name)
                 if en_name != ja_name:
-                    writer.write_string(name_address, en_name)
+                    reread = writer.read_string(name_address)
+                    if reread == ja_name:
+                        writer.write_string(name_address, en_name)
             except UnicodeDecodeError:
                 continue
             except MemoryReadError:
