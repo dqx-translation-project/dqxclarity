@@ -1,4 +1,3 @@
-from common.lib import decode_to_utf8
 from common.memory import MemWriter
 from common.signatures import notice_string
 from loguru import logger as log
@@ -13,9 +12,7 @@ def is_dqx_process_running():
     # https://stackoverflow.com/a/29275361
     # will only work on windows.
     call = 'TASKLIST', '/FI', 'imagename eq DQXGame.exe'
-    output = decode_to_utf8(byte_str=subprocess.check_output(call))
-
-    # no matter what language we parse, the process name is always in latin characters
+    output = subprocess.run(call, capture_output=True, text=True).stdout
     if "DQXGame.exe" in output:
         return True
 
