@@ -264,8 +264,9 @@ def download_dat_files():
             update_user_config('config', 'installdirectory', default_path)
         else:
             message_box(
-                title="Couldn't Find DQX Directory",
-                message="Could not find DQX directory. Browse to the path where you installed the game and select the \"DRAGON QUEST X\" folder."
+                title="Could not find DQX directory",
+                message="Browse to the path where you installed the game and select the \"DRAGON QUEST X\" folder. \
+                \n\nMake sure you didn't move the data00000000.dat0 file outside of the game directory or rename it."
             )
 
             while True:
