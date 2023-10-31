@@ -259,7 +259,7 @@ def download_dat_files():
             valid_path = True
 
     if not valid_path:
-        default_path = 'C:/Program Files (x86)/SquareEnix/DRAGON QUEST X'
+        default_path = 'C:/Program Files (x86)/SquareEnix/DRAGON QUEST X2'
         if os.path.exists(default_path):
             update_user_config('config', 'installdirectory', default_path)
         else:
@@ -270,6 +270,12 @@ def download_dat_files():
 
             while True:
                 dqx_path = askdirectory()
+                if not dqx_path:
+                    message_box(
+                        title="Canceled",
+                        message="Operation has been canceled. dqxclarity will exit.",
+                        exit_prog=True
+                    )
                 dat0_path = "/".join([dqx_path, "Game/Content/Data", dat0_file])
 
                 if os.path.isfile(dat0_path):
