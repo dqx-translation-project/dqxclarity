@@ -259,7 +259,7 @@ def download_dat_files():
             valid_path = True
 
     if not valid_path:
-        default_path = 'C:/Program Files (x86)/SquareEnix/DRAGON QUEST X2'
+        default_path = 'C:/Program Files (x86)/SquareEnix/DRAGON QUEST X'
         if os.path.exists(default_path):
             update_user_config('config', 'installdirectory', default_path)
         else:
