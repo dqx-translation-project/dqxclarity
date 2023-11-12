@@ -157,6 +157,25 @@ player_sibling_name_trigger = rb"\x55\x8B\xEC\x56\x8B\xF1\x57\x8B\x46\x58\x85\xC
 #    DQXGame.exe.text+4FB38FD - 8D 64 24 04           - lea esp,[esp+04]
 npc_monster_names_trigger = rb"\x8B\x4E\x04\x83\xC4\x10\x8B\x81"
 
+# party member data hits this code. used to detour and overwrite name.
+# how it was found:
+# - Search in CE for one of your party members
+#   - Must be actual player entry - not just name
+# - "Find what writes here" on the name
+# - Used instructions right below "repe movsd" instruction
+# DQXGame.exe+5B7133 - F3 0F10 05 94F61601   - movss xmm0,[DQXGame.exe+E4F694]
+# DQXGame.exe+5B713B - 0F2F C1               - comiss xmm0,xmm1
+# DQXGame.exe+5B713E - 72 0C                 - jb DQXGame.exe+5B714C
+# DQXGame.exe+5B7140 - BE 01000000           - mov esi,00000001
+# DQXGame.exe+5B7145 - EB 05                 - jmp DQXGame.exe+5B714C
+# DQXGame.exe+5B7147 - BE 03000000           - mov esi,00000003
+# DQXGame.exe+5B714C - 3B FE                 - cmp edi,esi
+# DQXGame.exe+5B714E - B9 BE000000           - mov ecx,000000BE
+# DQXGame.exe+5B7153 - 8B 75 08              - mov esi,[ebp+08]
+# DQXGame.exe+5B7156 - 8D 7B 28              - lea edi,[ebx+28]
+# DQXGame.exe+5B7159 - F3 A5                 - repe movsd
+party_ai_trigger = rb"\x8B\x8B\xC8\x05\x00\x00"
+
 #############################################
 # "Patterns" seen to find various text.
 # Not code signatures, so these will likely
