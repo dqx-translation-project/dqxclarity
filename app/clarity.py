@@ -52,6 +52,8 @@ def scan_for_player_names():
                 log.debug(f"Failed to write player name.\n{traceback.format_exc()}")
                 continue
 
+    writer.close()
+
 
 def scan_for_comm_names():
     """Scans for addresses that are related to a specific pattern to translate
@@ -95,6 +97,8 @@ def scan_for_comm_names():
             log.debug(f"Failed to write name.\n{traceback.format_exc()}")
             continue
 
+    writer.close()
+
 
 def scan_for_sibling_name():
     """Scans for addresses that are related to a specific pattern to translate
@@ -127,6 +131,8 @@ def scan_for_sibling_name():
         except Exception:
             log.debug(f"Failed to write name.\n{traceback.format_exc()}")
 
+    writer.close()
+
 
 def scan_for_concierge_names():
     """Scans for addresses that are related to a specific pattern to translate
@@ -155,6 +161,8 @@ def scan_for_concierge_names():
                 log.debug(f"Failed to write name.\n{traceback.format_exc()}")
                 continue
 
+    writer.close()
+
 
 def scan_for_npc_names():
     """Scan to look for NPC names, monster names and names above your party
@@ -170,13 +178,13 @@ def scan_for_npc_names():
     if npc_list := writer.pattern_scan(pattern=npc_monster_pattern, return_multiple=True):
         for address in npc_list:
             npc_type = writer.read_bytes(address + 36, 2)
-            if npc_type == b"\x4C\x07":
+            if npc_type == b"\x90\x0C":
                 data = "NPC"
                 translated_names = translated_npc_names
-            elif npc_type == b"\x34\xF5":
+            elif npc_type == b"\x1C\xFA":
                 data = "MONSTER"
                 translated_names = translated_monster_names
-            elif npc_type == b"\xA0\xF7":
+            elif npc_type == b"\x88\xFC":
                 data = "AI_NAME"
             else:
                 continue
@@ -211,7 +219,9 @@ def scan_for_npc_names():
                     except Exception as e:
                         log.debug(f"Failed to write {data}. {e}")
 
+    writer.close()
 
+    
 def loop_scan_for_walkthrough():
     """Scans for the walkthrough address in an infinite loop and translates
     when found."""
