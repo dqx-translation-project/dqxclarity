@@ -39,7 +39,12 @@ class NetworkTextTranslate:
         "M_name": "pc_name",
         "M_02": "menu_header",
         "M_header": "menu_header",
-        "M_item": "mail_preview"
+        "M_item": "mail_preview",
+        "L_OWNER": "pc_name",
+        "L_URINUSI": "pc_name",
+        "M_NAME": "pc_name",
+        "L_PLAYER_NAME": "pc_name",
+        "L_QUEST": "quest_name"
     }
 
     def __init__(self, text_address, var_address):
@@ -67,7 +72,7 @@ class NetworkTextTranslate:
                     NetworkTextTranslate.writer.write_string(self.text_address, "self")
 
             # npc or player names
-            elif category in ["M_pc", "M_npc", "B_ACTOR", "B_TARGET", "C_PC", "L_SENDER_NAME", "M_OWNER", "M_hiryu", "L_HIRYU", "L_HIRYU_NAME", "M_name"]:
+            elif category in ["M_pc", "M_npc", "B_ACTOR", "B_TARGET", "C_PC", "L_SENDER_NAME", "M_OWNER", "M_hiryu", "L_HIRYU", "L_HIRYU_NAME", "M_name", "L_OWNER", "L_URINUSI", "M_NAME", "L_PLAYER_NAME"]:
                 if text in NetworkTextTranslate.m00_text:
                     name_to_write = NetworkTextTranslate.m00_text[text]
                 else:
@@ -75,7 +80,7 @@ class NetworkTextTranslate:
                 NetworkTextTranslate.writer.write_string(self.text_address, name_to_write)
 
             # generic string
-            elif category in ["M_00", "C_QUEST", "M_02", "M_header", "M_item"]:
+            elif category in ["M_00", "C_QUEST", "M_02", "M_header", "M_item", "L_QUEST"]:
                 if text in NetworkTextTranslate.m00_text:
                     to_write = NetworkTextTranslate.m00_text[text]
                     if to_write != "":
