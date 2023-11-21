@@ -221,7 +221,7 @@ def scan_for_npc_names():
 
     writer.close()
 
-    
+
 def loop_scan_for_walkthrough():
     """Scans for the walkthrough address in an infinite loop and translates
     when found."""
