@@ -156,3 +156,8 @@ class MemWriter:
     def get_hook_bytecode(self, hook_address: int):
         """Returns a formatted jump address for your hook."""
         return b"\xE9" + self.pack_to_int(hook_address)
+
+
+    def close(self):
+        """Closes the process."""
+        return self.proc.close_process()

@@ -55,6 +55,8 @@ def scan_pattern_page(handle, address, pattern, *, all_protections=True, use_reg
         if e.error_code == 299: # hiding an issue where memory changes between query and read
             return next_region, None
         raise pymem.exception.MemoryReadError(address, mbi.RegionSize, e.error_code)
+    except MemoryError: # we somehow read more bytes than we should have
+        return next_region, None
 
     if not return_multiple:
         found = None

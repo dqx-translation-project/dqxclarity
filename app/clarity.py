@@ -52,6 +52,8 @@ def scan_for_player_names():
                 log.debug(f"Failed to write player name.\n{traceback.format_exc()}")
                 continue
 
+    writer.close()
+
 
 def scan_for_comm_names():
     """Scans for addresses that are related to a specific pattern to translate
@@ -95,6 +97,8 @@ def scan_for_comm_names():
             log.debug(f"Failed to write name.\n{traceback.format_exc()}")
             continue
 
+    writer.close()
+
 
 def scan_for_sibling_name():
     """Scans for addresses that are related to a specific pattern to translate
@@ -127,6 +131,8 @@ def scan_for_sibling_name():
         except Exception:
             log.debug(f"Failed to write name.\n{traceback.format_exc()}")
 
+    writer.close()
+
 
 def scan_for_concierge_names():
     """Scans for addresses that are related to a specific pattern to translate
@@ -154,6 +160,8 @@ def scan_for_concierge_names():
             except Exception:
                 log.debug(f"Failed to write name.\n{traceback.format_exc()}")
                 continue
+
+    writer.close()
 
 
 def scan_for_npc_names():
@@ -211,6 +219,8 @@ def scan_for_npc_names():
                     except Exception as e:
                         log.debug(f"Failed to write {data}. {e}")
 
+    writer.close()
+
 
 def scan_for_menu_ai_names():
     """Scans for addresses that are related to a specific pattern to translate
@@ -238,6 +248,8 @@ def scan_for_menu_ai_names():
             except Exception:
                 log.debug(f"Failed to write name.\n{traceback.format_exc()}")
                 continue
+
+    writer.close()
 
 
 def loop_scan_for_walkthrough():
