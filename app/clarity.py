@@ -222,36 +222,6 @@ def scan_for_npc_names():
     writer.close()
 
 
-def scan_for_menu_ai_names():
-    """Scans for addresses that are related to a specific pattern to translate
-    party member names in the party member panel."""
-    writer = MemWriter()
-    if addresses := writer.pattern_scan(pattern=menu_ai_name_pattern, return_multiple=True):
-        for address in addresses:
-            name_address = address + 57
-            try:
-                ja_name = writer.read_string(name_address)
-                en_name = convert_into_eng(ja_name)
-                if en_name != ja_name:
-                    reread = writer.read_string(name_address)
-                    if reread == ja_name:
-                        writer.write_string(name_address, en_name)
-            except UnicodeDecodeError:
-                continue
-            except MemoryReadError:
-                continue
-            except WinAPIError as e:
-                if e.error_code == 299:
-                    continue
-                else:
-                    raise e
-            except Exception:
-                log.debug(f"Failed to write name.\n{traceback.format_exc()}")
-                continue
-
-    writer.close()
-
-
 def loop_scan_for_walkthrough():
     """Scans for the walkthrough address in an infinite loop and translates
     when found."""
@@ -342,7 +312,6 @@ def run_scans(player_names=True, npc_names=True):
         try:
             if player_names:
                 scan_for_player_names()
-                scan_for_menu_ai_names()
             if npc_names:
                 scan_for_npc_names()
                 scan_for_concierge_names()
