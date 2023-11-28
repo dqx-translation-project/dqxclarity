@@ -2,7 +2,6 @@ from common.errors import FailedToReadAddress
 from common.lib import setup_logging
 from common.memory import MemWriter
 from common.signatures import (
-    accept_quest_trigger,
     dialog_trigger,
     integrity_check,
     network_text_trigger,
@@ -93,26 +92,6 @@ def network_text_detour(simple_str_addr: int):
     ecx = hook_obj.address_dict["attrs"]["ecx"]
     esp = hook_obj.address_dict["attrs"]["esp"]
     shellcode = network_text_shellcode(ecx, esp)
-    shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
-    writer.write_string(address=shellcode_addr, text=shellcode)
-
-    return hook_obj
-
-
-def accept_quest_detour(simple_str_addr: int):
-    """Detours function when you accept a quest and the quest text pops up on
-    your screen."""
-    writer = MemWriter()
-
-    hook_obj = EasyDetour(
-        hook_name="accept_quest",
-        signature=accept_quest_trigger,
-        num_bytes_to_steal=6,
-        simple_str_addr=simple_str_addr
-    )
-
-    esi = hook_obj.address_dict["attrs"]["esi"]
-    shellcode = quest_text_shellcode(address=esi)
     shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
     writer.write_string(address=shellcode_addr, text=shellcode)
 
