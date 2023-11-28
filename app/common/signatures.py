@@ -77,24 +77,6 @@ integrity_check = rb"\x52\x57\x51\x50\x53\x56"
 #    DQXGame.exe.text+E6BB2 - 33 CD                 - xor ecx,ebp
 menu_party_name_trigger = rb"\x8B\xCF\xFF\x75\x0C\x53\x50"
 
-# function triggered when a quest is accepted and text is displayed on the screen
-# this is currently broken because integrity scans pick it up when you get into combat
-# 8B 45 D8 3B 45 DC 8B 03 0F 85 ?? ?? ?? ?? E9 ?? ?? ?? ?? CC 48
-#    DQXGame.exe.text+BA3C50 - E9 C87E5BFF           - jmp DQXGame.exe.text+15BB1D
-# >> DQXGame.exe.text+BA3C55 - 8B 45 D8              - mov eax,[ebp-28]
-#    DQXGame.exe.text+BA3C58 - 3B 45 DC              - cmp eax,[ebp-24]
-#    DQXGame.exe.text+BA3C5B - 8B 03                 - mov eax,[ebx]
-#    DQXGame.exe.text+BA3C5D - 0F85 97DB0800         - jne DQXGame.exe.text+C317FA
-#    DQXGame.exe.text+BA3C63 - E9 86D1CF07           - jmp DQXGame.exe.text+670DDEE
-#    DQXGame.exe.text+BA3C68 - CC                    - int 3
-#    DQXGame.exe.text+BA3C69 - 48                    - dec eax
-#    DQXGame.exe.text+BA3C6A - 8D 64 24 FC           - lea esp,[esp-04]
-#    DQXGame.exe.text+BA3C6E - 89 04 24              - mov [esp],eax
-#    DQXGame.exe.text+BA3C71 - FF 75 94              - push [ebp-6C]
-#    DQXGame.exe.text+BA3C74 - 68 F27A3201           - push DQXGame.exe.text+BB6AF2
-#    DQXGame.exe.text+BA3C79 - 68 80CC1401           - push DQXGame.exe.text+9DBC80
-accept_quest_trigger = rb"\x8B\x45\xD8\x3B\x45\xDC\x8B\x03\x0F\x85....\xE9....\xCC\x48"
-
 # a lot of network text that is drawn to the screen comes through this function
 # 8D 71 01 8B FF 8A 01 41 84 C0 75 F9 2B CE 51 51
 #    DQXGame.exe.text+42DF02 - 4E                    - dec esi
@@ -136,27 +118,6 @@ network_text_trigger = rb"\x8D\x71\x01\x8B\xFF\x8A\x01\x41\x84\xC0\x75\xF9\x2B\x
 #    DQXGame.exe.text+4096E5 - E8 365FC3FF           - call DQXGame.exe.text+3F620
 player_sibling_name_trigger = rb"\x55\x8B\xEC\x56\x8B\xF1\x57\x8B\x46\x58\x85\xC0"
 
-# monster and npc names pass through this. we could rename them here and completely
-# get rid of name scans.. BUT.. this gets scanned by the integrity check in combat.
-# 8B 45 0C 80 38 00 68 ?? ?? ?? ?? 89
-# >> DQXGame.exe.text+4FB38C4 - 8B 45 0C              - mov eax,[ebp+0C]
-#    DQXGame.exe.text+4FB38C7 - 80 38 00              - cmp byte ptr [eax],00
-#    DQXGame.exe.text+4FB38CA - 68 AB083501           - push DQXGame.exe.text+BDF8AB
-#    DQXGame.exe.text+4FB38CF - 89 44 24 FC           - mov [esp-04],eax
-#    DQXGame.exe.text+4FB38D3 - 8D 64 24 FC           - lea esp,[esp-04]
-#    DQXGame.exe.text+4FB38D7 - 8D 64 24 FC           - lea esp,[esp-04]
-#    DQXGame.exe.text+4FB38DB - 89 0C 24              - mov [esp],ecx
-#    DQXGame.exe.text+4FB38DE - 8B 44 24 08           - mov eax,[esp+08]
-#    DQXGame.exe.text+4FB38E2 - B9 600D8200           - mov ecx,DQXGame.exe.text+AFD60
-#    DQXGame.exe.text+4FB38E7 - 0F44 C1               - cmove eax,ecx
-#    DQXGame.exe.text+4FB38EA - 89 44 24 08           - mov [esp+08],eax
-#    DQXGame.exe.text+4FB38EE - 8B 0C 24              - mov ecx,[esp]
-#    DQXGame.exe.text+4FB38F1 - 8D 64 24 04           - lea esp,[esp+04]
-#    DQXGame.exe.text+4FB38F5 - 8D 64 24 04           - lea esp,[esp+04]
-#    DQXGame.exe.text+4FB38F9 - 8B 44 24 FC           - mov eax,[esp-04]
-#    DQXGame.exe.text+4FB38FD - 8D 64 24 04           - lea esp,[esp+04]
-npc_monster_names_trigger = rb"\x8B\x4E\x04\x83\xC4\x10\x8B\x81"
-
 # party member data hits this code. used to detour and overwrite name.
 # how it was found:
 # - Search in CE for one of your party members
@@ -190,14 +151,14 @@ party_ai_trigger = rb"\x8B\x8B\xC8\x05\x00\x00"
 #   - Monster names appearing in the battle menu
 #   - Party nameplates (don't confuse with party names on the right side of the screen)
 #       - Does not do the player's nameplate
-# npc:     40 7C ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 90 0C ?? ?? ?? ?? ?? ?? 74 13 ?? ?? E?
-# monster: 40 7C ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 1C FA ?? ?? ?? ?? ?? ?? 74 13 ?? ?? E?
-# party:   40 7C ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 88 FC ?? ?? ?? ?? ?? ?? 74 13 ?? ?? E?
-npc_monster_pattern = rb"\x40\x7C..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00.......\x00\x00\x00\x00.\x00\x00\x00[\x90\x1C\x88][\x0C\xFA\xFC]......\x74\x13..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+# npc:     40 7C ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 90 0C ?? ?? ?? ?? ?? ?? CC 0C ?? ?? E?
+# monster: 40 7C ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 1C FA ?? ?? ?? ?? ?? ?? CC 0C ?? ?? E?
+# party:   40 7C ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 88 FC ?? ?? ?? ?? ?? ?? CC 0C ?? ?? E?
+npc_monster_pattern = rb"\x40\x7C..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00.......\x00\x00\x00\x00.\x00\x00\x00[\x90\x1C\x88][\x0C\xFA\xFC]......\xCC\x0C..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
 # pattern for concierge names (13 bytes)
-# 70 F2 ?? ?? ?? ?? ?? ?? 74 13 ?? ?? E3
-concierge_name_pattern = rb"\x70\xF2......\x74\x13..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+# 70 F2 ?? ?? ?? ?? ?? ?? CC 0C ?? ?? E3
+concierge_name_pattern = rb"\x70\xF2......\xCC\x0C..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
 # pattern for player names to rename. (49 bytes)
 # 40 7C ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 70 7A ?? 0? ?? ?? ?? ?? ?? ?? ?? 0? E3
