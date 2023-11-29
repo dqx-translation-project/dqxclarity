@@ -245,6 +245,7 @@ def loop_scan_for_walkthrough():
                     verify = writer.read_bytes(address, 16)
                     if not pattern.match(verify):
                         log.debug("Lost walkthrough pattern. Starting scan again.")
+                        address = writer.pattern_scan(pattern=walkthrough_pattern)
                         break
                     if text := writer.read_string(address + 16):
                         if text != prev_text:
