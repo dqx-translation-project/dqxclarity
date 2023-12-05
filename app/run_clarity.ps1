@@ -1,5 +1,9 @@
 $ClarityFlags = "-pnvcl"
 
+# ensure we're in the appropriate working directory in case it's overwritten
+# by the user's profile.
+Set-Location (Split-Path $MyInvocation.MyCommand.Path)
+
 function LogWrite($string) {
    Write-Host $string -ForegroundColor "Yellow"
 }
