@@ -50,7 +50,7 @@
             zip -r dqxclarity-dev-${SHORT_SHA}.zip dqxclarity
 
         - name: Upload zip as artifact
-          uses: actions/upload-artifact@v3
+          uses: actions/upload-artifact@v4
           with:
             name: dqxclarity-dev-${{ env.SHORT_SHA }}
             path: dqxclarity-dev-${{ env.SHORT_SHA }}.zip
