@@ -157,8 +157,8 @@ party_ai_trigger = rb"\x8B\x8B\xC8\x05\x00\x00"
 npc_monster_pattern = rb"\xB4\x27..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00.......\x00\x00\x00\x00.\x00\x00\x00[\x74\x00\x6C][\x0A\xF8\xFA]......\xB0\x0A..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
 # pattern for concierge names (13 bytes)
-# 74 0A ?? ?? ?? ?? ?? ?? B0 0A ?? ?? E?
-concierge_name_pattern = rb"\x74\x0A......\xB0\x0A..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+# 50 F0 ?? ?? ?? ?? ?? ?? B0 0A ?? ?? E?
+concierge_name_pattern = rb"\x50\xF0......\xB0\x0A..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
 # pattern for player names to rename. (49 bytes)
 # B4 27 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 48 7A ?? 0? ?? ?? ?? ?? ?? ?? ?? 0? E?
