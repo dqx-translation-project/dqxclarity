@@ -275,7 +275,23 @@ class Translate():
             output = output.replace(alignment, "")
 
         # trim multiple ellipses to a single one
-        ellipses = ["…………………………………………", "………………………………………", "……………………………………", "…………………………………", "………………………………", "……………………………", "…………………………", "………………………", "……………………", "…………………", "………………", "……………", "…………", "………", "……"]
+        ellipses = [
+        "…………………………………………",
+        "………………………………………",
+        "……………………………………",
+        "…………………………………",
+        "………………………………",
+        "……………………………",
+        "…………………………",
+        "………………………",
+        "……………………",
+        "…………………",
+        "………………",
+        "……………",
+        "…………",
+        "………",
+        "……"
+        ]
         for ellipse in ellipses:
             output = output.replace(ellipse, "…")
 
@@ -615,7 +631,7 @@ def clean_up_and_return_items(text: str) -> str:
     sanitized = re.sub("男は ", "", text)  # remove boy reference from start of string
     sanitized = re.sub("女は ", "", sanitized)  # remove girl reference from start of string
     sanitized = re.sub("男は　", "", sanitized)  # remove boy reference from start of string (fullwidth space)
-    sanitized = re.sub("女は　", "", sanitized)  # remove girl reference from s tart of string (fullwidth space)
+    sanitized = re.sub("女は　", "", sanitized)  # remove girl reference from start of string (fullwidth space)
     final_string = ""
     for item in sanitized.split("\n"):
         quantity = ""
