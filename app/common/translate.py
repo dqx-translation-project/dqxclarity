@@ -85,18 +85,19 @@ class Translate():
             text = text.replace("<pc_hiryu>", "<&13_aaaaaaa>")
             text = text.replace("<cs_pchero_hiryu>", "<&13_aaaaaab>")
             text = text.replace("<cs_pchero_race>", "<&8_aaa>")
-            text = text.replace("<cs_pchero>", "<13_aaaaaac>")
+            text = text.replace("<cs_pchero>", "<&13_aaaaaac>")
             text = text.replace("<kyodai_rel1>", "<&7_aa>")
             text = text.replace("<kyodai_rel2>", "<&7_ab>")
             text = text.replace("<kyodai_rel3>", "<&7_ac>")
             text = text.replace("<pc_hometown>", "<&8_aab>")
             text = text.replace("<pc_race>", "<&8_aac>")
+            text = text.replace("<%sM_real_race>", "<&8_aad>")
             text = text.replace("<pc_rel1>", "<&7_ad>")
             text = text.replace("<pc_rel2>", "<&7_ae>")
-            text = text.replace("<pc_rel3>", "<&7_af")
-            text = text.replace("<kyodai>", "<&13_aaaaaac>")
-            text = text.replace("<pc>", "<&13_aaaaaad>")
-            text = text.replace("<client_pcname>", "<&13_aaaaaae>")
+            text = text.replace("<pc_rel3>", "<&7_af>")
+            text = text.replace("<kyodai>", "<&13_aaaaaad>")
+            text = text.replace("<pc>", "<&13_aaaaaae>")
+            text = text.replace("<client_pcname>", "<&13_aaaaaaf>")
             text = text.replace("<heart>", "<&2a>")
             text = text.replace("<diamond>", "<&2b>")
             text = text.replace("<spade>", "<&2c>")
@@ -105,10 +106,15 @@ class Translate():
             text = text.replace("<l_triangle>", "<&2f>")
             text = text.replace("<half_star>", "<&2g>")
             text = text.replace("<null_star>", "<&2h>")
-            text = text.replace("<npc>", "<&13_aaaaaaf>")
-            text = text.replace("<pc_syokugyo>", "<&13_aaaaaag>")
-            text = text.replace("<pc_original>", "<&13_aaaaaah>")
-            text = text.replace("<log_pc>", "<&13_aaaaaai>")
+            text = text.replace("<npc>", "<&13_aaaaaag>")
+            text = text.replace("<pc_syokugyo>", "<&13_aaaaaah>")
+            text = text.replace("<pc_original>", "<&13_aaaaaai>")
+            text = text.replace("<log_pc>", "<&13_aaaaaaj>")
+            text = text.replace("<%sM_NAME>", "<&13_aaaaaak>")
+            text = text.replace("<%sM_BEFORE_NAME>", "<&13_aaaaaal>")
+            text = text.replace("<%sM_OWNER_OTHER>", "<&13_aaaaaam>")
+            text = text.replace("<%sM_OWNER>", "<&13_aaaaaan>")
+            text = text.replace("<%sM_SAMA>", "<&6_a>")
             text = text.replace("<1st_title>", "<&20_aaaaaaaaaaaaaa>")
             text = text.replace("<2nd_title>", "<&20_aaaaaaaaaaaaab>")
             text = text.replace("<3rd_title>", "<&20_aaaaaaaaaaaaac>")
@@ -117,21 +123,34 @@ class Translate():
             text = text.replace("<6th_title>", "<&20_aaaaaaaaaaaaaf>")
             text = text.replace("<7th_title>", "<&20_aaaaaaaaaaaaag>")
         else:
+            text = text.replace("<&13_aaaaaaaa>", "<pc_hiryu>")
             text = text.replace("<&13_aaaaaaa>", "<pc_hiryu>")
+            text = text.replace("<&13_aaaaaa>", "<pc_hiryu>")
+            text = text.replace("<&13_aaaaaaab>", "<cs_pchero_hiryu>")
             text = text.replace("<&13_aaaaaab>", "<cs_pchero_hiryu>")
+            text = text.replace("<&13_aaaaab>", "<cs_pchero_hiryu>")
             text = text.replace("<&8_aaa>", "<cs_pchero_race>")
-            text = text.replace("<13_aaaaaac>", "<cs_pchero>")
+            text = text.replace("<&13_aaaaaaac>", "<cs_pchero>")
+            text = text.replace("<&13_aaaaaac>", "<cs_pchero>")
+            text = text.replace("<&13_aaaaac>", "<cs_pchero>")
             text = text.replace("<&7_aa>", "<kyodai_rel1>")
             text = text.replace("<&7_ab>", "<kyodai_rel2>")
             text = text.replace("<&7_ac>", "<kyodai_rel3>")
             text = text.replace("<&8_aab>", "<pc_hometown>")
             text = text.replace("<&8_aac>", "<pc_race>")
+            text = text.replace("<&8_aad>", "<%sM_real_race>")
             text = text.replace("<&7_ad>", "<pc_rel1>")
             text = text.replace("<&7_ae>", "<pc_rel2>")
-            text = text.replace("<&7_af", "<pc_rel3>")
-            text = text.replace("<&13_aaaaaac>", "<kyodai>")
-            text = text.replace("<&13_aaaaaad>", "<pc>")
-            text = text.replace("<&13_aaaaaae>", "<client_pcname>")
+            text = text.replace("<&7_af>", "<pc_rel3>")
+            text = text.replace("<&13_aaaaaaad>", "<kyodai>")
+            text = text.replace("<&13_aaaaaad>", "<kyodai>")
+            text = text.replace("<&13_aaaaad>", "<kyodai>")
+            text = text.replace("<&13_aaaaaaae>", "<pc>")
+            text = text.replace("<&13_aaaaaae>", "<pc>")
+            text = text.replace("<&13_aaaaae>", "<pc>")
+            text = text.replace("<&13_aaaaaaaf>", "<client_pcname>")
+            text = text.replace("<&13_aaaaaaf>", "<client_pcname>")
+            text = text.replace("<&13_aaaaaf>", "<client_pcname>")
             text = text.replace("<&2a>", "<heart>")
             text = text.replace("<&2b>", "<diamond>")
             text = text.replace("<&2c>", "<spade>")
@@ -140,17 +159,52 @@ class Translate():
             text = text.replace("<&2f>", "<l_triangle>")
             text = text.replace("<&2g>", "<half_star>")
             text = text.replace("<&2h>", "<null_star>")
-            text = text.replace("<&13_aaaaaaf>", "<npc>")
-            text = text.replace("<&13_aaaaaag>", "<pc_syokugyo>")
-            text = text.replace("<&13_aaaaaah>", "<pc_original>")
-            text = text.replace("<&13_aaaaaai>", "<log_pc>")
+            text = text.replace("<&13_aaaaaaag>", "<npc>")
+            text = text.replace("<&13_aaaaaag>", "<npc>")
+            text = text.replace("<&13_aaaaag>", "<npc>")
+            text = text.replace("<&13_aaaaaaah>", "<pc_syokugyo>")
+            text = text.replace("<&13_aaaaaah>", "<pc_syokugyo>")
+            text = text.replace("<&13_aaaaah>", "<pc_syokugyo>")
+            text = text.replace("<&13_aaaaaaai>", "<pc_original>")
+            text = text.replace("<&13_aaaaaai>", "<pc_original>")
+            text = text.replace("<&13_aaaaai>", "<pc_original>")
+            text = text.replace("<&13_aaaaaaaj>", "<log_pc>")
+            text = text.replace("<&13_aaaaaaj>", "<log_pc>")
+            text = text.replace("<&13_aaaaaj>", "<log_pc>")
+            text = text.replace("<&13_aaaaaaak>", "<%sM_NAME>")
+            text = text.replace("<&13_aaaaaak>", "<%sM_NAME>")
+            text = text.replace("<&13_aaaaak>", "<%sM_NAME>")
+            text = text.replace("<&13_aaaaaaal>", "<%sM_BEFORE_NAME>")
+            text = text.replace("<&13_aaaaaal>", "<%sM_BEFORE_NAME>")
+            text = text.replace("<&13_aaaaal>", "<%sM_BEFORE_NAME>")
+            text = text.replace("<&13_aaaaaaam>", "<%sM_OWNER_OTHER>")
+            text = text.replace("<&13_aaaaaam>", "<%sM_OWNER_OTHER>")
+            text = text.replace("<&13_aaaaam>", "<%sM_OWNER_OTHER>")
+            text = text.replace("<&13_aaaaaaan>", "<%sM_OWNER>")
+            text = text.replace("<&13_aaaaaan>", "<%sM_OWNER>")
+            text = text.replace("<&13_aaaaan>", "<%sM_OWNER>")
+            text = text.replace("<&6_a>", "<%sM_SAMA>")
+            text = text.replace("<&20_aaaaaaaaaaaaaaa>", "<1st_title>")
             text = text.replace("<&20_aaaaaaaaaaaaaa>", "<1st_title>")
+            text = text.replace("<&20_aaaaaaaaaaaaa>", "<1st_title>")
+            text = text.replace("<&20_aaaaaaaaaaaaaab>", "<2nd_title>")
             text = text.replace("<&20_aaaaaaaaaaaaab>", "<2nd_title>")
+            text = text.replace("<&20_aaaaaaaaaaaab>", "<2nd_title>")
+            text = text.replace("<&20_aaaaaaaaaaaaaac>", "<3rd_title>")
             text = text.replace("<&20_aaaaaaaaaaaaac>", "<3rd_title>")
+            text = text.replace("<&20_aaaaaaaaaaaac>", "<3rd_title>")
+            text = text.replace("<&20_aaaaaaaaaaaaaad>", "<4th_title>")
             text = text.replace("<&20_aaaaaaaaaaaaad>", "<4th_title>")
+            text = text.replace("<&20_aaaaaaaaaaaad>", "<4th_title>")
+            text = text.replace("<&20_aaaaaaaaaaaaaae>", "<5th_title>")
             text = text.replace("<&20_aaaaaaaaaaaaae>", "<5th_title>")
+            text = text.replace("<&20_aaaaaaaaaaaae>", "<5th_title>")
+            text = text.replace("<&20_aaaaaaaaaaaaaaf>", "<6th_title>")
             text = text.replace("<&20_aaaaaaaaaaaaaf>", "<6th_title>")
+            text = text.replace("<&20_aaaaaaaaaaaaf>", "<6th_title>")
+            text = text.replace("<&20_aaaaaaaaaaaaaag>", "<7th_title>")
             text = text.replace("<&20_aaaaaaaaaaaaag>", "<7th_title>")
+            text = text.replace("<&20_aaaaaaaaaaaag>", "<7th_title>")
 
         return text
 
@@ -220,13 +274,18 @@ class Translate():
         for alignment in alignments:
             output = output.replace(alignment, "")
 
+        # trim multiple ellipses to a single one
+        ellipses = ["…………………………………………", "………………………………………", "……………………………………", "…………………………………", "………………………………", "……………………………", "…………………………", "………………………", "……………………", "…………………", "………………", "……………", "…………", "………", "……"]
+        for ellipse in ellipses:
+            output = output.replace(ellipse, "…")
+
         # remove any other oddities that don't look great in english
-        oddities = ["「", "…"]
+        oddities = ["「"]
         for oddity in oddities:
             output = output.replace(oddity, "")
 
         # remove the full width space that starts on a new line
-        output = output.replace("\n　", "　")
+        output = output.replace("\n　", "\n")
 
         # replace any <color*> tags with & as they are part of the string
         output = output.replace("<color_", "<&color_")
@@ -322,8 +381,15 @@ class Translate():
         for _ in str_attrs:
             str_text = str_attrs[count]["text"]
             str_text = str_text.replace("　 ", " ")
+            str_text = str_text.replace(" 　", " ")
             str_text = str_text.replace("　", " ")
-            str_text = str_text.replace("  ", "")
+            str_text = str_text.replace("  ", " ")
+            str_text = str_text.replace("..................", "...")
+            str_text = str_text.replace("...............", "...")
+            str_text = str_text.replace("............", "...")
+            str_text = str_text.replace(".........", "...")
+            str_text = str_text.replace("......", "...")
+            str_text = str_text.replace("....", "...")
 
             updated_str = self.__normalize_text(str_text)
             updated_str = updated_str.replace("<&color_", "<color_")  # put our color tag back.
@@ -335,6 +401,7 @@ class Translate():
 
                 # deepl occasionally indents our list lines.. even though they weren't originally indented
                 updated_str = updated_str.replace("\n ", "\n")
+                updated_str = updated_str.replace("\n　", "\n")
                 pristine_str = pristine_str.replace(f"<replace_me_index_{count}>", updated_str)
 
             else:
@@ -548,8 +615,7 @@ def clean_up_and_return_items(text: str) -> str:
     sanitized = re.sub("男は ", "", text)  # remove boy reference from start of string
     sanitized = re.sub("女は ", "", sanitized)  # remove girl reference from start of string
     sanitized = re.sub("男は　", "", sanitized)  # remove boy reference from start of string (fullwidth space)
-    sanitized = re.sub("女は　", "", sanitized)  # remove girl reference from start of string (fullwidth space)
-    sanitized = re.sub("！　と頼まれた。", "と頼まれた。", sanitized)  # remove annoying 'asked to' string
+    sanitized = re.sub("女は　", "", sanitized)  # remove girl reference from s tart of string (fullwidth space)
     final_string = ""
     for item in sanitized.split("\n"):
         quantity = ""
