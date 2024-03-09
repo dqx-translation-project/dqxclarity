@@ -137,6 +137,30 @@ player_sibling_name_trigger = rb"\x55\x8B\xEC\x56\x8B\xF1\x57\x8B\x46\x58\x85\xC
 # DQXGame.exe+5B7159 - F3 A5                 - repe movsd
 party_ai_trigger = rb"\x8B\x8B\xC8\x05\x00\x00"
 
+# top-right corner text from NPCs. seen primarily in v5/v6.
+# how it was found:
+# - Quest 764 has a way to test reproducing text in the top right
+# - Search for the text she says while it's up
+#   - All strings she might say during the quest are loaded into memory
+# - Put a "Find what writes here" on several of the results returned
+# - While in the loom portion of the quest, mash any button to fail the
+#   step and get her to say something new. Hope you picked an address
+#   that has a temporary string in it and was overwritten with the new
+#   string.
+#    DQXGame.exe.text+601020 - 55                    - push ebp
+#    DQXGame.exe.text+601021 - 8B EC                 - mov ebp,esp
+#    DQXGame.exe.text+601023 - 8B 45 08              - mov eax,[ebp+08]
+#    DQXGame.exe.text+601026 - 83 EC 10              - sub esp,10
+#    DQXGame.exe.text+601029 - 53                    - push ebx
+#    DQXGame.exe.text+60102A - 56                    - push esi
+#    DQXGame.exe.text+60102B - 8B F1                 - mov esi,ecx
+#    DQXGame.exe.text+60102D - 57                    - push edi
+#    DQXGame.exe.text+60102E - 85 C0                 - test eax,eax
+#    DQXGame.exe.text+601030 - 0F84 A1010000         - je DQXGame.exe.text+6011D7
+# >> DQXGame.exe.text+601036 - 8B D0                 - mov edx,eax
+#    DQXGame.exe.text+601038 - 8D 7A 01              - lea edi,[edx+01]
+corner_text_trigger = rb"\x8B\xD0\x8D\x7A\x01\xEB\x03\x8D\x49\x00\x8A\x0A\x42\x84\xC9\x75\xF9\x2B\xD7\x0F\x84....\x51"
+
 #############################################
 # "Patterns" seen to find various text.
 # Not code signatures, so these will likely
