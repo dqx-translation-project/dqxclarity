@@ -1,6 +1,6 @@
-from common.db_ops import init_db
+from common.db_ops import generate_glossary_dict, generate_m00_dict, init_db
 from common.errors import message_box
-from common.lib import get_project_root, merge_jsons
+from common.lib import get_project_root
 from googleapiclient.discovery import build
 from openpyxl import load_workbook
 
@@ -31,9 +31,7 @@ class Translate():
             Translate.region_code = self.translation_settings["RegionCode"]
 
         if Translate.glossary is None:
-            with open(get_project_root("misc_files/glossary.csv"), encoding="utf-8") as f:
-                strings = f.read()
-                Translate.glossary = [ x for x in strings.split("\n") if x ]
+            Translate.glossary = generate_glossary_dict()
 
 
     def deepl(self, text: list):
@@ -63,11 +61,9 @@ class Translate():
 
 
     def __glossify(self, text):
-        for record in Translate.glossary:
-            k, v = record.split(",", 1)
-            if v == "\"\"":  # check for glossary entries that have blank strings and re-assign
-                v = ""
-            text = text.replace(k, v)
+        for ja in Translate.glossary:
+            en = Translate.glossary[ja]
+            text = text.replace(ja, en)
         return text
 
 
@@ -598,35 +594,14 @@ def determine_translation_service(communication_window_enabled=False):
     return dic
 
 
-def query_string_from_file(text: str, file: str) -> str:
-    """Searches for a string from the specified json file and either returns
-    the string or returns False if no match found.
-
-    text: The text to search
-    file: The name of the file (leave off the file extension)
-    """
-    misc_files = get_project_root("misc_files")
-    data = read_json_file(misc_files + "/" + file + ".json")
-
-    for item in data:
-        key, value = list(data[item].items())[0]
-        if re.search(f"^{text}+$", key):
-            if value:
-                return value
-
-
 def clean_up_and_return_items(text: str) -> str:
     """Cleans up unnecessary text from item strings and searches for the name
     in items.json.
 
     Used specifically for the quest window.
     """
-    misc_files = get_project_root("misc_files")
-    quest_rewards = merge_jsons([
-        f"{misc_files}/subPackage41Client.win32.json",
-        f"{misc_files}/subPackage05Client.json",
-        f"{misc_files}/custom_quest_rewards.json"
-    ])
+    quest_rewards = generate_m00_dict(files="'custom_quest_rewards', 'items', 'key_items'")
+
     line_count = text.count("\n")
     sanitized = re.sub("男は ", "", text)  # remove boy reference from start of string
     sanitized = re.sub("女は ", "", sanitized)  # remove girl reference from start of string
@@ -704,8 +679,7 @@ def convert_into_eng(word: str) -> str:
     """
     kks = pykakasi.kakasi()
     invalid_chars = ["[", "]", "[", "(", ")", "\\", "/", "*", "_", "+", "?", "$", "^", '"']
-    misc_files = get_project_root("misc_files")
-    player_names = merge_jsons([f"{misc_files}/custom_player_names.json", f"{misc_files}/custom_npc_names.json"])
+    player_names = generate_m00_dict(files="'custom_player_names'")
     interpunct_count = word.count("・")
     word_len = len(word)
     bad_word = False

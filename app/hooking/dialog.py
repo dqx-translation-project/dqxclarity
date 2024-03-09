@@ -11,7 +11,6 @@ import sys
 class Dialog:
 
     translator = Translate()
-    region = translator.region_code
     writer = None
 
     def __init__(self, text_address: int, npc_address: int, debug=False):
@@ -50,7 +49,7 @@ class Dialog:
 
 
     def __read_db(self, text: str):
-        result = sql_read(text=text, table="dialog", language=Dialog.region)
+        result = sql_read(text=text, table="dialog")
         if result:
             return result
         return None
@@ -61,8 +60,8 @@ class Dialog:
             conn, cursor = init_db()
             escaped_text = self.translated_text.replace("'", "''")
             select_query = f"SELECT ja FROM dialog WHERE ja = '{self.text}'"
-            update_query = f"UPDATE dialog SET {Dialog.region} = '{escaped_text}' WHERE ja = '{self.text}'"
-            insert_query = f"INSERT INTO dialog (ja, npc_name, {Dialog.region}) VALUES ('{self.text}', '{self.npc_name}', '{escaped_text}')"
+            update_query = f"UPDATE dialog SET en = '{escaped_text}' WHERE ja = '{self.text}'"
+            insert_query = f"INSERT INTO dialog (ja, npc_name, en) VALUES ('{self.text}', '{self.npc_name}', '{escaped_text}')"
             results = cursor.execute(select_query)
 
             if results.fetchone() is None:

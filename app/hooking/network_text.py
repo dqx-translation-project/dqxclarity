@@ -1,13 +1,7 @@
-from common.db_ops import sql_read
-from common.lib import (
-    encode_to_utf8,
-    get_project_root,
-    merge_jsons,
-    setup_logger,
-)
+from common.db_ops import generate_m00_dict, sql_read
+from common.lib import encode_to_utf8, get_project_root, setup_logger
 from common.memory import MemWriter
 from common.translate import convert_into_eng, detect_lang
-from glob import glob
 from json import dumps
 
 import os
@@ -54,7 +48,7 @@ class NetworkTextTranslate:
         self.var_address = NetworkTextTranslate.writer.unpack_to_int(var_address)
 
         if NetworkTextTranslate.m00_text is None:
-            NetworkTextTranslate.m00_text = self.__get_m00_strings()
+            NetworkTextTranslate.m00_text = generate_m00_dict()
 
         var_name = self.var_address + 40
 
@@ -109,14 +103,6 @@ class NetworkTextTranslate:
         return
 
 
-    def __get_m00_strings(self):
-        """Merges all jsons in the misc_files folder into one big dict."""
-        json_files = glob(f"{NetworkTextTranslate.misc_files}/*.json")
-        m00_strings = merge_jsons(json_files)
-
-        return m00_strings
-
-
     def __translate_story(self, text: str):
         """Looks up text in the story_so_far table for story text. If found,
         returns the text.
@@ -126,8 +112,7 @@ class NetworkTextTranslate:
         """
         if story_text := sql_read(
             text=text,
-            table="story_so_far",
-            language="en",
+            table="story_so_far"
         ):
             return story_text
 

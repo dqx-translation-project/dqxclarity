@@ -1,13 +1,12 @@
-from common.db_ops import sql_read, sql_write
+from common.db_ops import generate_m00_dict, sql_read, sql_write
 from common.errors import MemoryReadError
-from common.lib import get_project_root, merge_jsons, setup_logging
+from common.lib import setup_logging
 from common.memory import MemWriter
 from common.process import is_dqx_process_running
 from common.signatures import (
     comm_name_pattern_1,
     comm_name_pattern_2,
     concierge_name_pattern,
-    menu_ai_name_pattern,
     npc_monster_pattern,
     player_name_pattern,
     sibling_name_pattern,
@@ -168,22 +167,15 @@ def scan_for_npc_names():
     """Scan to look for NPC names, monster names and names above your party
     member's heads and translates them into English."""
     writer = MemWriter()
-    misc_files = get_project_root("misc_files")
-    translated_npc_names = merge_jsons([
-        f"{misc_files}/smldt_msg_pkg_NPC_DB.win32.json",
-        f"{misc_files}/custom_npc_names.json"
-    ])
-    translated_monster_names = merge_jsons([f"{misc_files}/subPackage02Client.win32.json"])
+    m00_strings = generate_m00_dict(files="'monsters', 'npcs', 'custom_npc_names'")
 
     if npc_list := writer.pattern_scan(pattern=npc_monster_pattern, return_multiple=True):
         for address in npc_list:
             npc_type = writer.read_bytes(address + 36, 2)
             if npc_type == b"\x74\x0A":
                 data = "NPC"
-                translated_names = translated_npc_names
             elif npc_type == b"\x00\xF8":
                 data = "MONSTER"
-                translated_names = translated_monster_names
             elif npc_type == b"\x6C\xFA":
                 data = "AI_NAME"
             else:
@@ -193,8 +185,8 @@ def scan_for_npc_names():
             name = writer.read_string(name_addr)
 
             if data == "NPC" or data == "MONSTER":
-                if name in translated_names:
-                    value = translated_names.get(name)
+                if name in m00_strings:
+                    value = m00_strings.get(name)
                     if value:
                         try:
                             reread = writer.read_string(name_addr)
@@ -202,7 +194,7 @@ def scan_for_npc_names():
                                 writer.write_string(name_addr, value)
                         except Exception as e:
                             log.debug(f"Failed to write {data}. {e}")
-                if value := translated_names.get(name):
+                if value := m00_strings.get(name):
                     try:
                         reread = writer.read_string(name_addr)
                         if reread == name:
@@ -251,7 +243,7 @@ def loop_scan_for_walkthrough():
                         if text != prev_text:
                             prev_text = text
                             if detect_lang(text):
-                                result = sql_read(text=text, table="walkthrough", language=translator.region_code)
+                                result = sql_read(text=text, table="walkthrough")
                                 if result:
                                     writer.write_string(address + 16, result)
                                 else:
@@ -265,8 +257,7 @@ def loop_scan_for_walkthrough():
                                         sql_write(
                                             source_text=text,
                                             translated_text=translated_text,
-                                            table="walkthrough",
-                                            language=translator.region_code
+                                            table="walkthrough"
                                         )
                                         writer.write_string(address + 16, translated_text)
                                     except Exception:

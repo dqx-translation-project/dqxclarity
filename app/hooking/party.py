@@ -1,4 +1,5 @@
-from common.lib import encode_to_utf8, get_project_root, merge_jsons
+from common.db_ops import generate_m00_dict
+from common.lib import encode_to_utf8
 from common.memory import MemWriter
 from common.translate import convert_into_eng, detect_lang
 from json import dumps
@@ -17,9 +18,7 @@ class PartyMembers:
             PartyMembers.writer = MemWriter()
 
         if not PartyMembers.player_names:
-            PartyMembers.player_names = merge_jsons([
-                get_project_root("misc_files/custom_player_names.json")
-            ])
+            PartyMembers.player_names = generate_m00_dict(files="'custom_player_names'")
 
         if debug:
             self.address = address

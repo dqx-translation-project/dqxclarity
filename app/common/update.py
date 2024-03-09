@@ -10,8 +10,8 @@ from common.constants import (
     GITHUB_CLARITY_VERSION_UPDATE_URL,
     GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL,
 )
+from common.db_ops import db_query
 from common.errors import message_box
-from common.lib import get_project_root
 from common.process import check_if_running_as_admin, is_dqx_process_running
 from common.translate import load_user_config, update_user_config
 from io import BytesIO
@@ -19,53 +19,87 @@ from loguru import logger as log
 from openpyxl import load_workbook
 from subprocess import Popen
 from tkinter.filedialog import askdirectory
-from zipfile import ZipFile as zip
+from zipfile import ZipFile
 
+import json
 import os
 import requests
 import shutil
-import sqlite3
 import sys
 import winreg
 
 
 def download_custom_files():
-    try:
-        log.info("Downloading custom translation files from dqx-translation-project/dqx-custom-translations.")
-        request = requests.get(GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL, timeout=15)
-        if request.status_code == 200:
-            zfile = zip(BytesIO(request.content))
-            directories = ["/csv/", "/json/"]
-            for obj in zfile.infolist():
-                # only move files that are in the csv/json directories
-                if any([x in obj.filename for x in directories]) and not (obj.filename.endswith("/")):
-                    # hack: unzipped files copy zip folder structure, so re-assign filename to basename when we extract
-                    obj.filename = os.path.basename(obj.filename)
+    log.info("Downloading custom translation files from dqx-translation-project/dqx-custom-translations.")
+    response = requests.get(GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL, timeout=15)
 
-                    # extract already overwrites, but a user reported that they got a permission denied error.
-                    if os.path.exists(f"./misc_files/{obj.filename}"):
-                        os.remove(f"./misc_files/{obj.filename}")
-                    zfile.extract(obj, "misc_files")
+    if response.status_code == 200:
+        zfile = ZipFile(BytesIO(response.content))
+        for obj in zfile.infolist():
+            if obj.filename.endswith('/'):  # directory
+                continue
 
-        # dqx_translations is roughly 17MB~ right now. we only need these files from that repository.
-        for url in [
-            GITHUB_CLARITY_MONSTERS_JSON_URL,
-            GITHUB_CLARITY_NPC_JSON_URL,
-            GITHUB_CLARITY_ITEMS_JSON_URL,
-            GITHUB_CLARITY_KEY_ITEMS_JSON_URL,
-            GITHUB_CLARITY_QUESTS_REQUESTS_JSON_URL,
-            GITHUB_CLARITY_CUTSCENE_JSON_URL
-        ]:
-            request = requests.get(url, timeout=15)
-            if request.status_code == 200:
-                misc_files = get_project_root("misc_files")
-                with open("/".join([misc_files, os.path.basename(url)]), "w+", encoding="utf-8") as f:
-                    f.write(request.text)
-        merge_local_db()
-    except Exception as e:
-        log.error(f"Failed to download custom files. Error: {e}")
-        input("Press ENTER to exit.")
-        sys.exit()
+            if '/json/' in obj.filename and obj.filename.endswith('.json'):
+                with zfile.open(obj.filename, 'r') as f:
+                    data = f.read()
+
+                # modify file path to just the name of the file without the extension
+                filename = obj.filename.split('/')[-1].rsplit('.', 1)[0]
+                read_custom_json_and_import(name=filename, data=data)
+
+            if '/csv/' in obj.filename:
+                if obj.filename.endswith('merge.xlsx'):
+                    with zfile.open(obj.filename, 'r') as f:
+                        data = f.read()
+
+                    read_xlsx_and_import(data)
+
+                if obj.filename.endswith('glossary.csv'):
+                    with zfile.open(obj.filename, 'r') as f:
+                        data = f.read()
+
+                    read_glossary_and_import(data)
+
+    else:
+        log.exception(f"Status Code: {response.status_code}. Reason: {response.reason}")
+
+
+def read_custom_json_and_import(name: str, data: str):
+    content = json.loads(data)
+    query_list = []
+
+    for item in content:
+        key, value = list(content[item].items())[0]
+
+        escaped_value = value.replace("'", "''")
+        query_value = f"('{key}', '{escaped_value}', '{name}')"
+        query_list.append(query_value)
+
+    insert_values = ','.join(query_list)
+    query = f"INSERT OR REPLACE INTO m00_strings (ja, en, file) VALUES {insert_values};"
+    db_query(query)
+
+
+def download_game_jsons():
+    log.info("Downloading translation files from dqx-translation-project/dqx_translations.")
+
+    # dqx_translations is roughly 17MB~ right now. we only need these files from that repository.
+    url_to_db = {
+        GITHUB_CLARITY_MONSTERS_JSON_URL: "monsters",
+        GITHUB_CLARITY_NPC_JSON_URL: "npcs",
+        GITHUB_CLARITY_ITEMS_JSON_URL: "items",
+        GITHUB_CLARITY_KEY_ITEMS_JSON_URL: "key_items",
+        GITHUB_CLARITY_QUESTS_REQUESTS_JSON_URL: "quests",
+        GITHUB_CLARITY_CUTSCENE_JSON_URL: "story_names"
+    }
+
+    for url in url_to_db:
+        response = requests.get(url, timeout=15)
+
+        if response.status_code == 200:
+            read_custom_json_and_import(name=url_to_db[url], data=response.content)
+        else:
+            log.exception(f"Status Code: {response.status_code}. Reason: {response.reason}")
 
 
 def check_for_updates(update: bool):
@@ -112,7 +146,7 @@ def check_for_updates(update: bool):
         return
 
 
-def merge_local_db():
+def read_xlsx_and_import(data: str):
     """We manage a file outside of this repository called merge.xlsx in dqx-
     custom-translations.
 
@@ -121,105 +155,73 @@ def merge_local_db():
     and inserts/updates the user's local database with override entries
     from the xlsx file.
     """
-    merge_file = get_project_root("misc_files/merge.xlsx")
-    db_file = get_project_root("misc_files/clarity_dialog.db")
+    workbook = load_workbook(BytesIO(data))
+    ws_dialogue = workbook["Dialogue"]
+    ws_walkthrough = workbook["Walkthrough"]
+    ws_quests = workbook["Quests"]
 
-    records_inserted = 0
-    records_updated = 0
+    # Dialogue worksheet
+    values = []
+    for i, row in enumerate(ws_dialogue, start=2):
+        source_text = ws_dialogue.cell(row=i, column=1).value
+        en_text = ws_dialogue.cell(row=i, column=3).value
 
-    if os.path.exists(merge_file):
-        wb = load_workbook(merge_file)
-        ws_dialogue = wb["Dialogue"]
-        ws_walkthrough = wb["Walkthrough"]
-        ws_quests = wb["Quests"]
-
-        conn = sqlite3.connect(db_file)
-        cursor = conn.cursor()
-
-        # Dialogue insertion
-        for rowNum in range(2, ws_dialogue.max_row + 1):
-            source_text = ws_dialogue.cell(row=rowNum, column=1).value
-            en_text = ws_dialogue.cell(row=rowNum, column=3).value
-
+        if source_text and en_text:
             escaped_text = en_text.replace("'", "''")
-            npc_name = ""
-            bad_string_col = str(ws_dialogue.cell(row=rowNum, column=4).value)
+            values.append(f"('{source_text}', '{escaped_text}')")
 
-            try:
-                if "BAD STRING" in bad_string_col:
-                    selectQuery = f"SELECT ja FROM dialog WHERE ja LIKE '%{source_text}%'"
-                    updateQuery = f"UPDATE dialog SET en = '{escaped_text}' WHERE ja LIKE '%{source_text}%'"
-                    insertQuery = ""
-                else:
-                    selectQuery = f"SELECT ja FROM dialog WHERE ja = '{source_text}'"
-                    updateQuery = f"UPDATE dialog SET en = '{escaped_text}' WHERE ja = '{source_text}'"
-                    insertQuery = f"INSERT INTO dialog (ja, npc_name, en) VALUES ('{source_text}', '{npc_name}', '{escaped_text}')"
+    insert_values = ",".join(values)
+    query = f"INSERT OR REPLACE INTO dialog (ja, en) VALUES {insert_values};"
 
-                results = cursor.execute(selectQuery)
+    db_query(query)
 
-                if results.fetchone() is None and insertQuery != "":
-                    cursor.execute(insertQuery)
-                    records_inserted += 1
-                else:
-                    cursor.execute(updateQuery)
-                    records_updated += 1
-            except sqlite3.Error as e:
-                log.exception(f"Unable to write data to table.")
+    # Walkthrough worksheet
+    values = []
+    for i, row in enumerate(ws_walkthrough, start=2):
+        source_text = ws_walkthrough.cell(row=i, column=1).value
+        en_text = ws_walkthrough.cell(row=i, column=3).value
 
-        # Walkthrough insertion
-        for rowNum in range(2, ws_walkthrough.max_row + 1):
-            source_text = ws_walkthrough.cell(row=rowNum, column=1).value
-            en_text = ws_walkthrough.cell(row=rowNum, column=3).value
+        if source_text and en_text:
             escaped_text = en_text.replace("'", "''")
+            values.append(f"('{source_text}', '{escaped_text}')")
 
-            try:
-                selectQuery = f"SELECT ja FROM walkthrough WHERE ja = '{source_text}'"
-                updateQuery = f"UPDATE walkthrough SET en = '{escaped_text}' WHERE ja = '{source_text}'"
-                insertQuery = f"INSERT INTO walkthrough (ja, en) VALUES ('{source_text}', '{escaped_text}')"
+    insert_values = ",".join(values)
+    query = f"INSERT OR REPLACE INTO walkthrough (ja, en) VALUES {insert_values};"
 
-                results = cursor.execute(selectQuery)
+    db_query(query)
 
-                if results.fetchone() is None:
-                    cursor.execute(insertQuery)
-                    records_inserted += 1
-                else:
-                    cursor.execute(updateQuery)
-                    records_updated += 1
-            except sqlite3.Error as e:
-                log.exception(f"Unable to write data to table.")
+    # Quests worksheet
+    values = []
+    for i, row in enumerate(ws_quests, start=2):
+        source_text = ws_quests.cell(row=i, column=1).value
+        en_text = ws_quests.cell(row=i, column=3).value
 
-        # Quests insertion
-        for rowNum in range(2, ws_quests.max_row + 1):
-            source_text = ws_quests.cell(row=rowNum, column=1).value
-            en_text = ws_quests.cell(row=rowNum, column=3).value
+        if source_text and en_text:
             escaped_text = en_text.replace("'", "''")
+            values.append(f"('{source_text}', '{escaped_text}')")
 
-            bad_string_col = str(ws_quests.cell(row=rowNum, column=4).value)
+    insert_values = ",".join(values)
+    query = f"INSERT OR REPLACE INTO quests (ja, en) VALUES {insert_values};"
 
-            try:
-                if "BAD STRING" in bad_string_col:
-                    selectQuery = f"SELECT ja FROM quests WHERE ja LIKE '%{source_text}%'"
-                    updateQuery = f"UPDATE quests SET en = '{escaped_text}' WHERE ja LIKE '%{source_text}%'"
-                    insertQuery = ""
-                else:
-                    selectQuery = f"SELECT ja FROM quests WHERE ja = '{source_text}'"
-                    updateQuery = f"UPDATE quests SET en = '{escaped_text}' WHERE ja = '{source_text}'"
-                    insertQuery = f"INSERT INTO quests (ja, en) VALUES ('{source_text}', '{escaped_text}')"
+    db_query(query)
 
-                results = cursor.execute(selectQuery)
 
-                if results.fetchone() is None:
-                    cursor.execute(insertQuery)
-                    records_inserted += 1
-                else:
-                    cursor.execute(updateQuery)
-                    records_updated += 1
-            except sqlite3.Error as e:
-                log.exception(f"Unable to write data to table.")
+def read_glossary_and_import(data: str):
+    decoded_data = data.decode('utf-8')
 
-        conn.commit()
-        conn.close()
-        log.success(f"Records inserted: {str(records_inserted)} :: Records updated: {str(records_updated)}")
+    query_list = []
+    glossary = [ x for x in decoded_data.split("\n") if x ]
+    for record in glossary:
+        ja, en = record.split(",", 1)
+
+        escaped_value = en.replace("'", "''")
+        query_value = f"('{ja}', '{escaped_value}')"
+
+        query_list.append(query_value)
+
+    insert_values = ','.join(query_list)
+    query = f"INSERT OR REPLACE INTO glossary (ja, en) VALUES {insert_values};"
+    db_query(query)
 
 
 def download_dat_files():

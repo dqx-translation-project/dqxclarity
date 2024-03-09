@@ -1,4 +1,5 @@
-from common.lib import encode_to_utf8, get_project_root, merge_jsons
+from common.db_ops import generate_m00_dict
+from common.lib import encode_to_utf8, get_project_root
 from common.memory import MemWriter
 from common.translate import convert_into_eng
 from json import dumps
@@ -23,9 +24,9 @@ class GetPlayer:
             self.address = GetPlayer.writer.unpack_to_int(address)
 
         self.ja_player_name = GetPlayer.writer.read_string(self.address + 24)
-        self.en_player_name = self.__get_en_player_name(player_name=self.ja_player_name)
+        self.en_player_name = self.__get_en_player_name(name=self.ja_player_name)
         self.ja_sibling_name = GetPlayer.writer.read_string(self.address + 96)
-        self.en_sibling_name = self.__get_en_player_name(player_name=self.ja_sibling_name)
+        self.en_sibling_name = self.__get_en_player_name(name=self.ja_sibling_name)
         self.sibling_relationship = self.__determine_sibling_relationship()
 
         self.__write_player()
@@ -44,14 +45,13 @@ class GetPlayer:
             return "younger_sister"
 
 
-    def __get_en_player_name(self, player_name: str):
-        player_file = get_project_root("misc_files/custom_player_names.json")
-        players = merge_jsons([player_file])
+    def __get_en_player_name(self, name: str):
+        player_names = generate_m00_dict(files="'custom_player_names'")
 
-        if player_name in players:
-            return players[player_name]
+        if name in player_names:
+            return player_names[name]
 
-        return convert_into_eng(word=player_name)
+        return convert_into_eng(word=name)
 
 
     def __write_player(self):

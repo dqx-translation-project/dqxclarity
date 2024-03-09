@@ -5,46 +5,114 @@ import sqlite3
 
 
 def init_db() -> object:
-    """Returns a tuple of db (connection, cursor) to be used to execute queries
-    against."""
+    """Returns a tuple of db (connection, cursor)."""
     db_file = get_project_root("misc_files/clarity_dialog.db")
     conn = sqlite3.connect(db_file)
     cursor = conn.cursor()
+
     return (conn, cursor)
 
 
-def ensure_db_structure():
-    conn, cursor = init_db()
-    query = """
-    BEGIN TRANSACTION;
-    CREATE TABLE IF NOT EXISTS "dialog" ("ja" TEXT NOT NULL UNIQUE,"npc_name" TEXT,"en" TEXT,"bg" TEXT,"cs" TEXT,"da" TEXT,"de" TEXT,"el" TEXT,"es" TEXT,"et" TEXT,"fi" TEXT,"fr" TEXT,"hu" TEXT,"it" TEXT,"lt" TEXT,"lv" TEXT,"nl" TEXT,"pl" TEXT,"pt" TEXT,"ro" TEXT,"ru" TEXT,"sk" TEXT,"sl" TEXT,"sv" TEXT,"zh" TEXT,PRIMARY KEY("ja"));
-    CREATE TABLE IF NOT EXISTS "player" ("type" TEXT NOT NULL,"name" TEXT NOT NULL);
-    CREATE TABLE IF NOT EXISTS "quests" ("ja" TEXT NOT NULL UNIQUE,"en" TEXT,"bg" TEXT,"cs" TEXT,"da" TEXT,"de" TEXT,"el" TEXT,"es" TEXT,"et" TEXT,"fi" TEXT,"fr" TEXT,"hu" TEXT,"it" TEXT,"lt" TEXT,"lv" TEXT,"nl" TEXT,"pl" TEXT,"pt" TEXT,"ro" TEXT,"ru" TEXT,"sk" TEXT,"sl" TEXT,"sv" TEXT,"zh" TEXT,PRIMARY KEY("ja"));
-    CREATE TABLE IF NOT EXISTS "story_so_far" ("ja" TEXT NOT NULL UNIQUE,"en" TEXT,"bg" TEXT,"cs" TEXT,"da" TEXT,"de" TEXT,"el" TEXT,"es" TEXT,"et" TEXT,"fi" TEXT,"fr" TEXT,"hu" TEXT,"it" TEXT,"lt" TEXT,"lv" TEXT,"nl" TEXT,"pl" TEXT,"pt" TEXT,"ro" TEXT,"ru" TEXT,"sk" TEXT,"sl" TEXT,"sv" TEXT,"zh" TEXT);
-    CREATE TABLE IF NOT EXISTS "walkthrough" ("ja" TEXT NOT NULL UNIQUE,"en" TEXT,"bg" TEXT,"cs" TEXT,"da" TEXT,"de" TEXT,"el" TEXT,"es" TEXT,"et" TEXT,"fi" TEXT,"fr" TEXT,"hu" TEXT,"it" TEXT,"lt" TEXT,"lv" TEXT,"nl" TEXT,"pl" TEXT,"pt" TEXT,"ro" TEXT,"ru" TEXT,"sk" TEXT,"sl" TEXT,"sv" TEXT,"zh" TEXT,PRIMARY KEY("ja"));
-    CREATE UNIQUE INDEX IF NOT EXISTS "dialog_index" ON "dialog" ("ja");
-    CREATE UNIQUE INDEX IF NOT EXISTS "quests_index" ON "quests" ("ja");
-    CREATE UNIQUE INDEX IF NOT EXISTS "story_so_far_index" ON "story_so_far" ("ja");
-    CREATE UNIQUE INDEX IF NOT EXISTS "walkthrough_index" ON "walkthrough" ("ja");
-    END TRANSACTION;
+def create_db_schema():
+    try:
+        conn, cursor = init_db()
+        schema_file = get_project_root('common/db_scripts/schema.sql')
+
+        with open(schema_file) as f:
+            script = f.read()
+
+        cursor.executescript(script)
+        conn.commit()
+    except sqlite3.Error as e:
+        log.exception(f"Failed to create schema. {e}.")
+    finally:
+        conn.close()
+
+
+def db_query(query: str):
+    """Executes a freeform query against the database.
+
+    Does not return data.
     """
-    cursor.executescript(query)
-    conn.commit()
-    conn.close()
+    try:
+        conn, cursor = init_db()
+        cursor.execute(query)
+        conn.commit()
+    except sqlite3.Error as e:
+        log.exception(f"Query failed. {e}")
+    finally:
+        conn.close()
 
 
-def sql_read(text: str, table: str, language: str) -> str:
+def generate_m00_dict(files: str = "") -> dict:
+    """Queries the m00_strings table. Returns a dictionary of all results.
+
+    :param files: Comma-delimited string of files to get from generate.
+        Ensure you wrap each file in single quotes as this is a SQL
+        query.
+    :returns: Dict
+    """
+    try:
+        data = {}
+        conn, cursor = init_db()
+
+        query = "SELECT * FROM m00_strings"
+
+        if files:
+            query += f" WHERE file IN ({files})"
+
+        cursor.execute(query)
+        results = cursor.fetchall()
+
+        for ja, en, file in results:
+            data[ja] = en
+
+        return data
+
+    except sqlite3.Error as e:
+        log.exception(f"Query failed. {e}.")
+    finally:
+        if conn:
+            conn.close()
+
+
+def generate_glossary_dict() -> dict:
+    """Queries the glossary table.
+
+    Returns a dictionary of all results.
+    """
+    try:
+        data = {}
+        conn, cursor = init_db()
+
+        query = "SELECT * FROM glossary"
+
+        cursor.execute(query)
+        results = cursor.fetchall()
+
+        for ja, en in results:
+            data[ja] = en
+
+        return data
+
+    except sqlite3.Error as e:
+        log.exception(f"Query failed. {e}.")
+    finally:
+        if conn:
+            conn.close()
+
+
+def sql_read(text: str, table: str) -> str:
     """Reads text from a SQLite table.
 
     :param text: Text to query against the database.
     :param table: Table to query against.
-    :param language: Language to query against.
     :returns: Either a string of the found result or None if no match.
     """
     try:
         conn, cursor = init_db()
         escaped_text = text.replace("'", "''")
-        selectQuery = f"SELECT {language} FROM {table} WHERE ja = '{escaped_text}'"
+        selectQuery = f"SELECT en FROM {table} WHERE ja = '{escaped_text}'"
         cursor.execute(selectQuery)
         results = cursor.fetchone()
 
@@ -59,14 +127,13 @@ def sql_read(text: str, table: str, language: str) -> str:
             conn.close()
 
 
-def sql_write(source_text, translated_text, table, language):
+def sql_write(source_text: str, translated_text: str, table: str):
     """Writes or updates text to a SQLite table.
 
     :param source_text: Text to search against the table.
     :param translated_text: Translated text to insert/update into the
         database.
     :param table: Table to insert the text into.
-    :param language: The applicable language to insert the text into.
     :returns: This function returns nothing; it only writes/updates to
         the database.
     """
@@ -74,8 +141,8 @@ def sql_write(source_text, translated_text, table, language):
         conn, cursor = init_db()
         escaped_text = translated_text.replace("'", "''")
         select_query = f"SELECT ja FROM {table} WHERE ja = '{source_text}'"
-        update_query = f"UPDATE {table} SET {language} = '{escaped_text}' WHERE ja = '{source_text}'"
-        insert_query = f"INSERT INTO {table} (ja, {language}) VALUES ('{source_text}', '{escaped_text}')"
+        update_query = f"UPDATE {table} SET en = '{escaped_text}' WHERE ja = '{source_text}'"
+        insert_query = f"INSERT INTO {table} (ja, en) VALUES ('{source_text}', '{escaped_text}')"
         results = cursor.execute(select_query)
 
         if results.fetchone() is None:

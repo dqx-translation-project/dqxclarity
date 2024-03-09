@@ -1,12 +1,7 @@
-from common.lib import (
-    encode_to_utf8,
-    get_project_root,
-    merge_jsons,
-    setup_logger,
-)
+from common.db_ops import generate_m00_dict
+from common.lib import encode_to_utf8, get_project_root, setup_logger
 from common.memory import MemWriter
 from common.translate import detect_lang
-from glob import glob
 from json import dumps
 
 import os
@@ -29,7 +24,7 @@ class CornerText:
             self.text_address = CornerText.writer.unpack_to_int(text_address)
 
         if CornerText.data is None:
-            CornerText.data = self.__get_data()
+            CornerText.data = generate_m00_dict("'custom_corner_text'")
 
         text = CornerText.writer.read_string(self.text_address)
 
@@ -40,15 +35,6 @@ class CornerText:
                     CornerText.writer.write_string(self.text_address, to_write)
             else:
                 CornerText.custom_text_logger.info(f"--\n>>corner_text ::\n{text}")
-
-
-    def __get_data(self):
-        """Reads the custom_corner_text file and returns a parseable
-        dictionary."""
-        json_file = glob(f"{CornerText.misc_files}/custom_corner_text.json")
-        data = merge_jsons(json_file)
-
-        return data
 
 
 def corner_text_shellcode(eax_address: int) -> str:

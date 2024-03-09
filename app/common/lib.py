@@ -62,22 +62,6 @@ def setup_logger(name, log_file, level=logging.INFO):
     return log_handle
 
 
-def merge_jsons(files: list):
-    """Merge any number of json files to create a new dict.
-
-    :param files: List of files to merge
-    :returns: New dict with merged changes
-    """
-    merged_changes = {}
-    for file in files:
-        json_content = read_json_file(file=file)
-        for item in json_content:
-            key, value = list(json_content[item].items())[0]
-            merged_changes[key] = value
-
-    return merged_changes
-
-
 def get_project_root(add_file=None):
     """Returns the absolute path of the project root. If add_file is called,
     appends add_file to the end of the absolute path.
