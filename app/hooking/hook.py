@@ -2,6 +2,7 @@ from common.errors import FailedToReadAddress
 from common.lib import setup_logging
 from common.memory import MemWriter
 from common.signatures import (
+    corner_text_trigger,
     dialog_trigger,
     integrity_check,
     network_text_trigger,
@@ -142,6 +143,28 @@ def party_name_detour(simple_str_addr: int):
     return hook_obj
 
 
+def corner_text_detour(simple_str_addr: int):
+    """Detours function when top-right corner text is about to happen and
+    replaces it with English."""
+    from hooking.corner_text import corner_text_shellcode
+
+    writer = MemWriter()
+
+    hook_obj = EasyDetour(
+        hook_name="corner_text",
+        signature=corner_text_trigger,
+        num_bytes_to_steal=5,
+        simple_str_addr=simple_str_addr
+    )
+
+    eax = hook_obj.address_dict["attrs"]["eax"]
+    shellcode = corner_text_shellcode(eax_address=eax)
+    shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
+    writer.write_string(address=shellcode_addr, text=shellcode)
+
+    return hook_obj
+
+
 def activate_hooks(player_names: bool, communication_window: bool):
     """Activates all hooks and kicks off hook manager."""
     # configure logging. this function runs in multiprocessing, so it does not
@@ -160,6 +183,7 @@ def activate_hooks(player_names: bool, communication_window: bool):
     hooks = []
     hooks.append(player_name_detour(simple_str_addr=simple_str_addr))
     hooks.append(network_text_detour(simple_str_addr=simple_str_addr))
+    hooks.append(corner_text_detour(simple_str_addr=simple_str_addr))
 
     if player_names:
         hooks.append(party_name_detour(simple_str_addr=simple_str_addr))
