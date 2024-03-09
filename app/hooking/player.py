@@ -1,9 +1,8 @@
-from common.db_ops import generate_m00_dict
+from common.db_ops import generate_m00_dict, init_db
 from common.lib import encode_to_utf8, get_project_root
 from common.memory import MemWriter
 from common.translate import convert_into_eng
 from json import dumps
-from openpyxl import load_workbook
 
 import os
 import sqlite3
@@ -68,8 +67,7 @@ class GetPlayer:
         """
 
         try:
-            conn = sqlite3.connect(db_file)
-            cursor = conn.cursor()
+            conn, cursor = init_db()
             cursor.executescript(query)
             conn.commit()
         finally:
@@ -117,35 +115,27 @@ class GetPlayer:
 
 
     def __load_dialog_into_db(self):
-        merge_file = get_project_root("misc_files/merge.xlsx")
-        db_file = get_project_root("misc_files/clarity_dialog.db")
-
-        #if os.path.exists(merge_file) and os.path.exists(db_file):
-        workbook = load_workbook(merge_file)
-        worksheet = workbook["Story So Far"]
-
-        conn = sqlite3.connect(db_file)
-        cursor = conn.cursor()
+        conn, cursor = init_db()
 
         query = "DELETE FROM story_so_far"
         cursor.execute(query)
 
-        for row_num in range(2, worksheet.max_row + 1):
-            ja_text = self.__replace_with_ja_names(
-                worksheet.cell(row=row_num, column=1).value.replace("'", "''"))
+        query = "SELECT * FROM story_so_far_template"
+        cursor.execute(query)
 
-            # if data in fixed english translation column, use it
-            if fixed_text := worksheet.cell(row=row_num, column=3).value:
-                en_text = self.__replace_with_en_names(fixed_text.replace("'", "''"))
-            elif deepl_text := worksheet.cell(row=row_num, column=2).value:
-                en_text = self.__replace_with_en_names(deepl_text.replace("'", "''"))
-            else:
-                # no entry for either type. just use the japanese
-                en_text = ja_text
+        results = cursor.fetchall()
 
-            query = f"INSERT INTO story_so_far (ja, en) VALUES ('{ja_text}', '{en_text}')"
-            cursor.execute(query)
+        query_list = []
+        for ja, en in results:
+            fixed_ja = self.__replace_with_ja_names(ja.replace("'", "''"))
+            fixed_en = self.__replace_with_en_names(en.replace("'", "''"))
 
+            query_value = f"('{fixed_ja}', '{fixed_en}')"
+            query_list.append(query_value)
+
+        insert_values = ','.join(query_list)
+        query = f"INSERT INTO story_so_far (ja, en) VALUES {insert_values};"
+        cursor.execute(query)
         conn.commit()
         conn.close()
 

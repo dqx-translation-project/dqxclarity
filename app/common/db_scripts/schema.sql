@@ -21,6 +21,11 @@ CREATE TABLE IF NOT EXISTS "story_so_far" (
 	"en"	TEXT
 );
 
+CREATE TABLE IF NOT EXISTS "story_so_far_template" (
+	"ja"	TEXT NOT NULL UNIQUE,
+	"en"	TEXT
+);
+
 CREATE TABLE IF NOT EXISTS "walkthrough" (
 	"ja"	TEXT NOT NULL UNIQUE,
 	"en"	TEXT,

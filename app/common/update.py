@@ -159,6 +159,7 @@ def read_xlsx_and_import(data: str):
     ws_dialogue = workbook["Dialogue"]
     ws_walkthrough = workbook["Walkthrough"]
     ws_quests = workbook["Quests"]
+    ws_story_so_far = workbook["Story So Far"]
 
     # Dialogue worksheet
     values = []
@@ -202,6 +203,25 @@ def read_xlsx_and_import(data: str):
 
     insert_values = ",".join(values)
     query = f"INSERT OR REPLACE INTO quests (ja, en) VALUES {insert_values};"
+
+    db_query(query)
+
+    # Story So Far worksheet
+    values = []
+    for i, row in enumerate(ws_story_so_far, start=2):
+        source_text = ws_story_so_far.cell(row=i, column=1).value
+        deepl_text = ws_story_so_far.cell(row=i, column=2).value
+        fixed_en_text = ws_story_so_far.cell(row=i, column=3).value
+
+        if source_text and fixed_en_text:
+            escaped_text = fixed_en_text.replace("'", "''")
+            values.append(f"('{source_text}', '{escaped_text}')")
+        elif source_text and deepl_text:
+            escaped_text = deepl_text.replace("'", "''")
+            values.append(f"('{source_text}', '{escaped_text}')")
+
+    insert_values = ",".join(values)
+    query = f"INSERT OR REPLACE INTO story_so_far_template (ja, en) VALUES {insert_values};"
 
     db_query(query)
 
