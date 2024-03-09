@@ -8,23 +8,22 @@ import time
 
 
 def is_dqx_process_running():
-    """Returns True if DQX is currently running."""
-    # https://stackoverflow.com/a/29275361
-    # will only work on windows.
-    call = 'TASKLIST', '/FI', 'imagename eq DQXGame.exe'
-    output = subprocess.run(call, capture_output=True, text=True).stdout
-    if "DQXGame.exe" in output:
-        return True
+    """Return True if DQX is currently running."""
+    # This is difficult to do with native Python or ctypes as user locale settings
+    # vary widely across the globe, so decoding the stdout cannot be relied on.
+    # We will just check the exit code of a common Windows command to find this.
+    # tasklist does not produce an exit code on failed lookups, but find does.
+    call = 'TASKLIST /FI "imagename eq DQXGame.exe" | find "DQXGame" > nul'
 
-    return False
+    try:
+        subprocess.check_call(call, shell=True)
+        return True
+    except subprocess.CalledProcessError:
+        return False
 
 
 def check_if_running_as_admin():
-    """Check if the user is running this script as an admin.
-
-    If not, return False.
-    """
-    # will only work on windows.
+    """Return True if the user is running this script as an admin."""
     is_admin = ctypes.windll.shell32.IsUserAnAdmin()
     if is_admin == 1:
         return True
