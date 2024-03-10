@@ -67,7 +67,7 @@ class NetworkTextTranslate:
 
             # npc or player names
             elif category in ["M_pc", "M_npc", "B_ACTOR", "B_TARGET", "C_PC", "L_SENDER_NAME", "M_OWNER", "M_hiryu", "L_HIRYU", "L_HIRYU_NAME", "M_name", "L_OWNER", "L_URINUSI", "M_NAME", "L_PLAYER_NAME"]:
-                if text in NetworkTextTranslate.m00_text:
+                if NetworkTextTranslate.m00_text.get('text'):
                     name_to_write = NetworkTextTranslate.m00_text[text]
                 else:
                     name_to_write = convert_into_eng(text)
@@ -75,10 +75,8 @@ class NetworkTextTranslate:
 
             # generic string
             elif category in ["M_00", "C_QUEST", "M_02", "M_header", "M_item", "L_QUEST"]:
-                if text in NetworkTextTranslate.m00_text:
-                    to_write = NetworkTextTranslate.m00_text[text]
-                    if to_write != "":
-                        NetworkTextTranslate.writer.write_string(self.text_address, to_write)
+                if to_write := NetworkTextTranslate.m00_text.get('text'):
+                    NetworkTextTranslate.writer.write_string(self.text_address, to_write)
                 else:
                     NetworkTextTranslate.custom_text_logger.info(f"--\n>>m00_str ::\n{text}")
 

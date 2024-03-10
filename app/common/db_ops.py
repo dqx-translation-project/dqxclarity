@@ -102,17 +102,26 @@ def generate_glossary_dict() -> dict:
             conn.close()
 
 
-def sql_read(text: str, table: str) -> str:
+def sql_read(text: str, table: str, wildcard: bool = False) -> str:
     """Reads text from a SQLite table.
 
     :param text: Text to query against the database.
     :param table: Table to query against.
-    :returns: Either a string of the found result or None if no match.
+    :param wildcard: Whether to use LIKE syntax instead of an exact
+        match.
+    :returns: Either a string of the first found result or None if no
+        match.
     """
     try:
         conn, cursor = init_db()
         escaped_text = text.replace("'", "''")
         selectQuery = f"SELECT en FROM {table} WHERE ja = '{escaped_text}'"
+
+        if wildcard:
+            # because of newlines in our wildcard search, we replace \n with %.
+            escaped_text = escaped_text.replace('\n', '%')
+            selectQuery = f"SELECT en FROM {table} WHERE ja LIKE '%{escaped_text}%'"
+
         cursor.execute(selectQuery)
         results = cursor.fetchone()
 
@@ -153,6 +162,35 @@ def sql_write(source_text: str, translated_text: str, table: str):
         conn.commit()
     except sqlite3.Error as e:
         log.exception(f"Unable to write data to {table}.")
+    finally:
+        if conn:
+            conn.close()
+
+
+def search_bad_strings(text: str):
+    """Searches every row in the bad_strings table for a match against the text
+    arg.
+
+    :param text: The string to compare the bad_string rows to.
+    :returns: The english string it matched against or None if there is
+        no match.
+    """
+    try:
+        conn, cursor = init_db()
+
+        query = "SELECT * FROM bad_strings"
+
+        cursor.execute(query)
+        results = cursor.fetchall()
+
+        for ja, en in results:
+            if ja in text:
+                return en
+
+        return None
+
+    except sqlite3.Error as e:
+        log.exception(f"Query failed. {e}.")
     finally:
         if conn:
             conn.close()

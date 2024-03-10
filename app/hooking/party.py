@@ -42,8 +42,8 @@ class PartyMembers:
 
 
     def __get_en_party_name(self, player_name: str):
-        if player_name in PartyMembers.player_names:
-            return PartyMembers.player_names[player_name]
+        if name := PartyMembers.player_names.get(player_name):
+            return name
 
         return convert_into_eng(word=player_name)
 

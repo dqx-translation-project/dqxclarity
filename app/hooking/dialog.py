@@ -1,4 +1,4 @@
-from common.db_ops import init_db, sql_read
+from common.db_ops import init_db, search_bad_strings, sql_read
 from common.lib import encode_to_utf8
 from common.memory import MemWriter
 from common.translate import detect_lang, Translate
@@ -27,14 +27,20 @@ class Dialog:
         self.npc_name = self.__get_npc_name()
 
         if detect_lang(self.text):
+            bad_strings_result = self.__search_bad_strings_table(self.text)
+            if bad_strings_result:
+                Dialog.writer.write_string(self.text_address, text=bad_strings_result)
+                return
+
             db_result = self.__read_db(self.text)
             if db_result:
                 Dialog.writer.write_string(self.text_address, text=db_result)
-            else:
-                self.translated_text = self.__translate(self.text)
-                if self.translated_text:
-                    self.__write_db()
-                    Dialog.writer.write_string(self.text_address, text=self.translated_text)
+                return
+
+            self.translated_text = self.__translate(self.text)
+            if self.translated_text:
+                self.__write_db()
+                Dialog.writer.write_string(self.text_address, text=self.translated_text)
 
 
     def __get_npc_name(self):
@@ -81,6 +87,23 @@ class Dialog:
             wrap_width=46
         )
         return translated_text
+
+
+    def __search_bad_strings_table(self, text: str):
+        """Searches the bad_strings table. This is used to fix instances of
+        text where machine translation completely screwed up the text and
+        caused the game to have issues.
+
+        :param text: String to search
+        :returns: Returns either the English text or None if no match
+            was found.
+        """
+        # use wildcard syntax as we want to match for BAD_STRING data.
+        result = search_bad_strings(text)
+        if result:
+            return result
+
+        return None
 
 
 def translate_shellcode(esi_address: int, esp_address: int) -> str:

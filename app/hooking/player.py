@@ -5,7 +5,6 @@ from common.translate import convert_into_eng
 from json import dumps
 
 import os
-import sqlite3
 import sys
 
 
@@ -29,7 +28,8 @@ class GetPlayer:
         self.sibling_relationship = self.__determine_sibling_relationship()
 
         self.__write_player()
-        self.__load_dialog_into_db()
+        self.__load_story_so_far_into_db()
+        self.__load_fixed_dialog_into_db()
 
 
     def __determine_sibling_relationship(self):
@@ -114,7 +114,7 @@ class GetPlayer:
         return new_string
 
 
-    def __load_dialog_into_db(self):
+    def __load_story_so_far_into_db(self):
         conn, cursor = init_db()
 
         query = "DELETE FROM story_so_far"
@@ -136,6 +136,43 @@ class GetPlayer:
         insert_values = ','.join(query_list)
         query = f"INSERT INTO story_so_far (ja, en) VALUES {insert_values};"
         cursor.execute(query)
+        conn.commit()
+        conn.close()
+
+
+    def __load_fixed_dialog_into_db(self):
+        conn, cursor = init_db()
+
+        query = "DELETE FROM bad_strings"
+        cursor.execute(query)
+
+        query = "SELECT ja, en, bad_string FROM fixed_dialog_template"
+        cursor.execute(query)
+
+        results = cursor.fetchall()
+
+        dialog_list = []
+        bad_strings_list = []
+        for ja, en, bad_string in results:
+            fixed_ja = self.__replace_with_ja_names(ja.replace("'", "''"))
+            fixed_en = self.__replace_with_en_names(en.replace("'", "''"))
+
+            query_value = f"('{fixed_ja}', '{fixed_en}')"
+
+            if bad_string == 0:
+                dialog_list.append(query_value)
+            elif bad_string == 1:
+                bad_strings_list.append(query_value)
+
+        dialog_values = ','.join(dialog_list)
+        bad_string_values = ','.join(bad_strings_list)
+
+        if len(dialog_values) > 0:
+            query = f"INSERT OR REPLACE INTO dialog (ja, en) VALUES {dialog_values};"
+            cursor.execute(query)
+        if len(bad_string_values) > 0:
+            query = f"INSERT OR REPLACE INTO bad_strings (ja, en) VALUES {bad_string_values};"
+            cursor.execute(query)
         conn.commit()
         conn.close()
 

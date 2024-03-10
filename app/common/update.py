@@ -162,17 +162,24 @@ def read_xlsx_and_import(data: str):
     ws_story_so_far = workbook["Story So Far"]
 
     # Dialogue worksheet
+    db_query("DELETE FROM fixed_dialog_template")
+
     values = []
     for i, row in enumerate(ws_dialogue, start=2):
         source_text = ws_dialogue.cell(row=i, column=1).value
         en_text = ws_dialogue.cell(row=i, column=3).value
+        notes = ws_dialogue.cell(row=i, column=4).value
 
         if source_text and en_text:
+            bad_string = 0
+            if notes:
+                if "BAD STRING" in notes:
+                    bad_string = 1
             escaped_text = en_text.replace("'", "''")
-            values.append(f"('{source_text}', '{escaped_text}')")
+            values.append(f"('{source_text}', '{escaped_text}', {bad_string})")
 
     insert_values = ",".join(values)
-    query = f"INSERT OR REPLACE INTO dialog (ja, en) VALUES {insert_values};"
+    query = f"INSERT OR REPLACE INTO fixed_dialog_template (ja, en, bad_string) VALUES {insert_values};"
 
     db_query(query)
 

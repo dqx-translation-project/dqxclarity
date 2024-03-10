@@ -2,7 +2,6 @@ from common.db_ops import generate_glossary_dict, generate_m00_dict, init_db
 from common.errors import message_box
 from common.lib import get_project_root
 from googleapiclient.discovery import build
-from openpyxl import load_workbook
 
 import configparser
 import deepl
@@ -259,9 +258,6 @@ class Translate():
         :param add_brs: Whether to inject "<br>" every three lines to
                 break up text. Used for dialog mainly.
         """
-        if found := self.__search_excel_workbook(text):
-            return found
-
         # manage our own line endings later
         output = text.replace("<br>", "　")
 
@@ -433,30 +429,6 @@ class Translate():
             count += 1
 
         return pristine_str
-
-
-    def __search_excel_workbook(self, text: str):
-        """Searches the merge.xlsx workbook for a string in the JP Text column.
-        If there's a match and the string "BAD STRING" is found in the Notes
-        column, this returns the contents in the "Fixed English Text" column.
-        This fixes instances of text where machine translation completely
-        screwed up the text and caused the game to have issues.
-
-        :param text: String to search
-        :returns: Returns either the English text or None if no match
-            was found.
-        """
-        file = get_project_root("misc_files/merge.xlsx")
-
-        if os.path.exists(file):
-            wb = load_workbook(file)
-            ws_dialogue = wb["Dialogue"]
-            for rowNum in range(2, ws_dialogue.max_row + 1):
-                jp_string = str(ws_dialogue.cell(row=rowNum, column=1).value)
-                bad_string_col = str(ws_dialogue.cell(row=rowNum, column=4).value)
-                if (jp_string in text) and ("BAD STRING" in bad_string_col):
-                    return str(ws_dialogue.cell(row=rowNum, column=3).value)
-        return None
 
 
 def load_user_config():
@@ -679,7 +651,6 @@ def convert_into_eng(word: str) -> str:
     """
     kks = pykakasi.kakasi()
     invalid_chars = ["[", "]", "[", "(", ")", "\\", "/", "*", "_", "+", "?", "$", "^", '"']
-    player_names = generate_m00_dict(files="'custom_player_names'")
     interpunct_count = word.count("・")
     word_len = len(word)
     bad_word = False
@@ -687,30 +658,24 @@ def convert_into_eng(word: str) -> str:
     if any(char in word for char in invalid_chars):
         return word
     else:
-        romaji_name = ""
-        if word in player_names:
-            value = player_names.get(word)
-            if value:
-                romaji_name = value
-            return romaji_name[0:10]
+        if word_len < 7:
+            romaji_name = ""
+            for char in word:
+                num = ord(char)
+                if num not in (list(range(12353, 12430)) + [12431] + list(range(12434,12436)) + list(range(12449,12526)) + [12527] + list(range(12530,12533)) + list(range(12539,12541)) + [65374]):
+                    bad_word = True
+                    return word
+            if bad_word != True:
+                result = kks.convert(word)
+                for word in result:
+                    romaji_name = romaji_name + word["hepburn"]
+                romaji_name = romaji_name.title()
+                romaji_name = romaji_name.replace("・", "")
+                if romaji_name == "":
+                    romaji_name = "." * interpunct_count
+                return romaji_name[0:10]
         else:
-            if word_len < 7:
-                for char in word:
-                    num = ord(char)
-                    if num not in (list(range(12353, 12430)) + [12431] + list(range(12434,12436)) + list(range(12449,12526)) + [12527] + list(range(12530,12533)) + list(range(12539,12541)) + [65374]):
-                        bad_word = True
-                        return word
-                if bad_word != True:
-                    result = kks.convert(word)
-                    for word in result:
-                        romaji_name = romaji_name + word["hepburn"]
-                    romaji_name = romaji_name.title()
-                    romaji_name = romaji_name.replace("・", "")
-                    if romaji_name == "":
-                        romaji_name = "." * interpunct_count
-                    return romaji_name[0:10]
-            else:
-                return word
+            return word
 
 
 def get_player_name() -> tuple:

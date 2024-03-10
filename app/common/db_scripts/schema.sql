@@ -5,6 +5,19 @@ CREATE TABLE IF NOT EXISTS "dialog" (
 	PRIMARY KEY("ja")
 );
 
+CREATE TABLE IF NOT EXISTS "fixed_dialog_template" (
+	"ja"	TEXT NOT NULL UNIQUE,
+	"en"	TEXT,
+	"bad_string"	INTEGER,
+	PRIMARY KEY("ja")
+);
+
+CREATE TABLE IF NOT EXISTS "bad_strings" (
+	"ja"	TEXT NOT NULL UNIQUE,
+	"en"	TEXT,
+	PRIMARY KEY("ja")
+);
+
 CREATE TABLE IF NOT EXISTS "player" (
 	"type"	TEXT NOT NULL,
 	"name"	TEXT NOT NULL
@@ -66,5 +79,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS "m00_strings_index" ON "m00_strings" (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS "glossary_index" ON "glossary" (
+	"ja"
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "bad_strings_index" ON "bad_strings" (
 	"ja"
 );

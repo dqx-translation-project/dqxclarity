@@ -26,12 +26,15 @@ def scan_for_player_names():
     """Scans for addresses that are related to a specific pattern to translate
     player names."""
     writer = MemWriter()
+    player_names = generate_m00_dict(files="'custom_player_names'")
     if addresses := writer.pattern_scan(pattern=player_name_pattern, return_multiple=True):
         for address in addresses:
             player_name_address = address + 48  # len of player_name_pattern - 1
             try:
                 ja_name = writer.read_string(player_name_address)
-                en_name = convert_into_eng(ja_name)
+                en_name = player_names.get(ja_name)
+                if not en_name:
+                    en_name = convert_into_eng(ja_name)
                 if en_name != ja_name:
                     # we use a leading x04 byte here as the game assumes all names that start
                     # with an english letter are GMs.
@@ -58,6 +61,7 @@ def scan_for_comm_names():
     """Scans for addresses that are related to a specific pattern to translate
     player names in the comms window."""
     writer = MemWriter()
+    player_names = generate_m00_dict(files="'custom_player_names'")
     comm_addresses = []
 
     # the comm names were found to use two patterns. the first set we can use as is, the second set
@@ -76,6 +80,9 @@ def scan_for_comm_names():
     for address in comm_addresses:
         try:
             ja_name = writer.read_string(address)
+            en_name = player_names.get(ja_name)
+            if not en_name:
+                en_name = convert_into_eng(ja_name)
             en_name = convert_into_eng(ja_name)
             if en_name != ja_name:
                 reread = writer.read_string(address)
@@ -137,12 +144,15 @@ def scan_for_concierge_names():
     """Scans for addresses that are related to a specific pattern to translate
     concierge names."""
     writer = MemWriter()
+    player_names = generate_m00_dict(files="'custom_player_names'")
     if addresses := writer.pattern_scan(pattern=concierge_name_pattern, return_multiple=True):
         for address in addresses:
             name_address = address + 12  # jump to name
             try:
                 ja_name = writer.read_string(name_address)
-                en_name = convert_into_eng(ja_name)
+                en_name = player_names.get(ja_name)
+                if not en_name:
+                    en_name = convert_into_eng(ja_name)
                 if en_name != ja_name:
                     reread = writer.read_string(name_address)
                     if ja_name == reread:
@@ -167,7 +177,7 @@ def scan_for_npc_names():
     """Scan to look for NPC names, monster names and names above your party
     member's heads and translates them into English."""
     writer = MemWriter()
-    m00_strings = generate_m00_dict(files="'monsters', 'npcs', 'custom_npc_names'")
+    m00_strings = generate_m00_dict(files="'monsters', 'npcs', 'custom_npc_names', 'custom_player_names'")
 
     if npc_list := writer.pattern_scan(pattern=npc_monster_pattern, return_multiple=True):
         for address in npc_list:
@@ -185,15 +195,6 @@ def scan_for_npc_names():
             name = writer.read_string(name_addr)
 
             if data == "NPC" or data == "MONSTER":
-                if name in m00_strings:
-                    value = m00_strings.get(name)
-                    if value:
-                        try:
-                            reread = writer.read_string(name_addr)
-                            if reread == name:
-                                writer.write_string(name_addr, value)
-                        except Exception as e:
-                            log.debug(f"Failed to write {data}. {e}")
                 if value := m00_strings.get(name):
                     try:
                         reread = writer.read_string(name_addr)
@@ -202,7 +203,9 @@ def scan_for_npc_names():
                     except Exception as e:
                         log.debug(f"Failed to write {data}. {e}")
             elif data == "AI_NAME":
-                en_name = convert_into_eng(name)
+                en_name = m00_strings.get(name)
+                if not en_name:
+                    en_name = convert_into_eng(name)
                 if en_name != name:
                     try:
                         reread = writer.read_string(name_addr)
