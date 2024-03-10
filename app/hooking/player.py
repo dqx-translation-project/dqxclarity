@@ -11,10 +11,13 @@ import sys
 class GetPlayer:
 
     writer = None
+    player_names = None
 
     def __init__(self, address, debug=False):
         if not GetPlayer.writer:
             GetPlayer.writer = MemWriter()
+        if not GetPlayer.player_names:
+            GetPlayer.player_names = generate_m00_dict(files="'custom_player_names'")
 
         if debug:
             self.address = address
@@ -45,10 +48,8 @@ class GetPlayer:
 
 
     def __get_en_player_name(self, name: str):
-        player_names = generate_m00_dict(files="'custom_player_names'")
-
-        if name in player_names:
-            return player_names[name]
+        if result := GetPlayer.player_names.get(name):
+            return result
 
         return convert_into_eng(word=name)
 

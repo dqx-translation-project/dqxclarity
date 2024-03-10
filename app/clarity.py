@@ -83,7 +83,6 @@ def scan_for_comm_names():
             en_name = player_names.get(ja_name)
             if not en_name:
                 en_name = convert_into_eng(ja_name)
-            en_name = convert_into_eng(ja_name)
             if en_name != ja_name:
                 reread = writer.read_string(address)
                 if ja_name == reread:
