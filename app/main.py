@@ -1,5 +1,5 @@
 from clarity import loop_scan_for_walkthrough, run_scans
-from common.db_ops import create_db_schema
+from common.db_ops import create_db_schema, sync_existing_tables
 from common.lib import get_project_root, setup_logging
 from common.process import wait_for_dqx_to_launch
 from common.translate import determine_translation_service
@@ -58,6 +58,7 @@ def blast_off(
 
     log.info("Ensuring db structure.")
     create_db_schema()
+    sync_existing_tables()
 
     log.info("Checking user_settings.ini.")
     determine_translation_service(communication_window_enabled=communication_window)

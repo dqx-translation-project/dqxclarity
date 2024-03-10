@@ -29,6 +29,29 @@ def create_db_schema():
         conn.close()
 
 
+def sync_existing_tables():
+    """Drops old columns that were never used from the database."""
+    old_columns = ["bg", "cs", "da", "de", "el", "es", "et", "fi", "fr", "hu", "it", "lt", "lv", "nl", "pl", "pt", "ro", "ru", "sk", "sl", "sv", "zh"]
+    tables_to_sync = ["dialog", "quests", "story_so_far", "walkthrough"]
+
+    try:
+        conn, cursor = init_db()
+        for table in tables_to_sync:
+            query = f"pragma table_info({table})"
+            cursor.execute(query)
+            results = cursor.fetchall()
+            existing_columns = [ col[1] for col in results if col ]
+            for column in existing_columns:
+                if column in old_columns:
+                    drop_col_query = f"ALTER TABLE {table} DROP COLUMN {column}"
+                    cursor.execute(drop_col_query)
+        conn.commit()
+    except sqlite3.Error as e:
+        log.exception(f"Failed to drop existing column. {e}")
+    finally:
+        conn.close()
+
+
 def db_query(query: str):
     """Executes a freeform query against the database.
 
