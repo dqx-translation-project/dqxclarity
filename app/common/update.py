@@ -169,12 +169,22 @@ def read_xlsx_and_import(data: str):
         source_text = ws_dialogue.cell(row=i, column=1).value
         en_text = ws_dialogue.cell(row=i, column=3).value
         notes = ws_dialogue.cell(row=i, column=4).value
+        original_bad_string_text = ws_dialogue.cell(row=i, column=5).value
 
         if source_text and en_text:
+            # bad_string means the machine translation that was returned ended up breaking the game or providing
+            # a confusing experience. initially, what was logged in the spreadsheet was the partial string with
+            # the player info taken out. we can't use that when we see the text, so we have to iterate over every
+            # bad string match we have to find a match. because of how the text was collected before, this exists.
+            # when we get rid of all of the partial strings and get the original source strings, we can remove this
+            # logic.
             bad_string = 0
             if notes:
                 if "BAD STRING" in notes:
-                    bad_string = 1
+                    if not original_bad_string_text:
+                        bad_string = 1
+                    else:
+                        en_text = original_bad_string_text
             escaped_text = en_text.replace("'", "''")
             values.append(f"('{source_text}', '{escaped_text}', {bad_string})")
 
