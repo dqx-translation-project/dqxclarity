@@ -56,8 +56,10 @@ def blast_off(
     sync_existing_tables()
 
     if update_dat:
+        log.info("Updating DAT mod.")
         download_dat_files()
     if not disable_update_check:
+        log.info("Updating custom text in db.")
         check_for_updates(update=True)
         download_custom_files()
 
