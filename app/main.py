@@ -50,15 +50,16 @@ def blast_off(
     log = setup_logging()
 
     log.info("Getting started. DO NOT TOUCH THE GAME OR REMOVE YOUR MEMORY CARD.",)
+
+    log.info("Ensuring db structure.")
+    create_db_schema()
+    sync_existing_tables()
+
     if update_dat:
         download_dat_files()
     if not disable_update_check:
         check_for_updates(update=True)
         download_custom_files()
-
-    log.info("Ensuring db structure.")
-    create_db_schema()
-    sync_existing_tables()
 
     log.info("Checking user_settings.ini.")
     determine_translation_service(communication_window_enabled=communication_window)
