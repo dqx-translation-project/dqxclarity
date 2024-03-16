@@ -7,6 +7,7 @@ from common.update import (
     check_for_updates,
     download_custom_files,
     download_dat_files,
+    download_game_jsons,
 )
 from dqxcrypt.dqxcrypt import start_logger
 from hooking.hook import activate_hooks
@@ -62,6 +63,7 @@ def blast_off(
         log.info("Updating custom text in db.")
         check_for_updates(update=True)
         download_custom_files()
+        download_game_jsons()
 
     log.info("Checking user_settings.ini.")
     determine_translation_service(communication_window_enabled=communication_window)
