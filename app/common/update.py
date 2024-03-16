@@ -183,8 +183,6 @@ def read_xlsx_and_import(data: str):
                 if "BAD STRING" in notes:
                     if not original_bad_string_text:
                         bad_string = 1
-                    else:
-                        en_text = original_bad_string_text
             escaped_text = en_text.replace("'", "''")
             values.append(f"('{source_text}', '{escaped_text}', {bad_string})")
 
