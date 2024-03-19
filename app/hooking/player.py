@@ -1,4 +1,16 @@
-from common.db_ops import generate_m00_dict, init_db
+"""This hook is triggered once the player has logged into the game with their
+selected character.
+
+It currently reads:
+    - The player's name
+    - The sibling's name
+    - The relationship between player and sibling
+It uses this information to update various data in the local database that replaces placeholder tags
+related to the above read data. This makes it so that when the strings are encountered in game, they
+exactly match when being looked up in database, returning a result.
+"""
+
+from common.db_ops import db_query, generate_m00_dict, init_db
 from common.lib import encode_to_utf8, get_project_root
 from common.memory import MemWriter
 from common.translate import convert_into_eng
@@ -33,6 +45,7 @@ class GetPlayer:
         self.__write_player()
         self.__load_story_so_far_into_db()
         self.__load_fixed_dialog_into_db()
+        self.__update_m00_table()
 
 
     def __determine_sibling_relationship(self):
@@ -176,6 +189,20 @@ class GetPlayer:
             cursor.execute(query)
         conn.commit()
         conn.close()
+
+
+    def __update_m00_table(self):
+        ja_query = f"""UPDATE m00_strings SET
+            ja = replace(ja, '<pnplacehold>', '{self.ja_player_name}'),
+            en = replace(en, '<pnplacehold>', '{self.en_player_name}')
+        """
+        en_query = f"""UPDATE m00_strings SET
+            en = replace(en, '<snplacehold>', '{self.en_sibling_name}'),
+            ja = replace(ja, '<snplacehold>', '{self.ja_sibling_name}')
+        """
+
+        db_query(ja_query)
+        db_query(en_query)
 
 
 def player_name_shellcode(eax_address: int) -> str:
