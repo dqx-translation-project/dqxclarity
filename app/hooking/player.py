@@ -1,21 +1,35 @@
-from common.lib import encode_to_utf8, get_project_root, merge_jsons
+"""This hook is triggered once the player has logged into the game with their
+selected character.
+
+It currently reads:
+    - The player's name
+    - The sibling's name
+    - The relationship between player and sibling
+It uses this information to update various data in the local database that replaces placeholder tags
+related to the above read data. This makes it so that when the strings are encountered in game, they
+exactly match when being looked up in database, returning a result.
+"""
+
+from common.db_ops import db_query, generate_m00_dict, init_db
+from common.lib import encode_to_utf8, get_project_root
 from common.memory import MemWriter
 from common.translate import convert_into_eng
 from json import dumps
-from openpyxl import load_workbook
 
 import os
-import sqlite3
 import sys
 
 
 class GetPlayer:
 
     writer = None
+    player_names = None
 
     def __init__(self, address, debug=False):
         if not GetPlayer.writer:
             GetPlayer.writer = MemWriter()
+        if not GetPlayer.player_names:
+            GetPlayer.player_names = generate_m00_dict(files="'custom_player_names'")
 
         if debug:
             self.address = address
@@ -23,13 +37,15 @@ class GetPlayer:
             self.address = GetPlayer.writer.unpack_to_int(address)
 
         self.ja_player_name = GetPlayer.writer.read_string(self.address + 24)
-        self.en_player_name = self.__get_en_player_name(player_name=self.ja_player_name)
+        self.en_player_name = self.__get_en_player_name(name=self.ja_player_name)
         self.ja_sibling_name = GetPlayer.writer.read_string(self.address + 96)
-        self.en_sibling_name = self.__get_en_player_name(player_name=self.ja_sibling_name)
+        self.en_sibling_name = self.__get_en_player_name(name=self.ja_sibling_name)
         self.sibling_relationship = self.__determine_sibling_relationship()
 
         self.__write_player()
-        self.__load_dialog_into_db()
+        self.__load_story_so_far_into_db()
+        self.__load_fixed_dialog_into_db()
+        self.__update_m00_table()
 
 
     def __determine_sibling_relationship(self):
@@ -44,14 +60,11 @@ class GetPlayer:
             return "younger_sister"
 
 
-    def __get_en_player_name(self, player_name: str):
-        player_file = get_project_root("misc_files/custom_player_names.json")
-        players = merge_jsons([player_file])
+    def __get_en_player_name(self, name: str):
+        if result := GetPlayer.player_names.get(name):
+            return result
 
-        if player_name in players:
-            return players[player_name]
-
-        return convert_into_eng(word=player_name)
+        return convert_into_eng(word=name)
 
 
     def __write_player(self):
@@ -68,8 +81,7 @@ class GetPlayer:
         """
 
         try:
-            conn = sqlite3.connect(db_file)
-            cursor = conn.cursor()
+            conn, cursor = init_db()
             cursor.executescript(query)
             conn.commit()
         finally:
@@ -116,38 +128,81 @@ class GetPlayer:
         return new_string
 
 
-    def __load_dialog_into_db(self):
-        merge_file = get_project_root("misc_files/merge.xlsx")
-        db_file = get_project_root("misc_files/clarity_dialog.db")
-
-        #if os.path.exists(merge_file) and os.path.exists(db_file):
-        workbook = load_workbook(merge_file)
-        worksheet = workbook["Story So Far"]
-
-        conn = sqlite3.connect(db_file)
-        cursor = conn.cursor()
+    def __load_story_so_far_into_db(self):
+        conn, cursor = init_db()
 
         query = "DELETE FROM story_so_far"
         cursor.execute(query)
 
-        for row_num in range(2, worksheet.max_row + 1):
-            ja_text = self.__replace_with_ja_names(
-                worksheet.cell(row=row_num, column=1).value.replace("'", "''"))
+        query = "SELECT * FROM story_so_far_template"
+        cursor.execute(query)
 
-            # if data in fixed english translation column, use it
-            if fixed_text := worksheet.cell(row=row_num, column=3).value:
-                en_text = self.__replace_with_en_names(fixed_text.replace("'", "''"))
-            elif deepl_text := worksheet.cell(row=row_num, column=2).value:
-                en_text = self.__replace_with_en_names(deepl_text.replace("'", "''"))
-            else:
-                # no entry for either type. just use the japanese
-                en_text = ja_text
+        results = cursor.fetchall()
 
-            query = f"INSERT INTO story_so_far (ja, en) VALUES ('{ja_text}', '{en_text}')"
-            cursor.execute(query)
+        query_list = []
+        for ja, en in results:
+            fixed_ja = self.__replace_with_ja_names(ja.replace("'", "''"))
+            fixed_en = self.__replace_with_en_names(en.replace("'", "''"))
 
+            query_value = f"('{fixed_ja}', '{fixed_en}')"
+            query_list.append(query_value)
+
+        insert_values = ','.join(query_list)
+        query = f"INSERT INTO story_so_far (ja, en) VALUES {insert_values};"
+        cursor.execute(query)
         conn.commit()
         conn.close()
+
+
+    def __load_fixed_dialog_into_db(self):
+        conn, cursor = init_db()
+
+        query = "DELETE FROM bad_strings"
+        cursor.execute(query)
+
+        query = "SELECT ja, en, bad_string FROM fixed_dialog_template"
+        cursor.execute(query)
+
+        results = cursor.fetchall()
+
+        dialog_list = []
+        bad_strings_list = []
+        for ja, en, bad_string in results:
+            fixed_ja = self.__replace_with_ja_names(ja.replace("'", "''"))
+            fixed_en = self.__replace_with_en_names(en.replace("'", "''"))
+
+            query_value = f"('{fixed_ja}', '{fixed_en}')"
+
+            if bad_string == 0:
+                dialog_list.append(query_value)
+            elif bad_string == 1:
+                bad_strings_list.append(query_value)
+
+        dialog_values = ','.join(dialog_list)
+        bad_string_values = ','.join(bad_strings_list)
+
+        if len(dialog_values) > 0:
+            query = f"INSERT OR REPLACE INTO dialog (ja, en) VALUES {dialog_values};"
+            cursor.execute(query)
+        if len(bad_string_values) > 0:
+            query = f"INSERT OR REPLACE INTO bad_strings (ja, en) VALUES {bad_string_values};"
+            cursor.execute(query)
+        conn.commit()
+        conn.close()
+
+
+    def __update_m00_table(self):
+        ja_query = f"""UPDATE m00_strings SET
+            ja = replace(ja, '<pnplacehold>', '{self.ja_player_name}'),
+            en = replace(en, '<pnplacehold>', '{self.en_player_name}')
+        """
+        en_query = f"""UPDATE m00_strings SET
+            en = replace(en, '<snplacehold>', '{self.en_sibling_name}'),
+            ja = replace(ja, '<snplacehold>', '{self.ja_sibling_name}')
+        """
+
+        db_query(ja_query)
+        db_query(en_query)
 
 
 def player_name_shellcode(eax_address: int) -> str:

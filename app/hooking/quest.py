@@ -1,4 +1,4 @@
-from common.db_ops import sql_read, sql_write
+from common.db_ops import generate_m00_dict, sql_read, sql_write
 from common.lib import encode_to_utf8, get_project_root
 from common.memory import MemWriter
 from common.translate import clean_up_and_return_items, detect_lang, Translate
@@ -38,7 +38,7 @@ class Quest:
         self.is_ja = self.__is_ja()
 
         if Quest.quests is None:
-            Quest.quests = self.__read_file(f"{Quest.misc_files}/eventTextSysQuestaClient.json")
+            Quest.quests = generate_m00_dict(files="'quests'")
 
         self.write_to_game()
 
@@ -81,8 +81,7 @@ class Quest:
         translator = Translate()
         if db_quest_text := sql_read(
             text=self.quest_desc,
-            table="quests",
-            language=Translate.region_code,
+            table="quests"
         ):
             return db_quest_text
 
@@ -95,8 +94,7 @@ class Quest:
             sql_write(
                 source_text=self.quest_desc,
                 translated_text=translation,
-                table="quests",
-                language=Translate.region_code
+                table="quests"
             )
             return translation
         return None

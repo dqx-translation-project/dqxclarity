@@ -1,4 +1,4 @@
-from common.db_ops import init_db, sql_read
+from common.db_ops import init_db, search_bad_strings, sql_read
 from common.lib import encode_to_utf8
 from common.memory import MemWriter
 from common.translate import detect_lang, Translate
@@ -11,7 +11,6 @@ import sys
 class Dialog:
 
     translator = Translate()
-    region = translator.region_code
     writer = None
 
     def __init__(self, text_address: int, npc_address: int, debug=False):
@@ -28,14 +27,20 @@ class Dialog:
         self.npc_name = self.__get_npc_name()
 
         if detect_lang(self.text):
+            bad_strings_result = self.__search_bad_strings_table(self.text)
+            if bad_strings_result:
+                Dialog.writer.write_string(self.text_address, text=bad_strings_result)
+                return
+
             db_result = self.__read_db(self.text)
             if db_result:
                 Dialog.writer.write_string(self.text_address, text=db_result)
-            else:
-                self.translated_text = self.__translate(self.text)
-                if self.translated_text:
-                    self.__write_db()
-                    Dialog.writer.write_string(self.text_address, text=self.translated_text)
+                return
+
+            self.translated_text = self.__translate(self.text)
+            if self.translated_text:
+                self.__write_db()
+                Dialog.writer.write_string(self.text_address, text=self.translated_text)
 
 
     def __get_npc_name(self):
@@ -50,7 +55,7 @@ class Dialog:
 
 
     def __read_db(self, text: str):
-        result = sql_read(text=text, table="dialog", language=Dialog.region)
+        result = sql_read(text=text, table="dialog")
         if result:
             return result
         return None
@@ -61,8 +66,8 @@ class Dialog:
             conn, cursor = init_db()
             escaped_text = self.translated_text.replace("'", "''")
             select_query = f"SELECT ja FROM dialog WHERE ja = '{self.text}'"
-            update_query = f"UPDATE dialog SET {Dialog.region} = '{escaped_text}' WHERE ja = '{self.text}'"
-            insert_query = f"INSERT INTO dialog (ja, npc_name, {Dialog.region}) VALUES ('{self.text}', '{self.npc_name}', '{escaped_text}')"
+            update_query = f"UPDATE dialog SET en = '{escaped_text}' WHERE ja = '{self.text}'"
+            insert_query = f"INSERT INTO dialog (ja, npc_name, en) VALUES ('{self.text}', '{self.npc_name}', '{escaped_text}')"
             results = cursor.execute(select_query)
 
             if results.fetchone() is None:
@@ -82,6 +87,23 @@ class Dialog:
             wrap_width=46
         )
         return translated_text
+
+
+    def __search_bad_strings_table(self, text: str):
+        """Searches the bad_strings table. This is used to fix instances of
+        text where machine translation completely screwed up the text and
+        caused the game to have issues.
+
+        :param text: String to search
+        :returns: Returns either the English text or None if no match
+            was found.
+        """
+        # use wildcard syntax as we want to match for BAD_STRING data.
+        result = search_bad_strings(text)
+        if result:
+            return result
+
+        return None
 
 
 def translate_shellcode(esi_address: int, esp_address: int) -> str:

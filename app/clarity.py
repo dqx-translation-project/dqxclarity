@@ -1,6 +1,6 @@
-from common.db_ops import sql_read, sql_write
+from common.db_ops import generate_m00_dict, sql_read, sql_write
 from common.errors import MemoryReadError
-from common.lib import get_project_root, merge_jsons, setup_logging
+from common.lib import setup_logging
 from common.memory import MemWriter
 from common.process import is_dqx_process_running
 from common.signatures import (
@@ -27,12 +27,15 @@ def scan_for_player_names():
     """Scans for addresses that are related to a specific pattern to translate
     player names."""
     writer = MemWriter()
+    player_names = generate_m00_dict(files="'custom_player_names'")
     if addresses := writer.pattern_scan(pattern=player_name_pattern, return_multiple=True):
         for address in addresses:
             player_name_address = address + 48  # len of player_name_pattern - 1
             try:
                 ja_name = writer.read_string(player_name_address)
-                en_name = convert_into_eng(ja_name)
+                en_name = player_names.get(ja_name)
+                if not en_name:
+                    en_name = convert_into_eng(ja_name)
                 if en_name != ja_name:
                     # we use a leading x04 byte here as the game assumes all names that start
                     # with an english letter are GMs.
@@ -59,6 +62,7 @@ def scan_for_comm_names():
     """Scans for addresses that are related to a specific pattern to translate
     player names in the comms window."""
     writer = MemWriter()
+    player_names = generate_m00_dict(files="'custom_player_names'")
     comm_addresses = []
 
     # the comm names were found to use two patterns. the first set we can use as is, the second set
@@ -77,7 +81,9 @@ def scan_for_comm_names():
     for address in comm_addresses:
         try:
             ja_name = writer.read_string(address)
-            en_name = convert_into_eng(ja_name)
+            en_name = player_names.get(ja_name)
+            if not en_name:
+                en_name = convert_into_eng(ja_name)
             if en_name != ja_name:
                 reread = writer.read_string(address)
                 if ja_name == reread:
@@ -138,12 +144,15 @@ def scan_for_concierge_names():
     """Scans for addresses that are related to a specific pattern to translate
     concierge names."""
     writer = MemWriter()
+    player_names = generate_m00_dict(files="'custom_player_names'")
     if addresses := writer.pattern_scan(pattern=concierge_name_pattern, return_multiple=True):
         for address in addresses:
             name_address = address + 12  # jump to name
             try:
                 ja_name = writer.read_string(name_address)
-                en_name = convert_into_eng(ja_name)
+                en_name = player_names.get(ja_name)
+                if not en_name:
+                    en_name = convert_into_eng(ja_name)
                 if en_name != ja_name:
                     reread = writer.read_string(name_address)
                     if ja_name == reread:
@@ -168,22 +177,15 @@ def scan_for_npc_names():
     """Scan to look for NPC names, monster names and names above your party
     member's heads and translates them into English."""
     writer = MemWriter()
-    misc_files = get_project_root("misc_files")
-    translated_npc_names = merge_jsons([
-        f"{misc_files}/smldt_msg_pkg_NPC_DB.win32.json",
-        f"{misc_files}/custom_npc_names.json"
-    ])
-    translated_monster_names = merge_jsons([f"{misc_files}/subPackage02Client.win32.json"])
+    m00_strings = generate_m00_dict(files="'monsters', 'npcs', 'custom_npc_names', 'custom_player_names'")
 
     if npc_list := writer.pattern_scan(pattern=npc_monster_pattern, return_multiple=True):
         for address in npc_list:
             npc_type = writer.read_bytes(address + 36, 2)
             if npc_type == b"\x74\x0A":
                 data = "NPC"
-                translated_names = translated_npc_names
             elif npc_type == b"\x00\xF8":
                 data = "MONSTER"
-                translated_names = translated_monster_names
             elif npc_type == b"\x6C\xFA":
                 data = "AI_NAME"
             else:
@@ -193,16 +195,7 @@ def scan_for_npc_names():
             name = writer.read_string(name_addr)
 
             if data == "NPC" or data == "MONSTER":
-                if name in translated_names:
-                    value = translated_names.get(name)
-                    if value:
-                        try:
-                            reread = writer.read_string(name_addr)
-                            if reread == name:
-                                writer.write_string(name_addr, value)
-                        except Exception as e:
-                            log.debug(f"Failed to write {data}. {e}")
-                if value := translated_names.get(name):
+                if value := m00_strings.get(name):
                     try:
                         reread = writer.read_string(name_addr)
                         if reread == name:
@@ -210,7 +203,9 @@ def scan_for_npc_names():
                     except Exception as e:
                         log.debug(f"Failed to write {data}. {e}")
             elif data == "AI_NAME":
-                en_name = convert_into_eng(name)
+                en_name = m00_strings.get(name)
+                if not en_name:
+                    en_name = convert_into_eng(name)
                 if en_name != name:
                     try:
                         reread = writer.read_string(name_addr)
@@ -220,6 +215,35 @@ def scan_for_npc_names():
                         log.debug(f"Failed to write {data}. {e}")
 
     writer.close()
+
+
+def scan_for_menu_ai_names():
+    """Scans for addresses that are related to a specific pattern to translate
+    party member names in the party member panel."""
+    writer = MemWriter()
+    player_names = generate_m00_dict(files="'custom_player_names'")
+    if addresses := writer.pattern_scan(pattern=menu_ai_name_pattern, return_multiple=True):
+        for address in addresses:
+            name_address = address + 57
+            try:
+                ja_name = writer.read_string(name_address)
+                en_name = player_names.get(ja_name)
+                if not en_name:
+                    en_name = convert_into_eng(ja_name)
+                if en_name != ja_name:
+                    writer.write_string(name_address, en_name)
+            except UnicodeDecodeError:
+                continue
+            except MemoryReadError:
+                continue
+            except WinAPIError as e:
+                if e.error_code == 299:
+                    continue
+                else:
+                    raise e
+            except Exception:
+                log.debug(f"Failed to write name.\n{traceback.format_exc()}")
+                continue
 
 
 def loop_scan_for_walkthrough():
@@ -251,7 +275,7 @@ def loop_scan_for_walkthrough():
                         if text != prev_text:
                             prev_text = text
                             if detect_lang(text):
-                                result = sql_read(text=text, table="walkthrough", language=translator.region_code)
+                                result = sql_read(text=text, table="walkthrough")
                                 if result:
                                     writer.write_string(address + 16, result)
                                 else:
@@ -265,8 +289,7 @@ def loop_scan_for_walkthrough():
                                         sql_write(
                                             source_text=text,
                                             translated_text=translated_text,
-                                            table="walkthrough",
-                                            language=translator.region_code
+                                            table="walkthrough"
                                         )
                                         writer.write_string(address + 16, translated_text)
                                     except Exception:
@@ -313,6 +336,7 @@ def run_scans(player_names=True, npc_names=True):
         try:
             if player_names:
                 scan_for_player_names()
+                scan_for_menu_ai_names()
             if npc_names:
                 scan_for_npc_names()
                 scan_for_concierge_names()

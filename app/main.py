@@ -1,5 +1,5 @@
 from clarity import loop_scan_for_walkthrough, run_scans
-from common.db_ops import ensure_db_structure
+from common.db_ops import create_db_schema, sync_existing_tables
 from common.lib import get_project_root, setup_logging
 from common.process import wait_for_dqx_to_launch
 from common.translate import determine_translation_service
@@ -7,6 +7,7 @@ from common.update import (
     check_for_updates,
     download_custom_files,
     download_dat_files,
+    download_game_jsons,
 )
 from dqxcrypt.dqxcrypt import start_logger
 from hooking.hook import activate_hooks
@@ -50,14 +51,19 @@ def blast_off(
     log = setup_logging()
 
     log.info("Getting started. DO NOT TOUCH THE GAME OR REMOVE YOUR MEMORY CARD.",)
-    if update_dat:
-        download_dat_files()
-    if not disable_update_check:
-        check_for_updates(update=True)
-        download_custom_files()
 
     log.info("Ensuring db structure.")
-    ensure_db_structure()
+    create_db_schema()
+    sync_existing_tables()
+
+    if update_dat:
+        log.info("Updating DAT mod.")
+        download_dat_files()
+    if not disable_update_check:
+        log.info("Updating custom text in db.")
+        check_for_updates(update=True)
+        download_custom_files()
+        download_game_jsons()
 
     log.info("Checking user_settings.ini.")
     determine_translation_service(communication_window_enabled=communication_window)

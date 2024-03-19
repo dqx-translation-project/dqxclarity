@@ -18,18 +18,6 @@ jobs:
         with:
           fetch-depth: 0  # we want to collect tag info, so clone all history
 
-      - name: Checkout dqx-translation-project/dqx_translations
-        uses: actions/checkout@v4
-        with:
-          repository: 'dqx-translation-project/dqx_translations'
-          path: 'dqx_translations'
-
-      - name: Checkout dqx-translation-project/dqx-custom-translations
-        uses: actions/checkout@v4
-        with:
-          repository: 'dqx-translation-project/dqx-custom-translations'
-          path: 'dqx-custom-translations'
-
       - name: Update GITHUB_ENV env
         run: |
           echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
@@ -45,13 +33,6 @@ jobs:
           rsync -av --exclude="imgs/" app/* dqxclarity/;
           cp version.update requirements.txt user_settings.ini dqxclarity/;
           cp clarity_dialog.db dqxclarity/misc_files;
-          cp -fr dqx-custom-translations/json/* dqxclarity/misc_files;
-          cp -f dqx-custom-translations/csv/* dqxclarity/misc_files;
-          cp -f dqx_translations/json/_lang/en/eventTextSysQuestaClient.json dqxclarity/misc_files;
-          cp -f dqx_translations/json/_lang/en/subPackage05Client.json dqxclarity/misc_files;
-          cp -f dqx_translations/json/_lang/en/subPackage41Client.win32.json dqxclarity/misc_files;
-          cp -f dqx_translations/json/_lang/en/subPackage02Client.win32.json dqxclarity/misc_files;
-          cp -f dqx_translations/json/_lang/en/smldt_msg_pkg_NPC_DB.win32.json dqxclarity/misc_files;
 
       - name: Zip package (pre-release)
         if: startsWith(github.ref, 'refs/tags/v') != true
