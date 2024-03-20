@@ -34,6 +34,7 @@ def download_custom_files():
     response = requests.get(GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL, timeout=15)
 
     if response.status_code == 200:
+        db_query("DELETE FROM m00_strings")
         zfile = ZipFile(BytesIO(response.content))
         for obj in zfile.infolist():
             if obj.filename.endswith('/'):  # directory
