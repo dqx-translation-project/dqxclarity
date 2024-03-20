@@ -13,7 +13,9 @@ def is_dqx_process_running():
     # vary widely across the globe, so decoding the stdout cannot be relied on.
     # We will just check the exit code of a common Windows command to find this.
     # tasklist does not produce an exit code on failed lookups, but find does.
-    call = 'TASKLIST /FI "imagename eq DQXGame.exe" | find "DQXGame" > nul'
+    # Uses fully qualified path when calling executables as people might have
+    # similarly-named tools.
+    call = '%SystemRoot%\\System32\\tasklist.exe /FI "imagename eq DQXGame.exe" | %SystemRoot%\\System32\\find.exe "DQXGame" > nul'
 
     try:
         subprocess.check_call(call, shell=True)
