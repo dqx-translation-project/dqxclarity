@@ -1,5 +1,9 @@
 from clarity import loop_scan_for_walkthrough, run_scans
-from common.db_ops import create_db_schema, sync_existing_tables
+from common.db_ops import (
+    create_db_schema,
+    fix_m00_tables_schema,
+    sync_existing_tables,
+)
 from common.lib import get_project_root, setup_logging
 from common.process import wait_for_dqx_to_launch
 from common.translate import determine_translation_service
@@ -55,6 +59,7 @@ def blast_off(
     log.info("Ensuring db structure.")
     create_db_schema()
     sync_existing_tables()
+    fix_m00_tables_schema()
 
     if update_dat:
         log.info("Updating DAT mod.")

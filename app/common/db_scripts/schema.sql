@@ -48,8 +48,7 @@ CREATE TABLE IF NOT EXISTS "walkthrough" (
 CREATE TABLE IF NOT EXISTS "m00_strings" (
 	"ja"	TEXT NOT NULL UNIQUE,
 	"en"	TEXT,
-	"file"	TEXT,
-	PRIMARY KEY("ja")
+	"file"	TEXT
 );
 
 CREATE TABLE IF NOT EXISTS "glossary" (
@@ -74,7 +73,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "walkthrough_index" ON "walkthrough" (
 	"ja"
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS "m00_strings_index" ON "m00_strings" (
+CREATE INDEX IF NOT EXISTS "m00_strings_index" ON "m00_strings" (
 	"ja"
 );
 
