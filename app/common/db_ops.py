@@ -63,8 +63,10 @@ def fix_m00_tables_schema():
         results = cursor.fetchall()
         for result in results:
             if result[0] == "ja":
-                drop_m00_table = f"DROP TABLE IF EXISTS m00_strings; DROP INDEX IF EXISTS m00_strings.m00_strings_index"
+                drop_m00_table = f"DROP TABLE IF EXISTS m00_strings"
+                drop_m00_index = f"DROP INDEX IF EXISTS m00_strings.m00_strings_index"
                 cursor.execute(drop_m00_table)
+                cursor.execute(drop_m00_index)
         conn.commit()
     except sqlite3.Error as e:
         log.exception(f"Failed to drop existing column. {e}")

@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS "walkthrough" (
 );
 
 CREATE TABLE IF NOT EXISTS "m00_strings" (
-	"ja"	TEXT NOT NULL UNIQUE,
+	"ja"	TEXT NOT NULL,
 	"en"	TEXT,
 	"file"	TEXT
 );

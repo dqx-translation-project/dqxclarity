@@ -57,9 +57,9 @@ def blast_off(
     log.info("Getting started. DO NOT TOUCH THE GAME OR REMOVE YOUR MEMORY CARD.",)
 
     log.info("Ensuring db structure.")
+    fix_m00_tables_schema()
     create_db_schema()
     sync_existing_tables()
-    fix_m00_tables_schema()
 
     if update_dat:
         log.info("Updating DAT mod.")
