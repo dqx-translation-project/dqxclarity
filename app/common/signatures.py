@@ -100,23 +100,23 @@ menu_party_name_trigger = rb"\x8B\xCF\xFF\x75\x0C\x53\x50"
 network_text_trigger = rb"\x8D\x71\x01\x8B\xFF\x8A\x01\x41\x84\xC0\x75\xF9\x2B\xCE\x51\x51"
 
 # player and sibling names on login. use this to figure out what the player is logged in as
-# 55 8B EC 56 8B F1 57 8B 46 58 85 C0
-# >> DQXGame.exe.text+4096C0 - 55                    - push ebp
-#    DQXGame.exe.text+4096C1 - 8B EC                 - mov ebp,esp
-#    DQXGame.exe.text+4096C3 - 56                    - push esi
-#    DQXGame.exe.text+4096C4 - 8B F1                 - mov esi,ecx
-#    DQXGame.exe.text+4096C6 - 57                    - push edi
-#    DQXGame.exe.text+4096C7 - 8B 46 58              - mov eax,[esi+58]
-#    DQXGame.exe.text+4096CA - 85 C0                 - test eax,eax
-#    DQXGame.exe.text+4096CC - 74 10                 - je DQXGame.exe.text+4096DE
-#    DQXGame.exe.text+4096CE - 50                    - push eax
-#    DQXGame.exe.text+4096CF - E8 EC38C3FF           - call DQXGame.exe.text+3CFC0
-#    DQXGame.exe.text+4096D4 - 83 C4 04              - add esp,04
-#    DQXGame.exe.text+4096D7 - C7 46 58 00000000     - mov [esi+58],00000000
-#    DQXGame.exe.text+4096DE - 6A 02                 - push 02
-#    DQXGame.exe.text+4096E0 - 68 B0000000           - push 000000B0
-#    DQXGame.exe.text+4096E5 - E8 365FC3FF           - call DQXGame.exe.text+3F620
-player_sibling_name_trigger = rb"\x55\x8B\xEC\x56\x8B\xF1\x57\x8B\x46\x58\x85\xC0"
+# 55 8B EC 56 8B F1 57 8B 46 60 85 C0
+#    DQXGame.exe.text+421150 - 55                    - push ebp
+#    DQXGame.exe.text+421151 - 8B EC                 - mov ebp,esp
+#    DQXGame.exe.text+421153 - 56                    - push esi
+#    DQXGame.exe.text+421154 - 8B F1                 - mov esi,ecx
+#    DQXGame.exe.text+421156 - 57                    - push edi
+#    DQXGame.exe.text+421157 - 8B 46 60              - mov eax,[esi+60]
+#    DQXGame.exe.text+42115A - 85 C0                 - test eax,eax
+#    DQXGame.exe.text+42115C - 74 10                 - je DQXGame.exe.text+42116E
+#    DQXGame.exe.text+42115E - 50                    - push eax
+#    DQXGame.exe.text+42115F - E8 CCC1C1FF           - call DQXGame.exe.text+3D330
+#    DQXGame.exe.text+421164 - 83 C4 04              - add esp,04
+#    DQXGame.exe.text+421167 - C7 46 60 00000000     - mov [esi+60],00000000
+#    DQXGame.exe.text+42116E - 6A 02                 - push 02
+#    DQXGame.exe.text+421170 - 68 B0000000           - push 000000B0
+#    DQXGame.exe.text+421175 - E8 C6C1C1FF           - call DQXGame.exe.text+3D340
+player_sibling_name_trigger = rb"\x55\x8B\xEC\x56\x8B\xF1\x57\x8B\x46\x60\x85\xC0"
 
 # party member data hits this code. used to detour and overwrite name.
 # how it was found:
@@ -159,6 +159,7 @@ party_ai_trigger = rb"\x8B\x8B\xC8\x05\x00\x00"
 #    DQXGame.exe.text+601030 - 0F84 A1010000         - je DQXGame.exe.text+6011D7
 # >> DQXGame.exe.text+601036 - 8B D0                 - mov edx,eax
 #    DQXGame.exe.text+601038 - 8D 7A 01              - lea edi,[edx+01]
+#  8B D0 8D 7A 01 EB 03 8D 49 00 8A 0A 42 84 C9 75 F9 2B D7 0F 84 ?? ?? ?? ?? 51
 corner_text_trigger = rb"\x8B\xD0\x8D\x7A\x01\xEB\x03\x8D\x49\x00\x8A\x0A\x42\x84\xC9\x75\xF9\x2B\xD7\x0F\x84....\x51"
 
 #############################################
