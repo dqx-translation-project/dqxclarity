@@ -77,7 +77,7 @@ def read_custom_json_and_import(name: str, data: str):
         query_list.append(query_value)
 
     insert_values = ','.join(query_list)
-    query = f"INSERT OR REPLACE INTO m00_strings (ja, en, file) VALUES {insert_values};"
+    query = f"INSERT INTO m00_strings (ja, en, file) VALUES {insert_values};"
     db_query(query)
 
 

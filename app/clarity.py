@@ -177,16 +177,17 @@ def scan_for_npc_names():
     """Scan to look for NPC names, monster names and names above your party
     member's heads and translates them into English."""
     writer = MemWriter()
-    m00_strings = generate_m00_dict(files="'monsters', 'npcs', 'custom_npc_names', 'custom_player_names'")
+    monsters = generate_m00_dict(files="'monsters'")
+    npcs = generate_m00_dict(files="'npcs', 'custom_npc_names', 'custom_player_names'")
 
     if npc_list := writer.pattern_scan(pattern=npc_monster_pattern, return_multiple=True):
         for address in npc_list:
             npc_type = writer.read_bytes(address + 36, 2)
-            if npc_type == b"\x74\x0A":
+            if npc_type == b"\x90\xF0":
                 data = "NPC"
-            elif npc_type == b"\x00\xF8":
+            elif npc_type == b"\x48\xDE":
                 data = "MONSTER"
-            elif npc_type == b"\x6C\xFA":
+            elif npc_type == b"\xBC\xE0":
                 data = "AI_NAME"
             else:
                 continue
@@ -194,8 +195,16 @@ def scan_for_npc_names():
             name_addr = address + 48  # jump to name
             name = writer.read_string(name_addr)
 
-            if data == "NPC" or data == "MONSTER":
-                if value := m00_strings.get(name):
+            if data == "NPC":
+                if value := npcs.get(name):
+                    try:
+                        reread = writer.read_string(name_addr)
+                        if reread == name:
+                            writer.write_string(name_addr, value)
+                    except Exception as e:
+                        log.debug(f"Failed to write {data}. {e}")
+            elif data == "MONSTER":
+                if value := monsters.get(name):
                     try:
                         reread = writer.read_string(name_addr)
                         if reread == name:
@@ -203,7 +212,7 @@ def scan_for_npc_names():
                     except Exception as e:
                         log.debug(f"Failed to write {data}. {e}")
             elif data == "AI_NAME":
-                en_name = m00_strings.get(name)
+                en_name = npcs.get(name)
                 if not en_name:
                     en_name = convert_into_eng(name)
                 if en_name != name:
