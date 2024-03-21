@@ -204,8 +204,8 @@ comm_name_pattern_2 = rb"\x09[\xE3\xEF].................\x00.................\x3
 
 # Main walkthrough text that loads on login. I can't figure out what function loads this on login,
 # so scanning for this for now. AC is also preventing this from just being accessible via hooks. (17 bytes)
-# 90 ?? ?? ?? 00 00 00 00 04 02 00 00 10 00 00 00 E?
-walkthrough_pattern = rb"\x90...\x00\x00\x00\x00\x04\x02\x00\x00\x10\x00\x00\x00[\xE3\xE4\xE5\xE6\xE7\xE8\xE9]"
+# 30 ?? ?? ?? 00 00 00 00 04 02 00 00 10 00 00 00 E?
+walkthrough_pattern = rb"\x30...\x00\x00\x00\x00\x04\x02\x00\x00\x10\x00\x00\x00[\xE3\xE4\xE5\xE6\xE7\xE8\xE9]"
 
 # player name in cutscenes. not used at the moment, but holding onto it for now.
 # EF ?? 01 ?? ?? ?? ?? 3C EF ?? 01
