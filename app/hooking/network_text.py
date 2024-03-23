@@ -41,6 +41,67 @@ class NetworkTextTranslate:
         "L_QUEST": "quest_name"
     }
 
+    # explicitly ignore known vars. we want to log any new ones we see just in case
+    # there's something of interest in them.
+    to_ignore = [
+        "M_Hankaku",
+        "M_katagaki2",
+        "W_MAP_NAME",  # maybe an idea to write the map you're on to the db?
+        "M_timei",
+        "W_REP_MAX_2ND_R",
+        "W_REP_MAX_2ND_F",
+        "B_TARGET_ID",
+        "M_mp_hp",
+        "B_ITEM",
+        "B_ACTOR_ID",
+        "B_TARGET_ID",
+        "B_TARGET2_ID",
+        "B_ACTION",
+        "B_TARGET2",
+        "B_renkin1",
+        "B_kakko",
+        "B_renkindiff",
+        "B_plusminus",
+        "M_plusnum",
+        "B_VALUE",
+        "B_VALUE2",
+        "B_VALUE3",
+        "B_VALUE4",
+        "B_VALUE5",
+        "B_VALUE6",
+        "M_caption",
+        "M_tuyosa",
+        "Param1",
+        "Param2",
+        "Param3",
+        "B_RANK",
+        "M_rurastone",
+        "M_sub",
+        "M_dot",
+        "M_TXT_00",
+        "M_skill1",
+        "M_01",
+        "M_rare",
+        "M_fugou",
+        "M_num1",
+        "M_emote",
+        "M_3PLeader1",
+        "M_3PLeader2",
+        "M_3PLeader3",
+        "C_STR1",
+        "_MVER1",
+        "_MVER2",
+        "_MVER3",
+        "W_DELIMITER",
+        "M_slogan",
+        "M_team",
+        "M_monster",
+        "M_speaker",
+        "M_chat",
+        "M_CW_stamp",
+    ]
+
+
     def __init__(self, text_address, var_address):
         if not NetworkTextTranslate.writer:
             NetworkTextTranslate.writer = MemWriter()
@@ -78,7 +139,9 @@ class NetworkTextTranslate:
                 if to_write := NetworkTextTranslate.m00_text.get(text):
                     NetworkTextTranslate.writer.write_string(self.text_address, to_write)
                 else:
-                    NetworkTextTranslate.custom_text_logger.info(f"--\n>>m00_str ::\n{text}")
+                    if category == "M_00":
+                        text = self.__format_to_json(text)
+                    NetworkTextTranslate.custom_text_logger.info(f"--\n>>{category} ::\n{text}")
 
             # this captures story so far AND monster trivia.
             # unfortunately, unsure of how to figure out which one is focused
@@ -94,6 +157,8 @@ class NetworkTextTranslate:
                         NetworkTextTranslate.writer.write_string(self.text_address, translated[:story_desc_len])
                     else:
                         NetworkTextTranslate.custom_text_logger.info(f"--\n{category} ::\n{text}")
+        elif category in NetworkTextTranslate.to_ignore:
+            return
         else:
             if category and text:
                 NetworkTextTranslate.custom_text_logger.info(f"--\n{category} ::\n{text}")
@@ -115,6 +180,11 @@ class NetworkTextTranslate:
             return story_text
 
         return None
+
+
+    def __format_to_json(self, text: str):
+        replaced = text.replace("\n", "\\n")
+        return f'{{\n  "1": {{\n    "{replaced}": ""\n  }}\n}}'
 
 
 def network_text_shellcode(ecx_address: int, esp_address) -> str:
