@@ -108,9 +108,6 @@ class NetworkTextTranslate:
         self.text_address = NetworkTextTranslate.writer.unpack_to_int(text_address)
         self.var_address = NetworkTextTranslate.writer.unpack_to_int(var_address)
 
-        if NetworkTextTranslate.m00_text is None:
-            NetworkTextTranslate.m00_text = generate_m00_dict()
-
         var_name = self.var_address + 40
 
         try:
@@ -119,6 +116,12 @@ class NetworkTextTranslate:
         except UnicodeDecodeError:
             category = ""
             text = ""
+
+        # when we are on the login screen, this hook hits too soon. we don't want to
+        # prematurely init the dict as the database hasn't replace our placehold tags
+        # with player names. we see _MVER1, _MVER2, etc when we first log in.
+        if NetworkTextTranslate.m00_text is None and not category.startswith("_MVER"):
+            NetworkTextTranslate.m00_text = generate_m00_dict()
 
         if category in NetworkTextTranslate.translate:
             # "self" text when a player/monster uses a spell/skill on themselves
