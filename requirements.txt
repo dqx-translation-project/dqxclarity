@@ -2,7 +2,7 @@ click==8.1.7
 configparser==6.0.1
 deepl==1.17.0
 frida==16.2.1
-google-api-python-client==2.124.0
+google-api-python-client==2.125.0
 langdetect==1.0.9
 loguru==0.7.2
 openpyxl==3.1.2
