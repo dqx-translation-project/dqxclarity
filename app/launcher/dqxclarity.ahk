@@ -2,7 +2,6 @@
 #SingleInstance force
 #Include <json>
 #Include <image>
-#Include <md5>
 
 /* read ini */
 ini := {}
