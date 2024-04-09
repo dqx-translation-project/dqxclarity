@@ -13,9 +13,6 @@ jobs:
     name: Compile launcher
     runs-on: windows-latest
     steps:
-      - name: Fetch Branch Name
-        id: fetch-branch-name
-        uses: xt0rted/pull-request-comment-branch@v2
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Compile Exe
