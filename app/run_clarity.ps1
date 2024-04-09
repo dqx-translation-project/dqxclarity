@@ -1,4 +1,6 @@
-$ClarityFlags = "-pnvcl"
+param(
+    $ClarityArgs
+)
 
 # ensure we're in the appropriate working directory in case it's overwritten
 # by the user's profile.
@@ -152,7 +154,7 @@ if ($? -eq $False) {
 
 LogWrite "Python install location: $PythonInstallPath"
 LogWrite "Clarity installation path: $PSScriptRoot"
-LogWrite "Clarity flags: $ClarityFlags"
+LogWrite "Clarity args: $ClarityArgs"
 
 LogWrite "Running dqxclarity."
-& .\venv\Scripts\python.exe -m main $ClarityFlags
+& .\venv\Scripts\python.exe -m main $ClarityArgs
