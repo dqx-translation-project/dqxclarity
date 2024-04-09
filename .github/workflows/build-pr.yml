@@ -61,6 +61,7 @@
             rsync -av --exclude="imgs/" --exclude="launcher/" app/* dqxclarity/;
             cp version.update requirements.txt user_settings.ini dqxclarity/;
             cp clarity_dialog.db dqxclarity/misc_files;
+            cp -f dqxclarity.exe dqxclarity/;
 
             zip -r dqxclarity-dev-${SHORT_SHA}.zip dqxclarity
 
