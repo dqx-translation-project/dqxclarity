@@ -6,6 +6,34 @@
       types: [created]
 
   jobs:
+    compile_launcher:
+      runs-on: windows-latest
+      if: github.event.issue.pull_request && contains(github.event.comment.body, '/build')
+      steps:
+        - name: Fetch Branch Name
+          id: fetch-branch-name
+          uses: xt0rted/pull-request-comment-branch@v2
+        - name: Checkout PR branch (${{ steps.fetch-branch-name.outputs.head_ref }})
+          uses: actions/checkout@v4
+          with:
+            ref: ${{ steps.fetch-branch-name.outputs.head_ref }}
+        - name: Compile Exe
+          run: |
+            cd app\launcher;
+            Invoke-WebRequest "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.01c1/Ahk2Exe1.1.37.01c1.zip" -OutFile "$cwd\ahk2exe.zip";
+            Invoke-WebRequest "https://www.autohotkey.com/download/ahk-v2.zip" -OutFile "$cwd\ahk.zip";
+            Expand-Archive -Path "$cwd\ahk2exe.zip" -DestinationPath . -Force;
+            Expand-Archive -Path "$cwd\ahk.zip" -DestinationPath . -Force;
+            & .\Ahk2Exe.exe /in "dqxclarity.ahk" /base "AutoHotkey64.exe" /icon "img/rosie.ico";
+        - name: Upload exe
+          uses: actions/upload-artifact@v4
+          with:
+            name: dqxclarity.exe
+            path: app\launcher\dqxclarity.exe
+            if-no-files-found: error
+            retention-days: 1
+            overwrite: true
+
     build:
       runs-on: ubuntu-latest
       if: github.event.issue.pull_request && contains(github.event.comment.body, '/build')
@@ -19,12 +47,17 @@
           with:
             ref: ${{ steps.fetch-branch-name.outputs.head_ref }}
 
+        - name: Download exe
+          uses: actions/download-artifact@v4
+          with:
+            name: dqxclarity.exe
+
         - name: Create SHORT_SHA env
           run: echo "SHORT_SHA=`echo ${{ steps.fetch-branch-name.outputs.head_sha }} | cut -c1-8`" >> $GITHUB_ENV
 
         - name: Build package
           run: |
-            rsync -av --exclude="imgs/" app/* dqxclarity/;
+            rsync -av --exclude="imgs/" --exclude="launcher/" app/* dqxclarity/;
             cp version.update requirements.txt user_settings.ini dqxclarity/;
             cp clarity_dialog.db dqxclarity/misc_files;
 

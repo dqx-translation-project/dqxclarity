@@ -10,3 +10,5 @@ app/misc_files/*.xlsx
 app/misc_files/*.db
 app/logs
 app/user_settings*
+app/launcher/user_settings*
+app/launcher/*.exe
