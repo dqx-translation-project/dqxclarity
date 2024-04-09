@@ -20,7 +20,7 @@ ini.disableupdates := IniRead(".\user_settings.ini", "launcher", "disableupdates
 Launcher := Gui()
 Launcher.Opt("-MaximizeBox")
 
-Launcher.AddPicture("YP+1 w150 h-1 vImage", LoadImageFromResource("rosie.png"))
+Launcher.AddPicture("YP+1 w150 h-1 vImage", LoadImageFromResource("img/rosie.png"))
 
 /* configuration group */
 Launcher.AddGroupBox("ys+10 w200 h120 c0B817C", "Configuration")
@@ -236,7 +236,7 @@ FakeFileInstall(*) {
     include the file during compilation, but since we never call the
     function, it won't extract the image
     */
-    FileInstall("rosie.png", "*")
+    FileInstall("img/rosie.png", "*")
 }
 
 
