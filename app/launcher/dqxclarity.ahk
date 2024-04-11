@@ -283,6 +283,9 @@ GetClarityArgs(*) {
 
 RunProgram(*) {
     SaveToIni
-    Run("cmd.exe /c powershell.exe -ExecutionPolicy Unrestricted -File run_clarity.ps1 " . GetClarityArgs())
+    if (FileExist("run_clarity.ps1"))
+        Run("cmd.exe /c powershell.exe -ExecutionPolicy Unrestricted -File run_clarity.ps1 " . GetClarityArgs())
+    else
+        MsgBox("Did not find run_clarity.ps1 in this directory.`n`nEnsure you didn't move dqxclarity.exe outside of the directory.",, "OK Iconx 0x1000")
     ExitApp
 }
