@@ -1,5 +1,5 @@
 ---
-name: "build-release-zip"
+name: Build release zip
 
 on:
   push:
@@ -10,27 +10,7 @@ on:
 
 jobs:
   compile_launcher:
-    name: Compile launcher
-    runs-on: windows-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Compile Exe
-        run: |
-          cd app\launcher;
-          Invoke-WebRequest "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.01c1/Ahk2Exe1.1.37.01c1.zip" -OutFile "$cwd\ahk2exe.zip";
-          Invoke-WebRequest "https://www.autohotkey.com/download/ahk-v2.zip" -OutFile "$cwd\ahk.zip";
-          Expand-Archive -Path "$cwd\ahk2exe.zip" -DestinationPath . -Force;
-          Expand-Archive -Path "$cwd\ahk.zip" -DestinationPath . -Force;
-          & .\Ahk2Exe.exe /in "dqxclarity.ahk" /base "AutoHotkey64.exe" /icon "img/rosie.ico";
-      - name: Upload exe
-        uses: actions/upload-artifact@v4
-        with:
-          name: dqxclarity.exe
-          path: app\launcher\dqxclarity.exe
-          if-no-files-found: error
-          retention-days: 1
-          overwrite: true
+    uses: ./.github/workflows/_compile_launcher.yml
 
   build-release-zip:
     name: Build release zip
@@ -59,7 +39,7 @@ jobs:
 
       - name: Build package
         run: |
-          rsync -av --exclude="imgs/" app/* dqxclarity/;
+          rsync -av --exclude="imgs/" --exclude="launcher/" app/* dqxclarity/;
           cp version.update requirements.txt user_settings.ini dqxclarity.exe dqxclarity/;
           cp clarity_dialog.db dqxclarity/misc_files;
 
@@ -98,6 +78,8 @@ jobs:
           commit_message: 'Automated bump of version.update'
           file_pattern: 'version.update'
           branch: main
+        env:
+          GITHUB_TOKEN: ${{ secrets.SVC_ACCT_PAT }}
 
       # probably a better way to do this. big no-no to move an existing tag,
       # but there's no malicious stuff going on here. we just want the tag
@@ -110,6 +92,8 @@ jobs:
           git checkout ${{ steps.auto-commit-action.outputs.commit_hash }}
           git tag -f $NEW_TAG
           git push --force origin $NEW_TAG
+        env:
+          GITHUB_TOKEN: ${{ secrets.SVC_ACCT_PAT }}
 
       - name: Download previous release's dat/idx files
         if: startsWith(github.ref, 'refs/tags/v')
@@ -131,4 +115,4 @@ jobs:
           tag_name: ${{ github.ref }}
           name: 'Release: ${{ env.NEW_TAG }}'  # github.ref does not trim refs/tags/ when used here
           generate_release_notes: true
-          fail_on_unmatched_files: false
+          fail_on_unmatched_files: true
