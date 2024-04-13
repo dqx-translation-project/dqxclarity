@@ -9,11 +9,6 @@ repos:
       args: [--branch, main]
     - id: requirements-txt-fixer
       name: Sort requirements.txt
-    - id: check-json
-      name: Checking json files for syntax issues
-    - id: pretty-format-json
-      name: Checking if json files need to be prettified
-      args: ['--autofix', '--indent', '2', '--no-ensure-ascii', '--no-sort-keys']
     - id: fix-byte-order-marker
       name: Remove UTF-8 byte order marker (BOM)
     - id: mixed-line-ending
@@ -39,7 +34,6 @@ repos:
   hooks:
     - id: detect-secrets
       name: Checking for potential passwords
-      exclude: .*json-conv.deps.json$
 - repo: https://github.com/asottile/pyupgrade
   rev: v3.15.2
   hooks:
