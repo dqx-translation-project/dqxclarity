@@ -2,7 +2,7 @@
 
 A translation utility for the game "Dragon Quest X".
 
-See the [wiki](https://github.com/dqx-translation-project/dqxclarity/wiki) for how to get started!
+See the [wiki](https://dqx-translation-project.github.io/dqxclarity.html) for how to get started!
 
 ## About
 
@@ -14,7 +14,7 @@ I appreciate the support and contributions from others that have committed to th
 
 - @xshobux
 - @SuperFirm84
-- @Sevithian (built the `DQXClarity.exe` launcher)
+- @Sevithian (built the initial launcher)
 
 ## Support
 
