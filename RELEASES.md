@@ -69,4 +69,3 @@ Releases are performed through Github Action workflows.
     - `git push origin <version>` (ex: `git push origin v4.0.0`)
 - This will trigger a Github Action named `build-release-zip`
 - After a minute or two, you'll see a new release generated with the tag that was pushed up
-- Either manually download the DAT/IDX file from the previous release and upload it to the new release, or navigate to the `etps` repository and kick off a manual workflow run to move the DAT/IDX to the new release
