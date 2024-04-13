@@ -150,6 +150,9 @@ UpdateStatusBar(text) {
 
 
 CommunityLoggingWarning(*) {
+    /*
+    Send a warning if community logging is enabled as it can be buggy.
+    */
     if Launcher["CommunityLogging"].value = 1 {
         Result := MsgBox("You have enabled community logging.`n`nThis feature is unstable and may result in unexpected behavior while playing, up to and including crashes. Do not report issues of crashing if you have this enabled.`n`nIf you still want to enable this to help with the project, click `"Yes.`" Otherwise, click `"No.`"", "Community Logging", "YN Icon! Default2 0x1000")
         if (Result = "No") {
@@ -164,21 +167,6 @@ OpenGitHub(*) {
     Opens the dqxclarity repository in the user's browser.
     */
     Run("https://github.com/dqx-translation-project/dqxclarity")
-}
-
-
-HttpRequest(verb, url) {
-    /*
-    Sends an HTTP request and returns a response.
-
-    @param verb Type of request to send (GET, POST, etc.)
-    @param url The URL to send the request to.
-    */
-    web := ComObject('WinHttp.WinHttpRequest.5.1')
-    web.Open(verb, url)
-    web.Send()
-    web.WaitForResponse()
-    return web.ReponseText
 }
 
 
