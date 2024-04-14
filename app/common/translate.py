@@ -649,33 +649,28 @@ def convert_into_eng(word: str) -> str:
     :param word: Word to convert.
     :returns: Returns up to a 10 character name in English.
     """
-    kks = pykakasi.kakasi()
     invalid_chars = ["[", "]", "[", "(", ")", "\\", "/", "*", "_", "+", "?", "$", "^", '"']
-    interpunct_count = word.count("・")
-    word_len = len(word)
-    bad_word = False
+    hiragana_unicode_block = list(range(12353, 12430)) + [12431] + list(range(12434,12436))
+    katakana_unicode_block = list(range(12449,12526)) + [12527] + list(range(12530,12533)) + list(range(12539,12541)) + [65374]
 
     if any(char in word for char in invalid_chars):
         return word
-    else:
-        if word_len < 7:
-            romaji_name = ""
-            for char in word:
-                num = ord(char)
-                if num not in (list(range(12353, 12430)) + [12431] + list(range(12434,12436)) + list(range(12449,12526)) + [12527] + list(range(12530,12533)) + list(range(12539,12541)) + [65374]):
-                    bad_word = True
-                    return word
-            if bad_word != True:
-                result = kks.convert(word)
-                for word in result:
-                    romaji_name = romaji_name + word["hepburn"]
-                romaji_name = romaji_name.title()
-                romaji_name = romaji_name.replace("・", "")
-                if romaji_name == "":
-                    romaji_name = "." * interpunct_count
-                return romaji_name[0:10]
+
+    if len(word) < 7:
+        for char in word:
+            if ord(char) not in (hiragana_unicode_block + katakana_unicode_block):
+                return word
+
+        kks = pykakasi.kakasi()
+
+        if result := kks.convert(word):
+            romaji = result[0]['hepburn'].title().replace("・", "")
         else:
-            return word
+            romaji = "." * word.count("・")
+
+        return romaji[0:10]
+    else:
+        return word
 
 
 def get_player_name() -> tuple:
