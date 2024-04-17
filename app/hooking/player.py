@@ -13,7 +13,7 @@ exactly match when being looked up in database, returning a result.
 from common.db_ops import db_query, generate_m00_dict, init_db
 from common.lib import encode_to_utf8, get_project_root
 from common.memory import MemWriter
-from common.translate import convert_into_eng
+from common.translate import transliterate_player_name
 from json import dumps
 
 import os
@@ -64,7 +64,7 @@ class GetPlayer:
         if result := GetPlayer.player_names.get(name):
             return result
 
-        return convert_into_eng(word=name)
+        return transliterate_player_name(word=name)
 
 
     def __write_player(self):
