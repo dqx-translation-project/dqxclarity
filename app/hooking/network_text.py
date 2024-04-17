@@ -1,7 +1,7 @@
 from common.db_ops import generate_m00_dict, sql_read
 from common.lib import encode_to_utf8, get_project_root, setup_logger
 from common.memory import MemWriter
-from common.translate import convert_into_eng, detect_lang
+from common.translate import detect_lang, transliterate_player_name
 from json import dumps
 
 import os
@@ -134,7 +134,7 @@ class NetworkTextTranslate:
                 if NetworkTextTranslate.m00_text.get(text):
                     name_to_write = NetworkTextTranslate.m00_text[text]
                 else:
-                    name_to_write = convert_into_eng(text)
+                    name_to_write = transliterate_player_name(text)
                 NetworkTextTranslate.writer.write_string(self.text_address, name_to_write)
 
             # generic string

@@ -1,7 +1,7 @@
 # from common.db_ops import generate_m00_dict
 # from common.lib import encode_to_utf8
 # from common.memory import MemWriter
-# from common.translate import convert_into_eng, detect_lang
+# from common.translate import transliterate_player_name, detect_lang
 # from json import dumps
 
 # import os
@@ -45,7 +45,7 @@
 #         if name := PartyMembers.player_names.get(player_name):
 #             return name
 
-#         return convert_into_eng(word=player_name)
+#         return transliterate_player_name(word=player_name)
 
 
 #     def __write_party_name(self, player_name: str):

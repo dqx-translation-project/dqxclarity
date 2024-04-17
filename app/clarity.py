@@ -13,7 +13,7 @@ from common.signatures import (
     sibling_name_pattern,
     walkthrough_pattern,
 )
-from common.translate import convert_into_eng, detect_lang, Translate
+from common.translate import detect_lang, Translate, transliterate_player_name
 from loguru import logger as log
 from pymem.exception import MemoryReadError, WinAPIError
 
@@ -35,7 +35,7 @@ def scan_for_player_names():
                 ja_name = writer.read_string(player_name_address)
                 en_name = player_names.get(ja_name)
                 if not en_name:
-                    en_name = convert_into_eng(ja_name)
+                    en_name = transliterate_player_name(ja_name)
                 if en_name != ja_name:
                     # we use a leading x04 byte here as the game assumes all names that start
                     # with an english letter are GMs.
@@ -83,7 +83,7 @@ def scan_for_comm_names():
             ja_name = writer.read_string(address)
             en_name = player_names.get(ja_name)
             if not en_name:
-                en_name = convert_into_eng(ja_name)
+                en_name = transliterate_player_name(ja_name)
             if en_name != ja_name:
                 reread = writer.read_string(address)
                 if ja_name == reread:
@@ -117,8 +117,8 @@ def scan_for_sibling_name():
             ja_sibling_name = writer.read_string(sibling_address)
             ja_player_name = writer.read_string(player_address)
 
-            en_sibling_name = convert_into_eng(ja_sibling_name)
-            en_player_name = convert_into_eng(ja_player_name)
+            en_sibling_name = transliterate_player_name(ja_sibling_name)
+            en_player_name = transliterate_player_name(ja_player_name)
 
             if en_sibling_name != ja_sibling_name:
                 writer.write_string(sibling_address, "\x04" + en_sibling_name)
@@ -152,7 +152,7 @@ def scan_for_concierge_names():
                 ja_name = writer.read_string(name_address)
                 en_name = player_names.get(ja_name)
                 if not en_name:
-                    en_name = convert_into_eng(ja_name)
+                    en_name = transliterate_player_name(ja_name)
                 if en_name != ja_name:
                     reread = writer.read_string(name_address)
                     if ja_name == reread:
@@ -214,7 +214,7 @@ def scan_for_npc_names():
             elif data == "AI_NAME":
                 en_name = npcs.get(name)
                 if not en_name:
-                    en_name = convert_into_eng(name)
+                    en_name = transliterate_player_name(name)
                 if en_name != name:
                     try:
                         reread = writer.read_string(name_addr)
@@ -238,7 +238,7 @@ def scan_for_menu_ai_names():
                 ja_name = writer.read_string(name_address)
                 en_name = player_names.get(ja_name)
                 if not en_name:
-                    en_name = convert_into_eng(ja_name)
+                    en_name = transliterate_player_name(ja_name)
                 if en_name != ja_name:
                     writer.write_string(name_address, en_name)
             except UnicodeDecodeError:
