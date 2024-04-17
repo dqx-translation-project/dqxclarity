@@ -642,9 +642,9 @@ def read_json_file(file):
         return json.loads(json_data.read())
 
 
-def convert_into_eng(word: str) -> str:
-    """Uses the pykakasi library to phonetically convert a Japanese word
-    (usually a name) into English.
+def transliterate_player_name(word: str) -> str:
+    """Uses the pykakasi library to phonetically convert a Japanese word into
+    English.
 
     :param word: Word to convert.
     :returns: Returns up to a 10 character name in English.
@@ -656,6 +656,8 @@ def convert_into_eng(word: str) -> str:
     if any(char in word for char in invalid_chars):
         return word
 
+    # dqx character names are limited to 6 characters. if we receive something longer
+    # than 6 characters, just return the word.
     if len(word) < 7:
         for char in word:
             if ord(char) not in (hiragana_unicode_block + katakana_unicode_block):
@@ -663,9 +665,14 @@ def convert_into_eng(word: str) -> str:
 
         kks = pykakasi.kakasi()
 
-        if result := kks.convert(word):
-            romaji = result[0]['hepburn'].title().replace("・", "")
-        else:
+        # kks breaks mixed alphabets into a list of dicts.
+        result = kks.convert(word)
+        romaji = "".join([char['hepburn'] for char in result]).title().replace("・", "")
+
+        # a player can name themselves "・". since we replace all instances of this, romaji
+        # could be blank. if this is the case, we'll keep the same number of interpunct chars
+        # and replace them with periods.
+        if not romaji:
             romaji = "." * word.count("・")
 
         return romaji[0:10]
