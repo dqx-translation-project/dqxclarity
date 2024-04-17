@@ -35,3 +35,9 @@ jobs:
           if-no-files-found: error
           retention-days: 1
           overwrite: true
+
+      # when we upload the exe artifact, it can take a few moments for github to realize it's been uploaded.
+      # if subsequent jobs try to download this artifact too quickly, the step will fail. this is just an
+      # arbitrary amount of time to wait before letting any other steps continue.
+      - name: Sleep for 3 seconds
+        run: Start-Sleep -Seconds 3
