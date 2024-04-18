@@ -59,7 +59,13 @@ def download_custom_files():
                     with zfile.open(obj.filename, 'r') as f:
                         data = f.read()
 
-                    read_glossary_and_import(data)
+                    read_glossary_and_import(data=data, table="glossary")
+
+                if obj.filename.endswith("hiragana_glossary.csv"):
+                    with zfile.open(obj.filename, 'r') as f:
+                        data = f.read()
+
+                    read_glossary_and_import(data=data, table="hiragana_glossary")
 
     else:
         log.exception(f"Status Code: {response.status_code}. Reason: {response.reason}")
@@ -244,7 +250,13 @@ def read_xlsx_and_import(data: str):
     db_query(query)
 
 
-def read_glossary_and_import(data: str):
+def read_glossary_and_import(data: str, table: str):
+    """Updates a table with data used for the translation glossary.
+
+    :param data: CSV data of ja,en to import into the glossary
+    :param table: Database table to insert/replace records into
+    :returns: None
+    """
     decoded_data = data.decode('utf-8')
 
     query_list = []
@@ -258,7 +270,7 @@ def read_glossary_and_import(data: str):
         query_list.append(query_value)
 
     insert_values = ','.join(query_list)
-    query = f"INSERT OR REPLACE INTO glossary (ja, en) VALUES {insert_values};"
+    query = f"INSERT OR REPLACE INTO {table} (ja, en) VALUES {insert_values};"
     db_query(query)
 
 
