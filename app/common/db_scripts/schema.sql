@@ -57,6 +57,12 @@ CREATE TABLE IF NOT EXISTS "glossary" (
 	PRIMARY KEY("ja")
 );
 
+CREATE TABLE IF NOT EXISTS "hiragana_glossary" (
+	"ja"	TEXT,
+	"en"	TEXT,
+	PRIMARY KEY("ja")
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS "dialog_index" ON "dialog" (
 	"ja"
 );
@@ -78,6 +84,10 @@ CREATE INDEX IF NOT EXISTS "m00_strings_index" ON "m00_strings" (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS "glossary_index" ON "glossary" (
+	"ja"
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "hiragana_glossary_index" ON "hiragana_glossary" (
 	"ja"
 );
 
