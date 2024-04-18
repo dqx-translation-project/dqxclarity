@@ -121,8 +121,8 @@ def generate_m00_dict(files: str = "") -> dict:
             conn.close()
 
 
-def generate_glossary_dict() -> dict:
-    """Queries the glossary table.
+def generate_glossary_dict(table: str) -> dict:
+    """Queries a glossary table.
 
     Returns a dictionary of all results.
     """
@@ -130,7 +130,7 @@ def generate_glossary_dict() -> dict:
         data = {}
         conn, cursor = init_db()
 
-        query = "SELECT * FROM glossary"
+        query = f"SELECT * FROM {table}"
 
         cursor.execute(query)
         results = cursor.fetchall()

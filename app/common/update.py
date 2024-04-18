@@ -34,7 +34,6 @@ def download_custom_files():
     response = requests.get(GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL, timeout=15)
 
     if response.status_code == 200:
-        db_query("DELETE FROM m00_strings")
         zfile = ZipFile(BytesIO(response.content))
         for obj in zfile.infolist():
             if obj.filename.endswith('/'):  # directory
@@ -72,6 +71,7 @@ def download_custom_files():
 
 
 def read_custom_json_and_import(name: str, data: str):
+    db_query(f"DELETE FROM m00_strings WHERE file = '{name}'")
     content = json.loads(data)
     query_list = []
 
@@ -257,6 +257,7 @@ def read_glossary_and_import(data: str, table: str):
     :param table: Database table to insert/replace records into
     :returns: None
     """
+    db_query(f"DELETE FROM {table}")
     decoded_data = data.decode('utf-8')
 
     query_list = []

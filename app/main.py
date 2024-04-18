@@ -6,7 +6,7 @@ from common.db_ops import (
 )
 from common.lib import get_project_root, setup_logging
 from common.process import wait_for_dqx_to_launch
-from common.translate import determine_translation_service
+from common.translate import determine_translation_service, Translate
 from common.update import (
     check_for_updates,
     download_custom_files,
@@ -71,7 +71,12 @@ def blast_off(
         download_game_jsons()
 
     log.info("Checking user_settings.ini.")
-    determine_translation_service(communication_window_enabled=communication_window)
+    translation_settings = determine_translation_service(communication_window_enabled=communication_window)
+    if translation_settings["TranslateService"] == "deepl":
+        log.info("Updating DeepL glossary.")
+        translator = Translate()
+        translator.deepl_delete_existing_glossaries()
+        translator.deepl_create_glossary()
 
     try:
         wait_for_dqx_to_launch()

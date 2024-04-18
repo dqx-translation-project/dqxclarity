@@ -20,6 +20,8 @@ class Translate():
     api_key = None
     region_code = None
     glossary = None
+    hiragana_glossary = None
+    deepl_glossary_id = None
 
     def __init__(self):
         if Translate.service is None:
@@ -30,7 +32,13 @@ class Translate():
             Translate.region_code = self.translation_settings["RegionCode"]
 
         if Translate.glossary is None:
-            Translate.glossary = generate_glossary_dict()
+            Translate.glossary = generate_glossary_dict("glossary")
+
+        if Translate.hiragana_glossary is None:
+            Translate.hiragana_glossary = generate_glossary_dict("hiragana_glossary")
+
+        if Translate.service == "deepl" and not Translate.deepl_glossary_id:
+            Translate.deepl_glossary_id = self.deepl_get_glossary()
 
 
     def deepl(self, text: list):
@@ -42,12 +50,38 @@ class Translate():
             text=text,
             source_lang="ja",
             target_lang=region_code,
-            preserve_formatting=True
+            preserve_formatting=True,
+            glossary=Translate.deepl_glossary_id
         )
         text_results = []
         for result in response:
             text_results.append(result.text)
         return text_results
+
+
+    def deepl_get_glossary(self) -> str:
+        translator = deepl.Translator(Translate.api_key)
+        glossaries = translator.list_glossaries()
+        for glossary in glossaries:
+            if glossary.name == "dqxclarity glossary":
+                return glossary.glossary_id
+
+
+    def deepl_delete_existing_glossaries(self) -> None:
+        translator = deepl.Translator(Translate.api_key)
+        glossaries = translator.list_glossaries()
+        for glossary in glossaries:
+            translator.delete_glossary(glossary)
+
+
+    def deepl_create_glossary(self) -> None:
+        translator = deepl.Translator(Translate.api_key)
+        translator.create_glossary(
+            name = "dqxclarity glossary",
+            source_lang = "JA",
+            target_lang = "EN",
+            entries = Translate.glossary
+        )
 
 
     def google(self, text: list):
@@ -60,9 +94,14 @@ class Translate():
 
 
     def __glossify(self, text):
-        for ja in Translate.glossary:
-            en = Translate.glossary[ja]
-            text = text.replace(ja, en)
+        if Translate.service == "deepl":
+            for ja in Translate.hiragana_glossary:
+                en = Translate.hiragana_glossary[ja]
+                text = text.replace(ja, en)
+        elif Translate.service == "google":
+            for ja in Translate.glossary:
+                en = Translate.glossary[ja]
+                text = text.replace(ja, en)
         return text
 
 
@@ -291,6 +330,13 @@ class Translate():
         oddities = ["「"]
         for oddity in oddities:
             output = output.replace(oddity, "")
+
+        # "。" is a Japanese period, but we're seeing unwanted behavior when mixing other characters with it
+        output = output.replace("…。", ".")
+        output = output.replace("。", ".")
+
+        # NMT doesn't interpret "singing" well at the end of lines, so we remove this indication.
+        output = output.replace("～", "")
 
         # remove the full width space that starts on a new line
         output = output.replace("\n　", "\n")
