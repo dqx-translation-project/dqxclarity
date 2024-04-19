@@ -1,33 +1,8 @@
 from locale import getencoding
 from loguru import logger as log
-from pathlib import Path
 
-import json
 import logging
 import os
-import shutil
-
-
-def write_file(path, filename, attr, data):
-    """Writes a string to a file."""
-    with open(f"{path}/{filename}", attr, encoding="utf-8") as open_file:
-        open_file.write(data)
-
-
-def delete_folder(folder):
-    """Deletes a folder and all subfolders."""
-    try:
-        shutil.rmtree(folder, ignore_errors=True)
-    except Exception:
-        pass
-
-
-def delete_file(file):
-    """Deletes a file."""
-    try:
-        Path(file).unlink()
-    except Exception:
-        pass
 
 
 def setup_logging():
