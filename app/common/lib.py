@@ -8,12 +8,6 @@ import os
 import shutil
 
 
-def read_json_file(file):
-    """Reads JSON file and returns content."""
-    with open(file, encoding="utf-8") as json_data:
-        return json.loads(json_data.read())
-
-
 def write_file(path, filename, attr, data):
     """Writes a string to a file."""
     with open(f"{path}/{filename}", attr, encoding="utf-8") as open_file:

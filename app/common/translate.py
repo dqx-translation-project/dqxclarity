@@ -637,11 +637,6 @@ def detect_lang(text: str) -> bool:
         return False
 
 
-def read_json_file(file):
-    with open(file, encoding="utf-8") as json_data:
-        return json.loads(json_data.read())
-
-
 def transliterate_player_name(word: str) -> str:
     """Uses the pykakasi library to phonetically convert a Japanese word into
     English.
