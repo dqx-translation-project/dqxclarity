@@ -443,7 +443,6 @@ def load_user_config(filepath: str = None):
         filepath = get_project_root("user_settings.ini")
     else:
         filepath = f"{filepath}/user_settings.ini"
-        print(filepath)
     base_config = configparser.ConfigParser()
     base_config["translation"] = {
         "enabledeepltranslate": False,
