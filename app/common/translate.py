@@ -5,7 +5,6 @@ from googleapiclient.discovery import build
 
 import configparser
 import deepl
-import json
 import langdetect
 import os
 import pykakasi
