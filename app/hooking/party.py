@@ -1,5 +1,4 @@
 # from common.db_ops import generate_m00_dict
-# from common.lib import encode_to_utf8
 # from common.memory import MemWriter
 # from common.translate import transliterate_player_name, detect_lang
 # from json import dumps
@@ -72,4 +71,4 @@
 #         f.write(str(traceback.format_exc()))
 #     """
 
-#     return encode_to_utf8(shellcode).decode()
+#     return shellcode

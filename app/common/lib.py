@@ -42,9 +42,3 @@ def get_project_root(add_file=None):
     if add_file:
         abs_path = "/".join([abs_path, add_file])
     return abs_path
-
-
-def encode_to_utf8(string: str):
-    """Encodes a string of the current machine's encoding to utf-8."""
-    current_locale = getencoding()
-    return string.encode(current_locale).decode(current_locale).encode()

@@ -1,5 +1,4 @@
 from common.db_ops import init_db, search_bad_strings, sql_read
-from common.lib import encode_to_utf8
 from common.memory import MemWriter
 from common.translate import detect_lang, Translate
 from json import dumps
@@ -129,4 +128,4 @@ except Exception as e:
         f.write(str(traceback.format_exc()))
     """
 
-    return encode_to_utf8(shellcode).decode()
+    return shellcode

@@ -1,5 +1,5 @@
 from common.db_ops import generate_m00_dict, sql_read, sql_write
-from common.lib import encode_to_utf8, get_project_root
+from common.lib import get_project_root
 from common.memory import MemWriter
 from common.translate import clean_up_and_return_items, detect_lang, Translate
 from json import dumps, loads
@@ -147,4 +147,4 @@ except Exception as e:
         f.write(str(traceback.format_exc()))
     """
 
-    return encode_to_utf8(shellcode).decode()
+    return shellcode
