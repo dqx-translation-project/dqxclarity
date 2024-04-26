@@ -46,6 +46,7 @@ class Translate():
         if region_code.lower() == "en":
             region_code = "en-us"
         translator = deepl.Translator(Translate.api_key)
+        print(text)
         response = translator.translate_text(
             text=text,
             source_lang="ja",
@@ -56,6 +57,7 @@ class Translate():
         text_results = []
         for result in response:
             text_results.append(result.text)
+        print(text_results)
         return text_results
 
 
@@ -335,8 +337,9 @@ class Translate():
         output = output.replace("…。", ".")
         output = output.replace("。", ".")
 
-        # NMT doesn't interpret "singing" well at the end of lines, so we remove this indication.
+        # NMT doesn't interpret "singing" well at the end of lines, so we remove these indications.
         output = output.replace("～", "")
+        output = output.replace("♪", "")
 
         # remove the full width space that starts on a new line
         output = output.replace("\n　", "\n")

@@ -48,19 +48,19 @@ def download_custom_files():
                 read_custom_json_and_import(name=filename, data=data)
 
             if '/csv/' in obj.filename:
-                if obj.filename.endswith('merge.xlsx'):
+                if obj.filename.endswith('/merge.xlsx'):
                     with zfile.open(obj.filename, 'r') as f:
                         data = f.read()
 
                     read_xlsx_and_import(data)
 
-                if obj.filename.endswith('glossary.csv'):
+                if obj.filename.endswith('/glossary.csv'):
                     with zfile.open(obj.filename, 'r') as f:
                         data = f.read()
 
                     read_glossary_and_import(data=data, table="glossary")
 
-                if obj.filename.endswith("hiragana_glossary.csv"):
+                if obj.filename.endswith("/hiragana_glossary.csv"):
                     with zfile.open(obj.filename, 'r') as f:
                         data = f.read()
 
