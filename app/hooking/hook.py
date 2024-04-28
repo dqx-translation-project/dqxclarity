@@ -6,7 +6,6 @@ from common.signatures import (
     dialog_trigger,
     integrity_check,
     network_text_trigger,
-    party_ai_trigger,
     player_sibling_name_trigger,
     quest_text_trigger,
 )
@@ -101,29 +100,6 @@ def player_name_detour(simple_str_addr: int):
     writer.write_string(address=shellcode_addr, text=shellcode)
 
     return hook_obj
-
-
-# not in use until we can find a better function to hook.
-# def party_name_detour(simple_str_addr: int):
-#     """Detours function when party names in the bottom right load and renames
-#     them into English."""
-#     from hooking.party import rename_party_members_shellcode
-
-#     writer = MemWriter()
-
-#     hook_obj = EasyDetour(
-#         hook_name="party_members",
-#         signature=party_ai_trigger,
-#         num_bytes_to_steal=6,
-#         simple_str_addr=simple_str_addr,
-#     )
-
-#     ebx = hook_obj.address_dict["attrs"]["ebx"]
-#     shellcode = rename_party_members_shellcode(ebx_address=ebx)
-#     shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
-#     writer.write_string(address=shellcode_addr, text=shellcode)
-
-#     return hook_obj
 
 
 def corner_text_detour(simple_str_addr: int):
