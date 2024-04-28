@@ -147,7 +147,14 @@ def pattern_scan_all(handle, pattern, *, all_protections=True, use_regex=False, 
     found = []
     user_space_limit = 0x7FFFFFFF0000 if sys.maxsize > 2**32 else 0x7FFF0000
     while next_region < user_space_limit:
-        next_region, page_found = scan_pattern_page(handle, next_region, pattern, all_protections=all_protections, use_regex=use_regex, return_multiple=return_multiple)
+        next_region, page_found = scan_pattern_page(
+            handle,
+            next_region,
+            pattern,
+            all_protections=all_protections,
+            use_regex=use_regex,
+            return_multiple=return_multiple
+        )
 
         if not return_multiple and page_found:
             return page_found

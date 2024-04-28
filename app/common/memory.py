@@ -1,22 +1,18 @@
 from common.errors import AddressOutOfRange, MemoryReadError, MemoryWriteError
-from loguru import logger as log
-from pymem.pattern import pattern_scan_all, pattern_scan_module
 
 import pymem
 import pymem.exception
 import pymem.process
 import struct
-import sys
 
 
 class MemWriter:
+    def __init__(self, process_name: str = "DQXGame.exe"):
+        self.proc = self.attach(process_name)
 
-    def __init__(self):
-        self.proc = self.attach()
 
-
-    def attach(self):
-        proc = pymem.Pymem("DQXGame.exe")
+    def attach(self, process_name: str = "DQXGame.exe"):
+        proc = pymem.Pymem(process_name)
         # obscure issue seen on Windows 11 getting an OverflowError
         # https://github.com/srounet/Pymem/issues/19
         proc.process_handle &= 0xFFFFFFFF
@@ -76,21 +72,18 @@ class MemWriter:
         return self.proc.write_string(address, text + "\x00")
 
 
-    def pattern_scan(self, pattern: bytes, return_multiple=False, use_regex=False, module=None):
+    def pattern_scan(self, pattern: bytes, return_multiple=False, use_regex=False, module=None, all_protections: bool = False):
         """Scan for a byte pattern."""
         if module is not None:
-            return pattern_scan_module(
-                handle=self.proc.process_handle,
+            return self.proc.pattern_scan_module(
                 pattern=pattern,
                 return_multiple=return_multiple,
-                module=pymem.process.module_from_name(self.proc.process_handle, module),
-                use_regex=use_regex
+                module=module
             )
         else:
-            return pattern_scan_all(
-                handle=self.proc.process_handle,
+            return self.proc.pattern_scan_all(
                 pattern=pattern,
-                all_protections=False,
+                all_protections=all_protections,
                 return_multiple=return_multiple,
                 use_regex=use_regex
             )
@@ -110,11 +103,8 @@ class MemWriter:
         return addr + offsets[-1]
 
 
-    def get_base_address(self, name="DQXGame.exe") -> int:
-        """Returns the base address of a module.
-
-        Defaults to DQXGame.exe.
-        """
+    def get_base_address(self, name: str ="DQXGame.exe") -> int:
+        """Returns the base address of a module."""
         return pymem.process.module_from_name(self.proc.process_handle, name).lpBaseOfDll
 
 
