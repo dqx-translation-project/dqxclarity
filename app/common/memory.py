@@ -1,9 +1,11 @@
 from common.errors import AddressOutOfRange, MemoryReadError, MemoryWriteError
+from loguru import logger as log
 
 import pymem
 import pymem.exception
 import pymem.process
 import struct
+import traceback
 
 
 class MemWriter:
@@ -146,6 +148,21 @@ class MemWriter:
     def get_hook_bytecode(self, hook_address: int):
         """Returns a formatted jump address for your hook."""
         return b"\xE9" + self.pack_to_int(hook_address)
+
+
+    def inject_python(self):
+        """Injects the Python interpreter into the process."""
+        try:
+            self.proc.inject_python_interpreter()
+            if self.proc._python_injected:
+                if self.proc.py_run_simple_string:
+                    return self.proc.py_run_simple_string
+
+            log.exception(f"Python dll failed to inject. Details:\n{self.proc.__dict__}")
+            return False
+        except Exception:
+            log.exception(f"Python dll failed to inject. Error: \n{str(traceback.print_exc())}\nDetails:\n{self.proc.__dict__}")
+            return False
 
 
     def close(self):
