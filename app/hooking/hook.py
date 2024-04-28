@@ -12,27 +12,9 @@ from common.signatures import (
 )
 from hooking.easydetour import EasyDetour
 from hooking.hide_hooks import load_hooks
-from pymem import Pymem
 
 import struct
 import sys
-import traceback
-
-
-def inject_python_dll():
-    """Injects a Python dll."""
-    writer = Pymem("DQXGame.exe")
-    try:
-        writer.inject_python_interpreter()
-        if writer._python_injected:
-            if writer.py_run_simple_string:
-                log.success(f"Python injected.")
-                return writer.py_run_simple_string
-        log.error(f"Python dll failed to inject. Details:\n{writer.__dict__}")
-        return False
-    except Exception:
-        log.error(f"Python dll failed to inject. Error: \n{str(traceback.print_exc())}\nDetails:\n{writer.__dict__}")
-        return False
 
 
 def translate_detour(simple_str_addr: int):
@@ -174,11 +156,8 @@ def activate_hooks(player_names: bool, communication_window: bool):
     log = setup_logging()
 
     writer = MemWriter()
+    simple_str_addr = writer.inject_python()
 
-    simple_str_addr = inject_python_dll()
-    if not simple_str_addr:
-        log.exception("Since Python injection failed, we will not try to hook. Exiting.")
-        return False
 
     # activates all hooks. add any new hooks to this list
     hooks = []
