@@ -134,7 +134,6 @@ def activate_hooks(player_names: bool, communication_window: bool):
     writer = MemWriter()
     simple_str_addr = writer.inject_python()
 
-
     # activates all hooks. add any new hooks to this list
     hooks = []
     hooks.append(player_name_detour(simple_str_addr=simple_str_addr))
