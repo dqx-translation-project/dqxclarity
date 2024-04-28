@@ -133,5 +133,13 @@ class TestMemory(unittest.TestCase):
         self.assertTrue(jump_bytes.hex(" ") == "e9 67 45 23 01")
 
 
+    # this test needs to run last as it can hose other tests since we're sharing the same process.
+    def test_zzz_inject_python(self):
+        self.process.inject_python()
+
+        self.assertTrue(self.process.proc._python_injected)
+        self.assertTrue(self.process.proc.py_run_simple_string)
+
+
 if __name__ == '__main__':
     unittest.main()
