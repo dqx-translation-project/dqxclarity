@@ -1,5 +1,5 @@
 from common.db_ops import generate_m00_dict
-from common.lib import encode_to_utf8, get_project_root, setup_logger
+from common.lib import get_project_root, setup_logger
 from common.memory import MemWriter
 from common.translate import detect_lang
 from json import dumps
@@ -60,4 +60,4 @@ except Exception as e:
         f.write(str(traceback.format_exc()))
     """
 
-    return encode_to_utf8(shellcode).decode()
+    return shellcode

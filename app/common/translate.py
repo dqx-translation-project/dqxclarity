@@ -5,7 +5,6 @@ from googleapiclient.discovery import build
 
 import configparser
 import deepl
-import json
 import langdetect
 import os
 import pykakasi
@@ -435,14 +434,19 @@ class Translate():
         return pristine_str
 
 
-def load_user_config():
+def load_user_config(filepath: str = None):
     """Returns a user's config settings. If the config doesn't exist, a default
     config is generated. If the user's config is missing values, we back up the
     old config and generate a new default one for them.
 
+    :param filepath: Path to the user_settings.ini file. Don't include
+        the filename or trailing forward slash.
     :returns: Dict of config.
     """
-    filename = get_project_root("user_settings.ini")
+    if not filepath:
+        filepath = get_project_root("user_settings.ini")
+    else:
+        filepath = f"{filepath}/user_settings.ini"
     base_config = configparser.ConfigParser()
     base_config["translation"] = {
         "enabledeepltranslate": False,
@@ -454,11 +458,11 @@ def load_user_config():
     base_config["config"] = {"installdirectory": ""}
 
     def create_base_config():
-        with open(filename, "w+") as configfile:
+        with open(filepath, "w+") as configfile:
             base_config.write(configfile)
 
     # Create the config if it doesn't exist
-    if not os.path.exists(filename):
+    if not os.path.exists(filepath):
         create_base_config()
 
     # Verify the integrity of the config. If a key is missing,
@@ -466,7 +470,7 @@ def load_user_config():
     # up the old config.
     user_config = configparser.ConfigParser()
     user_config_state = 0
-    user_config.read(filename)
+    user_config.read(filepath)
     for section in base_config.sections():
         if section not in user_config.sections():
             user_config_state = 1
@@ -478,17 +482,17 @@ def load_user_config():
 
     # Notify user their config is busted
     if user_config_state == 1:
-        shutil.copyfile(filename, f"{filename}.invalid")
+        shutil.copyfile(filepath, "user_settings.invalid")
         create_base_config()
         message_box(
             title="New config created",
-            message=f"We found a missing config value in your {filename}.\n\nYour old config has been renamed to {filename}.invalid in case you need to reference it.\n\nPlease relaunch dqxclarity.",
+            message=f"We found a missing config value in your user_settings.ini.\n\nYour old config has been renamed to user_settings.invalid in case you need to reference it.\n\nPlease relaunch dqxclarity.",
             exit_prog=True,
         )
 
     config_dict = {}
     good_config = configparser.ConfigParser()
-    good_config.read(filename)
+    good_config.read(filepath)
     for section in good_config.sections():
         config_dict[section] = {}
         for key, val in good_config.items(section):
@@ -639,11 +643,6 @@ def detect_lang(text: str) -> bool:
             return True
     except langdetect.lang_detect_exception.LangDetectException:  # Could not detect language
         return False
-
-
-def read_json_file(file):
-    with open(file, encoding="utf-8") as json_data:
-        return json.loads(json_data.read())
 
 
 def transliterate_player_name(word: str) -> str:

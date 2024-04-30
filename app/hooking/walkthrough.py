@@ -2,7 +2,6 @@
 # import os
 # import sys
 # from common.translate import Translate
-# from common.lib import encode_to_utf8
 
 
 # def walkthrough_shellcode(
@@ -66,4 +65,4 @@
 #         f.write(str(e))
 #     """
 
-#     return encode_to_utf8(shellcode).decode()
+#     return shellcode

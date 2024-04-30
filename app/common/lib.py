@@ -1,39 +1,8 @@
 from locale import getencoding
 from loguru import logger as log
-from pathlib import Path
 
-import json
 import logging
 import os
-import shutil
-
-
-def read_json_file(file):
-    """Reads JSON file and returns content."""
-    with open(file, encoding="utf-8") as json_data:
-        return json.loads(json_data.read())
-
-
-def write_file(path, filename, attr, data):
-    """Writes a string to a file."""
-    with open(f"{path}/{filename}", attr, encoding="utf-8") as open_file:
-        open_file.write(data)
-
-
-def delete_folder(folder):
-    """Deletes a folder and all subfolders."""
-    try:
-        shutil.rmtree(folder, ignore_errors=True)
-    except Exception:
-        pass
-
-
-def delete_file(file):
-    """Deletes a file."""
-    try:
-        Path(file).unlink()
-    except Exception:
-        pass
 
 
 def setup_logging():
@@ -73,9 +42,3 @@ def get_project_root(add_file=None):
     if add_file:
         abs_path = "/".join([abs_path, add_file])
     return abs_path
-
-
-def encode_to_utf8(string: str):
-    """Encodes a string of the current machine's encoding to utf-8."""
-    current_locale = getencoding()
-    return string.encode(current_locale).decode(current_locale).encode()

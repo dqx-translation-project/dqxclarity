@@ -6,33 +6,14 @@ from common.signatures import (
     dialog_trigger,
     integrity_check,
     network_text_trigger,
-    party_ai_trigger,
     player_sibling_name_trigger,
     quest_text_trigger,
 )
 from hooking.easydetour import EasyDetour
 from hooking.hide_hooks import load_hooks
-from pymem import Pymem
 
 import struct
 import sys
-import traceback
-
-
-def inject_python_dll():
-    """Injects a Python dll."""
-    writer = Pymem("DQXGame.exe")
-    try:
-        writer.inject_python_interpreter()
-        if writer._python_injected:
-            if writer.py_run_simple_string:
-                log.success(f"Python injected.")
-                return writer.py_run_simple_string
-        log.error(f"Python dll failed to inject. Details:\n{writer.__dict__}")
-        return False
-    except Exception:
-        log.error(f"Python dll failed to inject. Error: \n{str(traceback.print_exc())}\nDetails:\n{writer.__dict__}")
-        return False
 
 
 def translate_detour(simple_str_addr: int):
@@ -121,29 +102,6 @@ def player_name_detour(simple_str_addr: int):
     return hook_obj
 
 
-# not in use until we can find a better function to hook.
-# def party_name_detour(simple_str_addr: int):
-#     """Detours function when party names in the bottom right load and renames
-#     them into English."""
-#     from hooking.party import rename_party_members_shellcode
-
-#     writer = MemWriter()
-
-#     hook_obj = EasyDetour(
-#         hook_name="party_members",
-#         signature=party_ai_trigger,
-#         num_bytes_to_steal=6,
-#         simple_str_addr=simple_str_addr,
-#     )
-
-#     ebx = hook_obj.address_dict["attrs"]["ebx"]
-#     shellcode = rename_party_members_shellcode(ebx_address=ebx)
-#     shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
-#     writer.write_string(address=shellcode_addr, text=shellcode)
-
-#     return hook_obj
-
-
 def corner_text_detour(simple_str_addr: int):
     """Detours function when top-right corner text is about to happen and
     replaces it with English."""
@@ -174,11 +132,7 @@ def activate_hooks(player_names: bool, communication_window: bool):
     log = setup_logging()
 
     writer = MemWriter()
-
-    simple_str_addr = inject_python_dll()
-    if not simple_str_addr:
-        log.exception("Since Python injection failed, we will not try to hook. Exiting.")
-        return False
+    simple_str_addr = writer.inject_python()
 
     # activates all hooks. add any new hooks to this list
     hooks = []
