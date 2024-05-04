@@ -246,9 +246,9 @@ RunProgram(*) {
     SaveToIni
     if (FileExist("run_clarity.ps1")) {
         ; When users download clarity, Windows tends to mark the ps1 script as unsafe, which can trigger
-        ; a security warning when launching run_clarity.ps1.
-        Run("powershell.exe Unblock-File -Path .\run_clarity.ps1")
-        Run("cmd.exe /c powershell.exe -ExecutionPolicy Bypass -File run_clarity.ps1 " . GetClarityArgs())
+        ; a security warning when launching run_clarity.ps1. Run this in the same Run() call so that a window
+        ; doesn't flicker when it executes.
+        Run("cmd.exe /c powershell.exe Unblock-File -Path .\run_clarity.ps1; cmd.exe /c powershell.exe -ExecutionPolicy Bypass -File run_clarity.ps1 " . GetClarityArgs())
     }
     else
         MsgBox("Did not find run_clarity.ps1 in this directory.`n`nEnsure you didn't move dqxclarity.exe outside of the directory.",, "OK Iconx 0x1000")
