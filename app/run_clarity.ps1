@@ -62,6 +62,23 @@ function UninstallPython() {
     .\python-3.11.3.exe /uninstall | Out-Null
 }
 
+function CheckForRunningInstallers() {
+    $MsiExecRunning = Get-Process -Name msiexec.exe -ErrorAction SilentlyContinue
+    if ($MsiExecRunning) {
+        $Message = "We found a running process on your machine that will cause the Python installer to fail (msiexec.exe). This process is generally used when installing/uninstalling software. Are you OK with us stopping the process to continue?"
+        LogWrite $Message
+        $Result = $Shell.popup($Message,0,"Question",4+32)
+
+        if ($Result -eq 6) {
+            Stop-Process -Name msiexec.exe -ErrorAction SilentlyContinue
+        } else {
+            LogWrite "No problem. You will need to either terminate the process yourself or reboot your computer. Launch dqxclarity again when you're ready."
+            Read-Host "Press ENTER to close."
+            Exit
+        }
+    }
+}
+
 $ErrorActionPreference="SilentlyContinue"
 Stop-Transcript | Out-Null
 $ErrorActionPreference = "Continue"
@@ -80,6 +97,7 @@ if (!$PythonInstallPath) {
     $Result = $Shell.popup("Could not find Python 3.11 installation. Do you want to install it?",0,"Question",4+32)
 
     if ($Result -eq 6) {
+        CheckForRunningInstallers
         DownloadPythonInstaller
         InstallPython
         $PythonInstallPath = PythonExePath
