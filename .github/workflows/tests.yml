@@ -1,0 +1,28 @@
+---
+name: Python unit tests
+
+on:
+  pull_request:
+  push:
+    branches: ['main']
+
+jobs:
+  unit_tests:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.3'
+          architecture: 'x86'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run unit tests
+        run: |
+          cd app\tests
+          python -m unittest discover
