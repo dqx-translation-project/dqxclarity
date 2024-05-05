@@ -4,7 +4,7 @@ import pymem.ressources.kernel32
 import pymem.ressources.structure
 
 
-def scan_pattern_page(handle, address, pattern, *, all_protections=True, use_regex=False, return_multiple=False):
+def scan_pattern_page(handle, address, pattern, *, all_protections=True, use_regex=False, return_multiple=False, data_only=False):
     """Search a byte pattern given a memory location.
     Will query memory location information and search over until it reaches the
     length of the memory page. If nothing is found the function returns the
@@ -17,8 +17,12 @@ def scan_pattern_page(handle, address, pattern, *, all_protections=True, use_reg
         An address to search from
     pattern: bytes
         A regex byte pattern to search for
+    all_protections: list(string)
+        A list of MEMORY_PROTECTION(s) the page must match to be considered
     return_multiple: bool
         If multiple results should be returned instead of stopping on the first
+    data_only: bool
+        Only scan for memory regions that are considered data and read/writable
     Returns
     -------
     tuple
@@ -35,6 +39,7 @@ def scan_pattern_page(handle, address, pattern, *, all_protections=True, use_reg
 
     mbi = pymem.memory.virtual_query(handle, address)
     next_region = mbi.BaseAddress + mbi.RegionSize
+
     if all_protections:
         allowed_protections = [
             pymem.ressources.structure.MEMORY_PROTECTION.PAGE_EXECUTE_READ,
@@ -46,7 +51,15 @@ def scan_pattern_page(handle, address, pattern, *, all_protections=True, use_reg
         allowed_protections = [
             pymem.ressources.structure.MEMORY_PROTECTION.PAGE_READWRITE
         ]
+
     if mbi.state != pymem.ressources.structure.MEMORY_STATE.MEM_COMMIT or mbi.protect not in allowed_protections:
+        return next_region, None
+
+    # clarity_custom: Only scan for data regions.
+    if data_only and mbi.type not in [
+        pymem.ressources.structure.MEMORY_TYPES.MEM_PRIVATE,
+        pymem.ressources.structure.MEMORY_TYPES.MEM_MAPPED
+    ]:
         return next_region, None
 
     try:
@@ -126,7 +139,7 @@ def pattern_scan_module(handle, module, pattern, *, all_protections=True, use_re
     return found
 
 
-def pattern_scan_all(handle, pattern, *, all_protections=True, use_regex=False, return_multiple=False):
+def pattern_scan_all(handle, pattern, *, all_protections=True, use_regex=False, return_multiple=False, data_only=False):
     """Scan the entire address space for a given regex pattern
     Parameters
     ----------
@@ -153,7 +166,8 @@ def pattern_scan_all(handle, pattern, *, all_protections=True, use_regex=False, 
             pattern,
             all_protections=all_protections,
             use_regex=use_regex,
-            return_multiple=return_multiple
+            return_multiple=return_multiple,
+            data_only=data_only
         )
 
         if not return_multiple and page_found:

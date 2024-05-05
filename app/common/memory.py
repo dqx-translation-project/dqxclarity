@@ -74,7 +74,7 @@ class MemWriter:
         return self.proc.write_string(address, text + "\x00")
 
 
-    def pattern_scan(self, pattern: bytes, return_multiple=False, use_regex=False, module=None, all_protections: bool = False):
+    def pattern_scan(self, pattern: bytes, return_multiple=False, use_regex=False, module=None, all_protections: bool=False, data_only: bool=False):
         """Scan for a byte pattern."""
         if module is not None:
             return self.proc.pattern_scan_module(
@@ -87,7 +87,8 @@ class MemWriter:
                 pattern=pattern,
                 all_protections=all_protections,
                 return_multiple=return_multiple,
-                use_regex=use_regex
+                use_regex=use_regex,
+                data_only=data_only
             )
 
     def get_ptr_address(self, base: int, offsets: list):
