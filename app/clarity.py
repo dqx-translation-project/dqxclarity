@@ -23,17 +23,18 @@ import time
 import traceback
 
 
-def scan_for_player_names():
-    """Scans for addresses that are related to a specific pattern to translate
-    player names."""
+def scan_for_player_names(players: dict) -> None:
+    """Scans for player nameplates and transliterates the Japanese name.
+
+    :param players: Dictionary of players to override transliteration.
+    """
     writer = MemWriter()
-    player_names = generate_m00_dict(files="'custom_player_names'")
-    if addresses := writer.pattern_scan(pattern=player_name_pattern, return_multiple=True):
+    if addresses := writer.pattern_scan(pattern=player_name_pattern, return_multiple=True, use_regex=True, data_only=True):
         for address in addresses:
             player_name_address = address + 48  # len of player_name_pattern - 1
             try:
                 ja_name = writer.read_string(player_name_address)
-                en_name = player_names.get(ja_name)
+                en_name = players.get(ja_name)
                 if not en_name:
                     en_name = transliterate_player_name(ja_name)
                 if en_name != ja_name:
@@ -59,16 +60,16 @@ def scan_for_player_names():
 
 
 def scan_for_comm_names():
-    """Scans for addresses that are related to a specific pattern to translate
-    player names in the comms window."""
+    """Scans for player names in the communications window and transliterates
+    the Japanese name."""
     writer = MemWriter()
     player_names = generate_m00_dict(files="'custom_player_names'")
     comm_addresses = []
 
     # the comm names were found to use two patterns. the first set we can use as is, the second set
     # we need to jump ahead one byte before we r/w.
-    comm_names_1 = writer.pattern_scan(pattern=comm_name_pattern_1, use_regex=True, return_multiple=True)
-    comm_names_2 = writer.pattern_scan(pattern=comm_name_pattern_2, use_regex=True, return_multiple=True)
+    comm_names_1 = writer.pattern_scan(pattern=comm_name_pattern_1, use_regex=True, return_multiple=True, data_only=True)
+    comm_names_2 = writer.pattern_scan(pattern=comm_name_pattern_2, use_regex=True, return_multiple=True, data_only=True)
 
     if comm_names_1:
         for address in comm_names_1:
@@ -107,10 +108,14 @@ def scan_for_comm_names():
 
 
 def scan_for_sibling_name():
-    """Scans for addresses that are related to a specific pattern to translate
-    the player's sibling name."""
+    """Scans the player and sibling names and transliterates their Japanese
+    names.
+
+    The result will have their names updated in the dialog windows (and
+    other references.)
+    """
     writer = MemWriter()
-    if address := writer.pattern_scan(pattern=sibling_name_pattern):
+    if address := writer.pattern_scan(pattern=sibling_name_pattern, data_only=True):
         sibling_address = address + 51  # len of num of (sibling_name_pattern - 1)
         player_address = address - 21  # start of sibling_name_pattern - 21 (jump to player name)
         try:
@@ -140,17 +145,18 @@ def scan_for_sibling_name():
     writer.close()
 
 
-def scan_for_concierge_names():
-    """Scans for addresses that are related to a specific pattern to translate
-    concierge names."""
+def scan_for_concierge_names(players: dict):
+    """Scans for concierge NPCs and transliterates their Japanese names.
+
+    :param players: Dictionary of players to override transliteration.
+    """
     writer = MemWriter()
-    player_names = generate_m00_dict(files="'custom_player_names'")
-    if addresses := writer.pattern_scan(pattern=concierge_name_pattern, return_multiple=True):
+    if addresses := writer.pattern_scan(pattern=concierge_name_pattern, return_multiple=True, data_only=True):
         for address in addresses:
             name_address = address + 12  # jump to name
             try:
                 ja_name = writer.read_string(name_address)
-                en_name = player_names.get(ja_name)
+                en_name = players.get(ja_name)
                 if not en_name:
                     en_name = transliterate_player_name(ja_name)
                 if en_name != ja_name:
@@ -173,14 +179,17 @@ def scan_for_concierge_names():
     writer.close()
 
 
-def scan_for_npc_names():
-    """Scan to look for NPC names, monster names and names above your party
-    member's heads and translates them into English."""
-    writer = MemWriter()
-    monsters = generate_m00_dict(files="'monsters'")
-    npcs = generate_m00_dict(files="'npcs', 'custom_npc_names', 'custom_player_names'")
+def scan_for_npc_names(monsters: dict, npcs: dict):
+    """Scans for NPC names, monster names and names above your party member's
+    heads and converts their Japanese names to English.
 
-    if npc_list := writer.pattern_scan(pattern=npc_monster_pattern, return_multiple=True):
+    :monsters players: Dictionary of monster names to look up. No
+    transliteration is done     if there's no match. :npcs players:
+    Dictionary of npcs to override transliteration.
+    """
+    writer = MemWriter()
+
+    if npc_list := writer.pattern_scan(pattern=npc_monster_pattern, return_multiple=True, data_only=True):
         for address in npc_list:
             npc_type = writer.read_bytes(address + 36, 2)
             if npc_type == b"\xA0\xF0":
@@ -226,17 +235,18 @@ def scan_for_npc_names():
     writer.close()
 
 
-def scan_for_menu_ai_names():
-    """Scans for addresses that are related to a specific pattern to translate
-    party member names in the party member panel."""
+def scan_for_menu_ai_names(players: dict):
+    """Scans for party member names in the party member communications window.
+
+    :param players: Dictionary of players to override transliteration.
+    """
     writer = MemWriter()
-    player_names = generate_m00_dict(files="'custom_player_names'")
-    if addresses := writer.pattern_scan(pattern=menu_ai_name_pattern, return_multiple=True):
+    if addresses := writer.pattern_scan(pattern=menu_ai_name_pattern, return_multiple=True, data_only=True):
         for address in addresses:
             name_address = address + 57
             try:
                 ja_name = writer.read_string(name_address)
-                en_name = player_names.get(ja_name)
+                en_name = players.get(ja_name)
                 if not en_name:
                     en_name = transliterate_player_name(ja_name)
                 if en_name != ja_name:
@@ -270,7 +280,7 @@ def loop_scan_for_walkthrough():
         writer = MemWriter()
         pattern = re.compile(walkthrough_pattern[0:55])  # 55 sliced characters == 16 bytes
         while True:
-            if address := writer.pattern_scan(pattern=walkthrough_pattern):
+            if address := writer.pattern_scan(pattern=walkthrough_pattern, data_only=True):
                 prev_text = ""
                 while True:
                     # check if the address is still valid by validating the pattern.
@@ -341,14 +351,18 @@ def run_scans(player_names=True, npc_names=True):
     if npc_names:
         log.info("Will watch and update NPCs.")
 
+    monsters = generate_m00_dict(files="'monsters'")
+    npcs = generate_m00_dict(files="'npcs', 'custom_npc_names', 'custom_player_names'")
+    players = generate_m00_dict(files="'custom_player_names'")
+
     while True:
         try:
             if player_names:
-                scan_for_player_names()
-                scan_for_menu_ai_names()
+                scan_for_player_names(players)
+                scan_for_menu_ai_names(players)
             if npc_names:
-                scan_for_npc_names()
-                scan_for_concierge_names()
+                scan_for_npc_names(monsters=monsters, npcs=npcs)
+                scan_for_concierge_names(players)
         except UnicodeDecodeError:
             pass
         except MemoryReadError:

@@ -43,6 +43,6 @@ def wait_for_dqx_to_launch() -> bool:
     log.success("DQXGame.exe found. Make sure you're on the \"Important notice\" screen.")
     writer = MemWriter()
     while True:
-        if writer.pattern_scan(pattern=notice_string):
+        if writer.pattern_scan(pattern=notice_string, data_only=True):
             log.success("\"Important notice\" screen found.")
             return
