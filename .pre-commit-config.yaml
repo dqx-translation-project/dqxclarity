@@ -30,7 +30,7 @@ repos:
     - id: check-ast
       name: Check if code parses as valid Python
 - repo: https://github.com/Yelp/detect-secrets
-  rev: v1.4.0
+  rev: v1.5.0
   hooks:
     - id: detect-secrets
       name: Checking for potential passwords
