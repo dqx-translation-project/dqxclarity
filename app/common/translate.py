@@ -301,9 +301,8 @@ class Translate():
         # replace any <color*> tags with & as they are part of the string
         output = output.replace("<color_", "<&color_")
 
-        name_tags = ["<pc>", "<cs_pchero>", "<kyodai>"]
-
         # removes all of the honorifics added at the end of the tags
+        name_tags = ["<pc>", "<cs_pchero>", "<kyodai>"]
         honorifics = ["さま", "君", "どの", "ちゃん", "くん", "様", "さーん", "殿", "さん",]
         for tag in name_tags:
             for honorific in honorifics:
@@ -426,6 +425,29 @@ class Translate():
                     updated_str = "\n" + updated_str
                 if str_attrs[count]["append_newline"]:
                     updated_str += "\n"
+
+                # if we see a voice line tag (<voice_nw>), a <br> must exist at the end of the string no matter what.
+                # this is required to make the dialog pause while the voice line continues.
+                voice_re = re.compile("<voice.*>")
+                if re.search(voice_re, pristine_str):
+                    tag_list = re.findall(tag_re, pristine_str)
+
+                    # get the current index from our pristine_str
+                    cur_index = tag_list.index(f"<replace_me_index_{count}>")
+
+                    # don't add a <br> to the very last line. subtract 1 as length doesn't start at 0 like index does.
+                    if len(tag_list) - 1 != cur_index:
+
+                        # get the index of the previous string to read
+                        lookback_index = cur_index - 1
+
+                        # make sure we get a valid number before checking the index
+                        if lookback_index > -1:
+                            if re.match(voice_re, tag_list[lookback_index]):
+
+                                # don't add a <br> if it already exists
+                                if not updated_str.endswith("<br>"):
+                                    updated_str += "<br>\n"
 
                 pristine_str = pristine_str.replace(f"<replace_me_index_{count}>", updated_str)
 
