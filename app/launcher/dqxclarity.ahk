@@ -242,13 +242,30 @@ GetClarityArgs(*) {
     return args
 }
 
+
+CheckScriptPath(*) {
+    ; Ensure the user doesn't run dqxclarity from Program Files, as this is known
+    ; to cause issues saving user settings and writing to the clarity db.
+    program_files := EnvGet("programfiles(x86)")
+    if InStr(A_ScriptDir, program_files) {
+        MsgBox(Format("You placed this folder in {1}. This is known to cause issues with dqxclarity. Please move the directory somewhere else (Desktop, Documents, etc.)", program_files),, "OK Iconx 0x1000")
+        ExitApp
+    }
+}
+
+
 RunProgram(*) {
+    CheckScriptPath
     SaveToIni
     if (FileExist("run_clarity.ps1")) {
         ; When users download clarity, Windows tends to mark the ps1 script as unsafe, which can trigger
         ; a security warning when launching run_clarity.ps1. Run this in the same Run() call so that a window
         ; doesn't flicker when it executes.
-        Run("cmd.exe /c powershell.exe Unblock-File -Path .\run_clarity.ps1; cmd.exe /c powershell.exe -ExecutionPolicy Bypass -File run_clarity.ps1 " . GetClarityArgs())
+        windows_root := EnvGet("SystemRoot")
+        cmd_path := Format("{1}\System32\cmd.exe", windows_root)
+        powershell_path := Format("{1}\System32\WindowsPowerShell\v1.0\powershell.exe", windows_root)
+
+        Run(Format("{1} /c {2} Unblock-File -Path .\run_clarity.ps1; {1} /c {2} -ExecutionPolicy Bypass -File run_clarity.ps1 {3}", cmd_path, powershell_path, GetClarityArgs()))
     }
     else
         MsgBox("Did not find run_clarity.ps1 in this directory.`n`nEnsure you didn't move dqxclarity.exe outside of the directory.",, "OK Iconx 0x1000")
