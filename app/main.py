@@ -26,7 +26,6 @@ import time
 
 # fmt: off
 @click.command()
-@click.option('-v', '--debug', is_flag=True, help="Turns on additional logging to console. This will be removed in a future update.")
 @click.option('-u', '--disable-update-check', is_flag=True, help="Disables checking for updates on each launch.")
 @click.option('-c', '--communication-window', is_flag=True,help="Writes hooks into the game to translate the dialog window with a live translation service.")
 @click.option('-p', '--player-names', is_flag=True,help="Scans for player names and changes them to their Romaji counterpart.")
@@ -42,7 +41,6 @@ def blast_off(
     npc_names=False,
     community_logging=False,
     update_dat=False,
-    debug=False  # this will be removed in a future update.
 ):
 
     # configure logging
