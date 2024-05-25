@@ -242,7 +242,20 @@ GetClarityArgs(*) {
     return args
 }
 
+
+CheckScriptPath(*) {
+    ; Ensure the user doesn't run dqxclarity from Program Files, as this is known
+    ; to cause issues saving user settings and writing to the clarity db.
+    program_files := EnvGet("programfiles(x86)")
+    if InStr(A_ScriptDir, program_files) {
+        MsgBox(Format("You placed this folder in {1}. This is known to cause issues with dqxclarity. Please move the directory somewhere else (Desktop, Documents, etc.)", program_files),, "OK Iconx 0x1000")
+        ExitApp
+    }
+}
+
+
 RunProgram(*) {
+    CheckScriptPath
     SaveToIni
     if (FileExist("run_clarity.ps1")) {
         ; When users download clarity, Windows tends to mark the ps1 script as unsafe, which can trigger
