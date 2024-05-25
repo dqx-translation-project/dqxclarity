@@ -262,7 +262,10 @@ RunProgram(*) {
         ; a security warning when launching run_clarity.ps1. Run this in the same Run() call so that a window
         ; doesn't flicker when it executes.
         windows_root := EnvGet("SystemRoot")
-        Run(Format("{1}\System32\cmd.exe /c {1}\System32\WindowsPowerShell\v1.0\powershell.exe Unblock-File -Path .\run_clarity.ps1; {1}\System32\cmd.exe /c {1}\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File run_clarity.ps1 {2}", windows_root, GetClarityArgs()))
+        cmd_path := Format("{1}\System32\cmd.exe", windows_root)
+        powershell_path := Format("{1}\System32\WindowsPowerShell\v1.0\powershell.exe", windows_root)
+
+        Run(Format("{1} /c {2} Unblock-File -Path .\run_clarity.ps1; {1} /c {2} -ExecutionPolicy Bypass -File run_clarity.ps1 {3}", cmd_path, powershell_path, GetClarityArgs()))
     }
     else
         MsgBox("Did not find run_clarity.ps1 in this directory.`n`nEnsure you didn't move dqxclarity.exe outside of the directory.",, "OK Iconx 0x1000")
