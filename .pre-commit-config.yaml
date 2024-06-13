@@ -35,7 +35,7 @@ repos:
     - id: detect-secrets
       name: Checking for potential passwords
 - repo: https://github.com/asottile/pyupgrade
-  rev: v3.15.2
+  rev: v3.16.0
   hooks:
   - id: pyupgrade
     name: Upgrade previous versioned Python syntax to newer version
