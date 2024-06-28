@@ -97,7 +97,7 @@ jobs:
 
       - name: Download previous release's dat/idx files
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: robinraju/release-downloader@v1.10
+        uses: robinraju/release-downloader@v1.11
         with:
           latest: true
           fileName: "data00000000*"
