@@ -100,23 +100,24 @@ menu_party_name_trigger = rb"\x8B\xCF\xFF\x75\x0C\x53\x50"
 network_text_trigger = rb"\x8D\x71\x01\x8B\xFF\x8A\x01\x41\x84\xC0\x75\xF9\x2B\xCE\x51\x51"
 
 # player and sibling names on login. use this to figure out what the player is logged in as
-# 55 8B EC 56 8B F1 57 8B 46 60 85 C0
-#    DQXGame.exe.text+421150 - 55                    - push ebp
-#    DQXGame.exe.text+421151 - 8B EC                 - mov ebp,esp
-#    DQXGame.exe.text+421153 - 56                    - push esi
-#    DQXGame.exe.text+421154 - 8B F1                 - mov esi,ecx
-#    DQXGame.exe.text+421156 - 57                    - push edi
-#    DQXGame.exe.text+421157 - 8B 46 60              - mov eax,[esi+60]
-#    DQXGame.exe.text+42115A - 85 C0                 - test eax,eax
-#    DQXGame.exe.text+42115C - 74 10                 - je DQXGame.exe.text+42116E
-#    DQXGame.exe.text+42115E - 50                    - push eax
-#    DQXGame.exe.text+42115F - E8 CCC1C1FF           - call DQXGame.exe.text+3D330
-#    DQXGame.exe.text+421164 - 83 C4 04              - add esp,04
-#    DQXGame.exe.text+421167 - C7 46 60 00000000     - mov [esi+60],00000000
-#    DQXGame.exe.text+42116E - 6A 02                 - push 02
-#    DQXGame.exe.text+421170 - 68 B0000000           - push 000000B0
-#    DQXGame.exe.text+421175 - E8 C6C1C1FF           - call DQXGame.exe.text+3D340
-player_sibling_name_trigger = rb"\x55\x8B\xEC\x56\x8B\xF1\x57\x8B\x46\x60\x85\xC0"
+# 55 8B EC 56 8B F1 57 8B 46 58 85 C0
+# DQXGame.exe+422C70 - 55                    - push ebp
+# DQXGame.exe+422C71 - 8B EC                 - mov ebp,esp
+# DQXGame.exe+422C73 - 56                    - push esi
+# DQXGame.exe+422C74 - 8B F1                 - mov esi,ecx
+# DQXGame.exe+422C76 - 57                    - push edi
+# DQXGame.exe+422C77 - 8B 46 58              - mov eax,[esi+58]
+# DQXGame.exe+422C7A - 85 C0                 - test eax,eax
+# DQXGame.exe+422C7C - 74 10                 - je DQXGame.exe+422C8E
+# DQXGame.exe+422C7E - 50                    - push eax
+# DQXGame.exe+422C7F - E8 9CAEC1FF           - call DQXGame.exe+3DB20
+# DQXGame.exe+422C84 - 83 C4 04              - add esp,04
+# DQXGame.exe+422C87 - C7 46 58 00000000     - mov [esi+58],00000000
+# DQXGame.exe+422C8E - 6A 02                 - push 02
+# DQXGame.exe+422C90 - 68 B0000000           - push 000000B0
+# DQXGame.exe+422C95 - E8 F6ADC1FF           - call DQXGame.exe+3DA90
+
+player_sibling_name_trigger = rb"\x55\x8B\xEC\x56\x8B\xF1\x57\x8B\x46\x58\x85\xC0"
 
 # party member data hits this code. used to detour and overwrite name.
 # how it was found:
@@ -176,24 +177,25 @@ corner_text_trigger = rb"\x8B\xD0\x8D\x7A\x01\xEB\x03\x8D\x49\x00\x8A\x0A\x42\x8
 #   - Monster names appearing in the battle menu
 #   - Party nameplates (don't confuse with party names on the right side of the screen)
 #       - Does not do the player's nameplate
-# npc:     BC 6B ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 B8 EF ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
-# monster: BC 6B ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 14 DD ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
-# party:   BC 6B ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 88 DF ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
-npc_monster_pattern = rb"\xBC\x6B..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00.......\x00\x00\x00\x00.\x00\x00\x00[\xB8\x14\x88][\xEF\xDD\xDF]..........[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+# npc:     70 D6 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 54 75 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
+# monster: 70 D6 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 8C 62 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
+# party:   70 D6 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 04 65 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
+npc_monster_pattern = rb"\x70\xD6..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00.......\x00\x00\x00\x00.\x00\x00\x00[\x54\x8C\x04][\x75\x62\x65]..........[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
 # pattern for concierge names (13 bytes)
-# D0 D5 ?? ?? ?? ?? ?? ?? F4 EF ?? ?? E?
-concierge_name_pattern = rb"\xD0\xD5......\xF4\xEF..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+# B0 5A ?? ?? ?? ?? ?? ?? 28 5B ?? ?? E?
+concierge_name_pattern = rb"\xB0\x5A......\x28\x5B..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
 # pattern for player names to rename. (49 bytes)
-# BC 6B ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 B8 C5 ?? 0? ?? ?? ?? ?? ?? ?? ?? 0? E?
-player_name_pattern = rb"\xBC\x6B..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xB8\xC5.[\x01\x02].......[\x01\x02][\xE3\xEF]"
+# 70 D6 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 C8 51 ?? 0? ?? ?? ?? ?? ?? ?? ?? 0? E?
+player_name_pattern = rb"\x70\xD6..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xC8\x51.[\x01\x02].......[\x01\x02][\xE3\xEF]"
 # pattern for sibling names to rename. (52 bytes)
 # 0? ?? 00 ?? 00 00 00 ?? ?? 00 02 ?? 00 ?? 00 ?? 00 00 00 00 00 ?? 00 ?? ?? 00 00 ?? ?? ?? 00 ?? 00 ?? ?? ?? 00 ?? 00 ?? ?? 00 00 00 00 ?? ?? 00 00 00 00 E?
 sibling_name_pattern = rb"[\x01\x02].\x00.\x00\x00\x00..\x00\x02.\x00.\x00.\x00\x00\x00\x00\x00.\x00..\x00\x00...\x00.\x00...\x00.\x00..\x00\x00\x00\x00..\x00\x00\x00\x00[\xE3\xEF]"
 
 # pattern for menu ai to rename. (58 bytes)
 # 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 00 ?? ?? 00 00 ?? ?? ?? ?? ?? 00 00 00 ?? 1? ?? ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? 00 ?? ?? E?
+# 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 58 1B 4F 01 00 00 00 00 00 00 00 00 00 00 01 00 E3
 menu_ai_name_pattern = rb"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00...........\x00..\x00\x00.....\x00\x00\x00.[\x1B\x1C].....\x00.....\x00..[\xE3\xEF]"
 
 # pattern for comm_names.
@@ -204,8 +206,8 @@ comm_name_pattern_2 = rb"\x09[\xE3\xEF].................\x00.................\x3
 
 # Main walkthrough text that loads on login. I can't figure out what function loads this on login,
 # so scanning for this for now. AC is also preventing this from just being accessible via hooks. (17 bytes)
-# 30 ?? ?? ?? 00 00 00 00 04 02 00 00 10 00 00 00 E?
-walkthrough_pattern = rb"\x30...\x00\x00\x00\x00\x04\x02\x00\x00\x10\x00\x00\x00[\xE3\xE4\xE5\xE6\xE7\xE8\xE9]"
+# 50 ?? ?? ?? 00 00 00 00 04 02 00 00 10 00 00 00 E?
+walkthrough_pattern = rb"\x50...\x00\x00\x00\x00\x04\x02\x00\x00\x10\x00\x00\x00[\xE3\xE4\xE5\xE6\xE7\xE8\xE9]"
 
 # player name in cutscenes. not used at the moment, but holding onto it for now.
 # EF ?? 01 ?? ?? ?? ?? 3C EF ?? 01
