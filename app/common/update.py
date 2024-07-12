@@ -257,9 +257,13 @@ def read_glossary_and_import(data: str):
 
         query_list.append(query_value)
 
+
+    drop_query = "DELETE FROM glossary;"
+    db_query(drop_query)
+
     insert_values = ','.join(query_list)
-    query = f"INSERT OR REPLACE INTO glossary (ja, en) VALUES {insert_values};"
-    db_query(query)
+    insert_query = f"INSERT OR REPLACE INTO glossary (ja, en) VALUES {insert_values};"
+    db_query(insert_query)
 
 
 def download_dat_files():
