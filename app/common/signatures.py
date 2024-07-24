@@ -116,7 +116,6 @@ network_text_trigger = rb"\x8D\x71\x01\x8B\xFF\x8A\x01\x41\x84\xC0\x75\xF9\x2B\x
 # DQXGame.exe+422C8E - 6A 02                 - push 02
 # DQXGame.exe+422C90 - 68 B0000000           - push 000000B0
 # DQXGame.exe+422C95 - E8 F6ADC1FF           - call DQXGame.exe+3DA90
-
 player_sibling_name_trigger = rb"\x55\x8B\xEC\x56\x8B\xF1\x57\x8B\x46\x58\x85\xC0"
 
 # party member data hits this code. used to detour and overwrite name.
@@ -177,18 +176,18 @@ corner_text_trigger = rb"\x8B\xD0\x8D\x7A\x01\xEB\x03\x8D\x49\x00\x8A\x0A\x42\x8
 #   - Monster names appearing in the battle menu
 #   - Party nameplates (don't confuse with party names on the right side of the screen)
 #       - Does not do the player's nameplate
-# npc:     70 D6 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 54 75 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
-# monster: 70 D6 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 8C 62 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
-# party:   70 D6 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 04 65 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
-npc_monster_pattern = rb"\x70\xD6..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00.......\x00\x00\x00\x00.\x00\x00\x00[\x54\x8C\x04][\x75\x62\x65]..........[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+# npc:     64 2C 57 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 80 3F 00 00 00 00 00 00 00 00 00 00 00 00 78 75 38 01 80 B3 07 50 E8 5A 38 01 E3
+# monster: 64 2C 57 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 42 51 00 00 00 00 00 00 00 00 00 00 00 00 B0 62 38 01 20 31 C2 33 E8 5A 38 01 E3
+# party:   64 2C 57 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 28 65 38 01 D0 B1 9C 2E E8 5A 38 01 E3
+npc_monster_pattern = rb"\x64\x2C..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00.......\x00\x00\x00\x00.\x00\x00\x00[\x78\xB0\x28][\x75\x62\x65]..........[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
 # pattern for concierge names (13 bytes)
-# B0 5A ?? ?? ?? ?? ?? ?? 28 5B ?? ?? E?
-concierge_name_pattern = rb"\xB0\x5A......\x28\x5B..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+# AC 5A ?? ?? ?? ?? ?? ?? E8 5A ?? ?? E?
+concierge_name_pattern = rb"\xAC\x5A......\xE8\x5A..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
 # pattern for player names to rename. (49 bytes)
-# 70 D6 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 C8 51 ?? 0? ?? ?? ?? ?? ?? ?? ?? 0? E?
-player_name_pattern = rb"\x70\xD6..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xC8\x51.[\x01\x02].......[\x01\x02][\xE3\xEF]"
+# 64 2C ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 50 52 ?? 0? ?? ?? ?? ?? ?? ?? ?? 0? E?
+player_name_pattern = rb"\x64\x2C..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x50\x52.[\x01\x02].......[\x01\x02][\xE3\xEF]"
 # pattern for sibling names to rename. (52 bytes)
 # 0? ?? 00 ?? 00 00 00 ?? ?? 00 02 ?? 00 ?? 00 ?? 00 00 00 00 00 ?? 00 ?? ?? 00 00 ?? ?? ?? 00 ?? 00 ?? ?? ?? 00 ?? 00 ?? ?? 00 00 00 00 ?? ?? 00 00 00 00 E?
 sibling_name_pattern = rb"[\x01\x02].\x00.\x00\x00\x00..\x00\x02.\x00.\x00.\x00\x00\x00\x00\x00.\x00..\x00\x00...\x00.\x00...\x00.\x00..\x00\x00\x00\x00..\x00\x00\x00\x00[\xE3\xEF]"
