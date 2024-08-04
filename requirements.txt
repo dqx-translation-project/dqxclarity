@@ -5,7 +5,7 @@ frida==16.4.2
 google-api-python-client==2.137.0
 langdetect==1.0.9
 loguru==0.7.2
-openpyxl==3.1.4
+openpyxl==3.1.5
 pykakasi==2.2.1
 regex==2024.5.15
 requests==2.32.3
