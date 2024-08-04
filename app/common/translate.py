@@ -374,14 +374,23 @@ class Translate():
         to_translate = []
         count = 0
         for str in str_attrs:
-            to_translate.append(str_attrs[count]["text"])
+            # google does not preserve newlines when it returns its translation, so we substitute <br>'s in their place
+            if Translate.service == "google":
+                to_translate.append(str_attrs[count]["text"].replace("\n", "<br>"))
+            else:
+                to_translate.append(str_attrs[count]["text"])
             count += 1
+
         translated_list = self.translate(text=to_translate)
 
         # update our str_attrs dict with the new, translated string
         count = 0
         for str in translated_list:
-            str_attrs[count]["text"] = str
+            # google does not preserve newlines when it returns its translation, so we used <br>'s above. swap them back with newlines (\n)
+            if Translate.service == "google":
+                str_attrs[count]["text"]= str.replace("<br>", "\n")
+            else:
+                str_attrs[count]["text"] = str
             count += 1
 
         count = 0
