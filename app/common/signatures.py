@@ -176,18 +176,19 @@ corner_text_trigger = rb"\x8B\xD0\x8D\x7A\x01\xEB\x03\x8D\x49\x00\x8A\x0A\x42\x8
 #   - Monster names appearing in the battle menu
 #   - Party nameplates (don't confuse with party names on the right side of the screen)
 #       - Does not do the player's nameplate
-# npc:     64 2C 57 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 80 3F 00 00 00 00 00 00 00 00 00 00 00 00 78 75 38 01 80 B3 07 50 E8 5A 38 01 E3
-# monster: 64 2C 57 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 42 51 00 00 00 00 00 00 00 00 00 00 00 00 B0 62 38 01 20 31 C2 33 E8 5A 38 01 E3
-# party:   64 2C 57 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 28 65 38 01 D0 B1 9C 2E E8 5A 38 01 E3
-npc_monster_pattern = rb"\x64\x2C..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00.......\x00\x00\x00\x00.\x00\x00\x00[\x78\xB0\x28][\x75\x62\x65]..........[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+
+# npc:     9C DE ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 EC 74 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
+# monster: 9C DE ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 14 62 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
+# party:   9C DE ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 88 52 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
+npc_monster_pattern = rb"\x9C\xDE..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00.......\x00\x00\x00\x00.\x00\x00\x00[\xEC\x14\x88][\x74\x62\x52]..........[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
 # pattern for concierge names (13 bytes)
-# AC 5A ?? ?? ?? ?? ?? ?? E8 5A ?? ?? E?
-concierge_name_pattern = rb"\xAC\x5A......\xE8\x5A..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+# CC 5A ?? ?? ?? ?? ?? ?? C8 64 ?? ?? E?
+concierge_name_pattern = rb"\xCC\x5A......\xC8\x64..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
 # pattern for player names to rename. (49 bytes)
-# 64 2C ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 50 52 ?? 0? ?? ?? ?? ?? ?? ?? ?? 0? E?
-player_name_pattern = rb"\x64\x2C..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x50\x52.[\x01\x02].......[\x01\x02][\xE3\xEF]"
+# 9C DE ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 88 52 ?? 0? ?? ?? ?? ?? ?? ?? ?? 0? E?
+player_name_pattern = rb"\x9C\xDE..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x88\x52.[\x01\x02].......[\x01\x02][\xE3\xEF]"
 # pattern for sibling names to rename. (52 bytes)
 # 0? ?? 00 ?? 00 00 00 ?? ?? 00 02 ?? 00 ?? 00 ?? 00 00 00 00 00 ?? 00 ?? ?? 00 00 ?? ?? ?? 00 ?? 00 ?? ?? ?? 00 ?? 00 ?? ?? 00 00 00 00 ?? ?? 00 00 00 00 E?
 sibling_name_pattern = rb"[\x01\x02].\x00.\x00\x00\x00..\x00\x02.\x00.\x00.\x00\x00\x00\x00\x00.\x00..\x00\x00...\x00.\x00...\x00.\x00..\x00\x00\x00\x00..\x00\x00\x00\x00[\xE3\xEF]"
