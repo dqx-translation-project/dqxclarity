@@ -196,7 +196,7 @@ def scan_for_npc_names(monsters: dict, npcs: dict):
                 data = "NPC"
             elif npc_type == b"\x14\x62":
                 data = "MONSTER"
-            elif npc_type == b"\x88\x52":
+            elif npc_type == b"\x8C\x64":
                 data = "AI_NAME"
             else:
                 continue
