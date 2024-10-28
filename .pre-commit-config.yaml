@@ -1,6 +1,6 @@
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.6.0
+  rev: v5.0.0
   hooks:
     - id: end-of-file-fixer
       name: Check for newline at end of file
@@ -35,7 +35,7 @@ repos:
     - id: detect-secrets
       name: Checking for potential passwords
 - repo: https://github.com/asottile/pyupgrade
-  rev: v3.17.0
+  rev: v3.19.0
   hooks:
   - id: pyupgrade
     name: Upgrade previous versioned Python syntax to newer version
