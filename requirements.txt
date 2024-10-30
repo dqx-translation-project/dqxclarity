@@ -1,5 +1,5 @@
 click==8.1.7
-configparser==7.0.0
+configparser==7.1.0
 deepl==1.19.1
 frida==16.5.6
 google-api-python-client==2.149.0
