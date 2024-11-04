@@ -53,7 +53,7 @@ repos:
   # docformatter has not cut a new tag in >1 year. A change in pre-commit requires third party hooks to make sure they
   # adhere to new pre-commit formatting. This tag does not yet have these changes, so need to pin to a commit until
   # they update their tag to stop an error from occurring during hook runs.
-  rev: 06907d0267368b49b9180eed423fae5697c1e909  # pragma: allowlist secret
+  rev: v1.7.5  # pragma: allowlist secret
   hooks:
   - id: docformatter
     name: Format docstrings
