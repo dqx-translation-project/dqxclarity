@@ -38,7 +38,7 @@ class GetPlayer:
 
         self.ja_player_name = GetPlayer.writer.read_string(self.address + 24)
         self.en_player_name = self.__get_en_player_name(name=self.ja_player_name)
-        self.ja_sibling_name = GetPlayer.writer.read_string(self.address + 96)
+        self.ja_sibling_name = GetPlayer.writer.read_string(self.address + 100)
         self.en_sibling_name = self.__get_en_player_name(name=self.ja_sibling_name)
         self.sibling_relationship = self.__determine_sibling_relationship()
 
@@ -49,7 +49,7 @@ class GetPlayer:
 
 
     def __determine_sibling_relationship(self):
-        check_byte = GetPlayer.writer.read_bytes(self.address + 96 + 19, size=1)
+        check_byte = GetPlayer.writer.read_bytes(self.address + 100 + 19, size=1)
         if check_byte == b"\x01":
             return "older_brother"
         if check_byte == b"\x02":
