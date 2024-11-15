@@ -22,7 +22,7 @@ jobs:
         run: |
           cd app\launcher;
           Invoke-WebRequest "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.01c1/Ahk2Exe1.1.37.01c1.zip" -OutFile "$cwd\ahk2exe.zip";
-          Invoke-WebRequest "https://www.autohotkey.com/download/ahk-v2.zip" -OutFile "$cwd\ahk.zip";
+          Invoke-WebRequest "https://github.com/AutoHotkey/AutoHotkey/releases/download/v2.0.18/AutoHotkey_2.0.18.zip" -OutFile "$cwd\ahk.zip";
           Expand-Archive -Path "$cwd\ahk2exe.zip" -DestinationPath . -Force;
           Expand-Archive -Path "$cwd\ahk.zip" -DestinationPath . -Force;
           & .\Ahk2Exe.exe /in "dqxclarity.ahk" /base "AutoHotkey64.exe" /icon "img/rosie.ico";
