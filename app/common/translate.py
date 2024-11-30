@@ -1,15 +1,11 @@
+from common.config import UserConfig
 from common.db_ops import generate_glossary_dict, generate_m00_dict, init_db
-from common.errors import message_box
-from common.lib import get_project_root
 from googleapiclient.discovery import build
 
-import configparser
 import deepl
 import langdetect
-import os
 import pykakasi
 import re
-import shutil
 import textwrap
 import unicodedata
 
@@ -17,25 +13,20 @@ import unicodedata
 class Translate():
     service = None
     api_key = None
-    region_code = None
     glossary = None
 
     def __init__(self):
         if Translate.service is None:
-            self.user_settings = load_user_config()
-            self.translation_settings = determine_translation_service()
-            Translate.service = self.translation_settings["TranslateService"]
-            Translate.api_key = self.translation_settings["TranslateKey"]
-            Translate.region_code = self.translation_settings["RegionCode"]
+            self.user_settings = UserConfig()
+            Translate.service = self.user_settings.service
+            Translate.api_key = self.user_settings.key
 
         if Translate.glossary is None:
             Translate.glossary = generate_glossary_dict()
 
 
-    def deepl(self, text: list):
-        region_code = Translate.region_code
-        if region_code.lower() == "en":
-            region_code = "en-us"
+    def deepl(self, text: list) -> list:
+        region_code = "en-us"
         translator = deepl.Translator(Translate.api_key)
         response = translator.translate_text(
             text=text,
@@ -49,9 +40,10 @@ class Translate():
         return text_results
 
 
-    def google(self, text: list):
+    def google(self, text: list) -> list:
+        region_code = "en"
         service = build("translate", "v2", developerKey=Translate.api_key)
-        response = service.translations().list(source="ja", target="en", format="text", q=text).execute()
+        response = service.translations().list(source="ja", target=region_code, format="text", q=text).execute()
         text_results = []
         for result in response["translations"]:
             text_results.append(result["translatedText"])
@@ -227,7 +219,7 @@ class Translate():
             return output
 
 
-    def translate(self, text: list):
+    def translate(self, text: list) -> list:
         """Translates a list of strings, passing them through our glossary
         first.
 
@@ -243,7 +235,6 @@ class Translate():
             return self.deepl(text)
         if Translate.service == "google":
             return self.google(text)
-        return None
 
 
     def sanitize_and_translate(self, text: str, wrap_width: int, max_lines=None, add_brs=True):
@@ -463,146 +454,6 @@ class Translate():
             count += 1
 
         return pristine_str
-
-
-def load_user_config(filepath: str = None):
-    """Returns a user's config settings. If the config doesn't exist, a default
-    config is generated. If the user's config is missing values, we back up the
-    old config and generate a new default one for them.
-
-    :param filepath: Path to the user_settings.ini file. Don't include
-        the filename or trailing forward slash.
-    :returns: Dict of config.
-    """
-    if not filepath:
-        filepath = get_project_root("user_settings.ini")
-    else:
-        filepath = f"{filepath}/user_settings.ini"
-    base_config = configparser.ConfigParser()
-    base_config["translation"] = {
-        "enabledeepltranslate": False,
-        "deepltranslatekey": "",
-        "enablegoogletranslate": False,
-        "googletranslatekey": "",
-        "regioncode": "en",
-    }
-    base_config["config"] = {"installdirectory": ""}
-
-    def create_base_config():
-        with open(filepath, "w+") as configfile:
-            base_config.write(configfile)
-
-    # Create the config if it doesn't exist
-    if not os.path.exists(filepath):
-        create_base_config()
-
-    # Verify the integrity of the config. If a key is missing,
-    # trigger user_config_state and create a new one, backing
-    # up the old config.
-    user_config = configparser.ConfigParser()
-    user_config_state = 0
-    user_config.read(filepath)
-    for section in base_config.sections():
-        if section not in user_config.sections():
-            user_config_state = 1
-            break
-        for key, val in base_config.items(section):
-            if key not in user_config[section]:
-                user_config_state = 1
-                break
-
-    # Notify user their config is busted
-    if user_config_state == 1:
-        shutil.copyfile(filepath, "user_settings.invalid")
-        create_base_config()
-        message_box(
-            title="New config created",
-            message=f"We found a missing config value in your user_settings.ini.\n\nYour old config has been renamed to user_settings.invalid in case you need to reference it.\n\nPlease relaunch dqxclarity.",
-            exit_prog=True,
-        )
-
-    config_dict = {}
-    good_config = configparser.ConfigParser()
-    good_config.read(filepath)
-    for section in good_config.sections():
-        config_dict[section] = {}
-        for key, val in good_config.items(section):
-            config_dict[section][key] = val
-
-    return config_dict
-
-
-def update_user_config(section: str, key: str, value: str, filename="user_settings.ini"):
-    """Updates an existing configuration option in a user's config.
-
-    :param section: Section of the config
-    :param key: Key in the section's config
-    :param value: Value of the key
-    :param filename: Filename of the user's config settings.
-    """
-    config = configparser.ConfigParser()
-    config.read(filename)
-    config.set(section, key, value)
-    with open(filename, "w+") as configfile:
-        config.write(configfile)
-
-
-def determine_translation_service(communication_window_enabled=False):
-    """Parses the user_settings file to get information needed to make
-    translation calls.
-
-    :param communication_window_enabled: If True, will verify that a
-        service is enabled and a key is entered.
-    """
-    config = load_user_config()
-    enabledeepltranslate = eval(config["translation"]["enabledeepltranslate"])
-    deepltranslatekey = config["translation"]["deepltranslatekey"]
-    enablegoogletranslate = eval(config["translation"]["enablegoogletranslate"])
-    googletranslatekey = config["translation"]["googletranslatekey"]
-    regioncode = config["translation"]["regioncode"]
-
-    reiterate = "Either open the user_settings.ini file in Notepad or use the API settings button in the DQXClarity launcher to set it up."
-
-    if enabledeepltranslate and enablegoogletranslate:
-        message_box(
-            title="Too many translation services enabled",
-            message=f"Only enable one translation service. {reiterate}\n\nCurrent values:\n\nenabledeepltranslate: {enabledeepltranslate}\nenablegoogletranslate: {enablegoogletranslate}",
-            exit_prog=True,
-        )
-
-    if enabledeepltranslate and deepltranslatekey == "":
-        message_box(
-            title="No DeepL key specified",
-            message=f"DeepL is enabled, but no key was provided. {reiterate}",
-            exit_prog=True,
-        )
-
-    if enablegoogletranslate and googletranslatekey == "":
-        message_box(
-            title="No Google API key specified",
-            message=f"Google API is enabled, but no key was provided. {reiterate}",
-            exit_prog=True,
-        )
-
-    if communication_window_enabled:
-        if not enabledeepltranslate and not enablegoogletranslate:
-            message_box(
-                title="No translation service is configured",
-                message=f"You enabled API translation, but didn't enable a service. Please configure a service and relaunch. {reiterate}",
-                exit_prog=True,
-            )
-
-    dic = {}
-    if enabledeepltranslate:
-        dic["TranslateService"] = "deepl"
-        dic["TranslateKey"] = deepltranslatekey
-    elif enablegoogletranslate:
-        dic["TranslateService"] = "google"
-        dic["TranslateKey"] = googletranslatekey
-
-    dic["RegionCode"] = regioncode
-
-    return dic
 
 
 def clean_up_and_return_items(text: str) -> str:
