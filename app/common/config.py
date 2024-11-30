@@ -6,7 +6,7 @@ import os
 
 
 class UserConfig:
-    def __init__(self, filepath: str = None) -> dict:
+    def __init__(self, filepath: str = None, warnings: bool = False) -> dict:
         if not filepath:
             settings_file = get_project_root("user_settings.ini")
         else:
@@ -14,6 +14,7 @@ class UserConfig:
 
         self.filepath = filepath
         self.file = settings_file
+        self.warnings = warnings
         self.config = self.read()
         self.service = self.eval_translation_service()
 
@@ -40,11 +41,12 @@ class UserConfig:
             with open(self.file, "w+") as configfile:
                 base_config.write(configfile)
 
-            log.warning(
-                "user_settings.ini was not found, so one was created for you. "
-                "You will need to fill in the appropriate values and restart this program "
-                "to pick up your changes."
-            )
+            if self.warnings:
+                log.warning(
+                    "user_settings.ini was not found, so one was created for you. "
+                    "You will need to fill in the appropriate values and restart this program "
+                    "to pick up your changes."
+                )
 
         # Compare user's config with base config to ensure all sections and keys exist.
         user_config = configparser.ConfigParser()
@@ -79,7 +81,8 @@ class UserConfig:
         if self.config['translation'].getboolean('enablegoogletranslate'):
             return "google"
 
-        log.warning("You did not enable a translation service, so no live translation will be performed.")
+        if self.warnings:
+            log.warning("You did not enable a translation service, so no live translation will be performed.")
 
         return ""
 
@@ -93,6 +96,7 @@ class UserConfig:
             if key := self.config['translation'].get('googletranslatekey'):
                 return key
 
-        log.exception(f"You enabled {service}, but did not specify a key.")
+        if self.warnings:
+            log.exception(f"You enabled {service}, but did not specify a key.")
 
         return ""
