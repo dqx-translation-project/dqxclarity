@@ -1,4 +1,5 @@
 from clarity import loop_scan_for_walkthrough, run_scans
+from common.config import UserConfig
 from common.db_ops import (
     create_db_schema,
     fix_m00_tables_schema,
@@ -6,7 +7,6 @@ from common.db_ops import (
 )
 from common.lib import get_project_root, setup_logging
 from common.process import wait_for_dqx_to_launch
-from common.translate import determine_translation_service
 from common.update import (
     check_for_updates,
     download_custom_files,
@@ -59,6 +59,10 @@ def blast_off(
     create_db_schema()
     sync_existing_tables()
 
+    # we don't do anything with the config here, but this will validate the config is ok before running.
+    log.info("Checking user_settings.ini.")
+    UserConfig(warnings=True)
+
     if update_dat:
         log.info("Updating DAT mod.")
         download_dat_files()
@@ -67,9 +71,6 @@ def blast_off(
         check_for_updates(update=True)
         download_custom_files()
         download_game_jsons()
-
-    log.info("Checking user_settings.ini.")
-    determine_translation_service(communication_window_enabled=communication_window)
 
     try:
         wait_for_dqx_to_launch()

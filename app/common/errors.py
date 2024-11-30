@@ -1,14 +1,3 @@
-import ctypes
-import sys
-
-
-def message_box(title: str, message: str, exit_prog: bool = False):
-    """Generate a topmost message box."""
-    ctypes.windll.user32.MessageBoxW(0, message, f"[dqxclarity] {title}", 0x1000)  # 0x1000 ensures a topmost window
-    if exit_prog:
-        sys.exit()
-
-
 class ClarityError(Exception):
     """Base class for exceptions."""
 
