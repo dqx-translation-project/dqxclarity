@@ -1,6 +1,6 @@
 click==8.1.7
 configparser==7.1.0
-deepl==1.19.1
+deepl==1.20.0
 frida==16.5.6
 google-api-python-client==2.154.0
 langdetect==1.0.9
