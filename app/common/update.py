@@ -13,7 +13,6 @@ from common.constants import (
 )
 from common.db_ops import db_query
 from common.process import check_if_running_as_admin, is_dqx_process_running
-from gettext import install
 from io import BytesIO
 from loguru import logger as log
 from openpyxl import load_workbook
