@@ -24,43 +24,40 @@ import json
 import os
 import requests
 import sys
+import time
 import winreg
 
 
 def download_custom_files() -> None:
     log.info("Downloading custom translation files from dqx-translation-project/dqx-custom-translations.")
-    response = requests.get(GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL, timeout=15)
+    response = download_file(GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL)
 
-    if response.status_code == 200:
-        db_query("DELETE FROM m00_strings")
-        zfile = ZipFile(BytesIO(response.content))
-        for obj in zfile.infolist():
-            if obj.filename.endswith('/'):  # directory
-                continue
+    db_query("DELETE FROM m00_strings")
+    zfile = ZipFile(BytesIO(response.content))
+    for obj in zfile.infolist():
+        if obj.filename.endswith('/'):  # directory
+            continue
 
-            if '/json/' in obj.filename and obj.filename.endswith('.json'):
+        if '/json/' in obj.filename and obj.filename.endswith('.json'):
+            with zfile.open(obj.filename, 'r') as f:
+                data = f.read()
+
+            # modify file path to just the name of the file without the extension
+            filename = obj.filename.split('/')[-1].rsplit('.', 1)[0]
+            read_custom_json_and_import(name=filename, data=data)
+
+        if '/csv/' in obj.filename:
+            if obj.filename.endswith('merge.xlsx'):
                 with zfile.open(obj.filename, 'r') as f:
                     data = f.read()
 
-                # modify file path to just the name of the file without the extension
-                filename = obj.filename.split('/')[-1].rsplit('.', 1)[0]
-                read_custom_json_and_import(name=filename, data=data)
+                read_xlsx_and_import(data)
 
-            if '/csv/' in obj.filename:
-                if obj.filename.endswith('merge.xlsx'):
-                    with zfile.open(obj.filename, 'r') as f:
-                        data = f.read()
+            if obj.filename.endswith('glossary.csv'):
+                with zfile.open(obj.filename, 'r') as f:
+                    data = f.read()
 
-                    read_xlsx_and_import(data)
-
-                if obj.filename.endswith('glossary.csv'):
-                    with zfile.open(obj.filename, 'r') as f:
-                        data = f.read()
-
-                    read_glossary_and_import(data)
-
-    else:
-        log.exception(f"Status Code: {response.status_code}. Reason: {response.reason}")
+                read_glossary_and_import(data)
 
 
 def read_custom_json_and_import(name: str, data: str) -> None:
@@ -93,12 +90,8 @@ def download_game_jsons() -> None:
     }
 
     for url in url_to_db:
-        response = requests.get(url, timeout=15)
-
-        if response.status_code == 200:
-            read_custom_json_and_import(name=url_to_db[url], data=response.content)
-        else:
-            log.exception(f"Status Code: {response.status_code}. Reason: {response.reason}")
+        response = download_file(url)
+        read_custom_json_and_import(name=url_to_db[url], data=response.content)
 
 
 def check_for_updates(update: bool) -> None:
@@ -115,12 +108,8 @@ def check_for_updates(update: bool) -> None:
     with open("version.update") as file:
         cur_ver = file.read().strip()
 
-    try:
-        url = GITHUB_CLARITY_VERSION_UPDATE_URL
-        github_request = requests.get(url)
-    except requests.exceptions.RequestException as e:
-        log.warning(f"Failed to check latest version. Running anyways.\n{e}")
-        return
+    url = GITHUB_CLARITY_VERSION_UPDATE_URL
+    github_request = download_file(url)
 
     try:
         release_version = github_request.json()["tag_name"]
@@ -313,27 +302,48 @@ def download_dat_files() -> None:
     config.reinit() # re-read config in case we changed it above.
     dqx_path = "/".join([config.game_path, "Game/Content/Data"])
 
-    try:
-        log.info("Downloading DAT1 and IDX files.")
-        dat_request = requests.get(GITHUB_CLARITY_DAT1_URL, timeout=60)
-        idx_request = requests.get(GITHUB_CLARITY_IDX_URL, timeout=60)
+    log.info("Downloading DAT1 and IDX files.")
+    dat_request = download_file(GITHUB_CLARITY_DAT1_URL)
+    idx_request = download_file(GITHUB_CLARITY_IDX_URL)
 
-        # Make sure both requests are good before we write the files
-        if (
-            (dat_request.status_code == 200 and len(dat_request.content) != 0) and
-            (idx_request.status_code == 200 and len(idx_request.content) != 0)
-           ):
-            with open(dqx_path + "/data00000000.win32.dat1", "w+b") as f:
-                f.write(dat_request.content)
+    with open(dqx_path + "/data00000000.win32.dat1", "w+b") as f:
+        f.write(dat_request.content)
 
-            with open(dqx_path + "/data00000000.win32.idx", "w+b") as f:
-                f.write(idx_request.content)
+    with open(dqx_path + "/data00000000.win32.idx", "w+b") as f:
+        f.write(idx_request.content)
 
-            log.success("Game dat translation mod applied.")
-        else:
-            log.error(
-                "Failed to download translation files. "
-                "dqxclarity will continue without updating dat translation mod."
-            )
-    except Exception as e:
-        log.error(f"Failed to download dat translation mod files. Error: {e}")
+    log.success("Game dat translation mod applied.")
+
+
+def download_file(url: str) -> requests.models.Response:
+    """Submits a GET request to a url with a retry count of 3.
+
+    :param url: Request URL.
+    :returns: A requests response object. On exception, will raise a
+        SystemExit().
+    """
+    filename = url.split('/')[-1:][0]
+    max_retries = 3
+    retries = 0
+
+    while retries < max_retries:
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            break
+        except Exception:
+            retries += 1
+            if retries < max_retries:
+                log.warning(f"(Retry: {retries}/{max_retries}) Error downloading file {filename}. Sleeping for 3 seconds and trying again...")
+                time.sleep(3)
+                continue
+            else:
+                log.exception(f"(Retry: {retries}/{max_retries}) Max retries reached. Unable to download file {filename}.")
+                log.info(
+                    "If connectivity issues persist, consider temporarily checking the \"Disable Updates\" checkbox "
+                    "or passing the -u flag to disable updates and trying again later."
+                )
+                input("Press enter to exit.")
+                raise SystemExit()
+
+    return response
