@@ -41,7 +41,9 @@ class NetworkTextTranslate:
         "L_QUEST": "quest_name",
         "C_ITMR_STITLE": "top_left_text",
         "CAS_gambler": "casino_name",
-        "C_MERCENARY": "hired_name"
+        "CAS_target": "casino_target_name",
+        "C_MERCENARY": "hired_name",
+        "C_STR2": "casino_item_string"
     }
 
     # explicitly ignore known vars. we want to log any new ones we see just in case
@@ -102,6 +104,8 @@ class NetworkTextTranslate:
         "M_speaker",
         "M_chat",
         "M_CW_stamp",
+        "CAS_monster",
+        "CAS_action"
     ]
 
 
@@ -133,7 +137,7 @@ class NetworkTextTranslate:
                     NetworkTextTranslate.writer.write_string(self.text_address, "self")
 
             # npc or player names
-            elif category in ["M_pc", "M_npc", "B_ACTOR", "B_TARGET", "C_PC", "L_SENDER_NAME", "M_OWNER", "M_hiryu", "L_HIRYU", "L_HIRYU_NAME", "M_name", "L_OWNER", "L_URINUSI", "M_NAME", "L_PLAYER_NAME", "CAS_gambler", "C_MERCENARY"]:
+            elif category in ["M_pc", "M_npc", "B_ACTOR", "B_TARGET", "C_PC", "L_SENDER_NAME", "M_OWNER", "M_hiryu", "L_HIRYU", "L_HIRYU_NAME", "M_name", "L_OWNER", "L_URINUSI", "M_NAME", "L_PLAYER_NAME", "CAS_gambler", "CAS_target", "C_MERCENARY"]:
                 if NetworkTextTranslate.m00_text.get(text):
                     name_to_write = NetworkTextTranslate.m00_text[text]
                 else:
@@ -141,7 +145,7 @@ class NetworkTextTranslate:
                 NetworkTextTranslate.writer.write_string(self.text_address, name_to_write)
 
             # generic string
-            elif category in ["M_00", "C_QUEST", "M_02", "M_header", "M_item", "L_QUEST", "C_ITMR_STITLE"]:
+            elif category in ["M_00", "C_QUEST", "M_02", "M_header", "M_item", "L_QUEST", "C_ITMR_STITLE", "C_STR2"]:
                 if to_write := NetworkTextTranslate.m00_text.get(text):
                     NetworkTextTranslate.writer.write_string(self.text_address, to_write)
                 else:
