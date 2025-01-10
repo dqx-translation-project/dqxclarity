@@ -18,7 +18,7 @@ Default format:
 ```json
 {
   "player_names": {},
-  "mytown_names: {}
+  "mytown_names": {}
 }
 ```
 
