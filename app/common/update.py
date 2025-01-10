@@ -12,6 +12,7 @@ from common.constants import (
     GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL,
 )
 from common.db_ops import db_query
+from common.lib import get_project_root
 from common.process import check_if_running_as_admin, is_dqx_process_running
 from io import BytesIO
 from loguru import logger as log
@@ -244,7 +245,6 @@ def read_glossary_and_import(data: str) -> None:
 
         query_list.append(query_value)
 
-
     drop_query = "DELETE FROM glossary;"
     db_query(drop_query)
 
@@ -347,3 +347,61 @@ def download_file(url: str) -> requests.models.Response:
                 raise SystemExit()
 
     return response
+
+
+def import_name_overrides() -> None:
+    """Adds the user's custom name overrides to the database if the file
+    exists."""
+    override_file = get_project_root("misc_files/name_overrides.json")
+
+    if os.path.exists(override_file):
+        with open(override_file) as f:
+            try:
+                data = json.loads(f.read())
+            except json.decoder.JSONDecodeError:
+                log.error("name_overrides.json does not contain valid json; ignoring file.")
+                return
+
+            log.info("Importing player name overrides.")
+
+            try:
+                player_names = data['player_names']
+                mytown_names = data['mytown_names']
+            except KeyError as e:
+                log.error(f"Missing key in name_overrides.json: {e}")
+                log.warning("Ignoring overrides.")
+                return
+
+            if not player_names:
+                log.info("No player names to override in name_overrides.json.")
+            else:
+                clean_custom_player_name_query = f"DELETE FROM m00_strings WHERE file = 'local_player_names';"
+                db_query(clean_custom_player_name_query)
+
+                glossary_values = []
+                m00_values = []
+                for ja, en in player_names.items():
+                    escaped_en = en.replace("'", "''")
+                    glossary_values.append(f"('{ja}', '{escaped_en}')")
+                    m00_values.append(f"('{ja}', '{escaped_en}', 'local_player_names')")
+
+                # note: if a user removes override names from the file, they will continue to exist in the glossary
+                # table until the user enables updates - which is what will clean up the glossary table.
+                db_query(f"INSERT OR REPLACE INTO glossary (ja, en) VALUES {','.join(glossary_values)};")
+                db_query(f"INSERT OR REPLACE INTO m00_strings (ja, en, file) VALUES {','.join(m00_values)};")
+
+            if not mytown_names:
+                log.info("No MyTown names to override in name_overrides.json.")
+            else:
+                clean_custom_mytown_name_query = f"DELETE FROM m00_strings WHERE file = 'local_mytown_names';"
+                db_query(clean_custom_mytown_name_query)
+
+                mytown_values = []
+                for ja, en in mytown_names.items():
+                    escaped_en = en.replace("'", "''")
+                    mytown_values.append(f"('{ja}', '{escaped_en}', 'local_mytown_names')")
+
+                db_query(f"INSERT OR REPLACE INTO m00_strings (ja, en, file) VALUES {','.join(mytown_values)};")
+    else:
+        log.info("No name_overrides.json file found. Skipping import.")
+        return
