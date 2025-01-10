@@ -29,7 +29,7 @@ class GetPlayer:
         if not GetPlayer.writer:
             GetPlayer.writer = MemWriter()
         if not GetPlayer.player_names:
-            GetPlayer.player_names = generate_m00_dict(files="'custom_player_names'")
+            GetPlayer.player_names = generate_m00_dict(files="'local_player_names'")
 
         if debug:
             self.address = address

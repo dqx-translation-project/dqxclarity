@@ -17,7 +17,7 @@
 #             PartyMembers.writer = MemWriter()
 
 #         if not PartyMembers.player_names:
-#             PartyMembers.player_names = generate_m00_dict(files="'custom_player_names'")
+#             PartyMembers.player_names = generate_m00_dict(files="'local_player_names'")
 
 #         if debug:
 #             self.address = address

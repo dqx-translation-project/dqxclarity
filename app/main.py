@@ -8,6 +8,7 @@ from common.update import (
     download_custom_files,
     download_dat_files,
     download_game_jsons,
+    import_name_overrides,
 )
 from dqxcrypt.dqxcrypt import start_logger
 from hooking.hook import activate_hooks
@@ -65,6 +66,8 @@ def blast_off(
         check_for_updates(update=True)
         download_custom_files()
         download_game_jsons()
+
+    import_name_overrides()
 
     try:
         wait_for_dqx_to_launch()

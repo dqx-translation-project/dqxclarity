@@ -63,7 +63,7 @@ def scan_for_comm_names():
     """Scans for player names in the communications window and transliterates
     the Japanese name."""
     writer = MemWriter()
-    player_names = generate_m00_dict(files="'custom_player_names'")
+    player_names = generate_m00_dict(files="'local_player_names'")
     comm_addresses = []
 
     # the comm names were found to use two patterns. the first set we can use as is, the second set
@@ -352,8 +352,9 @@ def run_scans(player_names=True, npc_names=True):
         log.info("Will watch and update NPCs.")
 
     monsters = generate_m00_dict(files="'monsters'")
-    npcs = generate_m00_dict(files="'npcs', 'custom_npc_names', 'custom_player_names'")
-    players = generate_m00_dict(files="'custom_player_names'")
+    npcs = generate_m00_dict(files="'npcs', 'custom_npc_name_overrides', 'local_player_names'")
+    players = generate_m00_dict(files="'local_player_names'")
+    mytown_names = generate_m00_dict(files="'custom_concierge_mail_names', 'local_mytown_names'")
 
     while True:
         try:
@@ -362,7 +363,7 @@ def run_scans(player_names=True, npc_names=True):
                 scan_for_menu_ai_names(players)
             if npc_names:
                 scan_for_npc_names(monsters=monsters, npcs=npcs)
-                scan_for_concierge_names(players)
+                scan_for_concierge_names(mytown_names)
         except UnicodeDecodeError:
             pass
         except MemoryReadError:
