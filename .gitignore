@@ -4,7 +4,6 @@ venv*
 *.log
 .env
 app/defaults.pref
-app/misc_files/*.json
 app/misc_files/*.csv
 app/misc_files/*.xlsx
 app/misc_files/*.db

@@ -29,51 +29,6 @@ def create_db_schema():
         conn.close()
 
 
-def sync_existing_tables():
-    """Drops old columns that were never used from the database."""
-    old_columns = ["bg", "cs", "da", "de", "el", "es", "et", "fi", "fr", "hu", "it", "lt", "lv", "nl", "pl", "pt", "ro", "ru", "sk", "sl", "sv", "zh"]
-    tables_to_sync = ["dialog", "quests", "story_so_far", "walkthrough"]
-
-    try:
-        conn, cursor = init_db()
-        for table in tables_to_sync:
-            query = f"pragma table_info({table})"
-            cursor.execute(query)
-            results = cursor.fetchall()
-            existing_columns = [ col[1] for col in results if col ]
-            for column in existing_columns:
-                if column in old_columns:
-                    drop_col_query = f"ALTER TABLE {table} DROP COLUMN {column}"
-                    cursor.execute(drop_col_query)
-        conn.commit()
-    except sqlite3.Error as e:
-        log.exception(f"Failed to drop existing column. {e}")
-    finally:
-        conn.close()
-
-
-def fix_m00_tables_schema():
-    """Drops the primary key (if exists) for the m00_strings table."""
-    table = "m00_strings"
-
-    try:
-        conn, cursor = init_db()
-        query = f'SELECT l.name FROM pragma_table_info("{table}") as l WHERE l.pk <> 0'
-        cursor.execute(query)
-        results = cursor.fetchall()
-        for result in results:
-            if result[0] == "ja":
-                drop_m00_table = f"DROP TABLE IF EXISTS m00_strings"
-                drop_m00_index = f"DROP INDEX IF EXISTS m00_strings.m00_strings_index"
-                cursor.execute(drop_m00_table)
-                cursor.execute(drop_m00_index)
-        conn.commit()
-    except sqlite3.Error as e:
-        log.exception(f"Failed to drop existing column. {e}")
-    finally:
-        conn.close()
-
-
 def db_query(query: str):
     """Executes a freeform query against the database.
 

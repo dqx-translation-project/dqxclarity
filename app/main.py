@@ -1,10 +1,6 @@
 from clarity import loop_scan_for_walkthrough, run_scans
 from common.config import UserConfig
-from common.db_ops import (
-    create_db_schema,
-    fix_m00_tables_schema,
-    sync_existing_tables,
-)
+from common.db_ops import create_db_schema
 from common.lib import get_project_root, setup_logging
 from common.process import wait_for_dqx_to_launch
 from common.update import (
@@ -12,6 +8,7 @@ from common.update import (
     download_custom_files,
     download_dat_files,
     download_game_jsons,
+    import_name_overrides,
 )
 from dqxcrypt.dqxcrypt import start_logger
 from hooking.hook import activate_hooks
@@ -55,9 +52,7 @@ def blast_off(
     log.info("Getting started. DO NOT TOUCH THE GAME OR REMOVE YOUR MEMORY CARD.",)
 
     log.info("Ensuring db structure.")
-    fix_m00_tables_schema()
     create_db_schema()
-    sync_existing_tables()
 
     # we don't do anything with the config here, but this will validate the config is ok before running.
     log.info("Checking user_settings.ini.")
@@ -71,6 +66,8 @@ def blast_off(
         check_for_updates(update=True)
         download_custom_files()
         download_game_jsons()
+
+    import_name_overrides()
 
     try:
         wait_for_dqx_to_launch()
