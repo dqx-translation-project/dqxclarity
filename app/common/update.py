@@ -355,7 +355,7 @@ def import_name_overrides() -> None:
     override_file = get_project_root("misc_files/name_overrides.json")
 
     if os.path.exists(override_file):
-        with open(override_file) as f:
+        with open(override_file, encoding="utf-8") as f:
             try:
                 data = json.loads(f.read())
             except json.decoder.JSONDecodeError:
