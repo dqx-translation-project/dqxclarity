@@ -1,5 +1,6 @@
 param(
-    $ClarityArgs
+    [Parameter(Mandatory = $false)]
+    [string]$LaunchArgs
 )
 
 # ensure we're in the appropriate working directory in case it's overwritten
@@ -7,17 +8,17 @@ param(
 Set-Location (Split-Path $MyInvocation.MyCommand.Path)
 
 function LogWrite($string) {
-   Write-Host $string -ForegroundColor "Yellow"
+    Write-Host $string -ForegroundColor "Yellow"
 }
 
 function PythonExePath() {
     # Because of the pymem lib, required to install Python for all users.
     # No longer supporting "Install for Me" installations, just "Install for all users"
     $PythonRegKey = "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Python\PythonCore\3.11-32\InstallPath"
-    $ErrorActionPreference="SilentlyContinue"
+    $ErrorActionPreference = "SilentlyContinue"
     try { (Get-ItemProperty -Path $PythonRegKey -Name "ExecutablePath").ExecutablePath }
     catch { "" }
-    $ErrorActionPreference="Continue"
+    $ErrorActionPreference = "Continue"
 }
 
 function RemoveFile($path) {
@@ -37,7 +38,7 @@ function DownloadPythonInstaller() {
     Invoke-WebRequest -Uri https://www.python.org/ftp/python/3.11.3/python-3.11.3.exe -OutFile python-3.11.3.exe
 
     $PythonMD5 = Get-FileHash .\python-3.11.3.exe -Algorithm MD5
-    if ($PythonMD5.Hash -ne "691232496E346CE0860AEF052DD6844F") {  # pragma: allowlist secret
+    if ($PythonMD5.Hash -ne "691232496E346CE0860AEF052DD6844F") { # pragma: allowlist secret
         LogWrite "File download did not complete successfully. Please re-run this script and try again. $HelpMessage"
         RemoveFile "python-3.11.3.exe"
         Read-Host "Press ENTER to close."
@@ -67,11 +68,12 @@ function CheckForRunningInstallers() {
     if ($MsiExecRunning) {
         $Message = "We found a running process on your machine that will cause the Python installer to fail (msiexec.exe). This process is generally used when installing/uninstalling software. Are you OK with us stopping the process to continue?"
         LogWrite $Message
-        $Result = $Shell.popup($Message,0,"Question",4+32)
+        $Result = $Shell.popup($Message, 0, "Question", 4 + 32)
 
         if ($Result -eq 6) {
             Stop-Process -Name msiexec.exe -ErrorAction SilentlyContinue
-        } else {
+        }
+        else {
             LogWrite "No problem. You will need to either terminate the process yourself or reboot your computer. Launch dqxclarity again when you're ready."
             Read-Host "Press ENTER to close."
             Exit
@@ -79,7 +81,7 @@ function CheckForRunningInstallers() {
     }
 }
 
-$ErrorActionPreference="SilentlyContinue"
+$ErrorActionPreference = "SilentlyContinue"
 Stop-Transcript | Out-Null
 $ErrorActionPreference = "Continue"
 New-Item -ItemType Directory -Force -Path logs/ | Out-Null
@@ -94,14 +96,15 @@ if (!$PythonInstallPath) {
     LogWrite "Could not find Python installation for Python 3.11-32."
 
     $Shell = New-Object -comobject "WScript.Shell"
-    $Result = $Shell.popup("Could not find Python 3.11 installation. Do you want to install it?",0,"Question",4+32)
+    $Result = $Shell.popup("Could not find Python 3.11 installation. Do you want to install it?", 0, "Question", 4 + 32)
 
     if ($Result -eq 6) {
         CheckForRunningInstallers
         DownloadPythonInstaller
         InstallPython
         $PythonInstallPath = PythonExePath
-    } else {
+    }
+    else {
         LogWrite "You selected 'No'. Python 3.11 is required to use dqxclarity. Exiting."
         Read-Host "Press ENTER to close."
         Exit
@@ -140,7 +143,7 @@ if ($? -eq $False) {
 & .\venv\Scripts\python.exe -c "import tkinter" 2> $null
 if ($? -eq $False) {
     $Shell = New-Object -comobject "WScript.Shell"
-    $Result = $Shell.popup("Python installation must be uninstalled and reinstalled to support a new feature Clarity requires. Install now?",0,"Question",4+32)
+    $Result = $Shell.popup("Python installation must be uninstalled and reinstalled to support a new feature Clarity requires. Install now?", 0, "Question", 4 + 32)
     if ($Result -eq 6) {
         DownloadPythonInstaller
         UninstallPython
@@ -148,7 +151,8 @@ if ($? -eq $False) {
         Write-Host "Clarity must be restarted to use the new changes. Please close Clarity and relaunch."
         RemoveFile "venv"
         PromptForInputAndExit
-    } else {
+    }
+    else {
         LogWrite "You selected 'No'. Clarity will not function correctly without this installation. Exiting."
         PromptForInputAndExit
     }
@@ -172,7 +176,7 @@ if ($? -eq $False) {
 
 LogWrite "Python install location: $PythonInstallPath"
 LogWrite "Clarity installation path: $PSScriptRoot"
-LogWrite "Clarity args: $ClarityArgs"
+LogWrite "Clarity args: $LaunchArgs"
 
 LogWrite "Running dqxclarity."
-& .\venv\Scripts\python.exe -m main $ClarityArgs
+& .\venv\Scripts\python.exe -m main $LaunchArgs

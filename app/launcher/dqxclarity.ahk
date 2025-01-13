@@ -236,7 +236,7 @@ GetClarityArgs(*) {
         args := args . "c"
 
     if (args)
-        return "-ClarityArgs `"-" . args . "`""
+        return "-LaunchArgs `"-" . args . "`""
     else
         return ""
     return args
