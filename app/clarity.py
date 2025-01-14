@@ -352,8 +352,8 @@ def run_scans(player_names=True, npc_names=True):
         log.info("Will watch and update NPCs.")
 
     monsters = generate_m00_dict(files="'monsters'")
-    npcs = generate_m00_dict(files="'npcs', 'custom_npc_name_overrides', 'local_player_names'")
-    players = generate_m00_dict(files="'local_player_names'")
+    npcs = generate_m00_dict(files="'npcs', 'custom_npc_name_overrides', 'custom_concierge_mail_names', 'local_player_names'")
+    players = generate_m00_dict(files="'custom_npc_name_overrides', 'local_player_names'")
     mytown_names = generate_m00_dict(files="'custom_concierge_mail_names', 'local_mytown_names'")
 
     while True:
