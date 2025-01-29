@@ -62,31 +62,40 @@ except Exception as e:
     input(f"Failed to download the latest update. Please try again or download the update manually from Github.\n\nError: {e}")
     sys.exit()
 
-# don't remove user's preferences
-files_to_ignore = [
-    "clarity_dialog.db",
+# we don't want to delete certain files/folders when updating. these
+# could be old logs, existing user settings or other misc files.
+ignored_files = [
     "user_settings.ini",
-    "defaults.pref",
+]
+
+ignored_directories = [
     "misc_files",
-    "logs"
+    "logs",
 ]
 
 clarity_path = os.path.split(__file__)[0]
 clarity_files = glob.glob(f"{clarity_path}/**", recursive=True)
+
+# delete all files except for ones specified in the ignored lists above.
 for file in clarity_files:
     basename = os.path.basename(file)
-    if basename in files_to_ignore:
+
+    if any(x in file for x in ignored_directories):
         continue
-    if basename.endswith(".json"):
-        if "misc_files" in file or "logs" in file:
-            continue
+    if basename in ignored_files:
+        continue
     if basename:
         delete_file(file)
 
+# unzip new files. don't overwrite any files/folders in the ignored lists above.
 for obj in z_data.infolist():
     basename = os.path.basename(obj.filename)
-    if basename in files_to_ignore:
+
+    if any(x in obj.filename for x in ignored_directories):
         continue
+    if basename in ignored_files:
+        continue
+
     obj.filename = obj.filename.replace("dqxclarity/", "")
     if obj.filename:
         z_data.extract(obj, ".")
