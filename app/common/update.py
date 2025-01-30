@@ -131,7 +131,7 @@ def check_for_updates(update: bool) -> None:
 
                 # if we make updates to the updater, we want to grab this first.
                 log.info("Grabbing latest updater.")
-                update_url = f"https://raw.githubusercontent.com/dqx-translation-project/dqxclarity/refs/tags/{tag}/app/common/update.py"
+                update_url = f"https://raw.githubusercontent.com/dqx-translation-project/dqxclarity/refs/tags/{tag}/app/updater.py"
                 response = download_file(update_url)
 
                 with open("updater.py", "w+b") as f:
