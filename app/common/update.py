@@ -113,25 +113,36 @@ def check_for_updates(update: bool) -> None:
     github_request = download_file(url)
 
     try:
-        release_version = github_request.json()["tag_name"]
-        if release_version.startswith("v"):
-            release_version = release_version[1:]
-        if release_version == cur_ver:
-            log.success(f"Clarity is up to date! (Current version: {str(cur_ver)})")
+        tag = github_request.json()["tag_name"]
+        new_ver = tag[1:]
+
+        if new_ver == cur_ver:
+            log.success(f"Up to date. Version: {cur_ver}")
         else:
-            log.warning(f"Clarity is out of date! (Current: {str(cur_ver)}, Latest: {str(release_version)}).")
+            log.warning(f"Out of date! {cur_ver} -> {new_ver}")
+
             if update:
                 install_path = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Python\PythonCore\3.11-32\InstallPath")
                 python_exe = winreg.QueryValueEx(install_path, "ExecutablePath")
+
                 if not python_exe:
                     log.warning("Did not find Python exe! Clarity is unable to update and will continue without updating.")
                     return False
+
+                # if we make updates to the updater, we want to grab this first.
+                log.info("Grabbing latest updater.")
+                update_url = f"https://raw.githubusercontent.com/dqx-translation-project/dqxclarity/refs/tags/{tag}/app/common/update.py"
+                response = download_file(update_url)
+
+                with open("updater.py", "w+b") as f:
+                    f.write(response.content)
+
                 log.info(f"Launching updater.")
                 Popen([python_exe[0], "./updater.py"])
                 sys.exit()
         return
     except Exception as e:
-        log.warning(f"There was a problem checking trying to update. Clarity will continue without updating.\n{e}")
+        log.warning(f"There was a problem trying to update. Clarity will continue without updating.\n{e}")
         return
 
 
