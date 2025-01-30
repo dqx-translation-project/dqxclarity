@@ -216,4 +216,3 @@ player_name_cutscenes = rb"\xEF.\x01....\x3C\xEF.\x01"
 # "動画配信の際はサーバー" found in notice box on login. Bytes are just the words encoded into utf-8
 # E5 8B 95 E7 94 BB E9 85 8D E4 BF A1 E3 81 AE E9 9A 9B E3 81 AF E3 82 B5 E3 83 BC E3 83 90 E3 83 BC
 notice_string = rb"\xE5\x8B\x95\xE7\x94\xBB\xE9\x85\x8D\xE4\xBF\xA1\xE3\x81\xAE\xE9\x9A\x9B\xE3\x81\xAF\xE3\x82\xB5\xE3\x83\xBC\xE3\x83\x90\xE3\x83\xBC"
-
