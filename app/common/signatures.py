@@ -213,6 +213,7 @@ walkthrough_pattern = rb"\x20...\x00\x00\x00\x00\x04\x02\x00\x00\x10\x00\x00\x00
 # EF ?? 01 ?? ?? ?? ?? 3C EF ?? 01
 player_name_cutscenes = rb"\xEF.\x01....\x3C\xEF.\x01"
 
-# "動画・生配信・画像投稿" found in notice box on login. Bytes are just the words encoded into utf-8
-# E5 8B 95 E7 94 BB E3 83 BB E7 94 9F E9 85 8D E4 BF A1 E3 83 BB E7 94 BB E5 83 8F E6 8A 95 E7 A8 BF
-notice_string = rb"\xE5\x8B\x95\xE7\x94\xBB\xE3\x83\xBB\xE7\x94\x9F\xE9\x85\x8D\xE4\xBF\xA1\xE3\x83\xBB\xE7\x94\xBB\xE5\x83\x8F\xE6\x8A\x95\xE7\xA8\xBF"
+# "動画配信の際はサーバー" found in notice box on login. Bytes are just the words encoded into utf-8
+# E5 8B 95 E7 94 BB E9 85 8D E4 BF A1 E3 81 AE E9 9A 9B E3 81 AF E3 82 B5 E3 83 BC E3 83 90 E3 83 BC
+notice_string = rb"\xE5\x8B\x95\xE7\x94\xBB\xE9\x85\x8D\xE4\xBF\xA1\xE3\x81\xAE\xE9\x9A\x9B\xE3\x81\xAF\xE3\x82\xB5\xE3\x83\xBC\xE3\x83\x90\xE3\x83\xBC"
+
