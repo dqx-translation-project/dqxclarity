@@ -93,7 +93,16 @@ def generate_glossary_dict() -> dict:
         for ja, en in results:
             data[ja] = en
 
-        return data
+        def key_len(text):
+            text = text.split(",", 1)
+            return len(text[0].encode("utf-8"))
+
+        # sort returned glossary by key length
+        sorted_data = {k: v for k, v in sorted(
+            data.items(), key=lambda item: key_len(item[0]), reverse=True
+        )}
+
+        return sorted_data
 
     except sqlite3.Error as e:
         log.exception(f"Query failed. {e}.")
