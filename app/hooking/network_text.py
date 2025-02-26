@@ -45,7 +45,8 @@ class NetworkTextTranslate:
         "C_MERCENARY": "hired_name",
         "C_STR2": "casino_item_string",
         "L_MONSTERNAME": "housing_monster_name",
-        "L_GOODS": "dqx_shop_items"
+        "L_GOODS": "dqx_shop_items",
+        "EV_QUEST_NAME": "cutscene_quest_name"
     }
 
     # explicitly ignore known vars. we want to log any new ones we see just in case
@@ -147,7 +148,7 @@ class NetworkTextTranslate:
                 NetworkTextTranslate.writer.write_string(self.text_address, name_to_write)
 
             # generic string
-            elif category in ["M_00", "C_QUEST", "M_02", "M_header", "M_item", "L_QUEST", "C_ITMR_STITLE", "C_STR2", "L_GOODS"]:
+            elif category in ["M_00", "C_QUEST", "M_02", "M_header", "M_item", "L_QUEST", "C_ITMR_STITLE", "C_STR2", "L_GOODS", "EV_QUEST_NAME"]:
                 if to_write := NetworkTextTranslate.m00_text.get(text):
                     NetworkTextTranslate.writer.write_string(self.text_address, to_write)
                 else:
