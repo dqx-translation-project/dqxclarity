@@ -11,7 +11,7 @@ jobs:
       - name: Fetch branch name from comment
         if: github.event.issue.pull_request && contains(github.event.comment.body, '/build')
         id: fetch-branch-name
-        uses: xt0rted/pull-request-comment-branch@v2
+        uses: xt0rted/pull-request-comment-branch@v3
 
       - name: Checkout branch
         uses: actions/checkout@v4
