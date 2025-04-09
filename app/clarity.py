@@ -192,11 +192,11 @@ def scan_for_npc_names(monsters: dict, npcs: dict):
     if npc_list := writer.pattern_scan(pattern=npc_monster_pattern, return_multiple=True, data_only=True):
         for address in npc_list:
             npc_type = writer.read_bytes(address + 36, 2)
-            if npc_type == b"\xE8\xDE":
+            if npc_type == b"\xBC\xDC":
                 data = "NPC"
-            elif npc_type == b"\x5C\xCB":
+            elif npc_type == b"\x8C\xC9":
                 data = "MONSTER"
-            elif npc_type == b"\xE4\xCD":
+            elif npc_type == b"\x14\xCC":
                 data = "AI_NAME"
             else:
                 continue
