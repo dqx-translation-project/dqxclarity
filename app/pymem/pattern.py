@@ -44,12 +44,14 @@ def scan_pattern_page(handle, address, pattern, *, all_protections=True, use_reg
         allowed_protections = [
             pymem.ressources.structure.MEMORY_PROTECTION.PAGE_EXECUTE_READ,
             pymem.ressources.structure.MEMORY_PROTECTION.PAGE_EXECUTE_READWRITE,
+            pymem.ressources.structure.MEMORY_PROTECTION.PAGE_EXECUTE_WRITECOPY,  # steamos opens wine processes with this
             pymem.ressources.structure.MEMORY_PROTECTION.PAGE_READWRITE,
             pymem.ressources.structure.MEMORY_PROTECTION.PAGE_READONLY,
         ]
     else:
         allowed_protections = [
-            pymem.ressources.structure.MEMORY_PROTECTION.PAGE_READWRITE
+            pymem.ressources.structure.MEMORY_PROTECTION.PAGE_READWRITE,
+            pymem.ressources.structure.MEMORY_PROTECTION.PAGE_EXECUTE_WRITECOPY,  # steamos opens wine processes with this
         ]
 
     if mbi.state != pymem.ressources.structure.MEMORY_STATE.MEM_COMMIT or mbi.protect not in allowed_protections:
