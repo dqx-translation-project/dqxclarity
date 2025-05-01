@@ -21,8 +21,10 @@ from subprocess import Popen
 from tkinter.filedialog import askdirectory
 from zipfile import ZipFile
 
+import ast
 import json
 import os
+import re
 import requests
 import sys
 import time
@@ -32,6 +34,8 @@ import winreg
 def download_custom_files() -> None:
     log.info("Downloading custom translation files from dqx-translation-project/dqx-custom-translations.")
     response = download_file(GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL)
+
+    ignore_data = ""
 
     db_query("DELETE FROM m00_strings")
     zfile = ZipFile(BytesIO(response.content))
@@ -60,24 +64,13 @@ def download_custom_files() -> None:
 
                 read_glossary_and_import(data)
 
+        # ignore.py exists in the remote repo. we'll purge the strings found in this file
+        # from the m00_strings table.
+        if '/generate_glossary/' in obj.filename:
+            if obj.filename.endswith('ignore.py'):
+                with zfile.open(obj.filename, 'r') as f:
+                    ignore_data = f.read()
 
-def read_custom_json_and_import(name: str, data: str) -> None:
-    content = json.loads(data)
-    query_list = []
-
-    for item in content:
-        key, value = list(content[item].items())[0]
-
-        escaped_value = value.replace("'", "''")
-        query_value = f"('{key}', '{escaped_value}', '{name}')"
-        query_list.append(query_value)
-
-    insert_values = ','.join(query_list)
-    query = f"INSERT INTO m00_strings (ja, en, file) VALUES {insert_values};"
-    db_query(query)
-
-
-def download_game_jsons() -> None:
     log.info("Downloading translation files from dqx-translation-project/dqx_translations.")
 
     # dqx_translations is roughly 17MB~ right now. we only need these files from that repository.
@@ -93,6 +86,39 @@ def download_game_jsons() -> None:
     for url in url_to_db:
         response = download_file(url)
         read_custom_json_and_import(name=url_to_db[url], data=response.content)
+
+    # we want to remove any strings we imported from ignore.py in this repo.
+    # these were not included in the glossary from dqx-custom-translations and we do not
+    # want them in our m00_strings table either. ordering matters as what's in the url_to_db
+    # dict has strings we want to remove afterwards.
+    if ignore_data:
+        decoded = ignore_data.decode('utf-8')
+        match = re.search(r'IGNORE\s*=\s*(\{.*?\})', decoded, re.DOTALL)
+        if not match:
+            log.warning("Did not parse ignore.py. Ignoring contents.")
+            return
+
+    dict_str = match.group(1)
+    ignore_dict = ast.literal_eval(dict_str)
+    keys_to_remove = list(ignore_dict.keys())
+
+    db_query("DELETE FROM m00_strings WHERE ja IN ({})".format(','.join(f"'{key}'" for key in keys_to_remove)))
+
+
+def read_custom_json_and_import(name: str, data: str) -> None:
+    content = json.loads(data)
+    query_list = []
+
+    for item in content:
+        key, value = list(content[item].items())[0]
+
+        escaped_value = value.replace("'", "''")
+        query_value = f"('{key}', '{escaped_value}', '{name}')"
+        query_list.append(query_value)
+
+    insert_values = ','.join(query_list)
+    query = f"INSERT INTO m00_strings (ja, en, file) VALUES {insert_values};"
+    db_query(query)
 
 
 def check_for_updates(update: bool) -> None:
