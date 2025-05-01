@@ -7,7 +7,6 @@ from common.update import (
     check_for_updates,
     download_custom_files,
     download_dat_files,
-    download_game_jsons,
     import_name_overrides,
 )
 from dqxcrypt.dqxcrypt import start_logger
@@ -65,7 +64,6 @@ def blast_off(
         log.info("Updating custom text in db.")
         check_for_updates(update=True)
         download_custom_files()
-        download_game_jsons()
 
     import_name_overrides()
 
