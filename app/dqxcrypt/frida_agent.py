@@ -22,10 +22,6 @@ class FridaAgent():
         self.script.on('message', self.on_message)
         self.script.load()
 
-        init_result = self.script.exports.init_agent()
-        if init_result != True:
-            raise RuntimeError("Failed to initalize frida agent (AOB scans, etc)")
-
     def on_message(self, message, data):
         payload = message['payload']
         message_type = payload['message_type']
