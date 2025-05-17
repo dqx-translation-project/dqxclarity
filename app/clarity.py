@@ -192,11 +192,11 @@ def scan_for_npc_names(monsters: dict, npcs: dict):
     if npc_list := writer.pattern_scan(pattern=npc_monster_pattern, return_multiple=True, data_only=True):
         for address in npc_list:
             npc_type = writer.read_bytes(address + 36, 2)
-            if npc_type == b"\xBC\xDC":
+            if npc_type == b"\xB0\x3C":
                 data = "NPC"
-            elif npc_type == b"\x8C\xC9":
+            elif npc_type == b"\x10\x29":
                 data = "MONSTER"
-            elif npc_type == b"\x14\xCC":
+            elif npc_type == b"\x98\x2B":
                 data = "AI_NAME"
             else:
                 continue
@@ -278,7 +278,7 @@ def loop_scan_for_walkthrough():
 
     try:
         writer = MemWriter()
-        pattern = re.compile(walkthrough_pattern[0:55])  # 55 sliced characters == 16 bytes
+        pattern = re.compile(walkthrough_pattern[0:49])  # 49 sliced characters == 16 bytes
         while True:
             if address := writer.pattern_scan(pattern=walkthrough_pattern, data_only=True):
                 prev_text = ""
