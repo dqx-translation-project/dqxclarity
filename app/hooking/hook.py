@@ -68,12 +68,12 @@ def network_text_detour(simple_str_addr: int):
     hook_obj = EasyDetour(
         hook_name="network_text",
         signature=network_text_trigger,
-        num_bytes_to_steal=5,
+        num_bytes_to_steal=6,
         simple_str_addr=simple_str_addr,
     )
-    ecx = hook_obj.address_dict["attrs"]["ecx"]
-    esp = hook_obj.address_dict["attrs"]["esp"]
-    shellcode = network_text_shellcode(ecx, esp)
+    edx = hook_obj.address_dict["attrs"]["edx"]
+    ebx = hook_obj.address_dict["attrs"]["ebx"]
+    shellcode = network_text_shellcode(edx, ebx)
     shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
     writer.write_string(address=shellcode_addr, text=shellcode)
 

@@ -118,7 +118,7 @@ class NetworkTextTranslate:
         self.text_address = NetworkTextTranslate.writer.unpack_to_int(text_address)
         self.var_address = NetworkTextTranslate.writer.unpack_to_int(var_address)
 
-        var_name = self.var_address + 40
+        var_name = self.var_address
 
         try:
             category = NetworkTextTranslate.writer.read_string(var_name)
@@ -200,7 +200,7 @@ class NetworkTextTranslate:
         return f'{{\n  "1": {{\n    "{replaced}": ""\n  }}\n}}'
 
 
-def network_text_shellcode(ecx_address: int, esp_address) -> str:
+def network_text_shellcode(edx_address: int, ebx_address) -> str:
 
     local_paths = dumps(sys.path).replace("\\", "\\\\")
     log_path = os.path.join(os.path.abspath('.'), 'logs\\console.log').replace("\\", "\\\\")
@@ -211,7 +211,7 @@ try:
     import traceback
     sys.path = {local_paths}
     from hooking.network_text import NetworkTextTranslate
-    NetworkTextTranslate({ecx_address}, {esp_address})
+    NetworkTextTranslate({edx_address}, {ebx_address})
 except Exception as e:
     with open("{log_path}", "a+") as f:
         f.write(str(traceback.format_exc()))
