@@ -22,6 +22,9 @@ class Dialog:
             self.text_address = Dialog.writer.unpack_to_int(text_address)
             self.npc_address = Dialog.writer.unpack_to_int(npc_address)
 
+        # npc name is on the stack, not directly in a register.
+        self.npc_address = Dialog.writer.proc.read_long(self.npc_address + 0x14)
+
         self.text = Dialog.writer.read_string(self.text_address)
         self.npc_name = self.__get_npc_name()
 
@@ -43,9 +46,8 @@ class Dialog:
 
 
     def __get_npc_name(self):
-        esp_addr = Dialog.writer.unpack_to_int(self.npc_address + 8) # esp+8
         try:
-            npc_name = Dialog.writer.read_string(esp_addr)
+            npc_name = Dialog.writer.read_string(self.npc_address)
             if not npc_name:
                 npc_name = "No_NPC"
         except:

@@ -145,6 +145,18 @@ class NetworkTextTranslate:
                     name_to_write = NetworkTextTranslate.m00_text[text]
                 else:
                     name_to_write = transliterate_player_name(text)
+
+                # the original strength length (in bytes) must be the exact same size as what we write, or the string will break.
+                orig_len = len(text.encode('utf-8'))
+                new_len = len(name_to_write.encode('utf-8'))
+
+                if new_len > orig_len:
+                    name_to_write = name_to_write[:orig_len]
+                elif new_len < orig_len:
+                    # we need to pad the string with spaces until it's the same length as orig_len.
+                    while len(name_to_write.encode('utf-8')) <= orig_len:
+                        name_to_write += " "
+
                 NetworkTextTranslate.writer.write_string(self.text_address, name_to_write)
 
             # generic string
