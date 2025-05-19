@@ -368,9 +368,10 @@ def download_file(url: str) -> requests.models.Response:
             response = requests.get(url)
             response.raise_for_status()
             break
-        except Exception:
+        except Exception as e:
             retries += 1
             if retries < max_retries:
+                log.warning(f"Code: {response.status_code} :: {e}")
                 log.warning(f"(Retry: {retries}/{max_retries}) Error downloading file {filename}. Sleeping for 3 seconds and trying again...")
                 time.sleep(3)
                 continue
