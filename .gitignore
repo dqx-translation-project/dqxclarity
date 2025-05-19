@@ -13,3 +13,6 @@ app/launcher/user_settings*
 app/launcher/*.exe
 app/dqxclarity.exe
 app/requirements.txt
+
+# building dqxcrypt
+**/node_modules/**
