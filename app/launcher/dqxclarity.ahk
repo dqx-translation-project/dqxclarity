@@ -9,6 +9,7 @@ ini.enabledeepl := IniRead(".\user_settings.ini", "translation", "enabledeepltra
 ini.deeplkey := IniRead(".\user_settings.ini", "translation", "deepltranslatekey", "")
 ini.enablegoogletranslate := IniRead(".\user_settings.ini", "translation", "enablegoogletranslate", "False")
 ini.googletranslatekey := IniRead(".\user_settings.ini", "translation", "googletranslatekey", "")
+ini.enablegoogletranslatefree := IniRead(".\user_settings.ini", "translation", "enablegoogletranslatefree", "False")
 ini.communitylogging := IniRead(".\user_settings.ini", "launcher", "communitylogging", "False")
 ini.playernames := IniRead(".\user_settings.ini", "launcher", "playernames", "False")
 ini.npcnames := IniRead(".\user_settings.ini", "launcher", "npcnames", "False")
@@ -31,12 +32,13 @@ Launcher.AddCheckBox("vDisableUpdates Checked"  . ConvertBoolToState(ini.disable
 Launcher.AddStatusBar("vStatusBar", "")
 
 ; api group
-Launcher.AddGroupBox("Section YP+30 XP-10 w200 h150 c0B817C", "API Settings")
+Launcher.AddGroupBox("Section YP+30 XP-10 w200 h170 c0B817C", "API Settings")
 Launcher.AddCheckBox("XP+10 YP+20 vUseDeepL Checked" . ConvertBoolToState(ini.enabledeepl), "Use DeepL")
 Launcher.AddEdit("YP+20 W180 r1 vDeepLKey", ini.deeplkey).Opt("+Password")
 Launcher.AddCheckBox("XP vUseGoogleTranslate Checked" . ConvertBoolToState(ini.enablegoogletranslate), "Use Google Translate")
 Launcher.AddEdit("YP+20 W180 r1 vGoogleTranslateKey", ini.googletranslatekey).Opt("+Password")
 Launcher.AddButton("YP+30 w180 vValidateKey", "Validate Enabled Key").OnEvent("Click", ValidateKey)
+Launcher.AddCheckBox("XP vUseGoogleTranslateFree Checked" . ConvertBoolToState(ini.enablegoogletranslatefree), "Use Free Google Translate")
 
 ; launch
 Launcher.AddButton("YP+60 XS+10 w80 h30 vRunProgram", "Run").Opt("+Default")
@@ -50,6 +52,7 @@ Launcher["UpdateGameFiles"].ToolTip := "Downloads/updates the modded DAT/IDX fil
 Launcher["DisableUpdates"].ToolTip := "Don't check for dqxclarity updates on launch."
 Launcher["UseDeepL"].ToolTip := "Enable DeepL as your choice of external translation."
 Launcher["UseGoogleTranslate"].ToolTip := "Enable Google Translate as your choice of external translation."
+Launcher["UseGoogleTranslateFree"].ToolTip := "Uses the 'free' version of Google Translate. Rate limiting may ensue under use."
 Launcher["DeepLKey"].ToolTip := "Paste your DeepL API Key here."
 Launcher["GoogleTranslateKey"].ToolTip := "Paste your Google Translate API Key here."
 Launcher["ValidateKey"].ToolTip := "Validate that the selected API key works. Check here for status."

@@ -31,6 +31,7 @@ class UserConfig:
             "deepltranslatekey": "",
             "enablegoogletranslate": False,
             "googletranslatekey": "",
+            "enablegoogletranslatefree": False,
         }
         base_config["config"] = {
             "installdirectory": ""
@@ -80,6 +81,8 @@ class UserConfig:
             return "deepl"
         if self.config['translation'].getboolean('enablegoogletranslate'):
             return "google"
+        if self.config['translation'].getboolean('enablegoogletranslatefree'):
+            return "googlefree"
 
         if self.warnings:
             log.warning("You did not enable a translation service, so no live translation will be performed.")
