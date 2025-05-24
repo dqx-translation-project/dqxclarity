@@ -98,6 +98,8 @@ class UserConfig:
         if service == "google":
             if key := self.config['translation'].get('googletranslatekey'):
                 return key
+        if service == "googlefree":
+            return ""
 
         if self.warnings:
             log.exception(f"You enabled {service}, but did not specify a key.")
