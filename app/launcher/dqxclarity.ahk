@@ -236,8 +236,7 @@ GetClarityArgs(*) {
         args := args . "d"
     if (Launcher["DisableUpdates"].value = 1)
         args := args . "u"
-    if (Launcher["UseDeepL"].value = 1 or Launcher["UseGoogleTranslate"].value = 1 or Launcher["UseGoogleTranslateFree"
-        ].value = 1)
+    if (Launcher["UseDeepL"].value = 1 or Launcher["UseGoogleTranslate"].value = 1 or Launcher["UseGoogleTranslateFree"].value = 1)
         args := args . "c"
 
     if (args)
