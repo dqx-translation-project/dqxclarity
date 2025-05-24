@@ -1,7 +1,7 @@
 from common.db_ops import generate_m00_dict, sql_read, sql_write
 from common.lib import get_project_root
 from common.memory import MemWriter
-from common.translate import clean_up_and_return_items, detect_lang, Translate
+from common.translate import clean_up_and_return_items, detect_lang, Translator
 from json import dumps, loads
 
 import os
@@ -78,14 +78,14 @@ class Quest:
 
 
     def __translate_quest_desc(self):
-        translator = Translate()
+        translator = Translator()
         if db_quest_text := sql_read(
             text=self.quest_desc,
             table="quests"
         ):
             return db_quest_text
 
-        if translation := translator.sanitize_and_translate(
+        if translation := translator.translate(
             self.quest_desc,
             wrap_width=49,
             max_lines=6,
