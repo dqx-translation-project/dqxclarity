@@ -1,8 +1,9 @@
 from common.config import UserConfig
 from common.db_ops import generate_glossary_dict, generate_m00_dict, init_db
-from googleapiclient.discovery import build
+from common.translators.deepl import DeepLTranslate
+from common.translators.googletranslate import GoogleTranslate
+from common.translators.googletranslatefree import GoogleTranslateFree
 
-import deepl
 import langdetect
 import pykakasi
 import re
@@ -10,49 +11,24 @@ import textwrap
 import unicodedata
 
 
-class Translate():
+class Translator():
     service = None
     api_key = None
     glossary = None
 
     def __init__(self):
-        if Translate.service is None:
+        if Translator.service is None:
             self.user_settings = UserConfig()
-            Translate.service = self.user_settings.service
-            Translate.api_key = self.user_settings.key
+            Translator.service = self.user_settings.service
+            Translator.api_key = self.user_settings.key
 
-        if Translate.glossary is None:
-            Translate.glossary = generate_glossary_dict()
-
-
-    def deepl(self, text: list) -> list:
-        region_code = "en-us"
-        translator = deepl.Translator(Translate.api_key)
-        response = translator.translate_text(
-            text=text,
-            source_lang="ja",
-            target_lang=region_code,
-            preserve_formatting=True
-        )
-        text_results = []
-        for result in response:
-            text_results.append(result.text)
-        return text_results
-
-
-    def google(self, text: list) -> list:
-        region_code = "en"
-        service = build("translate", "v2", developerKey=Translate.api_key)
-        response = service.translations().list(source="ja", target=region_code, format="text", q=text).execute()
-        text_results = []
-        for result in response["translations"]:
-            text_results.append(result["translatedText"])
-        return text_results
+        if Translator.glossary is None:
+            Translator.glossary = generate_glossary_dict()
 
 
     def __glossify(self, text):
-        for ja in Translate.glossary:
-            en = Translate.glossary[ja]
+        for ja in Translator.glossary:
+            en = Translator.glossary[ja]
             text = text.replace(ja, en)
         return text
 
@@ -219,7 +195,7 @@ class Translate():
             return output
 
 
-    def translate(self, text: list) -> list:
+    def __api_translate(self, text: list) -> list:
         """Translates a list of strings, passing them through our glossary
         first.
 
@@ -231,13 +207,20 @@ class Translate():
         for i in text:
             text[count] = self.__glossify(i)
             count += 1
-        if Translate.service == "deepl":
-            return self.deepl(text)
-        if Translate.service == "google":
-            return self.google(text)
+        if Translator.service == "deepl":
+            translator = DeepLTranslate(Translator.api_key)
+            return translator.translate(text)
+        elif Translator.service == "google":
+            translator = GoogleTranslate(Translator.api_key)
+            return translator.translate(text)
+        elif Translator.service == "googlefree":
+            translator = GoogleTranslateFree()
+            return translator.translate(text)
+        else:
+            raise ValueError("Invalid translation service specified in user config.")
 
 
-    def sanitize_and_translate(self, text: str, wrap_width: int, max_lines=None, add_brs=True):
+    def translate(self, text: str, wrap_width: int, max_lines=None, add_brs=True):
         """Sanitizes different tags and symbols, then translates the string.
 
         :param text: String to be translated.
@@ -366,19 +349,19 @@ class Translate():
         count = 0
         for str in str_attrs:
             # google does not preserve newlines when it returns its translation, so we substitute <br>'s in their place
-            if Translate.service == "google":
+            if Translator.service in ["google", "googlefree"]:
                 to_translate.append(str_attrs[count]["text"].replace("\n", "<br>"))
             else:
                 to_translate.append(str_attrs[count]["text"])
             count += 1
 
-        translated_list = self.translate(text=to_translate)
+        translated_list = self.__api_translate(text=to_translate)
 
         # update our str_attrs dict with the new, translated string
         count = 0
         for str in translated_list:
             # google does not preserve newlines when it returns its translation, so we used <br>'s above. swap them back with newlines (\n)
-            if Translate.service == "google":
+            if Translator.service in ["google", "googlefree"]:
                 str_attrs[count]["text"]= str.replace("<br>", "\n")
             else:
                 str_attrs[count]["text"] = str
