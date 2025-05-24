@@ -218,6 +218,7 @@ SaveToIni(*) {
     IniWrite(Launcher["DeepLKey"].value, ".\user_settings.ini", "translation", "deepltranslatekey")
     IniWrite(ConvertStateToBool(Launcher["UseGoogleTranslate"].value), ".\user_settings.ini", "translation", "enablegoogletranslate")
     IniWrite(Launcher["GoogleTranslateKey"].value, ".\user_settings.ini", "translation", "googletranslatekey")
+    IniWrite(ConvertStateToBool(Launcher["UseGoogleTranslateFree"].value), ".\user_settings.ini", "translation", "enablegoogletranslatefree")
 }
 
 
@@ -235,7 +236,8 @@ GetClarityArgs(*) {
         args := args . "d"
     if (Launcher["DisableUpdates"].value = 1)
         args := args . "u"
-    if (Launcher["UseDeepL"].value = 1 or Launcher["UseGoogleTranslate"].value = 1)
+    if (Launcher["UseDeepL"].value = 1 or Launcher["UseGoogleTranslate"].value = 1 or Launcher["UseGoogleTranslateFree"
+        ].value = 1)
         args := args . "c"
 
     if (args)
