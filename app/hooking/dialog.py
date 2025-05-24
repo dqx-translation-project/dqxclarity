@@ -1,6 +1,6 @@
 from common.db_ops import init_db, search_bad_strings, sql_read
 from common.memory import MemWriter
-from common.translate import detect_lang, Translate
+from common.translate import detect_lang, Translator
 from json import dumps
 
 import os
@@ -9,7 +9,7 @@ import sys
 
 class Dialog:
 
-    translator = Translate()
+    translator = Translator()
     writer = None
 
     def __init__(self, text_address: int, npc_address: int, debug=False):
@@ -83,7 +83,7 @@ class Dialog:
 
 
     def __translate(self, text: str):
-        translated_text = Dialog.translator.sanitize_and_translate(
+        translated_text = Dialog.translator.translate(
             text=text,
             wrap_width=46
         )

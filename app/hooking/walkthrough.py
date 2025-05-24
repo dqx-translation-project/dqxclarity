@@ -1,7 +1,7 @@
 # from json import dumps
 # import os
 # import sys
-# from common.translate import Translate
+# from common.translate import Translator
 
 
 # def walkthrough_shellcode(
@@ -14,7 +14,7 @@
 #     local_paths = dumps(sys.path).replace("\\", "\\\\")
 #     working_dir = dumps(os.getcwd()).replace("\\", "\\\\")
 #     Translate()
-#     region_code = Translate.region_code
+#     region_code = Translator.region_code
 
 #     shellcode = rf"""
 # try:

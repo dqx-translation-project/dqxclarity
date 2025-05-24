@@ -13,7 +13,7 @@ from common.signatures import (
     sibling_name_pattern,
     walkthrough_pattern,
 )
-from common.translate import detect_lang, Translate, transliterate_player_name
+from common.translate import detect_lang, Translator, transliterate_player_name
 from loguru import logger as log
 from pymem.exception import MemoryReadError, WinAPIError
 
@@ -274,7 +274,7 @@ def loop_scan_for_walkthrough():
     log = setup_logging()
 
     log.info("Will watch for walkthrough text.")
-    translator = Translate()
+    translator = Translator()
 
     try:
         writer = MemWriter()
@@ -298,7 +298,7 @@ def loop_scan_for_walkthrough():
                                 if result:
                                     writer.write_string(address + 16, result)
                                 else:
-                                    translated_text = translator.sanitize_and_translate(
+                                    translated_text = translator.translate(
                                         text=text,
                                         wrap_width=31,
                                         max_lines=3,
