@@ -40,25 +40,21 @@ dialog_trigger = rb"\xFF..\xC7\x45.\x00\x00\x00\x00\xC7\x45.\xFD\xFF\xFF\xFF\xE8
 quest_text_trigger = rb"\x8D\x8E\x78\x04\x00\x00\xE8....\x5F"
 
 # Integrity check + hooking addresses
-# 8D 64 24 FC 8D 64 24 FC 89 0C 24 8D 64 24 FC 89 04 24 E9 ?? ?? ?? ?? 8D
-#    DQXGame.exe+727F6BF - 8D 64 24 04           - lea esp,[esp+04]
-# >> DQXGame.exe+727F6C3 - 8B 6C 24 FC           - mov ebp,[esp-04]
-# >> DQXGame.exe+727F6C7 - 8D 64 24 0C           - lea esp,[esp+0C]
-# >> DQXGame.exe+727F6CB - FF 64 24 F4           - jmp dword ptr [esp-0C]
-# >> DQXGame.exe+727F6CF - 89 54 24 FC           - mov [esp-04],edx
-# >> DQXGame.exe+727F6D3 - 8D 64 24 FC           - lea esp,[esp-04]
-# >> DQXGame.exe+727F6D7 - 8D 64 24 FC           - lea esp,[esp-04]
-# >> DQXGame.exe+727F6DB - 89 0C 24              - mov [esp],ecx
-# >> DQXGame.exe+727F6DE - 8D 64 24 FC           - lea esp,[esp-04]
-# >> DQXGame.exe+727F6E2 - 89 04 24              - mov [esp],eax
-# >> DQXGame.exe+727F6E5 - E9 9B6C1AF9           - jmp DQXGame.exe+426385
-# >> DQXGame.exe+727F6EA - 8D 45 F8              - lea eax,[ebp-08]
-#    DQXGame.exe+727F6ED - 89 44 24 FC           - mov [esp-04],eax
-#    DQXGame.exe+727F6F1 - 8D 64 24 FC           - lea esp,[esp-04]
-#    DQXGame.exe+727F6F5 - 8D 45 D4              - lea eax,[ebp-2C]
-#    DQXGame.exe+727F6F8 - 89 44 24 FC           - mov [esp-04],eax
-#    DQXGame.exe+727F6FC - 8D 64 24 FC           - lea esp,[esp-04]
-integrity_check = rb"\x8D\x64\x24\xFC\x8D\x64\x24\xFC\x89\x0C\x24\x8D\x64\x24\xFC\x89\x04\x24\xE9....\x8D"
+# 8D 64 24 FC 89 14 24 89 4C 24 FC 8D 64 24 FC 89 44 24 FC 8d 64 24 FC E9 ?? ?? ?? ?? 8D 64 24 FC 89 34 24
+#    DQXGame.exe+7EFBD54 - 8D 64 24 04           - lea esp,[esp+04]
+#    DQXGame.exe+7EFBD58 - FF 64 24 FC           - jmp dword ptr [esp-04]
+# >> DQXGame.exe+7EFBD5C - 8D 64 24 FC           - lea esp,[esp-04]
+#    DQXGame.exe+7EFBD60 - 89 14 24              - mov [esp],edx
+#    DQXGame.exe+7EFBD63 - 89 4C 24 FC           - mov [esp-04],ecx
+#    DQXGame.exe+7EFBD67 - 8D 64 24 FC           - lea esp,[esp-04]
+#    DQXGame.exe+7EFBD6B - 89 44 24 FC           - mov [esp-04],eax
+#    DQXGame.exe+7EFBD6F - 8D 64 24 FC           - lea esp,[esp-04]
+#    DQXGame.exe+7EFBD73 - E9 33BB26F8           - jmp DQXGame.exe+1678AB
+#    DQXGame.exe+7EFBD78 - 8D 64 24 FC           - lea esp,[esp-04]
+#    DQXGame.exe+7EFBD7C - 89 34 24              - mov [esp],esi
+#    DQXGame.exe+7EFBD7F - 8D 85 B8FCFFFF        - lea eax,[ebp-00000348]
+#    DQXGame.exe+7EFBD85 - 57                    - push edi
+integrity_check = rb"\x8D\x64\x24\xFC\x89\x14\x24\x89\x4C\x24\xFC\x8D\x64\x24\xFC\x89\x44\x24\xFC\x8d\x64\x24\xFC\xE9....\x8D\x64\x24\xFC\x89\x34\x24"
 
 # a lot of network text that is drawn to the screen comes through this function
 # 51 51 8B C4 89 10 8B CF
