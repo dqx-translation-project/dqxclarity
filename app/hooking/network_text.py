@@ -20,8 +20,6 @@ class NetworkTextTranslate:
         "M_npc": "npc_name",
         "L_SENDER_NAME": "mail_name",
         "B_TARGET_RPL": "spell_target",
-        "B_ACTOR": "pc_name",
-        "B_TARGET": "pc_name",
         "M_00": "string",  # generic string of several types (walkthrough, team quests, mail)
         "M_kaisetubun": "story_so_far",
         "C_QUEST": "dracky_announcements_quest_complete",
@@ -45,7 +43,6 @@ class NetworkTextTranslate:
         "C_MERCENARY": "hired_name",
         "C_STR2": "casino_item_string",
         "L_MONSTERNAME": "housing_monster_name",
-        "L_GOODS": "dqx_shop_items",
         "EV_QUEST_NAME": "cutscene_quest_name"
     }
 
@@ -140,7 +137,7 @@ class NetworkTextTranslate:
                     NetworkTextTranslate.writer.write_string(self.text_address, "self")
 
             # npc or player names
-            elif category in ["M_pc", "M_npc", "B_ACTOR", "B_TARGET", "C_PC", "L_SENDER_NAME", "M_OWNER", "M_hiryu", "L_HIRYU", "L_HIRYU_NAME", "M_name", "L_OWNER", "L_URINUSI", "M_NAME", "L_PLAYER_NAME", "CAS_gambler", "CAS_target", "C_MERCENARY", "L_MONSTERNAME"]:
+            elif category in ["M_pc", "M_npc", "C_PC", "L_SENDER_NAME", "M_OWNER", "M_hiryu", "L_HIRYU", "L_HIRYU_NAME", "M_name", "L_OWNER", "L_URINUSI", "M_NAME", "L_PLAYER_NAME", "CAS_gambler", "CAS_target", "C_MERCENARY", "L_MONSTERNAME"]:
                 if NetworkTextTranslate.m00_text.get(text):
                     name_to_write = NetworkTextTranslate.m00_text[text]
                 else:
@@ -160,7 +157,7 @@ class NetworkTextTranslate:
                 NetworkTextTranslate.writer.write_string(self.text_address, name_to_write)
 
             # generic string
-            elif category in ["M_00", "C_QUEST", "M_02", "M_header", "M_item", "L_QUEST", "C_ITMR_STITLE", "C_STR2", "L_GOODS", "EV_QUEST_NAME"]:
+            elif category in ["M_00", "C_QUEST", "M_02", "M_header", "M_item", "L_QUEST", "C_ITMR_STITLE", "C_STR2", "EV_QUEST_NAME"]:
                 if to_write := NetworkTextTranslate.m00_text.get(text):
 
                     # the default string buffer looks to be a size of 16 bytes (last byte is a null terminator).
