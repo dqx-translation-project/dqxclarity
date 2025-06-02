@@ -105,7 +105,10 @@ class NetworkTextTranslate:
         "M_chat",
         "M_CW_stamp",
         "CAS_monster",
-        "CAS_action"
+        "CAS_action",
+        "B_ACTOR",
+        "B_TARGET",
+        "L_GOODS"        
     ]
 
 
