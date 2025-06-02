@@ -108,7 +108,7 @@ class NetworkTextTranslate:
         "CAS_action",
         "B_ACTOR",
         "B_TARGET",
-        "L_GOODS"        
+        "L_GOODS"
     ]
 
 
