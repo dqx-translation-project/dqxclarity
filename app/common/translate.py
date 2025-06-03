@@ -3,6 +3,7 @@ from common.db_ops import generate_glossary_dict, generate_m00_dict, init_db
 from common.translators.deepl import DeepLTranslate
 from common.translators.googletranslate import GoogleTranslate
 from common.translators.googletranslatefree import GoogleTranslateFree
+from loguru import logger as log
 
 import langdetect
 import pykakasi
@@ -217,7 +218,7 @@ class Translator():
             translator = GoogleTranslateFree()
             return translator.translate(text)
         else:
-            raise ValueError("Invalid translation service specified in user config.")
+            log.exception("Invalid translation service specified in user config.")
 
 
     def translate(self, text: str, wrap_width: int, max_lines=None, add_brs=True):
@@ -356,6 +357,9 @@ class Translator():
             count += 1
 
         translated_list = self.__api_translate(text=to_translate)
+        if not translated_list or len(translated_list) != len(to_translate):
+            log.exception(f"{self.service} translation failed.")
+            return ""
 
         # update our str_attrs dict with the new, translated string
         count = 0

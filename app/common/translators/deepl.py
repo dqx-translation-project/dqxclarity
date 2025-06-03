@@ -1,6 +1,6 @@
-from common import measure
 from common.measure import measure_duration
-from loguru import logger
+from loguru import logger as log
+from socket import timeout
 
 import deepl
 
@@ -9,7 +9,11 @@ import deepl
 # requires creating a developer API account to obtain an API key.
 class DeepLTranslate():
     def __init__(self, api_key: str) -> None:
-        self.translator = deepl.Translator(api_key)
+        # don't retry on timeout to avoid hanging up the thread longer than we need to.
+        deepl.http_client.max_network_retries = 1
+        deepl.http_client.min_connection_timeout = 3
+
+        self.translator = deepl.Translator(auth_key=api_key, send_platform_info=False)
 
 
     @measure_duration
@@ -19,7 +23,8 @@ class DeepLTranslate():
                 text=text,
                 source_lang="ja",
                 target_lang="en-us",
-                preserve_formatting=True
+                preserve_formatting=True,
+                model_type="prefer_quality_optimized",
             )
 
             results = []
@@ -28,5 +33,5 @@ class DeepLTranslate():
 
             return results
         except Exception as e:
-            logger.error(f"Error during request: {e}")
+            log.error(f"Error during request: {e}")
             return []

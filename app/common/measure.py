@@ -1,5 +1,5 @@
 from functools import wraps
-from loguru import logger
+from loguru import logger as log
 
 import inspect
 import time
@@ -16,6 +16,6 @@ def measure_duration(func):
         start = time.time()
         result = func(*args, **kwargs)
         duration = time.time() - start
-        logger.debug(f"[{module}.{name}:{line}] Execution took {duration:.6f} seconds")
+        log.debug(f"[{module}.{name}:{line}] Execution took {duration:.6f} seconds")
         return result
     return wrapper
