@@ -24,7 +24,6 @@ class DeepLTranslate():
                 source_lang="ja",
                 target_lang="en-us",
                 preserve_formatting=True,
-                model_type="prefer_quality_optimized",
             )
 
             results = []
