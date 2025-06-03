@@ -416,7 +416,13 @@ class Translator():
                 # if we see a voice line tag (<voice_nw>), a <br> must exist at the end of the string no matter what.
                 # this is required to make the dialog pause while the voice line continues.
                 voice_re = re.compile("<voice.*>")
-                if re.search(voice_re, pristine_str):
+
+                # unfortunately, this rule does not apply if it belongs to a voiced cutscene in
+                # Asfeld. For some reason, these dialog boxes are handled differently, but all Asfeld
+                # cutscenes have a specific voice tag of <voice_nw IEV_GS####_# ##>. If we see one, don't include a <br>
+                # tag in that string at all.
+
+                if re.search(voice_re, pristine_str) and not "IEV_GS" in pristine_str:
                     tag_list = re.findall(tag_re, pristine_str)
 
                     # get the current index from our pristine_str
