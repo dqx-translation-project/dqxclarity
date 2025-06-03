@@ -2,7 +2,7 @@
 
 A translation utility for the game "Dragon Quest X".
 
-See the [wiki](https://dqx-translation-project.github.io/dqxclarity.html) for how to get started!
+See the [wiki](https://dqx-translation-project.github.io/dqxclarity/) for how to get started!
 
 ## About
 
