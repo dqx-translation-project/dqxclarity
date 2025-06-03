@@ -1,5 +1,5 @@
 from common.measure import measure_duration
-from loguru import logger
+from loguru import logger as log
 
 import html
 import re
@@ -40,5 +40,5 @@ class GoogleTranslateFree:
                 results.append(self.__parse_response(response.text))
             return results
         except Exception as e:
-            logger.error(f"Error during request: {e}")
+            log.error(f"Error during request: {e}")
             return []

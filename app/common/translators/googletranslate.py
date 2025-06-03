@@ -1,6 +1,6 @@
 from common.measure import measure_duration
 from googleapiclient.discovery import build
-from loguru import logger
+from loguru import logger as log
 
 
 # uses Google's official Translate API to send translations.
@@ -22,5 +22,5 @@ class GoogleTranslate:
 
             return results
         except Exception as e:
-            logger.error(f"Error during request: {e}")
+            log.error(f"Error during request: {e}")
             return []
