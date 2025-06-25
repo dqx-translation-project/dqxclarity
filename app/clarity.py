@@ -4,8 +4,7 @@ from common.lib import setup_logging
 from common.memory import MemWriter
 from common.process import is_dqx_process_running
 from common.signatures import (
-    comm_name_pattern_1,
-    comm_name_pattern_2,
+    comm_name_pattern,
     concierge_name_pattern,
     menu_ai_name_pattern,
     npc_monster_pattern,
@@ -64,22 +63,9 @@ def scan_for_comm_names():
     the Japanese name."""
     writer = MemWriter()
     player_names = generate_m00_dict(files="'local_player_names'")
-    comm_addresses = []
+    comm_name_addresses = writer.pattern_scan(pattern=comm_name_pattern, use_regex=True, return_multiple=True, data_only=True)
 
-    # the comm names were found to use two patterns. the first set we can use as is, the second set
-    # we need to jump ahead one byte before we r/w.
-    comm_names_1 = writer.pattern_scan(pattern=comm_name_pattern_1, use_regex=True, return_multiple=True, data_only=True)
-    comm_names_2 = writer.pattern_scan(pattern=comm_name_pattern_2, use_regex=True, return_multiple=True, data_only=True)
-
-    if comm_names_1:
-        for address in comm_names_1:
-            comm_addresses.append(address)
-
-    if comm_names_2:
-        for address in comm_names_2:
-            comm_addresses.append(address + 1)
-
-    for address in comm_addresses:
+    for address in comm_name_addresses:
         try:
             ja_name = writer.read_string(address)
             en_name = player_names.get(ja_name)
@@ -192,11 +178,11 @@ def scan_for_npc_names(monsters: dict, npcs: dict):
     if npc_list := writer.pattern_scan(pattern=npc_monster_pattern, return_multiple=True, data_only=True):
         for address in npc_list:
             npc_type = writer.read_bytes(address + 36, 2)
-            if npc_type == b"\xB0\x3C":
+            if npc_type == b"\xE0\x3D":
                 data = "NPC"
-            elif npc_type == b"\x10\x29":
+            elif npc_type == b"\x40\x2A":
                 data = "MONSTER"
-            elif npc_type == b"\x98\x2B":
+            elif npc_type == b"\xC8\x2C":
                 data = "AI_NAME"
             else:
                 continue
