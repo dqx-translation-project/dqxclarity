@@ -10,6 +10,9 @@ ini.deeplkey := IniRead(".\user_settings.ini", "translation", "deepltranslatekey
 ini.enablegoogletranslate := IniRead(".\user_settings.ini", "translation", "enablegoogletranslate", "False")
 ini.googletranslatekey := IniRead(".\user_settings.ini", "translation", "googletranslatekey", "")
 ini.enablegoogletranslatefree := IniRead(".\user_settings.ini", "translation", "enablegoogletranslatefree", "False")
+ini.enablelibretranslate := IniRead(".\user_settings.ini", "translation", "enablelibretranslate", "False")
+ini.libretranslateurl := IniRead(".\user_settings.ini", "translation", "libretranslateurl", "")
+ini.libretranslatekey := IniRead(".\user_settings.ini", "translation", "libretranslatekey", "")
 ini.communitylogging := IniRead(".\user_settings.ini", "launcher", "communitylogging", "False")
 ini.playernames := IniRead(".\user_settings.ini", "launcher", "playernames", "False")
 ini.npcnames := IniRead(".\user_settings.ini", "launcher", "npcnames", "False")
@@ -32,16 +35,21 @@ Launcher.AddCheckBox("vDisableUpdates Checked"  . ConvertBoolToState(ini.disable
 Launcher.AddStatusBar("vStatusBar", "")
 
 ; api group
-Launcher.AddGroupBox("Section YP+30 XP-10 w200 h170 c0B817C", "API Settings")
+Launcher.AddGroupBox("Section YP+30 XP-10 w200 h300 c0B817C", "API Settings")
 Launcher.AddCheckBox("XP+10 YP+20 vUseDeepL Checked" . ConvertBoolToState(ini.enabledeepl), "Use DeepL")
 Launcher.AddEdit("YP+20 W180 r1 vDeepLKey", ini.deeplkey).Opt("+Password")
 Launcher.AddCheckBox("XP vUseGoogleTranslate Checked" . ConvertBoolToState(ini.enablegoogletranslate), "Use Google Translate")
 Launcher.AddEdit("YP+20 W180 r1 vGoogleTranslateKey", ini.googletranslatekey).Opt("+Password")
-Launcher.AddButton("YP+30 w180 vValidateKey", "Validate Enabled Key").OnEvent("Click", ValidateKey)
 Launcher.AddCheckBox("XP vUseGoogleTranslateFree Checked" . ConvertBoolToState(ini.enablegoogletranslatefree), "Use Free Google Translate")
+Launcher.AddCheckBox("XP vUseLibreTranslate Checked" . ConvertBoolToState(ini.enablelibretranslate), "Use LibreTranslate")
+Launcher.AddText("XP YP+20 w180 Center", "LibreTranslate Server URL:")
+Launcher.AddEdit("YP+15 W180 r1 vLibreTranslateURL", ini.libretranslateurl)
+Launcher.AddText("XP YP+20 w180 Center", "API Key (optional):")
+Launcher.AddEdit("YP+15 W180 r1 vLibreTranslateKey", ini.libretranslatekey).Opt("+Password")
+Launcher.AddButton("YP+25 w180 vValidateKey", "Validate Enabled Key").OnEvent("Click", ValidateKey)
 
 ; launch
-Launcher.AddButton("YP+60 XS+10 w80 h30 vRunProgram", "Run").Opt("+Default")
+Launcher.AddButton("YP+30 XS+10 w80 h30 vRunProgram", "Run").Opt("+Default")
 Launcher.AddButton("x+20 vGitHub w80 h30", "GitHub").OnEvent("Click", OpenGitHub)
 
 ; tooltips
@@ -53,8 +61,11 @@ Launcher["DisableUpdates"].ToolTip := "Don't check for dqxclarity updates on lau
 Launcher["UseDeepL"].ToolTip := "Enable DeepL as your choice of external translation."
 Launcher["UseGoogleTranslate"].ToolTip := "Enable Google Translate as your choice of external translation."
 Launcher["UseGoogleTranslateFree"].ToolTip := "Uses the 'free' version of Google Translate. Rate limiting may ensue under use."
+Launcher["UseLibreTranslate"].ToolTip := "Enable LibreTranslate as your choice of external translation."
 Launcher["DeepLKey"].ToolTip := "Paste your DeepL API Key here."
 Launcher["GoogleTranslateKey"].ToolTip := "Paste your Google Translate API Key here."
+Launcher["LibreTranslateURL"].ToolTip := "Enter your LibreTranslate server URL (e.g., http://localhost:5000)."
+Launcher["LibreTranslateKey"].ToolTip := "Paste your LibreTranslate API Key here (leave empty for keyless servers)."
 Launcher["ValidateKey"].ToolTip := "Validate that the selected API key works. Check here for status."
 Launcher["Run"].ToolTip := "Run the program."
 Launcher["GitHub"].ToolTip := "View the source code in your default browser."
@@ -63,6 +74,7 @@ Launcher["GitHub"].ToolTip := "View the source code in your default browser."
 Launcher["CommunityLogging"].OnEvent("Click", CommunityLoggingWarning)
 Launcher["UseDeepL"].OnEvent("Click", CheckedDeepL)
 Launcher["UseGoogleTranslate"].OnEvent("Click", CheckedGoogleTranslate)
+Launcher["UseLibreTranslate"].OnEvent("Click", CheckedLibreTranslate)
 Launcher["RunProgram"].OnEvent("Click", RunProgram)
 
 ; show launcher
@@ -73,7 +85,10 @@ OnMessage(0x0200, On_WM_MOUSEMOVE)
 CheckedDeepL(*) {
     ; Behavior when the "Use DeepL" checkbox is checked.
     Launcher["UseGoogleTranslate"].value := 0
+    Launcher["UseLibreTranslate"].value := 0
     Launcher["GoogleTranslateKey"].Opt("+Disabled")
+    Launcher["LibreTranslateURL"].Opt("+Disabled")
+    Launcher["LibreTranslateKey"].Opt("+Disabled")
     Launcher["DeepLKey"].Opt("-Disabled")
 }
 
@@ -81,8 +96,22 @@ CheckedDeepL(*) {
 CheckedGoogleTranslate(*) {
     ; Behavior when the "Use Google Translate" checkbox is checked.
     Launcher["UseDeepL"].value := 0
+    Launcher["UseLibreTranslate"].value := 0
     Launcher["DeepLKey"].Opt("+Disabled")
+    Launcher["LibreTranslateURL"].Opt("+Disabled")
+    Launcher["LibreTranslateKey"].Opt("+Disabled")
     Launcher["GoogleTranslateKey"].Opt("-Disabled")
+}
+
+
+CheckedLibreTranslate(*) {
+    ; Behavior when the "Use LibreTranslate" checkbox is checked.
+    Launcher["UseDeepL"].value := 0
+    Launcher["UseGoogleTranslate"].value := 0
+    Launcher["DeepLKey"].Opt("+Disabled")
+    Launcher["GoogleTranslateKey"].Opt("+Disabled")
+    Launcher["LibreTranslateURL"].Opt("-Disabled")
+    Launcher["LibreTranslateKey"].Opt("-Disabled")
 }
 
 
@@ -129,6 +158,49 @@ ValidateKey(*) {
             } catch {
                 UpdateStatusBar(Response["error"]["message"])
             }
+        }
+    } else if (Launcher["UseLibreTranslate"].value = 1) {
+        LibreTranslateURL := Launcher["LibreTranslateURL"].value
+        LibreTranslateKey := Launcher["LibreTranslateKey"].value
+        
+        if (LibreTranslateURL) {
+            ; Test translation to validate the server
+            url := LibreTranslateURL . "/translate"
+            
+            web := ComObject('WinHttp.WinHttpRequest.5.1')
+            web.Open("POST", url)
+            web.SetRequestHeader("Content-Type", "application/json")
+            
+            ; Build the JSON payload (matching actual DQX translation: Japanese to English)
+            jsonData := '{"q":"こんにちは","source":"ja","target":"en","format":"text"'
+            if (LibreTranslateKey && LibreTranslateKey != "")
+                jsonData := jsonData . ',"api_key":"' . LibreTranslateKey . '"'
+            jsonData := jsonData . '}'
+                
+            try {
+                web.Send(jsonData)
+                web.WaitForResponse()
+                
+                ; Check HTTP status first
+                if (web.Status != 200) {
+                    UpdateStatusBar("LibreTranslate validation failed: HTTP " . web.Status . " - " . web.StatusText)
+                    return
+                }
+                
+                Response := JSON.parse(web.ResponseText)
+                
+                if (Response["translatedText"]) {
+                    UpdateStatusBar("LibreTranslate server successfully validated.")
+                } else if (Response["error"]) {
+                    UpdateStatusBar("LibreTranslate validation failed: " . Response["error"])
+                } else {
+                    UpdateStatusBar("LibreTranslate validation failed: " . web.ResponseText)
+                }
+            } catch Error as e {
+                UpdateStatusBar("LibreTranslate connection error: " . e.Message)
+            }
+        } else {
+            UpdateStatusBar("Enter a LibreTranslate URL before attempting to validate.")
         }
     } else {
         UpdateStatusBar("Enable an API service before validating.")
@@ -219,6 +291,9 @@ SaveToIni(*) {
     IniWrite(ConvertStateToBool(Launcher["UseGoogleTranslate"].value), ".\user_settings.ini", "translation", "enablegoogletranslate")
     IniWrite(Launcher["GoogleTranslateKey"].value, ".\user_settings.ini", "translation", "googletranslatekey")
     IniWrite(ConvertStateToBool(Launcher["UseGoogleTranslateFree"].value), ".\user_settings.ini", "translation", "enablegoogletranslatefree")
+    IniWrite(ConvertStateToBool(Launcher["UseLibreTranslate"].value), ".\user_settings.ini", "translation", "enablelibretranslate")
+    IniWrite(Launcher["LibreTranslateURL"].value, ".\user_settings.ini", "translation", "libretranslateurl")
+    IniWrite(Launcher["LibreTranslateKey"].value, ".\user_settings.ini", "translation", "libretranslatekey")
 }
 
 
@@ -236,7 +311,7 @@ GetClarityArgs(*) {
         args := args . "d"
     if (Launcher["DisableUpdates"].value = 1)
         args := args . "u"
-    if (Launcher["UseDeepL"].value = 1 or Launcher["UseGoogleTranslate"].value = 1 or Launcher["UseGoogleTranslateFree"].value = 1)
+    if (Launcher["UseDeepL"].value = 1 or Launcher["UseGoogleTranslate"].value = 1 or Launcher["UseGoogleTranslateFree"].value = 1 or Launcher["UseLibreTranslate"].value = 1)
         args := args . "c"
 
     if (args)
