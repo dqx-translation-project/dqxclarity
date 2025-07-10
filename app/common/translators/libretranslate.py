@@ -12,7 +12,8 @@ class LibreTranslate:
 
     @measure_duration
     def translate(self, text: list[str]) -> list[str]:
-        """Translates a list of phrases from Japanese to English using LibreTranslate."""
+        """Translates a list of phrases from Japanese to English using
+        LibreTranslate."""
         try:
             results = []
             for phrase in text:

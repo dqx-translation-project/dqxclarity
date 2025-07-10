@@ -162,33 +162,33 @@ ValidateKey(*) {
     } else if (Launcher["UseLibreTranslate"].value = 1) {
         LibreTranslateURL := Launcher["LibreTranslateURL"].value
         LibreTranslateKey := Launcher["LibreTranslateKey"].value
-        
+
         if (LibreTranslateURL) {
             ; Test translation to validate the server
             url := LibreTranslateURL . "/translate"
-            
+
             web := ComObject('WinHttp.WinHttpRequest.5.1')
             web.Open("POST", url)
             web.SetRequestHeader("Content-Type", "application/json")
-            
+
             ; Build the JSON payload (matching actual DQX translation: Japanese to English)
             jsonData := '{"q":"こんにちは","source":"ja","target":"en","format":"text"'
             if (LibreTranslateKey && LibreTranslateKey != "")
                 jsonData := jsonData . ',"api_key":"' . LibreTranslateKey . '"'
             jsonData := jsonData . '}'
-                
+
             try {
                 web.Send(jsonData)
                 web.WaitForResponse()
-                
+
                 ; Check HTTP status first
                 if (web.Status != 200) {
                     UpdateStatusBar("LibreTranslate validation failed: HTTP " . web.Status . " - " . web.StatusText)
                     return
                 }
-                
+
                 Response := JSON.parse(web.ResponseText)
-                
+
                 if (Response["translatedText"]) {
                     UpdateStatusBar("LibreTranslate server successfully validated.")
                 } else if (Response["error"]) {
