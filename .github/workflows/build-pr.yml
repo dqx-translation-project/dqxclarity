@@ -17,7 +17,7 @@ jobs:
     steps:
       - name: Fetch Branch Name
         id: fetch-branch-name
-        uses: xt0rted/pull-request-comment-branch@v2
+        uses: xt0rted/pull-request-comment-branch@v3
 
       - name: Checkout PR branch (${{ steps.fetch-branch-name.outputs.head_ref }})
         uses: actions/checkout@v4
