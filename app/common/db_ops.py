@@ -45,8 +45,9 @@ def db_query(query: str):
 
 
 def generate_m00_dict(files: str = "") -> dict:
-    """Queries the m00_strings table. Returns a dictionary of all results.
+    """Queries the m00_strings table.
 
+    Returns a dictionary of all results.
     :param files: Comma-delimited string of files to get from generate.
         Ensure you wrap each file in single quotes as this is a SQL
         query.

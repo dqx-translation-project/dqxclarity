@@ -204,8 +204,8 @@ class NetworkTextTranslate:
 
 
     def __translate_story(self, text: str):
-        """Looks up text in the story_so_far table for story text. If found,
-        returns the text.
+        """Looks up text in the story_so_far table for story text. returns the
+        text. If found,
 
         :param text: Text of the current page of the story.
         :returns: Translated text.
