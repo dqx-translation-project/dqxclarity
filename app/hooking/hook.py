@@ -174,7 +174,7 @@ def activate_hooks(player_names: bool, communication_window: bool):
 
     # get bytes we want to steal and append to unhook bytecode
     try:
-        stolen_bytes = writer.read_bytes(integrity_addr, 8)
+        stolen_bytes = writer.read_bytes(integrity_addr, 7)
     except FailedToReadAddress:
         log.error("**ATTENTION** Unable to find integrity address. If you closed dqxclarity and re-opened it, you will need to completely close the game first before re-running dqxclarity. Otherwise, something horrible has gone wrong.")
         sys.exit(1)
