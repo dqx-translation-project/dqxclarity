@@ -178,8 +178,8 @@ class Translator():
 
 
     def __add_line_endings(self, text: str) -> str:
-        """Adds <br> flags every 3 lines to a string. Used to break up the text
-        in a dialog window.
+        """Adds <br> flags every 3 lines to a string. in a dialog window. Used
+        to break up the text.
 
         :param text: Text to add the <br> tags to.
         :returns: A new string with the text broken up by <br> tags.

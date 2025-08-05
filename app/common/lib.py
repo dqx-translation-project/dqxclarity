@@ -32,8 +32,8 @@ def setup_logger(name, log_file, level=logging.INFO):
 
 
 def get_project_root(add_file=None):
-    """Returns the absolute path of the project root. If add_file is called,
-    appends add_file to the end of the absolute path.
+    """Returns the absolute path of the project root. appends add_file to the
+    end of the absolute path. If add_file is called,
 
     :param file: File to add to absolute path.
     :returns: Absolute path to the project root or file.

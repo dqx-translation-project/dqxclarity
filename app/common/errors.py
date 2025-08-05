@@ -1,7 +1,6 @@
 class ClarityError(Exception):
     """Base class for exceptions."""
 
-
 class AddressOutOfRange(ClarityError):
     """Throw exception when address out of range."""
 
@@ -42,3 +41,4 @@ class FailedToReadAddress(ClarityError):
 
 class PatternMultipleResults(ClarityError):
     """Raised when a pattern has more than one result."""
+

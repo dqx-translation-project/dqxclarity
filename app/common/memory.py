@@ -134,7 +134,6 @@ class MemWriter:
     def calc_rel_addr(self, origin_address: int, destination_address: int) -> bytes:
         """Calculates the difference between addresses to return the relative
         offset."""
-
         # jmp forward
         if origin_address < destination_address:
             return bytes(self.pack_to_int(abs(origin_address - destination_address + 5)))

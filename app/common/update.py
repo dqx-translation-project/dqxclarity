@@ -122,8 +122,8 @@ def read_custom_json_and_import(name: str, data: str) -> None:
 
 
 def check_for_updates(update: bool) -> None:
-    """Checks to see if Clarity is running the latest version of itself. If
-    not, will launch updater.py and exit.
+    """Checks to see if Clarity is running the latest version of itself. not,
+    will launch updater.py and exit. If.
 
     :param update: Whether or not to update after checking for updates.
     """

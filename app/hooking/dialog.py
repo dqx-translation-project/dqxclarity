@@ -91,8 +91,8 @@ class Dialog:
 
 
     def __search_bad_strings_table(self, text: str):
-        """Searches the bad_strings table. This is used to fix instances of
-        text where machine translation completely screwed up the text and
+        """Searches the bad_strings table. text where machine translation
+        completely screwed up the text and This is used to fix instances of
         caused the game to have issues.
 
         :param text: String to search
