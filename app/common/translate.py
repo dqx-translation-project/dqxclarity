@@ -3,6 +3,7 @@ from common.db_ops import generate_glossary_dict, generate_m00_dict, init_db
 from common.translators.deepl import DeepLTranslate
 from common.translators.googletranslate import GoogleTranslate
 from common.translators.googletranslatefree import GoogleTranslateFree
+from common.translators.libretranslate import LibreTranslate
 from loguru import logger as log
 
 import langdetect
@@ -216,6 +217,13 @@ class Translator():
             return translator.translate(text)
         elif Translator.service == "googlefree":
             translator = GoogleTranslateFree()
+            return translator.translate(text)
+        elif Translator.service == "libretranslate":
+            if not self.user_settings.validate_libretranslate_config():
+                log.error("Invalid LibreTranslate configuration")
+                return []
+            libretranslate_url = self.user_settings.get_libretranslate_url()
+            translator = LibreTranslate(libretranslate_url, Translator.api_key)
             return translator.translate(text)
         else:
             log.exception("Invalid translation service specified in user config.")

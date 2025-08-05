@@ -32,6 +32,9 @@ class UserConfig:
             "enablegoogletranslate": False,
             "googletranslatekey": "",
             "enablegoogletranslatefree": False,
+            "enablelibretranslate": False,
+            "libretranslateurl": "",
+            "libretranslatekey": "",
         }
         base_config["config"] = {
             "installdirectory": ""
@@ -83,6 +86,8 @@ class UserConfig:
             return "google"
         if self.config['translation'].getboolean('enablegoogletranslatefree'):
             return "googlefree"
+        if self.config['translation'].getboolean('enablelibretranslate'):
+            return "libretranslate"
 
         if self.warnings:
             log.warning("You did not enable a translation service, so no live translation will be performed.")
@@ -100,8 +105,33 @@ class UserConfig:
                 return key
         if service == "googlefree":
             return ""
+        if service == "libretranslate":
+            # API key can be empty for keyless servers
+            return self.config['translation'].get('libretranslatekey', "")
 
         if self.warnings:
             log.exception(f"You enabled {service}, but did not specify a key.")
 
         return ""
+
+    def get_libretranslate_url(self) -> str:
+        """Get the LibreTranslate server URL from config."""
+        return self.config['translation'].get('libretranslateurl', "")
+
+    def validate_libretranslate_config(self) -> bool:
+        """Validate LibreTranslate configuration."""
+        if not self.config['translation'].getboolean('enablelibretranslate'):
+            return True  # Not enabled, so validation passes
+
+        url = self.get_libretranslate_url()
+        if not url:
+            if self.warnings:
+                log.error("LibreTranslate is enabled but no URL is configured")
+            return False
+
+        if not (url.startswith('http://') or url.startswith('https://')):
+            if self.warnings:
+                log.error(f"Invalid LibreTranslate URL format: {url}")
+            return False
+
+        return True
