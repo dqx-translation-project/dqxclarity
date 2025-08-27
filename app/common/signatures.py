@@ -142,7 +142,7 @@ corner_text_trigger = rb"\x8B\xD0\x8D\x5A\x01\x66\x90\x8A\x0A\x42\x84\xC9\x75\xF
 npc_monster_pattern = rb"\xA8\x15..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00.......\x00\x00\x00\x00.\x00\x00\x00[\x54\x8C\x20][\x27\x13\x16]..........[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 # pattern for concierge names (13 bytes)
 # 28 0C ?? ?? ?? ?? ?? ?? 68 0C ?? ?? E?
-concierge_name_pattern = rb"\x28\x0C......\x68\xOC..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+concierge_name_pattern = rb"\x28\x0C......\x68\x0C..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
 # pattern for player names to rename. (49 bytes)
 # A8 15 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 70 87 ?? 0? ?? ?? ?? ?? ?? ?? ?? 0? E?
