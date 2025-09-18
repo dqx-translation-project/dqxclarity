@@ -1,4 +1,4 @@
-click==8.1.7
+click==8.3.0
 configparser==7.1.0
 deepl==1.20.0
 frida==16.4.5
