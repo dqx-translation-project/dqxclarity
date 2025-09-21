@@ -24,7 +24,7 @@ def start_process(name: str, target, args=()):
     p = Process(name=name, target=target, args=process_args)
     p.start()
 
-    if not ready_event.wait(timeout=5.0):
+    if not ready_event.wait(timeout=20.0):
         p.terminate()
         raise RuntimeError(f'Process "{name}" failed to start within the timeout.')
 
