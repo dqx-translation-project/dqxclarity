@@ -187,15 +187,7 @@ def activate_hooks(player_names: bool, communication_window: bool, ready_event) 
     unhook_bytecode += b"\x01"  # 01 will tell us func was run
 
     # get bytes we want to steal and append to unhook bytecode
-    try:
-        stolen_bytes = writer.read_bytes(integrity_addr, 8)
-    except FailedToReadAddress:
-        log.error("**ATTENTION** Unable to find integrity address. If you closed dqxclarity and re-opened it, you will need to completely close the game first before re-running dqxclarity. Otherwise, something horrible has gone wrong.")
-
-        if ready_event:
-            ready_event.set()
-
-        sys.exit(1)
+    stolen_bytes = writer.read_bytes(integrity_addr, 8)
     unhook_bytecode += stolen_bytes
 
     # calculate difference between addresses for jump and add to unhook bytecode
