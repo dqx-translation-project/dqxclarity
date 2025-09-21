@@ -124,7 +124,7 @@ def corner_text_detour(simple_str_addr: int):
     return hook_obj
 
 
-def activate_hooks(player_names: bool, communication_window: bool):
+def activate_hooks(player_names: bool, communication_window: bool, ready_event) -> None:
     """Activates all hooks and kicks off hook manager."""
     # configure logging. this function runs in multiprocessing, so it does not
     # have the same access to the main log handler.
@@ -132,6 +132,23 @@ def activate_hooks(player_names: bool, communication_window: bool):
     log = setup_logging()
 
     writer = MemWriter()
+
+    # get address we want to place our detour.
+    # if the integrity addr is not found, the game patched or the user ran the program twice.
+    integrity_addr = writer.pattern_scan(pattern=integrity_check, module="DQXGame.exe")
+    if not integrity_addr:
+        log.error(
+            "Unable to find integrity address. "
+            "If you closed dqxclarity and re-opened it, you will need to completely close DQX first before re-running dqxclarity. "
+            "Otherwise, a patch may have broken dqxclarity and will need to be fixed by the dev team. "
+            "On-screen live translations will not work until the problem is fixed."
+        )
+
+        if ready_event:
+            ready_event.set()
+
+        sys.exit(1)
+
     simple_str_addr = writer.inject_python()
 
     # activates all hooks. add any new hooks to this list
@@ -163,9 +180,6 @@ def activate_hooks(player_names: bool, communication_window: bool):
     # also allocate memory to give the integrity function a place to tell us it ran
     state_addr = writer.allocate_memory(10)
 
-    # get address we want to put our detour
-    integrity_addr = writer.pattern_scan(pattern=integrity_check, module="DQXGame.exe")
-
     # write to our state address telling us this func was run
     packed_address = struct.pack("<i", state_addr)
     unhook_bytecode += b"\xC6\x05"  # move byte ptr
@@ -173,11 +187,7 @@ def activate_hooks(player_names: bool, communication_window: bool):
     unhook_bytecode += b"\x01"  # 01 will tell us func was run
 
     # get bytes we want to steal and append to unhook bytecode
-    try:
-        stolen_bytes = writer.read_bytes(integrity_addr, 8)
-    except FailedToReadAddress:
-        log.error("**ATTENTION** Unable to find integrity address. If you closed dqxclarity and re-opened it, you will need to completely close the game first before re-running dqxclarity. Otherwise, something horrible has gone wrong.")
-        sys.exit(1)
+    stolen_bytes = writer.read_bytes(integrity_addr, 8)
     unhook_bytecode += stolen_bytes
 
     # calculate difference between addresses for jump and add to unhook bytecode
@@ -191,5 +201,8 @@ def activate_hooks(player_names: bool, communication_window: bool):
     writer.write_bytes(integrity_addr, detour_bytecode)
     log.debug(f"unhook :: hook ({hex(unhook_addr)}) :: detour ({hex(integrity_addr)})")
     log.debug(f"state  :: addr ({hex(state_addr)})")
+
+    if ready_event:
+        ready_event.set()
 
     load_hooks(hook_list=hooks, state_addr=state_addr, player_names=player_names)

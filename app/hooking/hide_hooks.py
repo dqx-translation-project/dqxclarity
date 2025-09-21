@@ -1,10 +1,10 @@
-from clarity import scan_for_comm_names, scan_for_sibling_name
 from common.memory import MemWriter
 from common.process import is_dqx_process_running
 from loguru import logger as log
 from multiprocessing import Process
+from scans.comms import scan_for_comm_names
+from scans.sibling import scan_for_sibling_name
 
-import pymem
 import sys
 import time
 
@@ -40,15 +40,15 @@ def load_hooks(hook_list: list, state_addr: int, player_names: bool):
                     Process(name="Comms scan", target=scan_for_comm_names, args=()).start()
             time.sleep(0.25)
         except TypeError:
-            log.error(f"Unable to talk to DQXGame.exe. Exiting.")
+            log.error("Unable to talk to DQXGame.exe. Exiting.")
             sys.exit(1)
         except KeyboardInterrupt:
             for hook in hook_list:
                 hook.disable()
             sys.exit(1)
-        except Exception as e:
+        except Exception:
             if not is_dqx_process_running():
+                log.info("DQXGame.exe is no longer running, exiting.")
                 sys.exit(0)
-            else:
-                log.exception("An exception occurred. dqxclarity will exit.")
-                sys.exit(1)
+            log.exception("An exception occurred. dqxclarity will exit.")
+            sys.exit(1)
