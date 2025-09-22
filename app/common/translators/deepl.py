@@ -30,6 +30,7 @@ class DeepLTranslate():
             for result in response:
                 results.append(result.text)
 
+
             return results
         except Exception as e:
             log.error(f"Error during request: {e}")
