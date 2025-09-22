@@ -23,6 +23,7 @@ jobs:
             ${{ runner.os }}-python-
 
       - name: Install Python
+        if: steps.pip-cache.outputs.cache-hit != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11.3'
@@ -31,7 +32,6 @@ jobs:
           cache-dependency-path: '**/requirements.txt'
 
       - name: Install dependencies
-        if: steps.pip-cache.outputs.cache-hit != 'true'
         run: pip install -r requirements.txt
 
       - name: Run unit tests
