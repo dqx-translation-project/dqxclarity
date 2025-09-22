@@ -1,6 +1,6 @@
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v5.0.0
+  rev: v6.0.0
   hooks:
   - id: end-of-file-fixer
     name: Check for newline at end of file
@@ -20,9 +20,6 @@ repos:
     name: Validate YAML
   - id: trailing-whitespace
     name: Check for trailing whitespace
-  - id: fix-encoding-pragma
-    name: Check for pragma encoding and remove
-    args: ['--remove']
   - id: check-merge-conflict
     name: Check for merge conflicts
   - id: check-docstring-first
@@ -35,14 +32,14 @@ repos:
   - id: detect-secrets
     name: Checking for potential passwords
 - repo: https://github.com/asottile/pyupgrade
-  rev: v3.19.0
+  rev: v3.20.0
   hooks:
   - id: pyupgrade
     name: Upgrade previous versioned Python syntax to newer version
     args: ['--py311-plus']
     exclude: ^app/pymem  # forked module
 - repo: https://github.com/pycqa/isort
-  rev: 5.13.2
+  rev: 6.0.1
   hooks:
   - id: isort
     name: Sort imports
@@ -53,7 +50,7 @@ repos:
   # docformatter has not cut a new tag in >1 year. A change in pre-commit requires third party hooks to make sure they
   # adhere to new pre-commit formatting. This tag does not yet have these changes, so need to pin to a commit until
   # they update their tag to stop an error from occurring during hook runs.
-  rev: 06907d0267368b49b9180eed423fae5697c1e909  # pragma: allowlist secret
+  rev: v1.7.7  # pragma: allowlist secret
   hooks:
   - id: docformatter
     name: Format docstrings
