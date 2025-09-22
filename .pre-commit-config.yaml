@@ -20,9 +20,6 @@ repos:
     name: Validate YAML
   - id: trailing-whitespace
     name: Check for trailing whitespace
-  - id: fix-encoding-pragma
-    name: Check for pragma encoding and remove
-    args: ['--remove']
   - id: check-merge-conflict
     name: Check for merge conflicts
   - id: check-docstring-first
