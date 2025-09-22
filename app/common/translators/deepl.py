@@ -26,6 +26,7 @@ class DeepLTranslate():
                 preserve_formatting=True,
             )
 
+
             results = []
             for result in response:
                 results.append(result.text)
