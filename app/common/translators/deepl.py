@@ -1,6 +1,5 @@
 from common.measure import measure_duration
 from loguru import logger as log
-from socket import timeout
 
 import deepl
 
@@ -13,7 +12,7 @@ class DeepLTranslate():
         deepl.http_client.max_network_retries = 1
         deepl.http_client.min_connection_timeout = 3
 
-        self.translator = deepl.Translator(auth_key=api_key, send_platform_info=False)
+        self.translator = deepl.DeepLClient(auth_key=api_key, send_platform_info=False)
 
 
     @measure_duration
