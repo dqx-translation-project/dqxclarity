@@ -348,12 +348,15 @@ class Translator():
         # translate our list of strings
         to_translate = []
         count = 0
-        for str in str_attrs:
-            # google does not preserve newlines when it returns its translation, so we substitute <br>'s in their place
-            if Translator.service in ["google", "googlefree"]:
-                to_translate.append(str_attrs[count]["text"].replace("\n", "<br>"))
-            else:
+        for i in str_attrs:
+            # dqx <select> lists are always at the end of the string. we'll append all list items
+            # to the end of our python list so we can pass them to the translation service individually.
+            if not str_attrs[count]["is_list"]:
                 to_translate.append(str_attrs[count]["text"])
+            else:
+                for line in str_attrs[count]["text"].splitlines():
+                    if line:
+                        to_translate.append(line)
             count += 1
 
         translated_list = self.__api_translate(text=to_translate)
@@ -363,12 +366,15 @@ class Translator():
 
         # update our str_attrs dict with the new, translated string
         count = 0
-        for str in translated_list:
-            # google does not preserve newlines when it returns its translation, so we used <br>'s above. swap them back with newlines (\n)
-            if Translator.service in ["google", "googlefree"]:
-                str_attrs[count]["text"]= str.replace("<br>", "\n")
+        for i in translated_list:
+            if not str_attrs[count]["is_list"]:
+                str_attrs[count]["text"] = i
             else:
-                str_attrs[count]["text"] = str
+                joined_list = "\n".join(translated_list[count:])
+                str_attrs[count]["text"] = joined_list + "\n"
+                # lists are the last strings in dialogue, so we don't need to
+                # parse anymore once we've found one.
+                break
             count += 1
 
         count = 0
