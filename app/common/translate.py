@@ -428,7 +428,7 @@ class Translator():
                 # cutscenes have a specific voice tag of <voice_nw IEV_GS####_# ##>. If we see one, don't include a <br>
                 # tag in that string at all.
 
-                if re.search(voice_re, pristine_str) and not "IEV_GS" in pristine_str:
+                if re.search(voice_re, pristine_str) and "IEV_GS" not in pristine_str:
                     tag_list = re.findall(tag_re, pristine_str)
 
                     # get the current index from our pristine_str
