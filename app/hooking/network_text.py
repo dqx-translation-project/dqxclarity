@@ -146,34 +146,11 @@ class NetworkTextTranslate:
                 else:
                     name_to_write = transliterate_player_name(text)
 
-                # the original strength length (in bytes) must be the exact same size as what we write, or the string will break.
-                orig_len = len(text.encode('utf-8'))
-                new_len = len(name_to_write.encode('utf-8'))
-
-                if new_len > orig_len:
-                    name_to_write = name_to_write[:orig_len]
-                elif new_len < orig_len:
-                    # we need to pad the string with spaces until it's the same length as orig_len.
-                    while len(name_to_write.encode('utf-8')) <= orig_len:
-                        name_to_write += " "
-
                 NetworkTextTranslate.writer.write_string(self.text_address, name_to_write)
 
             # generic string
             elif category in ["M_00", "C_QUEST", "M_02", "M_header", "M_item", "L_QUEST", "C_ITMR_STITLE", "C_STR2", "EV_QUEST_NAME"]:
                 if to_write := NetworkTextTranslate.m00_text.get(text):
-
-                    # the default string buffer looks to be a size of 16 bytes (last byte is a null terminator).
-                    # if the original string is longer than 16 bytes, we'll truncate to the length of the original
-                    # size instead. without this, accepting a quest during a cutscene has the potential to throw an
-                    # exception.
-                    if category == "EV_QUEST_NAME":
-                        orig_len = len(text.encode('utf-8'))
-                        if orig_len <= 15:
-                            to_write = to_write[:15]
-                        else:
-                            to_write = to_write[:orig_len]
-
                     NetworkTextTranslate.writer.write_string(self.text_address, to_write)
                 else:
                     if category == "M_00":
