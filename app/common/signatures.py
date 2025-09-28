@@ -43,24 +43,21 @@ quest_text_trigger = rb"\x8D\x8E\x78\x04\x00\x00\xE8....\x5F"
 integrity_check = rb"\x89\x54\x24\xFC\x8D\x64\x24\xFC\x8D\x64\x24\xFC\x89\x0C\x24\x8D\x64\x24\xFC\x89\x04\x24\xE9....\x6A\x03"
 
 # a lot of network text that is drawn to the screen comes through this function
-# 51 51 8B C4 89 10 8B CF
-#    DQXGame.exe+4F3E3D - 8B CA                 - mov ecx,edx
-#    DQXGame.exe+4F3E3F - 8D 71 01              - lea esi,[ecx+01]
-#    DQXGame.exe+4F3E42 - 8A 01                 - mov al,[ecx]
-#    DQXGame.exe+4F3E44 - 41                    - inc ecx
-#    DQXGame.exe+4F3E45 - 84 C0                 - test al,al
-#    DQXGame.exe+4F3E47 - 75 F9                 - jne DQXGame.exe+4F3E42
-#    DQXGame.exe+4F3E49 - 2B CE                 - sub ecx,esi
-# >> DQXGame.exe+4F3E4B - 51                    - push ecx
-# >> DQXGame.exe+4F3E4C - 51                    - push ecx
-# >> DQXGame.exe+4F3E4D - 8B C4                 - mov eax,esp
-# >> DQXGame.exe+4F3E4F - 89 10                 - mov [eax],edx
-# >> DQXGame.exe+4F3E51 - 8B CF                 - mov ecx,edi
-#    DQXGame.exe+4F3E53 - E8 B8D0CAFF           - call DQXGame.exe+1A0F10
-#    DQXGame.exe+4F3E58 - 8A D8                 - mov bl,al
-#    DQXGame.exe+4F3E5A - 8B 47 0C              - mov eax,[edi+0C]
-#    DQXGame.exe+4F3E5D - B9 0C000000           - mov ecx,0000000C
-network_text_trigger = rb"\x51\x51\x8B\xC4\x89\x10\x8B\xCF"
+# 8B CA 8D 71 ?? 8A 01 41 84 C0 75 F9 EB 20
+#    DQXGame.exe+526905 - 75 E9                 - jne DQXGame.exe+5268F0
+#    DQXGame.exe+526907 - 83 BD 78FCFFFF 0F     - cmp dword ptr [ebp-00000388],0F
+#    DQXGame.exe+52690E - 8D 95 64FCFFFF        - lea edx,[ebp-0000039C]
+#    DQXGame.exe+526914 - 0F47 95 64FCFFFF      - cmova edx,[ebp-0000039C]
+# >> DQXGame.exe+52691B - 8B CA                 - mov ecx,edx
+# >> DQXGame.exe+52691D - 8D 71 01              - lea esi,[ecx+01]
+# >> DQXGame.exe+526920 - 8A 01                 - mov al,[ecx]
+# >> DQXGame.exe+526922 - 41                    - inc ecx
+# >> DQXGame.exe+526923 - 84 C0                 - test al,al
+# >> DQXGame.exe+526925 - 75 F9                 - jne DQXGame.exe+526920
+# >> DQXGame.exe+526927 - EB 20                 - jmp DQXGame.exe+526949
+#    DQXGame.exe+526929 - 83 BD 78FCFFFF 0F     - cmp dword ptr [ebp-00000388],0F
+#    DQXGame.exe+526930 - 8D 95 64FCFFFF        - lea edx,[ebp-0000039C]
+network_text_trigger = rb"\x8B\xCA\x8D\x71.\x8A\x01\x41\x84\xC0\x75\xF9\xEB\x20"
 
 # player and sibling names on login. use this to figure out what the player is logged in as
 # 55 8B EC 56 8B F1 57 8B 46 58 85 C0
