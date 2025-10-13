@@ -32,14 +32,14 @@ repos:
   - id: detect-secrets
     name: Checking for potential passwords
 - repo: https://github.com/asottile/pyupgrade
-  rev: v3.20.0
+  rev: v3.21.0
   hooks:
   - id: pyupgrade
     name: Upgrade previous versioned Python syntax to newer version
     args: ['--py311-plus']
     exclude: ^app/pymem  # forked module
 - repo: https://github.com/pycqa/isort
-  rev: 6.0.1
+  rev: 7.0.0
   hooks:
   - id: isort
     name: Sort imports
