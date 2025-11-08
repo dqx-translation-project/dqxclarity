@@ -5,25 +5,47 @@ import os
 import sys
 
 
-def setup_logging():
-    """Configures logging for dqxclarity."""
-    log_path = get_project_root("logs/console.log")
+def setup_logging(log_file: str = "console.log", stdout: bool = True):
+    """Sets up logging.
+
+    :param log_file: Name of the file to log to. Defaults to
+        console.log. All logs write to the logs folder.
+    :param stdout: Send logs to stdout. Useful to disable when running
+        inside hooks as we can't see these anyways.
+    :returns: A loguru logging object.
+    """
+    log_path = get_project_root(f"logs/{log_file}")
+
+    try:
+        log.remove(0)
+    except ValueError:
+        pass
 
     # wine does not seem to have support for ansi color codes in cmd, which
     # makes it very difficult to read the command prompt.
-    # TODO: Remove hardcoded DEBUG and allow specifying from user_settings.
+    colorize = True
     if os.environ.get("SteamDeck") == "1" or os.environ.get("WINEPREFIX"):
-        log.remove(0)
-        log.add(sink=sys.stdout, level="DEBUG", colorize=False)
-        log.add(sink=log_path, level="DEBUG", colorize=False)
-    else:
-        log.add(sink=log_path, level="DEBUG")
+        colorize = False
+
+    # TODO: Remove hardcoded DEBUG and allow specifying from user_settings.
+    if stdout:
+        log.add(sink=sys.stdout, level="DEBUG", colorize=colorize)
+
+    # Don't colorize logs ever.
+    log.add(sink=log_path, level="DEBUG", colorize=False)
 
     return log
 
 
-def setup_logger(name, log_file, level=logging.INFO):
-    """Sets up a logger for hook shellcode."""
+def setup_logger(name: str, log_file: str, level=logging.INFO):
+    """Sets up a logger for hook shellcode. This is used for custom logging
+    outside of our regular logging to record strings to a file.
+
+    :param name: Name of the logger to create.
+    :param log_file: Path to the log file.
+    :param level: Logging level. Defaults to INFO.
+    :returns: A logging handle.
+    """
     # pylint: disable=redefined-outer-name
     logging.basicConfig(format="%(message)s")
     formatter = logging.Formatter("%(message)s")
