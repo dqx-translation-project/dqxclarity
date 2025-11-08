@@ -1,7 +1,8 @@
 from common.db_ops import generate_m00_dict
+from common.errors import MemoryReadError
 from common.lib import setup_logging
 from common.process import is_dqx_process_running
-from pymem.exception import MemoryReadError, WinAPIError
+from pymem.exception import WinAPIError
 from scans.npc_names import scan_for_concierge_names, scan_for_npc_names
 from scans.player_names import scan_for_menu_ai_names, scan_for_player_names
 
