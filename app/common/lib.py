@@ -1,14 +1,23 @@
-from locale import getencoding
 from loguru import logger as log
 
 import logging
 import os
+import sys
 
 
 def setup_logging():
     """Configures logging for dqxclarity."""
     log_path = get_project_root("logs/console.log")
-    log.add(sink=log_path, level="DEBUG")
+
+    # wine does not seem to have support for ansi color codes in cmd, which
+    # makes it very difficult to read the command prompt.
+    # TODO: Remove hardcoded DEBUG and allow specifying from user_settings.
+    if os.environ.get("SteamDeck") == "1" or os.environ.get("WINEPREFIX"):
+        log.remove(0)
+        log.add(sink=sys.stdout, level="DEBUG", colorize=False)
+        log.add(sink=log_path, level="DEBUG", colorize=False)
+    else:
+        log.add(sink=log_path, level="DEBUG")
 
     return log
 
