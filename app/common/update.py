@@ -294,13 +294,23 @@ def download_dat_files() -> None:
     """Downloads and applies the dat translation mod to the user's DQX
     directory."""
     if is_dqx_process_running():
-        log.exception("Please close DQX before attempting to update the translated DAT/IDX file.")
+        log.warning(
+            "Please close DQX before attempting to update the translated DAT/IDX file. "
+            "Waiting for you to close DQX..."
+        )
+        while True:
+            if is_dqx_process_running():
+                time.sleep(1)
+            else:
+                break
 
     if not check_if_running_as_admin():
-        log.exception(
+        log.error(
             "dqxclarity must be running as an administrator in order to apply the dat translation mod. "
             "Please re-launch dqxclarity as an administrator and try again."
         )
+        time.sleep(5)
+        sys.exit(1)
 
     config = UserConfig()
     read_game_path = "/".join([config.game_path, "Game/Content/Data", "data00000000.win32.dat0"])
