@@ -28,7 +28,7 @@ jobs:
           & .\Ahk2Exe.exe /in "dqxclarity.ahk" /base "AutoHotkey64.exe" /icon "img/rosie.ico";
 
       - name: Upload exe artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: dqxclarity.exe
           path: app\launcher\dqxclarity.exe
