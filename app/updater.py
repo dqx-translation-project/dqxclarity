@@ -71,6 +71,7 @@ print("dqxclarity is updating. Please wait...")
 # if running on steam deck, kill DQXBoot so the user can see the command prompt output easier.
 if is_steam_deck():
     kill_exe("DQXBoot.exe")
+    kill_exe("DQXLauncher.exe")
 
 kill_exe("DQXClarity.exe")
 
