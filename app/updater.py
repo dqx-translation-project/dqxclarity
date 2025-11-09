@@ -26,8 +26,23 @@ def is_dqx_process_running():
         return False
 
 
-def kill_clarity_exe():
-    os.system("taskkill /f /im DQXClarity.exe >nul 2>&1")
+def is_steam_deck() -> bool:
+    """Check if user is on a Steam Deck.
+
+    :returns: Returns True if yes. Else, False.
+    """
+    if os.environ.get("SteamDeck") == "1":
+        return True
+    return False
+
+
+def kill_exe(name: str) -> None:
+    """Use taskkill to kill a running executable.
+
+    :param name: Name of the executable to search for.
+    :returns: None. Runs the taskkill command against the name.
+    """
+    os.system(f"taskkill /f /im {name} >nul 2>&1")
 
 
 def download_latest_zip():
@@ -52,7 +67,12 @@ if is_dqx_process_running():
     sys.exit()
 
 print("dqxclarity is updating. Please wait...")
-kill_clarity_exe()
+
+# if running on steam deck, kill DQXBoot so the user can see the command prompt output easier.
+if is_steam_deck():
+    kill_exe("DQXBoot.exe")
+
+kill_exe("DQXClarity.exe")
 
 try:
     z_data = download_latest_zip()
@@ -60,7 +80,7 @@ try:
         raise
 except Exception as e:
     input(f"Failed to download the latest update. Please try again or download the update manually from Github.\n\nError: {e}")
-    sys.exit()
+    sys.exit(1)
 
 # we don't want to delete certain files/folders when updating. these
 # could be old logs, existing user settings or other misc files.
