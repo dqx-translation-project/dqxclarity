@@ -2,9 +2,11 @@ from common.lib import setup_logging
 from common.memory import MemWriter
 from common.signatures import (
     corner_text_trigger,
+    cutscene_log_trigger,
     dialog_trigger,
     integrity_check,
     network_text_trigger,
+    ominous_text_log_trigger,
     player_sibling_name_trigger,
     quest_text_trigger,
 )
@@ -123,6 +125,49 @@ def corner_text_detour(simple_str_addr: int):
     return hook_obj
 
 
+def cutscene_log_detour(simple_str_addr: int):
+    """Log cutscene text."""
+    from hooking.cutscene_log import cutscene_log_shellcode
+
+    writer = MemWriter()
+
+    hook_obj = EasyDetour(
+        hook_name="cutscene_log",
+        signature=cutscene_log_trigger,
+        num_bytes_to_steal=5,
+        simple_str_addr=simple_str_addr,
+    )
+
+    esp = hook_obj.address_dict["attrs"]["esp"]
+    esi = hook_obj.address_dict["attrs"]["esi"]
+    shellcode = cutscene_log_shellcode(esp_address=esp, esi_address=esi)
+    shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
+    writer.write_string(address=shellcode_addr, text=shellcode)
+
+    return hook_obj
+
+
+def ominous_text_log_detour(simple_str_addr: int):
+    """Log ominous text."""
+    from hooking.ominous_text_log import ominous_text_log_shellcode
+
+    writer = MemWriter()
+
+    hook_obj = EasyDetour(
+        hook_name="ominous_text_log",
+        signature=ominous_text_log_trigger,
+        num_bytes_to_steal=6,
+        simple_str_addr=simple_str_addr,
+    )
+
+    esi = hook_obj.address_dict["attrs"]["esi"]
+    shellcode = ominous_text_log_shellcode(esi_address=esi)
+    shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
+    writer.write_string(address=shellcode_addr, text=shellcode)
+
+    return hook_obj
+
+
 def activate_hooks(player_names: bool, communication_window: bool, ready_event) -> None:
     """Activates all hooks and kicks off hook manager."""
     # configure logging. this function runs in multiprocessing, so it does not
@@ -155,6 +200,10 @@ def activate_hooks(player_names: bool, communication_window: bool, ready_event) 
     hooks.append(player_name_detour(simple_str_addr=simple_str_addr))
     hooks.append(network_text_detour(simple_str_addr=simple_str_addr))
     hooks.append(corner_text_detour(simple_str_addr=simple_str_addr))
+
+    # temporary cutscene logging
+    hooks.append(cutscene_log_detour(simple_str_addr=simple_str_addr))
+    hooks.append(ominous_text_log_detour(simple_str_addr=simple_str_addr))
 
     if communication_window:
         hooks.append(translate_detour(simple_str_addr=simple_str_addr))
