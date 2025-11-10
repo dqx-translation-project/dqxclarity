@@ -118,6 +118,50 @@ player_sibling_name_trigger = rb"\x55\x8B\xEC\x56\x8B\xF1\x57\x8B\x46\x58\x85\xC
 # 8B D0 8D 5A 01 66 90 8A 0A 42 84 C9 75 F9 2B D3 0F
 corner_text_trigger = rb"\x8B\xD0\x8D\x5A\x01\x66\x90\x8A\x0A\x42\x84\xC9\x75\xF9\x2B\xD3\x0F"
 
+# cutscene logging. this is probably not a great pattern, but is only a temporary add.
+# 83 C4 0C 85 C0 0F 84 ?? ?? ?? ?? 6A 05 68 ?? ?? ?? ?? 56 E8 ?? ?? ?? ?? 83 C4 0C 85 C0 0F 84 ?? ?? ?? ?? 6A 05
+#    DQXGame.exe+4D18AB - 0F84 E3020000         - je DQXGame.exe+4D1B94
+#    DQXGame.exe+4D18B1 - 6A 05                 - push 05
+#    DQXGame.exe+4D18B3 - 68 54928301           - push DQXGame.exe+F79254
+#    DQXGame.exe+4D18B8 - 56                    - push esi
+#    DQXGame.exe+4D18B9 - E8 52824D00           - call DQXGame.exe+9A9B10
+# >> DQXGame.exe+4D18BE - 83 C4 0C              - add esp,0C
+# >> DQXGame.exe+4D18C1 - 85 C0                 - test eax,eax
+# >> DQXGame.exe+4D18C3 - 0F84 0A010000         - je DQXGame.exe+4D19D3
+# >> DQXGame.exe+4D18C9 - 6A 05                 - push 05
+# >> DQXGame.exe+4D18CB - 68 5C928301           - push DQXGame.exe+F7925C
+# >> DQXGame.exe+4D18D0 - 56                    - push esi
+# >> DQXGame.exe+4D18D1 - E8 3A824D00           - call DQXGame.exe+9A9B10
+# >> DQXGame.exe+4D18D6 - 83 C4 0C              - add esp,0C
+# >> DQXGame.exe+4D18D9 - 85 C0                 - test eax,eax
+# >> DQXGame.exe+4D18DB - 0F84 F2000000         - je DQXGame.exe+4D19D3
+#    DQXGame.exe+4D18E1 - 6A 05                 - push 05
+#    DQXGame.exe+4D18E3 - 68 64928301           - push DQXGame.exe+F79264
+#    DQXGame.exe+4D18E8 - 56                    - push esi
+#    DQXGame.exe+4D18E9 - E8 22824D00           - call DQXGame.exe+9A9B10
+#    DQXGame.exe+4D18EE - 83 C4 0C              - add esp,0C
+#    DQXGame.exe+4D18F1 - 85 C0                 - test eax,eax
+#    DQXGame.exe+4D18F3 - 75 2D                 - jne DQXGame.exe+4D1922
+cutscene_log_trigger = rb"\x83\xC4\x0C\x85\xC0\x0F\x84....\x6A\x05\x68....\x56\xE8....\x83\xC4\x0C\x85\xC0\x0F\x84....\x6A\x05"
+
+# ominous text logging
+# 89 7D F4 39 7D 0C
+#    DQXGame.exe+1A196C - 8B 75 10              - mov esi,[ebp+10]
+#    DQXGame.exe+1A196F - 33 FF                 - xor edi,edi
+#    DQXGame.exe+1A1971 - 89 55 F0              - mov [ebp-10],edx
+#    DQXGame.exe+1A1974 - 89 4D FC              - mov [ebp-04],ecx
+#    DQXGame.exe+1A1977 - C6 45 F8 00           - mov byte ptr [ebp-08],00
+# >> DQXGame.exe+1A197B - 89 7D F4              - mov [ebp-0C],edi
+# >> DQXGame.exe+1A197E - 39 7D 0C              - cmp [ebp+0C],edi
+#    DQXGame.exe+1A1981 - 0F86 94000000         - jbe DQXGame.exe+1A1A1B
+#    DQXGame.exe+1A1987 - 80 3E 00              - cmp byte ptr [esi],00
+#    DQXGame.exe+1A198A - 0F84 88000000         - je DQXGame.exe+1A1A18
+#    DQXGame.exe+1A1990 - 53                    - push ebx
+#    DQXGame.exe+1A1991 - 50                    - push eax
+#    DQXGame.exe+1A1992 - 56                    - push esi
+#    DQXGame.exe+1A1993 - E8 78818000           - call DQXGame.exe+9A9B10
+ominous_text_log_trigger = rb"\x89\x7D\xF4\x39\x7D\x0C"
+
 #############################################
 # "Patterns" seen to find various text.
 # Not code signatures, so these will likely
