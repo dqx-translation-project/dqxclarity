@@ -39,9 +39,6 @@ dialog_trigger = rb"\xFF..\xC7\x45.\x00\x00\x00\x00\xC7\x45.\xFD\xFF\xFF\xFF\xE8
 #    DQXGame.exe.text+680E3E - C2 0400               - ret 0004
 quest_text_trigger = rb"\x8D\x8E\x78\x04\x00\x00\xE8....\x5F"
 
-# Integrity check + hooking addresses
-integrity_check = rb"\x89\x54\x24\xFC\x8D\x64\x24\xFC\x89\x4C\x24\xFC\x8D\x64\x24\xFC\x8D\x64\x24\xFC\x89\x04\x24\xE9....\x89"
-
 # a lot of network text that is drawn to the screen comes through this function
 # 8B CA 8D 71 ?? 8A 01 41 84 C0 75 F9 EB 20
 #    DQXGame.exe+526905 - 75 E9                 - jne DQXGame.exe+5268F0
@@ -117,6 +114,14 @@ player_sibling_name_trigger = rb"\x55\x8B\xEC\x56\x8B\xF1\x57\x8B\x46\x58\x85\xC
 #    DQXGame.exe+6B2168 - 8B CE                 - mov ecx,esi
 # 8B D0 8D 5A 01 66 90 8A 0A 42 84 C9 75 F9 2B D3 0F
 corner_text_trigger = rb"\x8B\xD0\x8D\x5A\x01\x66\x90\x8A\x0A\x42\x84\xC9\x75\xF9\x2B\xD3\x0F"
+
+#############################################
+# 68 ?? ?? ?? ?? 8D 64 24 04 FF 64 24 FC 55 5C 8D 64 24 04 8B 6C 24 FC 8D 64 24 04 FF 64 24 FC 66
+good_flow = rb"\x68....\x8D\x64\x24\x04\xFF\x64\x24\xFC\x55\x5C\x8D\x64\x24\x04\x8B\x6C\x24\xFC\x8D\x64\x24\x04\xFF\x64\x24\xFC\x66"
+
+# 68 ?? ?? ?? ?? 8D 64 24 04 FF 64 24 FC EB 96 E9 ?? ?? ?? ?? 33 C0
+bad_flow = rb"\x68....\x8D\x64\x24\x04\xFF\x64\x24\xFC\xEB\x96\xE9....\x33\xC0"
+#############################################
 
 #############################################
 # "Patterns" seen to find various text.
