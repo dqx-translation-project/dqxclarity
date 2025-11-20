@@ -14,7 +14,7 @@ jobs:
         uses: xt0rted/pull-request-comment-branch@v3
 
       - name: Checkout branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ steps.fetch-branch-name.outputs.head_ref || 'main' }}
 
