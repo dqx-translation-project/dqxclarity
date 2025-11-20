@@ -1,15 +1,16 @@
-from common.lib import setup_logging
 from common.memory import MemWriter
 from common.signatures import (
     bad_flow,
     corner_text_trigger,
     dialog_trigger,
     good_flow,
+    nameplates_trigger,
     network_text_trigger,
     player_sibling_name_trigger,
     quest_text_trigger,
 )
 from hooking.easydetour import EasyDetour
+from loguru import logger as log
 
 import sys
 
@@ -121,6 +122,27 @@ def corner_text_detour(simple_str_addr: int):
     return hook_obj
 
 
+def nameplates_detour(simple_str_addr: int):
+    """Overwrites a Japanese nameplate name with ours."""
+    from hooking.nameplates import nameplates_shellcode
+
+    writer = MemWriter()
+
+    hook_obj = EasyDetour(
+        hook_name="nameplates",
+        signature=nameplates_trigger,
+        num_bytes_to_steal=9,
+        simple_str_addr=simple_str_addr,
+    )
+
+    ecx = hook_obj.address_dict["attrs"]["ecx"]
+    shellcode = nameplates_shellcode(address=ecx)
+    shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
+    writer.write_string(address=shellcode_addr, text=shellcode)
+
+    return hook_obj
+
+
 def freedom():
     """If you don't know, don't worry about it."""
     writer = MemWriter()
@@ -157,6 +179,8 @@ def freedom():
         value=good_bytes
     )
 
+    log.debug(f"GF: {hex(good_flow_result)} :: BF: {hex(bad_flow_result)}")
+
 
 def activate_hooks(player_names: bool, communication_window: bool) -> None:
     """Activates all hooks and kicks off hook manager."""
@@ -173,6 +197,7 @@ def activate_hooks(player_names: bool, communication_window: bool) -> None:
     hooks.append(player_name_detour(simple_str_addr=simple_str_addr))
     hooks.append(network_text_detour(simple_str_addr=simple_str_addr))
     hooks.append(corner_text_detour(simple_str_addr=simple_str_addr))
+    hooks.append(nameplates_detour(simple_str_addr=simple_str_addr))
 
     if communication_window:
         hooks.append(translate_detour(simple_str_addr=simple_str_addr))
