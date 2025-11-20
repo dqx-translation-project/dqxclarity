@@ -39,9 +39,6 @@ dialog_trigger = rb"\xFF..\xC7\x45.\x00\x00\x00\x00\xC7\x45.\xFD\xFF\xFF\xFF\xE8
 #    DQXGame.exe.text+680E3E - C2 0400               - ret 0004
 quest_text_trigger = rb"\x8D\x8E\x78\x04\x00\x00\xE8....\x5F"
 
-# Integrity check + hooking addresses
-integrity_check = rb"\x89\x54\x24\xFC\x8D\x64\x24\xFC\x89\x4C\x24\xFC\x8D\x64\x24\xFC\x8D\x64\x24\xFC\x89\x04\x24\xE9....\x89"
-
 # a lot of network text that is drawn to the screen comes through this function
 # 8B CA 8D 71 ?? 8A 01 41 84 C0 75 F9 EB 20
 #    DQXGame.exe+526905 - 75 E9                 - jne DQXGame.exe+5268F0
@@ -118,35 +115,49 @@ player_sibling_name_trigger = rb"\x55\x8B\xEC\x56\x8B\xF1\x57\x8B\x46\x58\x85\xC
 # 8B D0 8D 5A 01 66 90 8A 0A 42 84 C9 75 F9 2B D3 0F
 corner_text_trigger = rb"\x8B\xD0\x8D\x5A\x01\x66\x90\x8A\x0A\x42\x84\xC9\x75\xF9\x2B\xD3\x0F"
 
+# - find a player
+# - on the first byte of their name, put a "break on write"
+# - can take a while to hit.. a player has to leave and a new player
+#   has to take that spot. it can take a while...
+# - click run on the first hit
+# - step through until you're out of the loop
+# >> DQXGame.exe+7211B4F - 8B 47 04              - mov eax,[edi+04]
+# >> DQXGame.exe+7211B52 - 8B 88 88010000        - mov ecx,[eax+00000188]
+# >> DQXGame.exe+7211B58 - 85 C9                 - test ecx,ecx
+# >> DQXGame.exe+7211B5A - 68 FDFDBA02           - push DQXGame.exe+2B8FDFD
+# >> DQXGame.exe+7211B5F - 89 54 24 FC           - mov [esp-04],edx
+# >> DQXGame.exe+7211B63 - 8D 64 24 FC           - lea esp,[esp-04]
+# >> DQXGame.exe+7211B67 - 8D 64 24 FC           - lea esp,[esp-04]
+# >> DQXGame.exe+7211B6B - 89 1C 24              - mov [esp],ebx
+# >> DQXGame.exe+7211B6E - 8B 54 24 08           - mov edx,[esp+08]
+# >> DQXGame.exe+7211B72 - BB 499F1700           - mov ebx,DQXGame.exe+159F49
+# >> DQXGame.exe+7211B77 - 0F44 D3               - cmove edx,ebx
+# >> DQXGame.exe+7211B7A - 89 54 24 08           - mov [esp+08],edx
+# >> DQXGame.exe+7211B7E - 8B 1C 24              - mov ebx,[esp]
+#    DQXGame.exe+7211B81 - 8D 64 24 04           - lea esp,[esp+04]
+#    DQXGame.exe+7211B85 - 8D 64 24 04           - lea esp,[esp+04]
+#    DQXGame.exe+7211B89 - 8B 54 24 FC           - mov edx,[esp-04]
+#    DQXGame.exe+7211B8D - 8D 64 24 04           - lea esp,[esp+04]
+# 8B 47 04 8b 88 ?? ?? ?? ?? 85 c9 68 ?? ?? ?? ?? 89 54 24 fc 8d 64 24 fc 8d 64 24 fc 89 1c 24 8b 54 24 08 bb ?? ?? ?? ?? 0f 44 d3 89 54 24 08 8b
+nameplates_trigger = rb"\x8B\x47\x04\x8B\x88....\x85\xC9\x68....\x89\x54\x24\xFC\x8D\x64\x24\xFC\x8D\x64\x24\xFC\x89\x1C\x24\x8B\x54\x24\x08\xBB....\x0F\x44\xD3\x89\x54\x24\x08\x8B"
+
+#############################################
+# 68 ?? ?? ?? ?? 8D 64 24 04 FF 64 24 FC 55 5C 8D 64 24 04 8B 6C 24 FC 8D 64 24 04 FF 64 24 FC 66
+good_flow = rb"\x68....\x8D\x64\x24\x04\xFF\x64\x24\xFC\x55\x5C\x8D\x64\x24\x04\x8B\x6C\x24\xFC\x8D\x64\x24\x04\xFF\x64\x24\xFC\x66"
+
+# 68 ?? ?? ?? ?? 8D 64 24 04 FF 64 24 FC EB 96 E9 ?? ?? ?? ?? 33 C0
+bad_flow = rb"\x68....\x8D\x64\x24\x04\xFF\x64\x24\xFC\xEB\x96\xE9....\x33\xC0"
+#############################################
+
 #############################################
 # "Patterns" seen to find various text.
 # Not code signatures, so these will likely
 # change and need to be updated on patches.
 #############################################
 
-# pattern for npc/monsters to rename. (49 bytes)
-# covers:
-#   - NPC nameplates
-#   - Monster nameplates
-#   - Monter name references when inspecting
-#   - Monster names appearing in the battle menu
-#   - Party nameplates (don't confuse with party names on the right side of the screen)
-#       - Does not do the player's nameplate
-
-# npc:     A8 15 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 54 27 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
-# monster: A8 15 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 8C 13 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
-# party:   A8 15 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 20 16 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
-npc_monster_pattern = rb"\xA8\x15..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00.......\x00\x00\x00\x00.\x00\x00\x00[\x54\x8C\x20][\x27\x13\x16]..........[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 # pattern for concierge names (13 bytes)
 # 28 0C ?? ?? ?? ?? ?? ?? 68 0C ?? ?? E?
 concierge_name_pattern = rb"\x28\x0C......\x68\x0C..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
-
-# pattern for player names to rename. (49 bytes)
-# A8 15 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 70 87 ?? 0? ?? ?? ?? ?? ?? ?? ?? 0? E?
-player_name_pattern = rb"\xA8\x15..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x70\x87.[\x01\x02].......[\x01\x02][\xE3\xEF]"
-# pattern for sibling names to rename. (52 bytes) (can't find a reliable one right now, will need to test more.)
-# 0? ?? 00 ?? 00 00 00 ?? ?? 00 02 ?? 00 ?? 00 ?? 00 00 00 00 00 ?? 00 ?? ?? 00 00 ?? ?? ?? 00 ?? 00 ?? ?? ?? 00 ?? 00 ?? ?? 00 00 00 00 ?? ?? 00 00 00 00 E?
-sibling_name_pattern = rb"[\x01\x02].\x00.\x00\x00\x00..\x00\x02.\x00.\x00.\x00\x00\x00\x00\x00.\x00..\x00\x00...\x00.\x00...\x00.\x00..\x00\x00\x00\x00..\x00\x00\x00\x00[\xE3\xEF]"
 
 # pattern for menu ai to rename. (58 bytes)
 # 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 00 ?? ?? 00 00 ?? ?? ?? ?? ?? 00 00 00 ?? 1? ?? ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? 00 ?? ?? E?

@@ -1,17 +1,17 @@
-from common.lib import setup_logging
 from common.memory import MemWriter
 from common.signatures import (
+    bad_flow,
     corner_text_trigger,
     dialog_trigger,
-    integrity_check,
+    good_flow,
+    nameplates_trigger,
     network_text_trigger,
     player_sibling_name_trigger,
     quest_text_trigger,
 )
 from hooking.easydetour import EasyDetour
-from hooking.hide_hooks import load_hooks
+from loguru import logger as log
 
-import struct
 import sys
 
 
@@ -59,7 +59,7 @@ def quest_text_detour(simple_str_addr: int):
 
 
 def network_text_detour(simple_str_addr: int):
-    """tbd."""
+    """Translates single string 'network text'."""
     from hooking.network_text import network_text_shellcode
 
     writer = MemWriter()
@@ -80,8 +80,7 @@ def network_text_detour(simple_str_addr: int):
 
 
 def player_name_detour(simple_str_addr: int):
-    """Detours function when you accept a quest and the quest text pops up on
-    your screen."""
+    """Updates strings in the database with the logged in player's name."""
     from hooking.player import player_name_shellcode
 
     writer = MemWriter()
@@ -123,30 +122,73 @@ def corner_text_detour(simple_str_addr: int):
     return hook_obj
 
 
-def activate_hooks(player_names: bool, communication_window: bool, ready_event) -> None:
-    """Activates all hooks and kicks off hook manager."""
-    # configure logging. this function runs in multiprocessing, so it does not
-    # have the same access to the main log handler.
-    global log
-    log = setup_logging()
+def nameplates_detour(simple_str_addr: int):
+    """Overwrites a Japanese nameplate name with ours."""
+    from hooking.nameplates import nameplates_shellcode
 
     writer = MemWriter()
 
-    # get address we want to place our detour.
-    # if the integrity addr is not found, the game patched or the user ran the program twice.
-    integrity_addr = writer.pattern_scan(pattern=integrity_check, module="DQXGame.exe")
-    if not integrity_addr:
-        log.error(
-            "Unable to find integrity address. "
-            "If you closed dqxclarity and re-opened it, you will need to completely close DQX first before re-running dqxclarity. "
-            "Otherwise, a patch may have broken dqxclarity and will need to be fixed by the dev team. "
-            "On-screen live translations will not work until the problem is fixed."
-        )
+    hook_obj = EasyDetour(
+        hook_name="nameplates",
+        signature=nameplates_trigger,
+        num_bytes_to_steal=9,
+        simple_str_addr=simple_str_addr,
+    )
 
-        if ready_event:
-            ready_event.set()
+    ecx = hook_obj.address_dict["attrs"]["ecx"]
+    shellcode = nameplates_shellcode(address=ecx)
+    shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
+    writer.write_string(address=shellcode_addr, text=shellcode)
 
+    return hook_obj
+
+
+def freedom():
+    """If you don't know, don't worry about it."""
+    writer = MemWriter()
+
+    good_flow_result = writer.pattern_scan(
+        pattern=good_flow,
+        module="DQXGame.exe"
+    )
+
+    if not good_flow_result:
+        log.error("Unable to enable hooks. dqxclarity may need an update. Exiting.")
         sys.exit(1)
+
+    good_bytes = writer.read_bytes(
+        address=good_flow_result,
+        size=5
+    )
+
+    bad_flow_result = writer.pattern_scan(
+        pattern=bad_flow,
+        module="DQXGame.exe"
+    )
+
+    if not bad_flow_result:
+        log.error(
+            "Unable to enable hooks. If a game update didn't just happen, make sure "
+            "you didn't re-run dqxclarity without closing DQX. Otherwise, you will "
+            "need to wait for dqxclarity to put out an update to fix this. Exiting."
+        )
+        sys.exit(1)
+
+    writer.write_bytes(
+        address=bad_flow_result,
+        value=good_bytes
+    )
+
+    log.debug(f"GF: {hex(good_flow_result)} :: BF: {hex(bad_flow_result)}")
+
+
+def activate_hooks(player_names: bool, communication_window: bool) -> None:
+    """Activates all hooks and kicks off hook manager."""
+    # configure logging. this function runs in multiprocessing, so it does not
+    # have the same access to the main log handler.
+    writer = MemWriter()
+
+    freedom()
 
     simple_str_addr = writer.inject_python()
 
@@ -155,53 +197,11 @@ def activate_hooks(player_names: bool, communication_window: bool, ready_event) 
     hooks.append(player_name_detour(simple_str_addr=simple_str_addr))
     hooks.append(network_text_detour(simple_str_addr=simple_str_addr))
     hooks.append(corner_text_detour(simple_str_addr=simple_str_addr))
+    hooks.append(nameplates_detour(simple_str_addr=simple_str_addr))
 
     if communication_window:
         hooks.append(translate_detour(simple_str_addr=simple_str_addr))
         hooks.append(quest_text_detour(simple_str_addr=simple_str_addr))
 
-    # construct our asm to detach hooks
-    unhook_bytecode = b""
     for hook in hooks:
-        data = hook.address_dict["attrs"]
-        orig_address = data["game_func"]
-        orig_bytes = data["game_bytes"]
-        for byte in orig_bytes:
-            packed_address = struct.pack("<i", orig_address)
-            unhook_bytecode += b"\xC6\x05"  # mov byte ptr
-            unhook_bytecode += packed_address  # address to move byte to
-            unhook_bytecode += byte.to_bytes(1, "little")  # byte to move
-            orig_address += 1
-
-    # allocate memory to write our unhook
-    unhook_addr = writer.allocate_memory(len(unhook_bytecode))
-
-    # also allocate memory to give the integrity function a place to tell us it ran
-    state_addr = writer.allocate_memory(10)
-
-    # write to our state address telling us this func was run
-    packed_address = struct.pack("<i", state_addr)
-    unhook_bytecode += b"\xC6\x05"  # move byte ptr
-    unhook_bytecode += packed_address  # address to move byte to
-    unhook_bytecode += b"\x01"  # 01 will tell us func was run
-
-    # get bytes we want to steal and append to unhook bytecode
-    stolen_bytes = writer.read_bytes(integrity_addr, 8)
-    unhook_bytecode += stolen_bytes
-
-    # calculate difference between addresses for jump and add to unhook bytecode
-    unhook_bytecode += b"\xE9" + writer.calc_rel_addr(unhook_addr + len(unhook_bytecode), integrity_addr)
-
-    # write to our allocated mem
-    writer.write_bytes(unhook_addr, unhook_bytecode)
-
-    # finally, write our detour over the integrity function
-    detour_bytecode = b"\xE9" + writer.calc_rel_addr(integrity_addr, unhook_addr)
-    writer.write_bytes(integrity_addr, detour_bytecode)
-    log.debug(f"unhook :: hook ({hex(unhook_addr)}) :: detour ({hex(integrity_addr)})")
-    log.debug(f"state  :: addr ({hex(state_addr)})")
-
-    if ready_event:
-        ready_event.set()
-
-    load_hooks(hook_list=hooks, state_addr=state_addr, player_names=player_names)
+        hook.enable()
