@@ -6,7 +6,6 @@ from pymem.exception import WinAPIError
 from scans.comms import scan_for_comm_names
 from scans.npc_names import scan_for_concierge_names, scan_for_npc_names
 from scans.player_names import scan_for_menu_ai_names, scan_for_player_names
-from scans.sibling import scan_for_sibling_name
 
 import sys
 
@@ -41,7 +40,6 @@ def run_scans(player_names: bool, npc_names: bool, ready_event):
             if player_names:
                 scan_for_player_names(players)
                 scan_for_menu_ai_names(players)
-                scan_for_sibling_name()
                 scan_for_comm_names()
             if npc_names:
                 scan_for_npc_names(monsters=monsters, npcs=npcs)

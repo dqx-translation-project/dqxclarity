@@ -119,13 +119,13 @@ def corner_text_detour(simple_str_addr: int):
     return hook_obj
 
 
-def freedom(ready_event):
+def freedom():
     """If you don't know, don't worry about it."""
     # 68 ?? ?? ?? ?? 8D 64 24 04 FF 64 24 FC 55 5C 8D 64 24 04 8B 6C 24 FC 8D 64 24 04 FF 64 24 FC 66
     good_flow = rb"\x68....\x8D\x64\x24\x04\xFF\x64\x24\xFC\x55\x5C\x8D\x64\x24\x04\x8B\x6C\x24\xFC\x8D\x64\x24\x04\xFF\x64\x24\xFC\x66"
 
-    # 68 ?? ?? ?? ?? 8D 64 24 04 FF 64 24 FC 33 C9 68 ?? ?? ?? ?? 8D 64 24 04 FF 64 24 FC 6A 03
-    bad_flow = rb"\x68....\x8D\x64\x24\x04\xFF\x64\x24\xFC\x33\xC9\x68....\x8D\x64\x24\x04\xFF\x64\x24\xFC\x6A\x03"
+    # 68 ?? ?? ?? ?? 8D 64 24 04 FF 64 24 FC EB 96 E9 ?? ?? ?? ?? 33 C0
+    bad_flow = rb"\x68....\x8D\x64\x24\x04\xFF\x64\x24\xFC\xEB\x96\xE9....\x33\xC0"
 
     writer = MemWriter()
 
@@ -136,7 +136,7 @@ def freedom(ready_event):
 
     bad_flow_result = writer.pattern_scan(pattern=bad_flow, module="DQXGame.exe")
 
-    if not good_flow_result or bad_flow_result:
+    if not good_flow_result or not bad_flow_result:
         log.error("Unable to enable hooks. dqxclarity may need an update. Exiting.")
         sys.exit(1)
 
