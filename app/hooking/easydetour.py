@@ -16,16 +16,27 @@ class EasyDetour:
         detour and disable() to turn off
     """
 
-    def __init__(self, hook_name: str, signature: bytes, num_bytes_to_steal: int, simple_str_addr: int):
+    def __init__(
+        self,
+        hook_name: str,
+        signature: bytes,
+        num_bytes_to_steal: int,
+        simple_str_addr: int,
+        offset: int = 0x0,
+    ):
         self.proc = MemWriter()
         self.hook_name = hook_name
         self.signature = signature
+        self.offset = offset
         self.num_bytes_to_steal = num_bytes_to_steal
         self.simple_str_addr = simple_str_addr
         self.address_dict = self.write_detour()
 
     def get_signature_address(self):
-        return self.proc.pattern_scan(pattern=self.signature, module="DQXGame.exe")
+        return (
+            self.proc.pattern_scan(pattern=self.signature, module="DQXGame.exe")
+            + self.offset
+        )
 
     def get_stolen_bytes(self):
         return self.proc.read_bytes(self.get_signature_address(), self.num_bytes_to_steal)

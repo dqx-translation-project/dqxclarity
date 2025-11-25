@@ -116,14 +116,6 @@ player_sibling_name_trigger = rb"\x55\x8B\xEC\x56\x8B\xF1\x57\x8B\x46\x58\x85\xC
 corner_text_trigger = rb"\x8B\xD0\x8D\x5A\x01\x66\x90\x8A\x0A\x42\x84\xC9\x75\xF9\x2B\xD3\x0F"
 
 #############################################
-# 68 ?? ?? ?? ?? 8D 64 24 04 FF 64 24 FC 55 5C 8D 64 24 04 8B 6C 24 FC 8D 64 24 04 FF 64 24 FC 66
-good_flow = rb"\x68....\x8D\x64\x24\x04\xFF\x64\x24\xFC\x55\x5C\x8D\x64\x24\x04\x8B\x6C\x24\xFC\x8D\x64\x24\x04\xFF\x64\x24\xFC\x66"
-
-# 68 ?? ?? ?? ?? 8D 64 24 04 FF 64 24 FC EB 96 E9 ?? ?? ?? ?? 33 C0
-bad_flow = rb"\x68....\x8D\x64\x24\x04\xFF\x64\x24\xFC\xEB\x96\xE9....\x33\xC0"
-#############################################
-
-#############################################
 # "Patterns" seen to find various text.
 # Not code signatures, so these will likely
 # change and need to be updated on patches.

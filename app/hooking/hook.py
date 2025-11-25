@@ -1,15 +1,13 @@
-from common.lib import setup_logging
 from common.memory import MemWriter
 from common.signatures import (
-    bad_flow,
     corner_text_trigger,
     dialog_trigger,
-    good_flow,
     network_text_trigger,
     player_sibling_name_trigger,
     quest_text_trigger,
 )
 from hooking.easydetour import EasyDetour
+from loguru import logger as log
 
 import sys
 
@@ -121,8 +119,14 @@ def corner_text_detour(simple_str_addr: int):
     return hook_obj
 
 
-def freedom():
+def freedom(ready_event):
     """If you don't know, don't worry about it."""
+    # 68 ?? ?? ?? ?? 8D 64 24 04 FF 64 24 FC 55 5C 8D 64 24 04 8B 6C 24 FC 8D 64 24 04 FF 64 24 FC 66
+    good_flow = rb"\x68....\x8D\x64\x24\x04\xFF\x64\x24\xFC\x55\x5C\x8D\x64\x24\x04\x8B\x6C\x24\xFC\x8D\x64\x24\x04\xFF\x64\x24\xFC\x66"
+
+    # 68 ?? ?? ?? ?? 8D 64 24 04 FF 64 24 FC 33 C9 68 ?? ?? ?? ?? 8D 64 24 04 FF 64 24 FC 6A 03
+    bad_flow = rb"\x68....\x8D\x64\x24\x04\xFF\x64\x24\xFC\x33\xC9\x68....\x8D\x64\x24\x04\xFF\x64\x24\xFC\x6A\x03"
+
     writer = MemWriter()
 
     good_flow_result = writer.pattern_scan(
@@ -130,32 +134,20 @@ def freedom():
         module="DQXGame.exe"
     )
 
-    if not good_flow_result:
+    bad_flow_result = writer.pattern_scan(pattern=bad_flow, module="DQXGame.exe")
+
+    if not good_flow_result or bad_flow_result:
         log.error("Unable to enable hooks. dqxclarity may need an update. Exiting.")
         sys.exit(1)
+
+    log.debug(f"GF: {hex(good_flow_result)} :: BF: {hex(bad_flow_result)}")
 
     good_bytes = writer.read_bytes(
         address=good_flow_result,
         size=5
     )
 
-    bad_flow_result = writer.pattern_scan(
-        pattern=bad_flow,
-        module="DQXGame.exe"
-    )
-
-    if not bad_flow_result:
-        log.error(
-            "Unable to enable hooks. If a game update didn't just happen, make sure "
-            "you didn't re-run dqxclarity without closing DQX. Otherwise, you will "
-            "need to wait for dqxclarity to put out an update to fix this. Exiting."
-        )
-        sys.exit(1)
-
-    writer.write_bytes(
-        address=bad_flow_result,
-        value=good_bytes
-    )
+    writer.write_bytes(address=bad_flow_result, value=good_bytes)
 
 
 def activate_hooks(player_names: bool, communication_window: bool) -> None:
