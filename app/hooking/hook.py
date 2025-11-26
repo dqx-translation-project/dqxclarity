@@ -6,120 +6,124 @@ from common.signatures import (
     player_sibling_name_trigger,
     quest_text_trigger,
 )
-from hooking.easydetour import EasyDetour
+from hooking.trampoline import Trampoline
 from loguru import logger as log
 
 import sys
 
 
-def translate_detour(simple_str_addr: int):
-    """Hooks the dialog window to translate text and write English instead."""
+def translate_detour():
+    """Hooks the dialog window to translate text."""
     from hooking.dialog import translate_shellcode
 
-    writer = MemWriter()
-
-    hook_obj = EasyDetour(
-        hook_name="game_dialog",
+    trampoline = Trampoline(
+        name="game_dialogue",
         signature=dialog_trigger,
         num_bytes_to_steal=10,
-        simple_str_addr=simple_str_addr,
     )
 
-    esi = hook_obj.address_dict["attrs"]["esi"]
-    esp = hook_obj.address_dict["attrs"]["esp"]
+    if not trampoline.initialized:
+        log.error(f"Trampoline {trampoline.name} failed to initialize.")
+        return None
+
+    esi, esp, shellcode_addr = trampoline.esi, trampoline.esp, trampoline.shellcode
+
     shellcode = translate_shellcode(esi_address=esi, esp_address=esp)
-    shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
-    writer.write_string(address=shellcode_addr, text=shellcode)
+    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
 
-    return hook_obj
+    return trampoline
 
 
-def quest_text_detour(simple_str_addr: int):
-    """Hook the quest dialog window and translate to english."""
+def quest_text_detour():
+    """Hooks the quest dialog window and translates it."""
     from hooking.quest import quest_text_shellcode
 
-    writer = MemWriter()
-
-    hook_obj = EasyDetour(
-        hook_name="quests",
+    trampoline = Trampoline(
+        name="quests",
         signature=quest_text_trigger,
         num_bytes_to_steal=6,
-        simple_str_addr=simple_str_addr,
     )
 
-    eax = hook_obj.address_dict["attrs"]["eax"]
+    if not trampoline.initialized:
+        log.error(f"Trampoline {trampoline.name} failed to initialize.")
+        return None
+
+    eax, shellcode_addr = trampoline.eax, trampoline.shellcode
+
     shellcode = quest_text_shellcode(address=eax)
-    shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
-    writer.write_string(address=shellcode_addr, text=shellcode)
+    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
 
-    return hook_obj
+    return trampoline
 
 
-def network_text_detour(simple_str_addr: int):
+def network_text_detour():
     """Translates single string 'network text'."""
     from hooking.network_text import network_text_shellcode
 
-    writer = MemWriter()
-
-    hook_obj = EasyDetour(
-        hook_name="network_text",
+    trampoline = Trampoline(
+        name="network_text",
         signature=network_text_trigger,
         num_bytes_to_steal=5,
-        simple_str_addr=simple_str_addr,
     )
-    edx = hook_obj.address_dict["attrs"]["edx"]
-    ebx = hook_obj.address_dict["attrs"]["ebx"]
-    shellcode = network_text_shellcode(edx, ebx)
-    shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
-    writer.write_string(address=shellcode_addr, text=shellcode)
 
-    return hook_obj
+    if not trampoline.initialized:
+        log.error(f"Trampoline {trampoline.name} failed to initialize.")
+        return None
+
+    edx, ebx, shellcode_addr = trampoline.edx, trampoline.ebx, trampoline.shellcode
+
+    shellcode = network_text_shellcode(edx_address=edx, ebx_address=ebx)
+    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
+
+    return trampoline
 
 
-def player_name_detour(simple_str_addr: int):
+def player_name_detour():
     """Updates strings in the database with the logged in player's name."""
     from hooking.player import player_name_shellcode
 
-    writer = MemWriter()
-
-    hook_obj = EasyDetour(
-        hook_name="player_name",
+    trampoline = Trampoline(
+        name="player_name",
         signature=player_sibling_name_trigger,
         num_bytes_to_steal=6,
-        simple_str_addr=simple_str_addr,
     )
 
-    eax = hook_obj.address_dict["attrs"]["eax"]
+    if not trampoline.initialized:
+        log.error(f"Trampoline {trampoline.name} failed to initialize.")
+        return None
+
+    eax, shellcode_addr = trampoline.eax, trampoline.shellcode
+
     shellcode = player_name_shellcode(eax_address=eax)
-    shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
-    writer.write_string(address=shellcode_addr, text=shellcode)
+    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
 
-    return hook_obj
+    return trampoline
 
 
-def corner_text_detour(simple_str_addr: int):
+def corner_text_detour():
     """Detours function when top-right corner text is about to happen and
-    replaces it with English."""
+    translates it."""
     from hooking.corner_text import corner_text_shellcode
 
-    writer = MemWriter()
-
-    hook_obj = EasyDetour(
-        hook_name="corner_text",
+    trampoline = Trampoline(
+        name="corner_text",
         signature=corner_text_trigger,
         num_bytes_to_steal=5,
-        simple_str_addr=simple_str_addr
     )
 
-    eax = hook_obj.address_dict["attrs"]["eax"]
+    if not trampoline.initialized:
+        log.error(f"Trampoline {trampoline.name} failed to initialize.")
+        return None
+
+    eax, shellcode_addr = trampoline.eax, trampoline.shellcode
+
     shellcode = corner_text_shellcode(eax_address=eax)
-    shellcode_addr = hook_obj.address_dict["attrs"]["shellcode"]
-    writer.write_string(address=shellcode_addr, text=shellcode)
+    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
 
-    return hook_obj
+    return trampoline
 
 
-def freedom():
+def hide():
     """If you don't know, don't worry about it."""
     # 68 ?? ?? ?? ?? 8D 64 24 04 FF 64 24 FC 55 5C 8D 64 24 04 8B 6C 24 FC 8D 64 24 04 FF 64 24 FC 66
     good_flow = rb"\x68....\x8D\x64\x24\x04\xFF\x64\x24\xFC\x55\x5C\x8D\x64\x24\x04\x8B\x6C\x24\xFC\x8D\x64\x24\x04\xFF\x64\x24\xFC\x66"
@@ -150,25 +154,32 @@ def freedom():
     writer.write_bytes(address=bad_flow_result, value=good_bytes)
 
 
-def activate_hooks(player_names: bool, communication_window: bool) -> None:
-    """Activates all hooks and kicks off hook manager."""
-    # configure logging. this function runs in multiprocessing, so it does not
-    # have the same access to the main log handler.
-    writer = MemWriter()
+def activate_hooks(communication_window: bool) -> None:
+    """Activates all hooks.
 
-    freedom()
-
-    simple_str_addr = writer.inject_python()
+    :param communication_window: True if user requested to translate
+        game dialogue.
+    :returns: A list of hook objects that can be enabled or disabled.
+    """
+    hide()
 
     # activates all hooks. add any new hooks to this list
     hooks = []
-    hooks.append(player_name_detour(simple_str_addr=simple_str_addr))
-    hooks.append(network_text_detour(simple_str_addr=simple_str_addr))
-    hooks.append(corner_text_detour(simple_str_addr=simple_str_addr))
+    if hook := player_name_detour():
+        hooks.append(hook)
+    if hook := network_text_detour():
+        hooks.append(hook)
+    if hook := corner_text_detour():
+        hooks.append(hook)
 
     if communication_window:
-        hooks.append(translate_detour(simple_str_addr=simple_str_addr))
-        hooks.append(quest_text_detour(simple_str_addr=simple_str_addr))
+        if hook := translate_detour():
+            hooks.append(hook)
+        if hook := quest_text_detour():
+            hooks.append(hook)
 
-    for hook in hooks:
-        hook.enable()
+    if hooks:
+        for hook in hooks:
+            hook.enable()
+
+    return hooks
