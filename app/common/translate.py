@@ -514,7 +514,8 @@ def clean_up_and_return_items(text: str) -> str:
 def detect_lang(text: str) -> bool:
     """Detects if the language is Japanese or not.
 
-    Returns bool.
+    :param text: Text to check against.
+    :returns: True if text is Japanese.
     """
     sanitized = re.sub("<.+?>", "", text)
     sanitized = re.sub("\n", "", sanitized)

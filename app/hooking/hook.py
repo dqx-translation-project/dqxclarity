@@ -2,6 +2,7 @@ from common.memory import MemWriter
 from common.signatures import (
     corner_text_trigger,
     dialog_trigger,
+    mem_chr_trigger,
     network_text_trigger,
     player_sibling_name_trigger,
     quest_text_trigger,
@@ -123,6 +124,28 @@ def corner_text_detour():
     return trampoline
 
 
+def mem_chr_detour():
+    """Detours function where text is sent to memchr()."""
+    from hooking.memchr import memchr_shellcode
+
+    trampoline = Trampoline(
+        name="memchr",
+        signature=mem_chr_trigger,
+        num_bytes_to_steal=5,
+    )
+
+    if not trampoline.initialized:
+        log.error(f"Trampoline {trampoline.name} failed to initialize.")
+        return None
+
+    esp, shellcode_addr = trampoline.esp, trampoline.shellcode
+
+    shellcode = memchr_shellcode(esp_address=esp)
+    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
+
+    return trampoline
+
+
 def hide():
     """If you don't know, don't worry about it."""
     # 68 ?? ?? ?? ?? 8D 64 24 04 FF 64 24 FC 55 5C 8D 64 24 04 8B 6C 24 FC 8D 64 24 04 FF 64 24 FC 66
@@ -176,6 +199,8 @@ def activate_hooks(communication_window: bool) -> None:
         if hook := translate_detour():
             hooks.append(hook)
         if hook := quest_text_detour():
+            hooks.append(hook)
+        if hook := mem_chr_detour():
             hooks.append(hook)
 
     if hooks:
