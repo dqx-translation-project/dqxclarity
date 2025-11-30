@@ -1,8 +1,3 @@
-param(
-    [Parameter(Mandatory = $false)]
-    [string]$LaunchArgs
-)
-
 # ensure we're in the appropriate working directory in case it's overwritten
 # by the user's profile.
 Set-Location (Split-Path $MyInvocation.MyCommand.Path)
@@ -38,7 +33,7 @@ function DownloadPythonInstaller() {
     Invoke-WebRequest -Uri https://www.python.org/ftp/python/3.11.3/python-3.11.3.exe -OutFile python-3.11.3.exe
 
     $PythonMD5 = Get-FileHash .\python-3.11.3.exe -Algorithm MD5
-    if ($PythonMD5.Hash -ne "691232496E346CE0860AEF052DD6844F") { # pragma: allowlist secret
+    if ($PythonMD5.Hash -ne "691232496E346CE0860AEF052DD6844F") {  # pragma: allowlist secret
         LogWrite "File download did not complete successfully. Please re-run this script and try again. $HelpMessage"
         RemoveFile "python-3.11.3.exe"
         Read-Host "Press ENTER to close."
@@ -176,7 +171,7 @@ if ($? -eq $False) {
 
 LogWrite "Python install location: $PythonInstallPath"
 LogWrite "Clarity installation path: $PSScriptRoot"
-LogWrite "Clarity args: $LaunchArgs"
+LogWrite "Clarity args: $args"
 
 LogWrite "Running dqxclarity."
-& .\venv\Scripts\python.exe -m main $LaunchArgs
+& .\venv\Scripts\python.exe -m main @args
