@@ -227,20 +227,20 @@ GetClarityArgs(*) {
     ; Returns the appropriate arguments.
     args := ""
     if (Launcher["CommunityLogging"].value = 1)
-        args := args . "l"
+        args := args . "--community-logging"
     if (Launcher["PlayerNames"].value = 1)
-        args := args . "p"
+        args := args . " " . "--player-names"
     if (Launcher["NPCNames"].value = 1)
-        args := args . "n"
+        args := args . " " . "--npc-names"
     if (Launcher["UpdateGameFiles"].value = 1)
-        args := args . "d"
+        args := args . " " . "--update-dat"
     if (Launcher["DisableUpdates"].value = 1)
-        args := args . "u"
+        args := args . " " . "--disable-update-check"
     if (Launcher["UseDeepL"].value = 1 or Launcher["UseGoogleTranslate"].value = 1 or Launcher["UseGoogleTranslateFree"].value = 1)
-        args := args . "c"
+        args := args . " " . "--communication-window"
 
     if (args)
-        return "-LaunchArgs `"-" . args . "`""
+        return args
     else
         return ""
     return args
