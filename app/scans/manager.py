@@ -3,6 +3,7 @@ from common.errors import MemoryReadError
 from common.lib import setup_logging
 from common.process import is_dqx_process_running
 from pymem.exception import WinAPIError
+from scans.comms import scan_for_comm_names
 from scans.npc_names import scan_for_concierge_names, scan_for_npc_names
 from scans.player_names import scan_for_menu_ai_names, scan_for_player_names
 
@@ -39,6 +40,7 @@ def run_scans(player_names: bool, npc_names: bool, ready_event):
             if player_names:
                 scan_for_player_names(players)
                 scan_for_menu_ai_names(players)
+                scan_for_comm_names()
             if npc_names:
                 scan_for_npc_names(monsters=monsters, npcs=npcs)
                 scan_for_concierge_names(mytown_names)

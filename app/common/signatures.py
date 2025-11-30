@@ -39,9 +39,6 @@ dialog_trigger = rb"\xFF..\xC7\x45.\x00\x00\x00\x00\xC7\x45.\xFD\xFF\xFF\xFF\xE8
 #    DQXGame.exe.text+680E3E - C2 0400               - ret 0004
 quest_text_trigger = rb"\x8D\x8E\x78\x04\x00\x00\xE8....\x5F"
 
-# Integrity check + hooking addresses
-integrity_check = rb"\x89\x54\x24\xFC\x8D\x64\x24\xFC\x89\x4C\x24\xFC\x8D\x64\x24\xFC\x8D\x64\x24\xFC\x89\x04\x24\xE9....\x89"
-
 # a lot of network text that is drawn to the screen comes through this function
 # 8B CA 8D 71 ?? 8A 01 41 84 C0 75 F9 EB 20
 #    DQXGame.exe+526905 - 75 E9                 - jne DQXGame.exe+5268F0
@@ -118,6 +115,22 @@ player_sibling_name_trigger = rb"\x55\x8B\xEC\x56\x8B\xF1\x57\x8B\x46\x58\x85\xC
 # 8B D0 8D 5A 01 66 90 8A 0A 42 84 C9 75 F9 2B D3 0F
 corner_text_trigger = rb"\x8B\xD0\x8D\x5A\x01\x66\x90\x8A\x0A\x42\x84\xC9\x75\xF9\x2B\xD3\x0F"
 
+# devs made a custom implementation of memchr from cpp to search byte arrays.
+# think I found this backtracing from ws2_32.recv, but there are several strings
+# in the game that only seem visible during network handling; they aren't
+# passed through any other type of string templating functions like others are.
+# this hits more than we need, but we'll just ignore strings that aren't japanese.
+# >> DQXGame.exe+9A19F0 - 8B 44 24 0C           - mov eax,[esp+0C]
+# >> DQXGame.exe+9A19F4 - 53                    - push ebx
+# >> DQXGame.exe+9A19F5 - 85 C0                 - test eax,eax
+# >> DQXGame.exe+9A19F7 - 74 52                 - je DQXGame.exe+9A1A4B
+#    DQXGame.exe+9A19F9 - 8B 54 24 08           - mov edx,[esp+08]
+#    DQXGame.exe+9A19FD - 33 DB                 - xor ebx,ebx
+#    DQXGame.exe+9A19FF - 8A 5C 24 0C           - mov bl,[esp+0C]
+#    DQXGame.exe+9A1A03 - F7 C2 03000000        - test edx,00000003
+# 8B 44 24 0C 53 85 C0 74 52
+mem_chr_trigger = rb"\x8B\x44\x24\x0C\x53\x85\xC0\x74\x52"
+
 #############################################
 # "Patterns" seen to find various text.
 # Not code signatures, so these will likely
@@ -144,9 +157,6 @@ concierge_name_pattern = rb"\x28\x0C......\x68\x0C..[\xE3\xE4\xE5\xE6\xE7\xE8\xE
 # pattern for player names to rename. (49 bytes)
 # A8 15 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 70 87 ?? 0? ?? ?? ?? ?? ?? ?? ?? 0? E?
 player_name_pattern = rb"\xA8\x15..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x70\x87.[\x01\x02].......[\x01\x02][\xE3\xEF]"
-# pattern for sibling names to rename. (52 bytes) (can't find a reliable one right now, will need to test more.)
-# 0? ?? 00 ?? 00 00 00 ?? ?? 00 02 ?? 00 ?? 00 ?? 00 00 00 00 00 ?? 00 ?? ?? 00 00 ?? ?? ?? 00 ?? 00 ?? ?? ?? 00 ?? 00 ?? ?? 00 00 00 00 ?? ?? 00 00 00 00 E?
-sibling_name_pattern = rb"[\x01\x02].\x00.\x00\x00\x00..\x00\x02.\x00.\x00.\x00\x00\x00\x00\x00.\x00..\x00\x00...\x00.\x00...\x00.\x00..\x00\x00\x00\x00..\x00\x00\x00\x00[\xE3\xEF]"
 
 # pattern for menu ai to rename. (58 bytes)
 # 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 00 ?? ?? 00 00 ?? ?? ?? ?? ?? 00 00 00 ?? 1? ?? ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? 00 ?? ?? E?
