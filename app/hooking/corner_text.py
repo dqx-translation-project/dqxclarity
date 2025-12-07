@@ -1,6 +1,6 @@
 from common.db_ops import generate_m00_dict
 from common.lib import get_project_root, setup_logger
-from common.memory import MemWriter
+from common.memory_local import MemWriterLocal
 from common.translate import detect_lang
 from json import dumps
 
@@ -9,30 +9,25 @@ import sys
 
 
 class CornerText:
-
-    misc_files = get_project_root("misc_files")
-    custom_text_logger = setup_logger("text_logger", get_project_root("logs/corner_text.log"))
-    writer = None
+    custom_text_logger = setup_logger(
+        "text_logger", get_project_root("logs/corner_text.log")
+    )
     data = None
 
-    def __init__(self, text_address: int, debug=False):
-        if not CornerText.writer:
-            CornerText.writer = MemWriter()
-        if debug:
-            self.text_address = text_address
-        else:
-            self.text_address = CornerText.writer.unpack_to_int(text_address)
-
+    def __init__(self, text_address: int):
         if CornerText.data is None:
             CornerText.data = generate_m00_dict("'custom_corner_text'")
 
-        text = CornerText.writer.read_string(self.text_address)
+        writer = MemWriterLocal()
+        text_address = writer.read_uint32(address=text_address, value=True)
+
+        text = writer.read_string(address=text_address)
 
         if detect_lang(text):
             if text in CornerText.data:
                 to_write = CornerText.data[text]
                 if to_write != "":
-                    CornerText.writer.write_string(self.text_address, to_write)
+                    writer.write_string(address=text_address, text=text)
             else:
                 CornerText.custom_text_logger.info(f"--\n>>corner_text ::\n{text}")
 
