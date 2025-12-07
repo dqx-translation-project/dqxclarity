@@ -1,5 +1,5 @@
 from common.db_ops import init_db, search_bad_strings, sql_read
-from common.memory import MemWriter
+from common.memory_local import MemWriterLocal
 from common.translate import detect_lang, Translator
 from json import dumps
 
@@ -8,46 +8,46 @@ import sys
 
 
 class Dialog:
-
     translator = Translator()
-    writer = None
+    writer = MemWriterLocal()
 
-    def __init__(self, text_address: int, npc_address: int, debug=False):
-        if not Dialog.writer:
-            Dialog.writer = MemWriter()
-        if debug:
-            self.text_address = text_address
-            self.npc_address = npc_address
-        else:
-            self.text_address = Dialog.writer.unpack_to_int(text_address)
-            self.npc_address = Dialog.writer.unpack_to_int(npc_address)
+    def __init__(self, text_address: int, npc_address: int):
+        text_address = Dialog.writer.read_uint32(address=text_address, value=True)
+        npc_address = Dialog.writer.read_uint32(address=npc_address, value=True)
 
-        # npc name is on the stack, not directly in a register.
-        self.npc_address = Dialog.writer.proc.read_long(self.npc_address + 0x14)
+        # npc name is on the stack at 0x14, not directly in a register.
+        self.npc_address = Dialog.writer.read_ulong32(
+            address=npc_address + 0x14, value=True
+        )
 
-        self.text = Dialog.writer.read_string(self.text_address)
+        self.text = Dialog.writer.read_string(address=text_address)
+        self.npc_name = Dialog.writer.read_string(address=self.npc_address)
         self.npc_name = self.__get_npc_name()
 
         if detect_lang(self.text):
             bad_strings_result = self.__search_bad_strings_table(self.text)
             if bad_strings_result:
-                Dialog.writer.write_string(self.text_address, text=bad_strings_result)
+                Dialog.writer.write_string(
+                    address=text_address, text=bad_strings_result
+                )
                 return
 
             db_result = self.__read_db(self.text)
             if db_result:
-                Dialog.writer.write_string(self.text_address, text=db_result)
+                Dialog.writer.write_string(address=text_address, text=db_result)
                 return
 
             self.translated_text = self.__translate(self.text)
             if self.translated_text:
                 self.__write_db()
-                Dialog.writer.write_string(self.text_address, text=self.translated_text)
+                Dialog.writer.write_string(
+                    address=text_address, text=self.translated_text
+                )
 
 
     def __get_npc_name(self):
         try:
-            npc_name = Dialog.writer.read_string(self.npc_address)
+            npc_name = Dialog.writer.read_string(address=self.npc_address)
             if not npc_name:
                 npc_name = "No_NPC"
         except:

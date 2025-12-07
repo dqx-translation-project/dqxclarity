@@ -1,19 +1,20 @@
 from common.db_ops import generate_m00_dict, sql_read
 from common.lib import get_project_root, setup_logger
-from common.memory import MemWriter
+from common.memory_local import MemWriterLocal
 from common.translate import detect_lang, transliterate_player_name
 from json import dumps
 
 import os
+import regex
 import sys
 
 
 class NetworkTextTranslate:
-
+    jp_regex = regex.compile(r"\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Han}")
     misc_files = get_project_root("misc_files")
     custom_text_logger = setup_logger("text_logger", get_project_root("logs/custom_text.log"))
     m00_text = None
-    writer = None
+    writer = MemWriterLocal()
 
     translate = {
         "M_pc": "pc_name",
@@ -111,24 +112,26 @@ class NetworkTextTranslate:
         "L_GOODS"
     ]
 
-
     def __init__(self, text_address, var_address):
-        if not NetworkTextTranslate.writer:
-            NetworkTextTranslate.writer = MemWriter()
-        self.text_address = NetworkTextTranslate.writer.unpack_to_int(text_address)
-        self.var_address = NetworkTextTranslate.writer.unpack_to_int(var_address)
-
-        var_name = self.var_address
+        text_address = NetworkTextTranslate.writer.read_uint32(
+            address=text_address, value=True
+        )
+        var_address = NetworkTextTranslate.writer.read_uint32(
+            address=var_address, value=True
+        )
 
         try:
-            category = NetworkTextTranslate.writer.read_string(var_name)
-            text = NetworkTextTranslate.writer.read_string(self.text_address)
+            category = NetworkTextTranslate.writer.read_string(address=var_address)
+            text = NetworkTextTranslate.writer.read_string(address=text_address)
         except UnicodeDecodeError:
             category = ""
             text = ""
 
+        if not self.__is_japanese(text):
+            return
+
         # when we are on the login screen, this hook hits too soon. we don't want to
-        # prematurely init the dict as the database hasn't replace our placehold tags
+        # prematurely init the dict as the database hasn't replace our placeholder tags
         # with player names. we see _MVER1, _MVER2, etc when we first log in.
         if NetworkTextTranslate.m00_text is None and not category.startswith("_MVER"):
             NetworkTextTranslate.m00_text = generate_m00_dict()
@@ -137,25 +140,61 @@ class NetworkTextTranslate:
             # "self" text when a player/monster uses a spell/skill on themselves
             if category == "B_TARGET_RPL":
                 if text == "自分":
-                    NetworkTextTranslate.writer.write_string(self.text_address, "self")
+                    NetworkTextTranslate.writer.write_string(
+                        address=text_address, text="self"
+                    )
 
             # npc or player names
-            elif category in ["M_pc", "M_npc", "C_PC", "L_SENDER_NAME", "M_OWNER", "M_hiryu", "L_HIRYU", "L_HIRYU_NAME", "M_name", "L_OWNER", "L_URINUSI", "M_NAME", "L_PLAYER_NAME", "CAS_gambler", "CAS_target", "C_MERCENARY", "L_MONSTERNAME"]:
+            elif category in [
+                "M_pc",
+                "M_npc",
+                "C_PC",
+                "L_SENDER_NAME",
+                "M_OWNER",
+                "M_hiryu",
+                "L_HIRYU",
+                "L_HIRYU_NAME",
+                "M_name",
+                "L_OWNER",
+                "L_URINUSI",
+                "M_NAME",
+                "L_PLAYER_NAME",
+                "CAS_gambler",
+                "CAS_target",
+                "C_MERCENARY",
+                "L_MONSTERNAME",
+            ]:
                 if NetworkTextTranslate.m00_text.get(text):
                     name_to_write = NetworkTextTranslate.m00_text[text]
                 else:
                     name_to_write = transliterate_player_name(text)
 
-                NetworkTextTranslate.writer.write_string(self.text_address, name_to_write)
+                NetworkTextTranslate.writer.write_string(
+                    address=text_address, text=name_to_write
+                )
 
             # generic string
-            elif category in ["M_00", "C_QUEST", "M_02", "M_header", "M_item", "L_QUEST", "C_ITMR_STITLE", "C_STR2", "EV_QUEST_NAME"]:
+            elif category in [
+                "M_00",
+                "C_QUEST",
+                "M_02",
+                "M_header",
+                "M_item",
+                "L_QUEST",
+                "C_ITMR_STITLE",
+                "C_STR2",
+                "EV_QUEST_NAME",
+            ]:
                 if to_write := NetworkTextTranslate.m00_text.get(text):
-                    NetworkTextTranslate.writer.write_string(self.text_address, to_write)
+                    NetworkTextTranslate.writer.write_string(
+                        address=self.text_address, text=to_write
+                    )
                 else:
                     if category == "M_00":
                         text = self.__format_to_json(text)
-                    NetworkTextTranslate.custom_text_logger.info(f"--\n>>{category} ::\n{text}")
+                    NetworkTextTranslate.custom_text_logger.info(
+                        f"--\n>>{category} ::\n{text}"
+                    )
 
             # this captures story so far AND monster trivia.
             # unfortunately, unsure of how to figure out which one is focused
@@ -168,17 +207,25 @@ class NetworkTextTranslate:
                         # string is shorter than the english string, or we'll write over
                         # game data and cause a crash.
                         story_desc_len = len(bytes(text, encoding="utf-8"))
-                        NetworkTextTranslate.writer.write_string(self.text_address, translated[:story_desc_len])
+                        NetworkTextTranslate.writer.write_string(
+                            address=text_address, text=translated[:story_desc_len]
+                        )
                     else:
-                        NetworkTextTranslate.custom_text_logger.info(f"--\n{category} ::\n{text}")
+                        NetworkTextTranslate.custom_text_logger.info(
+                            f"--\n{category} ::\n{text}"
+                        )
         elif category in NetworkTextTranslate.to_ignore:
             return
         else:
             if category and text:
-                NetworkTextTranslate.custom_text_logger.info(f"--\n{category} ::\n{text}")
+                NetworkTextTranslate.custom_text_logger.info(
+                    f"--\n{category} ::\n{text}"
+                )
 
         return
 
+    def __is_japanese(cls, text: str):
+        return bool(cls.jp_regex.search(text))
 
     def __translate_story(self, text: str):
         """Looks up text in the story_so_far table for story text. If found,
@@ -187,14 +234,10 @@ class NetworkTextTranslate:
         :param text: Text of the current page of the story.
         :returns: Translated text.
         """
-        if story_text := sql_read(
-            text=text,
-            table="story_so_far"
-        ):
+        if story_text := sql_read(text=text, table="story_so_far"):
             return story_text
 
         return None
-
 
     def __format_to_json(self, text: str):
         replaced = text.replace("\n", "\\n")
