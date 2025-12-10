@@ -86,34 +86,36 @@ player_sibling_name_trigger = rb"\x55\x8B\xEC\x56\x8B\xF1\x57\x8B\x46\x58\x85\xC
 #   that has a temporary string in it and was overwritten with the new
 #   string.
 #
-#    DQXGame.exe+6B2130 - 55                    - push ebp
-#    DQXGame.exe+6B2131 - 8B EC                 - mov ebp,esp
-#    DQXGame.exe+6B2133 - 8B 45 08              - mov eax,[ebp+08]
-#    DQXGame.exe+6B2136 - 83 EC 14              - sub esp,14
-#    DQXGame.exe+6B2139 - 53                    - push ebx
-#    DQXGame.exe+6B213A - 56                    - push esi
-#    DQXGame.exe+6B213B - 8B F1                 - mov esi,ecx
-#    DQXGame.exe+6B213D - 57                    - push edi
-#    DQXGame.exe+6B213E - 8B 7D 0C              - mov edi,[ebp+0C]
-#    DQXGame.exe+6B2141 - 85 C0                 - test eax,eax
-#    DQXGame.exe+6B2143 - 0F84 96010000         - je DQXGame.exe+6B22DF
-# >> DQXGame.exe+6B2149 - 8B D0                 - mov edx,eax
-# >> DQXGame.exe+6B214B - 8D 5A 01              - lea ebx,[edx+01]
-# >> DQXGame.exe+6B214E - 66 90                 - nop 2
-# >> DQXGame.exe+6B2150 - 8A 0A                 - mov cl,[edx]
-# >> DQXGame.exe+6B2152 - 42                    - inc edx
-# >> DQXGame.exe+6B2153 - 84 C9                 - test cl,cl
-# >> DQXGame.exe+6B2155 - 75 F9                 - jne DQXGame.exe+6B2150
-# >> DQXGame.exe+6B2157 - 2B D3                 - sub edx,ebx
-# >> DQXGame.exe+6B2159 - 0F84 80010000         - je DQXGame.exe+6B22DF
-#    DQXGame.exe+6B215F - 51                    - push ecx
-#    DQXGame.exe+6B2160 - 8B CC                 - mov ecx,esp
-#    DQXGame.exe+6B2162 - 89 01                 - mov [ecx],eax
-#    DQXGame.exe+6B2164 - 8D 45 F0              - lea eax,[ebp-10]
-#    DQXGame.exe+6B2167 - 50                    - push eax
-#    DQXGame.exe+6B2168 - 8B CE                 - mov ecx,esi
-# 8B D0 8D 5A 01 66 90 8A 0A 42 84 C9 75 F9 2B D3 0F
-corner_text_trigger = rb"\x8B\xD0\x8D\x5A\x01\x66\x90\x8A\x0A\x42\x84\xC9\x75\xF9\x2B\xD3\x0F"
+#    DQXGame.exe+717D70 - 55                    - push ebp
+#    DQXGame.exe+717D71 - 8B EC                 - mov ebp,esp
+#    DQXGame.exe+717D73 - 8B 45 10              - mov eax,[ebp+10]
+#    DQXGame.exe+717D76 - 83 EC 14              - sub esp,14
+#    DQXGame.exe+717D79 - 53                    - push ebx
+#    DQXGame.exe+717D7A - 8B 5D 14              - mov ebx,[ebp+14]
+#    DQXGame.exe+717D7D - 56                    - push esi
+#    DQXGame.exe+717D7E - 8B F1                 - mov esi,ecx
+#    DQXGame.exe+717D80 - 57                    - push edi
+#    DQXGame.exe+717D81 - 85 C0                 - test eax,eax
+#    DQXGame.exe+717D83 - 0F84 16020000         - je DQXGame.exe+717F9F
+# >> DQXGame.exe+717D89 - 8B D0                 - mov edx,eax
+# >> DQXGame.exe+717D8B - 8D 7A 01              - lea edi,[edx+01]
+# >> DQXGame.exe+717D8E - 66 90                 - nop 2
+# >> DQXGame.exe+717D90 - 8A 0A                 - mov cl,[edx]
+# >> DQXGame.exe+717D92 - 42                    - inc edx
+# >> DQXGame.exe+717D93 - 84 C9                 - test cl,cl
+# >> DQXGame.exe+717D95 - 75 F9                 - jne DQXGame.exe+717D90
+# >> DQXGame.exe+717D97 - 2B D7                 - sub edx,edi
+# >> DQXGame.exe+717D99 - 0F84 00020000         - je DQXGame.exe+717F9F
+# >> DQXGame.exe+717D9F - 51                    - push ecx
+#    DQXGame.exe+717DA0 - 8B CC                 - mov ecx,esp
+#    DQXGame.exe+717DA2 - 89 01                 - mov [ecx],eax
+#    DQXGame.exe+717DA4 - 8D 45 F0              - lea eax,[ebp-10]
+#    DQXGame.exe+717DA7 - 50                    - push eax
+#    DQXGame.exe+717DA8 - 8B CE                 - mov ecx,esi
+# 8B D0 8D ?? 01 66 90 8A 0A 42 84 C9 75 F9 2B ?? 0F 84 ?? ?? ?? ?? 51
+corner_text_trigger = (
+    rb"\x8B\xD0\x8D.\x01\x66\x90\x8A\x0A\x42\x84\xC9\x75\xF9\x2B.\x0F\x84....\x51"
+)
 
 # devs made a custom implementation of memchr from cpp to search byte arrays.
 # think I found this backtracing from ws2_32.recv, but there are several strings
@@ -146,18 +148,16 @@ mem_chr_trigger = rb"\x8B\x44\x24\x0C\x53\x85\xC0\x74\x52"
 #   - Party nameplates (don't confuse with party names on the right side of the screen)
 #       - Does not do the player's nameplate
 
-# npc:     A8 15 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 54 27 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
-# monster: A8 15 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 8C 13 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
-# party:   A8 15 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 20 16 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
-npc_monster_pattern = rb"\xA8\x15..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00.......\x00\x00\x00\x00.\x00\x00\x00[\x54\x8C\x20][\x27\x13\x16]..........[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
-# pattern for concierge names (13 bytes)
-# 28 0C ?? ?? ?? ?? ?? ?? 68 0C ?? ?? E?
-concierge_name_pattern = rb"\x28\x0C......\x68\x0C..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
+# npc:     AC E5 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 30 01 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
+# monster: AC E5 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 4C ED ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
+# party:   AC E5 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 E8 EF ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
+npc_monster_pattern = rb"\xAC\xE5..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00.......\x00\x00\x00\x00.\x00\x00\x00[\x30\x4C\xE8][\x01\xED\xEF]..........[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"  # pattern for concierge names (13 bytes)
 
-# pattern for player names to rename. (49 bytes)
-# A8 15 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 70 87 ?? 0? ?? ?? ?? ?? ?? ?? ?? 0? E?
-player_name_pattern = rb"\xA8\x15..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x70\x87.[\x01\x02].......[\x01\x02][\xE3\xEF]"
+# D8 E5 ?? ?? ?? ?? ?? ?? 68 0C ?? ?? E?
+concierge_name_pattern = rb"\xD8\xE5......\x68\x0C..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
+# AC E5 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 AC 64 ?? 0? ?? ?? ?? ?? ?? ?? ?? 0? E?
+player_name_pattern = rb"\xAC\xE5..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xAC\x64.[\x01\x02].......[\x01\x02][\xE3\xEF]"
 # pattern for menu ai to rename. (58 bytes)
 # 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 00 ?? ?? 00 00 ?? ?? ?? ?? ?? 00 00 00 ?? 1? ?? ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? 00 ?? ?? E?
 menu_ai_name_pattern = rb"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00...........\x00..\x00\x00.....\x00\x00\x00.[\x1B\x1C].....\x00.....\x00..[\xE3\xEF]"
@@ -168,8 +168,10 @@ comm_name_pattern = rb"[\xE3\xEF].................\x00\x00\x0F\x00\x00\x00\x01\x
 
 # Main walkthrough text that loads on login. I can't figure out what function loads this on login,
 # so scanning for this for now. AC is also preventing this from just being accessible via hooks. (17 bytes)
-# 04 02 ?? ?? 10 00 00 00 80 ?? ?? ?? 00 00 00 00 E?
-walkthrough_pattern = rb"\x04\x02..\x10\x00\x00\x00\x80...\x00\x00\x00\x00[\xE3\xE4\xE5\xE6\xE7\xE8\xE9]"
+# 04 02 ?? ?? 10 00 00 00 40 ?? ?? ?? 00 00 00 00 E?
+walkthrough_pattern = (
+    rb"\x04\x02..\x10\x00\x00\x00\x40...\x00\x00\x00\x00[\xE3\xE4\xE5\xE6\xE7\xE8\xE9]"
+)
 
 # player name in cutscenes. not used at the moment, but holding onto it for now.
 # EF ?? 01 ?? ?? ?? ?? 3C EF ?? 01
