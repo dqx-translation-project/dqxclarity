@@ -146,37 +146,6 @@ def mem_chr_detour():
     return trampoline
 
 
-def hide():
-    """If you don't know, don't worry about it."""
-    # 68 ?? ?? ?? ?? 8D 64 24 04 FF 64 24 FC 55 5C 8D 64 24 04 8B 6C 24 FC 8D 64 24 04 FF 64 24 FC 66
-    good_flow = rb"\x68....\x8D\x64\x24\x04\xFF\x64\x24\xFC\x55\x5C\x8D\x64\x24\x04\x8B\x6C\x24\xFC\x8D\x64\x24\x04\xFF\x64\x24\xFC\x66"
-
-    # 68 ?? ?? ?? ?? 8D 64 24 04 FF 64 24 FC EB 96 E9 ?? ?? ?? ?? 33 C0
-    bad_flow = rb"\x68....\x8D\x64\x24\x04\xFF\x64\x24\xFC\xEB\x96\xE9....\x33\xC0"
-
-    writer = MemWriter()
-
-    good_flow_result = writer.pattern_scan(
-        pattern=good_flow,
-        module="DQXGame.exe"
-    )
-
-    bad_flow_result = writer.pattern_scan(pattern=bad_flow, module="DQXGame.exe")
-
-    if not good_flow_result or not bad_flow_result:
-        log.error("Unable to enable hooks. dqxclarity may need an update. Exiting.")
-        sys.exit(1)
-
-    log.debug(f"GF: {hex(good_flow_result)} :: BF: {hex(bad_flow_result)}")
-
-    good_bytes = writer.read_bytes(
-        address=good_flow_result,
-        size=5
-    )
-
-    writer.write_bytes(address=bad_flow_result, value=good_bytes)
-
-
 def activate_hooks(communication_window: bool) -> None:
     """Activates all hooks.
 
@@ -184,8 +153,6 @@ def activate_hooks(communication_window: bool) -> None:
         game dialogue.
     :returns: A list of hook objects that can be enabled or disabled.
     """
-    hide()
-
     # activates all hooks. add any new hooks to this list
     hooks = []
     if hook := player_name_detour():
