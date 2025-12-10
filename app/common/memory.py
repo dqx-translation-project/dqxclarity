@@ -1,9 +1,11 @@
 from common.errors import AddressOutOfRange, MemoryReadError, MemoryWriteError
+from ctypes import byref, wintypes
 from loguru import logger as log
 
 import pymem
-import pymem.exception
 import pymem.process
+import pymem.ressources
+import pymem.ressources.structure
 import struct
 import traceback
 
@@ -91,6 +93,7 @@ class MemWriter:
                 data_only=data_only
             )
 
+
     def get_ptr_address(self, base: int, offsets: list):
         """Gets the address a pointer is pointing to.
 
@@ -145,6 +148,44 @@ class MemWriter:
             unsigned_offset = offset + 2**32
             return unsigned_offset.to_bytes(4, "little")
 
+    def get_protection(self, address: int) -> int:
+        """Gets page protection of an address.
+
+        :param address: Address to get protection from.
+        :returns: Constant of the current protection.
+        """
+        return pymem.memory.virtual_query(
+            self.proc.process_handle, address=address
+        ).Protect
+
+    def set_protection(
+        self,
+        address: int,
+        new_protection: int = 0x40,
+        size: int = 0x10,
+    ) -> bool:
+        """Sets the page protection of an address. Defaults to
+        READ_WRITE_EXECUTE (0x40).
+
+        :param address: Address to set the protection.
+        :param new_protection: Constant to set. See Microsoft docs for
+            more info: https://learn.microsoft.com/en-
+            us/windows/win32/Memory/memory-protection-constants
+        :param size: Size of the region to set protection to.
+        """
+        old_protection = wintypes.DWORD()
+        success = pymem.ressources.kernel32.VirtualProtectEx(
+            self.proc.process_handle,
+            address,
+            size,
+            new_protection,
+            byref(old_protection),
+        )
+
+        if not success:
+            raise Exception(f"Failed to set protection on {hex(address)}.")
+
+        return True
 
     def get_hook_bytecode(self, hook_address: int):
         """Returns a formatted jump address for your hook."""
