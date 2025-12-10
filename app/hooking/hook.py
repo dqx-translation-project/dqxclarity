@@ -184,7 +184,7 @@ def activate_hooks(communication_window: bool) -> None:
         game dialogue.
     :returns: A list of hook objects that can be enabled or disabled.
     """
-    hide()
+    # hide()
 
     # activates all hooks. add any new hooks to this list
     hooks = []
