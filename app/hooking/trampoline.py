@@ -186,11 +186,24 @@ class Trampoline:
 
         self.is_enabled = True
 
-        return Trampoline.writer.write_bytes(self.signature_address, bytecode)
+        old_protection = Trampoline.writer.get_protection(self.signature_address)
+        Trampoline.writer.set_protection(self.signature_address)
+        Trampoline.writer.write_bytes(self.signature_address, bytecode)
+        Trampoline.writer.set_protection(
+            self.signature_address, new_protection=old_protection
+        )
+
+        return True
 
     def disable(self) -> None:
         """Writes over the original function to disable the trampoline."""
         self.is_enabled = False
-        return Trampoline.writer.write_bytes(
-            self.signature_address, self.orig_game_bytes
+
+        old_protection = Trampoline.writer.get_protection(self.signature_address)
+        Trampoline.writer.set_protection(self.signature_address)
+        Trampoline.writer.write_bytes(self.signature_address, self.orig_game_bytes)
+        Trampoline.writer.set_protection(
+            self.signature_address, new_protection=old_protection
         )
+
+        return True
