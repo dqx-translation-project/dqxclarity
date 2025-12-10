@@ -105,16 +105,13 @@ def main():
 
         wait_for_dqx_to_launch()
 
+        hooks = activate_hooks(
+            communication_window=args.communication_window,
+        )
+
         # start independent processes that will continuously run in the background.
         # the processes being created either run in an indefinite loop,
         # or do some type of work on their own.
-        if args.player_names or args.communication_window:
-            start_process(
-                name="Hook loader",
-                target=activate_hooks,
-                args=(args.player_names, args.communication_window),
-            )
-
         if args.communication_window:
             start_process(
                 name="Walkthrough scanner", target=loop_scan_for_walkthrough, args=()

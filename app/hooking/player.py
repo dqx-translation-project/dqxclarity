@@ -11,8 +11,7 @@ exactly match when being looked up in database, returning a result.
 """
 
 from common.db_ops import db_query, generate_m00_dict, init_db
-from common.lib import get_project_root
-from common.memory import MemWriter
+from common.memory_local import MemWriterLocal
 from common.translate import transliterate_player_name
 from json import dumps
 
@@ -21,24 +20,19 @@ import sys
 
 
 class GetPlayer:
-
-    writer = None
+    writer = MemWriterLocal()
     player_names = None
 
-    def __init__(self, address, debug=False):
-        if not GetPlayer.writer:
-            GetPlayer.writer = MemWriter()
+    def __init__(self, address):
         if not GetPlayer.player_names:
             GetPlayer.player_names = generate_m00_dict(files="'local_player_names'")
 
-        if debug:
-            self.address = address
-        else:
-            self.address = GetPlayer.writer.unpack_to_int(address)
+        self.address = GetPlayer.writer.read_uint32(address=address, value=True)
 
-        self.ja_player_name = GetPlayer.writer.read_string(self.address + 24)
+        self.ja_player_name = GetPlayer.writer.read_string(address=self.address + 24)
+        self.ja_sibling_name = GetPlayer.writer.read_string(address=self.address + 100)
+
         self.en_player_name = self.__get_en_player_name(name=self.ja_player_name)
-        self.ja_sibling_name = GetPlayer.writer.read_string(self.address + 100)
         self.en_sibling_name = self.__get_en_player_name(name=self.ja_sibling_name)
         self.sibling_relationship = self.__determine_sibling_relationship()
 
@@ -47,9 +41,10 @@ class GetPlayer:
         self.__load_fixed_dialog_into_db()
         self.__update_m00_table()
 
-
     def __determine_sibling_relationship(self):
-        check_byte = GetPlayer.writer.read_bytes(self.address + 100 + 19, size=1)
+        check_byte = GetPlayer.writer.read_bytes(
+            address=self.address + 100 + 19, length=1
+        )
         if check_byte == b"\x01":
             return "older_brother"
         if check_byte == b"\x02":
@@ -59,17 +54,13 @@ class GetPlayer:
         if check_byte == b"\x04":
             return "younger_sister"
 
-
     def __get_en_player_name(self, name: str):
         if result := GetPlayer.player_names.get(name):
             return result
 
         return transliterate_player_name(word=name)
 
-
     def __write_player(self):
-        db_file = get_project_root("misc_files/clarity_dialog.db")
-
         query = f"""
         BEGIN TRANSACTION;
         DELETE FROM player;
