@@ -10,8 +10,6 @@ from common.signatures import (
 from hooking.trampoline import Trampoline
 from loguru import logger as log
 
-import sys
-
 
 def translate_detour():
     """Hooks the dialog window to translate text."""

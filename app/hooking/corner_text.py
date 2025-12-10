@@ -5,10 +5,12 @@ from common.translate import detect_lang
 from json import dumps
 
 import os
+import regex
 import sys
 
 
 class CornerText:
+    jp_regex = regex.compile(r"\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Han}")
     custom_text_logger = setup_logger(
         "text_logger", get_project_root("logs/corner_text.log")
     )
@@ -23,13 +25,16 @@ class CornerText:
 
         text = writer.read_string(address=text_address)
 
-        if detect_lang(text):
+        if self.__is_japanese(text):
             if text in CornerText.data:
                 to_write = CornerText.data[text]
                 if to_write != "":
-                    writer.write_string(address=text_address, text=text)
+                    writer.write_string(address=text_address, text=to_write)
             else:
                 CornerText.custom_text_logger.info(f"--\n>>corner_text ::\n{text}")
+
+    def __is_japanese(cls, text: str):
+        return bool(cls.jp_regex.search(text))
 
 
 def corner_text_shellcode(eax_address: int) -> str:
