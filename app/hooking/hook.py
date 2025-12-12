@@ -165,8 +165,8 @@ def activate_hooks(communication_window: bool) -> None:
             hooks.append(hook)
         if hook := quest_text_detour():
             hooks.append(hook)
-        if hook := mem_chr_detour():
-            hooks.append(hook)
+        # if hook := mem_chr_detour():
+        #     hooks.append(hook)
 
     if hooks:
         for hook in hooks:
