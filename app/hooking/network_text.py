@@ -187,7 +187,7 @@ class NetworkTextTranslate:
             ]:
                 if to_write := NetworkTextTranslate.m00_text.get(text):
                     NetworkTextTranslate.writer.write_string(
-                        address=self.text_address, text=to_write
+                        address=text_address, text=to_write
                     )
                 else:
                     if category == "M_00":
