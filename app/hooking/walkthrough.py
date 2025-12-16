@@ -1,68 +1,67 @@
-# from json import dumps
-# import os
-# import sys
-# from common.translate import Translator
+from common.db_ops import sql_read, sql_write
+from common.memory_local import MemWriterLocal
+from common.translate import Translator
+from json import dumps
+
+import os
+import regex
+import sys
 
 
-# def walkthrough_shellcode(
-#     esi_address: int, api_logging: str, debug: bool
-# ) -> str:
-#     """
-#     Returns shellcode for the walkthrough function hook.
-#     ebx_address: Where text can be modified to be fed to the screen
-#     """
-#     local_paths = dumps(sys.path).replace("\\", "\\\\")
-#     working_dir = dumps(os.getcwd()).replace("\\", "\\\\")
-#     Translate()
-#     region_code = Translator.region_code
+class Walkthrough:
+    jp_regex = regex.compile(r"\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Han}")
+    translator = Translator()
+    writer = MemWriterLocal()
 
-#     shellcode = rf"""
-# try:
-#     import sys
-#     from os import chdir, getcwd
+    def __init__(self, text_address: int):
+        text_address = Walkthrough.writer.read_uint32(address=text_address, value=True)
+        text = Walkthrough.writer.read_string(address=text_address)
 
-#     local_paths = {local_paths}
-#     working_dir = {working_dir}
-#     debug = {debug}
-#     api_logging = {api_logging}
-#     region_code = '{region_code}'
+        if not self.__is_japanese(text):
+            return
 
-#     sys.path = local_paths
-#     og_working_dir = getcwd()
-#     chdir(working_dir)
+        result = sql_read(text=text, table="walkthrough")
 
-#     from common.lib import setup_logger
-#     from common.memory import (
-#         write_bytes,
-#         read_string)
-#     from common.translate import (
-#         sqlite_read,
-#         sqlite_write,
-#         detect_lang,
-#         common.hook)
+        if result:
+            Walkthrough.writer.write_string(address=text_address, text=result)
+        else:
+            translated_text = Walkthrough.translator.translate(
+                text=text, wrap_width=31, max_lines=3, add_brs=False
+            )
 
-#     logger = setup_logger('out', 'out.log')
-#     game_text_logger = setup_logger('gametext', 'game_text.log')
+            sql_write(
+                source_text=text, translated_text=translated_text, table="walkthrough"
+            )
 
-#     walkthrough_addr = unpack_to_int({esi_address})
-#     walkthrough_str = read_string(walkthrough_addr)
+            Walkthrough.writer.write_string(address=text_address, text=translated_text)
 
-#     if detect_lang(walkthrough_str):
-#         logger.debug('Walkthrough text: ' + str(walkthrough_str))
-#         result = sqlite_read(walkthrough_str, region_code, 'walkthrough')
+    def __is_japanese(cls, text: str):
+        return bool(cls.jp_regex.search(text))
 
-#         if result is not None:
-#             logger.debug('Found database entry. No translation was needed.')
-#             write_bytes(walkthrough_addr, result.encode() + b'\x00')
-#         else:
-#             logger.debug('Translation is needed for ' + str(len(walkthrough_str)) + ' characters.')
-#             translated_text = sanitized_dialog_translate(walkthrough_str, text_width=31)
-#             sqlite_write(walkthrough_str, 'walkthrough', translated_text, region_code)
-#             write_bytes(walkthrough_addr, translated_text.encode() + b'\x00')
-#     chdir(og_working_dir)
-# except Exception as e:
-#     with open('out.log', 'a+') as f:
-#         f.write(str(e))
-#     """
 
-#     return shellcode
+def walkthrough_shellcode(edi_address: int) -> str:
+    """Returns shellcode for the translate function hook.
+
+    address: Where text can be modified to be fed to the screen
+    """
+    local_paths = dumps(sys.path).replace("\\", "\\\\")
+    log_path = os.path.join(os.path.abspath("."), "logs\\console.log").replace(
+        "\\", "\\\\"
+    )
+
+    # Overwriting the process's sys.path with the one outside of the process
+    # is required to run our imports and function code. It's also necessary to
+    # escape the slashes.
+    shellcode = f"""
+try:
+    import sys
+    import traceback
+    sys.path = {local_paths}
+    from hooking.walkthrough import Walkthrough
+    Walkthrough({edi_address})
+except Exception as e:
+    with open("{log_path}", "a+") as f:
+        f.write(str(traceback.format_exc()))
+    """
+
+    return shellcode

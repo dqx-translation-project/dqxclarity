@@ -12,7 +12,6 @@ from dqxcrypt.dqxcrypt import start_logger
 from hooking.hook import activate_hooks
 from pathlib import Path
 from scans.manager import run_scans
-from scans.walkthrough import loop_scan_for_walkthrough
 
 import argparse
 import sys
@@ -112,11 +111,6 @@ def main():
         # start independent processes that will continuously run in the background.
         # the processes being created either run in an indefinite loop,
         # or do some type of work on their own.
-        if args.communication_window:
-            start_process(
-                name="Walkthrough scanner", target=loop_scan_for_walkthrough, args=()
-            )
-
         if args.community_logging:
             log.warning(
                 'Logs can be found in the "logs" folder. '
