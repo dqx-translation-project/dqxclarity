@@ -133,6 +133,37 @@ corner_text_trigger = (
 # 8B 44 24 0C 53 85 C0 74 52
 mem_chr_trigger = rb"\x8B\x44\x24\x0C\x53\x85\xC0\x74\x52"
 
+# to find this, search for walkthrough text:
+# メインコマンド『せんれき』の
+# ^ is text when you are caught up with the story.
+# you are looking for the original source string that is read,
+# not the ones that are just written to the screen. to figure
+# this out, with the command window closed, update the first
+# jp letter with "eee", then open the window. if the window
+# shows "eee", then put a "what reads this" breakpoint here.
+# should be the entry, "mov al, [ecx]". it should only trigger
+# when the command window opens, that's it. from there, go down
+# a few instructions and look for a clean place to hook.
+#    DQXGame.exe+2DDA9D - 8D B8 EC000000        - lea edi,[eax+000000EC]
+#    DQXGame.exe+2DDAA3 - 8B CF                 - mov ecx,edi
+#    DQXGame.exe+2DDAA5 - 8D 51 01              - lea edx,[ecx+01]
+# >> DQXGame.exe+2DDAA8 - 8A 01                 - mov al,[ecx] (breakpoint hits here!)
+#    DQXGame.exe+2DDAAA - 41                    - inc ecx
+#    DQXGame.exe+2DDAAB - 84 C0                 - test al,al
+#    DQXGame.exe+2DDAAD - 75 F9                 - jne DQXGame.exe+2DDAA8
+#    DQXGame.exe+2DDAAF - 2B CA                 - sub ecx,edx
+#    DQXGame.exe+2DDAB1 - 0F84 FF000000         - je DQXGame.exe+2DDBB6
+# >> DQXGame.exe+2DDAB7 - 57                    - push edi (we hook here!)
+# >> DQXGame.exe+2DDAB8 - 8B F7                 - mov esi,edi
+# >> DQXGame.exe+2DDABA - BB 01000000           - mov ebx,00000001
+#    DQXGame.exe+2DDABF - E8 3C89E0FF           - call DQXGame.exe+E6400
+#    DQXGame.exe+2DDAC4 - 83 C4 04              - add esp,04
+#    DQXGame.exe+2DDAC7 - 83 F8 05              - cmp eax,05
+#    DQXGame.exe+2DDACA - 77 25                 - ja DQXGame.exe+2DDAF1
+#    DQXGame.exe+2DDACC - 0F1F 40 00            - nop dword ptr [eax+00]
+# 57 8B F7 BB
+walkthrough_trigger = rb"\x57\x8B\xF7\xBB"
+
 #############################################
 # "Patterns" seen to find various text.
 # Not code signatures, so these will likely

@@ -1,4 +1,3 @@
-from common.memory import MemWriter
 from common.signatures import (
     corner_text_trigger,
     dialog_trigger,
@@ -6,6 +5,7 @@ from common.signatures import (
     network_text_trigger,
     player_sibling_name_trigger,
     quest_text_trigger,
+    walkthrough_trigger,
 )
 from hooking.trampoline import Trampoline
 from loguru import logger as log
@@ -144,6 +144,28 @@ def mem_chr_detour():
     return trampoline
 
 
+def walkthrough_detour():
+    """Detours function where walkthrough text is accessed."""
+    from hooking.walkthrough import walkthrough_shellcode
+
+    trampoline = Trampoline(
+        name="walkthrough",
+        signature=walkthrough_trigger,
+        num_bytes_to_steal=8,
+    )
+
+    if not trampoline.initialized:
+        log.error(f"Trampoline {trampoline.name} failed to initialize.")
+        return None
+
+    edi, shellcode_addr = trampoline.edi, trampoline.shellcode
+
+    shellcode = walkthrough_shellcode(edi_address=edi)
+    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
+
+    return trampoline
+
+
 def activate_hooks(communication_window: bool) -> None:
     """Activates all hooks.
 
@@ -164,6 +186,8 @@ def activate_hooks(communication_window: bool) -> None:
         if hook := translate_detour():
             hooks.append(hook)
         if hook := quest_text_detour():
+            hooks.append(hook)
+        if hook := walkthrough_detour():
             hooks.append(hook)
         # if hook := mem_chr_detour():
         #     hooks.append(hook)
