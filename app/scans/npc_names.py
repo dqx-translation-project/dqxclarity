@@ -1,66 +1,10 @@
 from common.memory import MemWriter
-from common.signatures import concierge_name_pattern, npc_monster_pattern
+from common.signatures import concierge_name_pattern
 from common.translate import transliterate_player_name
 from loguru import logger as log
 from pymem.exception import MemoryReadError, WinAPIError
 
 import traceback
-
-
-def scan_for_npc_names(monsters: dict, npcs: dict):
-    """Scans for NPC names, monster names and names above your party member's
-    heads and converts their Japanese names to English.
-
-    :monsters players: Dictionary of monster names to look up. No
-    transliteration is done     if there's no match. :npcs players:
-    Dictionary of npcs to override transliteration.
-    """
-    writer = MemWriter()
-
-    if npc_list := writer.pattern_scan(pattern=npc_monster_pattern, return_multiple=True, data_only=True):
-        for address in npc_list:
-            npc_type = writer.read_bytes(address + 36, 2)
-            if npc_type == b"\x30\x01":
-                data = "NPC"
-            elif npc_type == b"\x4c\xed":
-                data = "MONSTER"
-            elif npc_type == b"\xe8\xef":
-                data = "AI_NAME"
-            else:
-                continue
-
-            name_addr = address + 48  # jump to name
-            name = writer.read_string(name_addr)
-
-            if data == "NPC":
-                if value := npcs.get(name):
-                    try:
-                        reread = writer.read_string(name_addr)
-                        if reread == name:
-                            writer.write_string(name_addr, value)
-                    except Exception as e:
-                        log.debug(f"Failed to write {data}. {e}")
-            elif data == "MONSTER":
-                if value := monsters.get(name):
-                    try:
-                        reread = writer.read_string(name_addr)
-                        if reread == name:
-                            writer.write_string(name_addr, value)
-                    except Exception as e:
-                        log.debug(f"Failed to write {data}. {e}")
-            elif data == "AI_NAME":
-                en_name = npcs.get(name)
-                if not en_name:
-                    en_name = transliterate_player_name(name)
-                if en_name != name:
-                    try:
-                        reread = writer.read_string(name_addr)
-                        if reread == name:
-                            writer.write_string(name_addr, "\x04" + en_name)
-                    except Exception as e:
-                        log.debug(f"Failed to write {data}. {e}")
-
-    writer.close()
 
 
 def scan_for_concierge_names(players: dict):

@@ -164,31 +164,40 @@ mem_chr_trigger = rb"\x8B\x44\x24\x0C\x53\x85\xC0\x74\x52"
 # 57 8B F7 BB
 walkthrough_trigger = rb"\x57\x8B\xF7\xBB"
 
+# - find a player
+# - on the first byte of their name, put a "break on write"
+# - can take a while to hit.. a player has to leave and a new player
+#   has to take that spot. it can take a while...
+# - click run on the first hit
+# - step through until you're out of the loop
+# >> DQXGame.exe+7211B4F - 8B 47 04              - mov eax,[edi+04]
+# >> DQXGame.exe+7211B52 - 8B 88 88010000        - mov ecx,[eax+00000188]
+#    DQXGame.exe+7211B58 - 85 C9                 - test ecx,ecx
+#    DQXGame.exe+7211B5A - 68 FDFDBA02           - push DQXGame.exe+2B8FDFD
+#    DQXGame.exe+7211B5F - 89 54 24 FC           - mov [esp-04],edx
+#    DQXGame.exe+7211B63 - 8D 64 24 FC           - lea esp,[esp-04]
+#    DQXGame.exe+7211B67 - 8D 64 24 FC           - lea esp,[esp-04]
+#    DQXGame.exe+7211B6B - 89 1C 24              - mov [esp],ebx
+#    DQXGame.exe+7211B6E - 8B 54 24 08           - mov edx,[esp+08]
+#    DQXGame.exe+7211B72 - BB 499F1700           - mov ebx,DQXGame.exe+159F49
+#    DQXGame.exe+7211B77 - 0F44 D3               - cmove edx,ebx
+#    DQXGame.exe+7211B7A - 89 54 24 08           - mov [esp+08],edx
+#    DQXGame.exe+7211B7E - 8B 1C 24              - mov ebx,[esp]
+#    DQXGame.exe+7211B81 - 8D 64 24 04           - lea esp,[esp+04]
+#    DQXGame.exe+7211B85 - 8D 64 24 04           - lea esp,[esp+04]
+#    DQXGame.exe+7211B89 - 8B 54 24 FC           - mov edx,[esp-04]
+#    DQXGame.exe+7211B8D - 8D 64 24 04           - lea esp,[esp+04]
+nameplates_trigger = rb"\x8B\x47\x04\x8B\x88\x88\x01\x00\x00"
+
 #############################################
 # "Patterns" seen to find various text.
 # Not code signatures, so these will likely
 # change and need to be updated on patches.
 #############################################
 
-# pattern for npc/monsters to rename. (49 bytes)
-# covers:
-#   - NPC nameplates
-#   - Monster nameplates
-#   - Monter name references when inspecting
-#   - Monster names appearing in the battle menu
-#   - Party nameplates (don't confuse with party names on the right side of the screen)
-#       - Does not do the player's nameplate
-
-# npc:     AC E5 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 30 01 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
-# monster: AC E5 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 4C ED ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
-# party:   AC E5 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? ?? ?? 00 00 00 00 ?? 00 00 00 E8 EF ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? E?
-npc_monster_pattern = rb"\xAC\xE5..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00.......\x00\x00\x00\x00.\x00\x00\x00[\x30\x4C\xE8][\x01\xED\xEF]..........[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"  # pattern for concierge names (13 bytes)
-
 # D8 E5 ?? ?? ?? ?? ?? ?? 68 0C ?? ?? E?
 concierge_name_pattern = rb"\xD8\xE5......\x68\x0C..[\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEF]"
 
-# AC E5 ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? 00 ?? ?? ?? 00 00 00 00 00 00 00 00 00 00 00 00 AC 64 ?? 0? ?? ?? ?? ?? ?? ?? ?? 0? E?
-player_name_pattern = rb"\xAC\xE5..\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00....\x00...\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xAC\x64.[\x01\x02].......[\x01\x02][\xE3\xEF]"
 # pattern for menu ai to rename. (58 bytes)
 # 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 00 ?? ?? 00 00 ?? ?? ?? ?? ?? 00 00 00 ?? 1? ?? ?? ?? ?? ?? 00 ?? ?? ?? ?? ?? 00 ?? ?? E?
 menu_ai_name_pattern = rb"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00...........\x00..\x00\x00.....\x00\x00\x00.[\x1B\x1C].....\x00.....\x00..[\xE3\xEF]"
@@ -196,17 +205,6 @@ menu_ai_name_pattern = rb"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x
 # pattern for comm_names.
 # E? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 00 00 0F 00 00 00 01 02 00 00 01 00 00 (32 bytes)
 comm_name_pattern = rb"[\xE3\xEF].................\x00\x00\x0F\x00\x00\x00\x01\x02\x00\x00\x01\x00\x00"
-
-# Main walkthrough text that loads on login. I can't figure out what function loads this on login,
-# so scanning for this for now. AC is also preventing this from just being accessible via hooks. (17 bytes)
-# 04 02 ?? ?? 10 00 00 00 40 ?? ?? ?? 00 00 00 00 E?
-walkthrough_pattern = (
-    rb"\x04\x02..\x10\x00\x00\x00\x40...\x00\x00\x00\x00[\xE3\xE4\xE5\xE6\xE7\xE8\xE9]"
-)
-
-# player name in cutscenes. not used at the moment, but holding onto it for now.
-# EF ?? 01 ?? ?? ?? ?? 3C EF ?? 01
-player_name_cutscenes = rb"\xEF.\x01....\x3C\xEF.\x01"
 
 # "動画配信の際はサーバー" found in notice box on login. Bytes are just the words encoded into utf-8
 # E5 8B 95 E7 94 BB E9 85 8D E4 BF A1 E3 81 AE E9 9A 9B E3 81 AF E3 82 B5 E3 83 BC E3 83 90 E3 83 BC

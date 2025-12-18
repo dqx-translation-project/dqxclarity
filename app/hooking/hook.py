@@ -2,6 +2,7 @@ from common.signatures import (
     corner_text_trigger,
     dialog_trigger,
     mem_chr_trigger,
+    nameplates_trigger,
     network_text_trigger,
     player_sibling_name_trigger,
     quest_text_trigger,
@@ -166,6 +167,28 @@ def walkthrough_detour():
     return trampoline
 
 
+def nameplates_detour():
+    """Detours function where nameplates are visible."""
+    from hooking.nameplates import nameplates_shellcode
+
+    trampoline = Trampoline(
+        name="nameplates",
+        signature=nameplates_trigger,
+        num_bytes_to_steal=9,
+    )
+
+    if not trampoline.initialized:
+        log.error(f"Trampoline {trampoline.name} failed to initialize.")
+        return None
+
+    ecx, shellcode_addr = trampoline.ecx, trampoline.shellcode
+
+    shellcode = nameplates_shellcode(ecx_address=ecx)
+    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
+
+    return trampoline
+
+
 def activate_hooks(communication_window: bool) -> None:
     """Activates all hooks.
 
@@ -188,6 +211,8 @@ def activate_hooks(communication_window: bool) -> None:
         if hook := quest_text_detour():
             hooks.append(hook)
         if hook := walkthrough_detour():
+            hooks.append(hook)
+        if hook := nameplates_detour():
             hooks.append(hook)
         # if hook := mem_chr_detour():
         #     hooks.append(hook)
