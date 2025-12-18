@@ -104,7 +104,7 @@ def main():
 
         wait_for_dqx_to_launch()
 
-        hooks = activate_hooks(
+        activate_hooks(
             communication_window=args.communication_window,
         )
 
