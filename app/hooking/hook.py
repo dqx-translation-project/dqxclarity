@@ -1,4 +1,5 @@
 from common.signatures import (
+    accept_quest_text_trigger,
     corner_text_trigger,
     dialog_trigger,
     mem_chr_trigger,
@@ -39,7 +40,7 @@ def quest_text_detour():
     from hooking.quest import quest_text_shellcode
 
     trampoline = Trampoline(
-        name="quests",
+        name="quest_list",
         signature=quest_text_trigger,
         num_bytes_to_steal=6,
     )
@@ -51,6 +52,28 @@ def quest_text_detour():
     eax, shellcode_addr = trampoline.eax, trampoline.shellcode
 
     shellcode = quest_text_shellcode(address=eax)
+    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
+
+    return trampoline
+
+
+def accept_quest_text_detour():
+    """Hooks the accept quest window and translates it."""
+    from hooking.accept_quest import accept_quest_text_shellcode
+
+    trampoline = Trampoline(
+        name="accept_quest",
+        signature=accept_quest_text_trigger,
+        num_bytes_to_steal=6,
+    )
+
+    if not trampoline.initialized:
+        log.error(f"Trampoline {trampoline.name} failed to initialize.")
+        return None
+
+    ebx, esi, shellcode_addr = trampoline.ebx, trampoline.esi, trampoline.shellcode
+
+    shellcode = accept_quest_text_shellcode(ebx_address=ebx, esi_address=esi)
     trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
 
     return trampoline
@@ -207,6 +230,8 @@ def activate_hooks(communication_window: bool) -> None:
 
     if communication_window:
         if hook := translate_detour():
+            hooks.append(hook)
+        if hook := accept_quest_text_detour():
             hooks.append(hook)
         if hook := quest_text_detour():
             hooks.append(hook)
