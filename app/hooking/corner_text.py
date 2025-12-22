@@ -1,7 +1,6 @@
 from common.db_ops import generate_m00_dict
 from common.lib import get_project_root, setup_logger
 from common.memory_local import MemWriterLocal
-from common.translate import detect_lang
 from json import dumps
 
 import os

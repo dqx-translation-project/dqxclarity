@@ -106,6 +106,7 @@ def main():
 
         activate_hooks(
             communication_window=args.communication_window,
+            community_logging=args.community_logging,
         )
 
         # start independent processes that will continuously run in the background.
@@ -118,8 +119,6 @@ def main():
                 "This feature is unstable. You will not receive help if you've enabled this on your own. "
                 "Once you're done logging, you will need to manually close the dqxclarity window."
             )
-
-            start_process(name="Community logging", target=start_logger, args=())
 
         if args.player_names or args.npc_names:
             start_process(

@@ -1,19 +1,10 @@
-from common.signatures import (
-    corner_text_trigger,
-    dialog_trigger,
-    mem_chr_trigger,
-    nameplates_trigger,
-    network_text_trigger,
-    player_sibling_name_trigger,
-    quest_text_trigger,
-    walkthrough_trigger,
-)
 from hooking.trampoline import Trampoline
 from loguru import logger as log
 
 
 def translate_detour():
     """Hooks the dialog window to translate text."""
+    from common.signatures import dialog_trigger
     from hooking.dialog import translate_shellcode
 
     trampoline = Trampoline(
@@ -36,6 +27,7 @@ def translate_detour():
 
 def quest_text_detour():
     """Hooks the quest dialog window and translates it."""
+    from common.signatures import quest_text_trigger
     from hooking.quest import quest_text_shellcode
 
     trampoline = Trampoline(
@@ -58,6 +50,7 @@ def quest_text_detour():
 
 def network_text_detour():
     """Translates single string 'network text'."""
+    from common.signatures import network_text_trigger
     from hooking.network_text import network_text_shellcode
 
     trampoline = Trampoline(
@@ -80,6 +73,7 @@ def network_text_detour():
 
 def player_name_detour():
     """Updates strings in the database with the logged in player's name."""
+    from common.signatures import player_sibling_name_trigger
     from hooking.player import player_name_shellcode
 
     trampoline = Trampoline(
@@ -103,6 +97,7 @@ def player_name_detour():
 def corner_text_detour():
     """Detours function when top-right corner text is about to happen and
     translates it."""
+    from common.signatures import corner_text_trigger
     from hooking.corner_text import corner_text_shellcode
 
     trampoline = Trampoline(
@@ -125,6 +120,7 @@ def corner_text_detour():
 
 def mem_chr_detour():
     """Detours function where text is sent to memchr()."""
+    from common.signatures import mem_chr_trigger
     from hooking.memchr import memchr_shellcode
 
     trampoline = Trampoline(
@@ -147,6 +143,7 @@ def mem_chr_detour():
 
 def walkthrough_detour():
     """Detours function where walkthrough text is accessed."""
+    from common.signatures import walkthrough_trigger
     from hooking.walkthrough import walkthrough_shellcode
 
     trampoline = Trampoline(
@@ -169,6 +166,7 @@ def walkthrough_detour():
 
 def nameplates_detour():
     """Detours function where nameplates are visible."""
+    from common.signatures import nameplates_trigger
     from hooking.nameplates import nameplates_shellcode
 
     trampoline = Trampoline(
@@ -189,11 +187,93 @@ def nameplates_detour():
     return trampoline
 
 
-def activate_hooks(communication_window: bool) -> None:
+def hash_logger_start_detour():
+    """Detours function where filenames and hashes are read.
+
+    This should always be called with hash_logger_end_detour() as well.
+    """
+    from common.signatures import hash_logger_start_trigger
+    from hooking.hash_logger import hash_logger_start_shellcode
+
+    trampoline = Trampoline(
+        name="hash_logger_start",
+        signature=hash_logger_start_trigger,
+        num_bytes_to_steal=6,
+    )
+
+    if not trampoline.initialized:
+        log.error(f"Trampoline {trampoline.name} failed to initialize.")
+        return None
+
+    esp, shellcode_addr = trampoline.esp, trampoline.shellcode
+
+    shellcode = hash_logger_start_shellcode(esp_address=esp)
+    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
+
+    return trampoline
+
+
+def hash_logger_end_detour():
+    """Detours function where filenames and hashes are read.
+
+    This should always be called with hash_logger_start_detour() as
+    well.
+    """
+    from common.signatures import hash_logger_end_trigger
+    from hooking.hash_logger import hash_logger_end_shellcode
+
+    # where we found our address is a little high, but gives us a unique
+    # address. we need to move passed a relative jump to get towards the
+    # bottom of the function so we get the real hash value found in ecx.
+    trampoline = Trampoline(
+        name="hash_logger_end",
+        signature=hash_logger_end_trigger,
+        num_bytes_to_steal=5,
+        offset=6,
+    )
+
+    if not trampoline.initialized:
+        log.error(f"Trampoline {trampoline.name} failed to initialize.")
+        return None
+
+    ecx, shellcode_addr = trampoline.ecx, trampoline.shellcode
+
+    shellcode = hash_logger_end_shellcode(ecx_address=ecx)
+    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
+
+    return trampoline
+
+
+def blowfish_logger_detour():
+    """Detours function where blowfish keys are logged."""
+    from common.signatures import blowfish_logger_trigger
+    from hooking.blowfish_logger import blowfish_logger_shellcode
+
+    trampoline = Trampoline(
+        name="blowfish_logger",
+        signature=blowfish_logger_trigger,
+        num_bytes_to_steal=5,
+    )
+
+    if not trampoline.initialized:
+        log.error(f"Trampoline {trampoline.name} failed to initialize.")
+        return None
+
+    esp, shellcode_addr = trampoline.esp, trampoline.shellcode
+
+    shellcode = blowfish_logger_shellcode(esp_address=esp)
+    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
+
+    return trampoline
+
+
+def activate_hooks(communication_window: bool, community_logging: bool) -> None:
     """Activates all hooks.
 
     :param communication_window: True if user requested to translate
         game dialogue.
+    :param community_logging: True if user requested to enable community
+        logging.
     :returns: A list of hook objects that can be enabled or disabled.
     """
     # activates all hooks. add any new hooks to this list
@@ -204,6 +284,14 @@ def activate_hooks(communication_window: bool) -> None:
         hooks.append(hook)
     if hook := corner_text_detour():
         hooks.append(hook)
+    if hook := blowfish_logger_detour():
+        hooks.append(hook)
+
+    if community_logging:
+        if hook := hash_logger_start_detour():
+            hooks.append(hook)
+        if hook := hash_logger_end_detour():
+            hooks.append(hook)
 
     if communication_window:
         if hook := translate_detour():
