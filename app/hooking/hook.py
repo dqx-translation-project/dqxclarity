@@ -284,13 +284,13 @@ def activate_hooks(communication_window: bool, community_logging: bool) -> None:
         hooks.append(hook)
     if hook := corner_text_detour():
         hooks.append(hook)
-    if hook := blowfish_logger_detour():
-        hooks.append(hook)
 
     if community_logging:
         if hook := hash_logger_start_detour():
             hooks.append(hook)
         if hook := hash_logger_end_detour():
+            hooks.append(hook)
+        if hook := blowfish_logger_detour():
             hooks.append(hook)
 
     if communication_window:
