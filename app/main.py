@@ -116,7 +116,6 @@ def main():
                 'Logs can be found in the "logs" folder. '
                 "You should only enable this flag if you were asked to by the dqxclarity team. "
                 "This feature is unstable. You will not receive help if you've enabled this on your own. "
-                "Once you're done logging, you will need to manually close the dqxclarity window."
             )
 
         if args.player_names or args.npc_names:
