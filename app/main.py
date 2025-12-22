@@ -8,7 +8,6 @@ from common.update import (
     download_dat_files,
     import_name_overrides,
 )
-from dqxcrypt.dqxcrypt import start_logger
 from hooking.hook import activate_hooks
 from pathlib import Path
 from scans.manager import run_scans
