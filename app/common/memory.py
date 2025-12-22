@@ -1,11 +1,11 @@
 from common.errors import AddressOutOfRange, MemoryReadError, MemoryWriteError
 from ctypes import byref, wintypes
 from loguru import logger as log
+from pyrun_injected.dllinject import pyRunner, StringType
 
 import pymem
 import pymem.process
 import pymem.ressources
-import pymem.ressources.structure
 import struct
 import traceback
 
@@ -194,17 +194,21 @@ class MemWriter:
 
     def inject_python(self):
         """Injects the Python interpreter into the process."""
-        try:
-            self.proc.inject_python_interpreter()
-            if self.proc._python_injected:
-                if self.proc.py_run_simple_string:
-                    return self.proc.py_run_simple_string
+        injected = pyRunner(self.proc)
+        injected.py_run_str_addr = injected.pyrun_lib_h + 0x10B0
 
-            log.exception(f"Python dll failed to inject. Details:\n{self.proc.__dict__}")
-            return False
-        except Exception:
-            log.exception(f"Python dll failed to inject. Error: \n{str(traceback.print_exc())}\nDetails:\n{self.proc.__dict__}")
-            return False
+        return injected.py_run_str_addr
+        # try:
+        #     self.proc.inject_python_interpreter()
+        #     if self.proc._python_injected:
+        #         if self.proc.py_run_simple_string:
+        #             return self.proc.py_run_simple_string
+
+        #     log.exception(f"Python dll failed to inject. Details:\n{self.proc.__dict__}")
+        #     return False
+        # except Exception:
+        #     log.exception(f"Python dll failed to inject. Error: \n{str(traceback.print_exc())}\nDetails:\n{self.proc.__dict__}")
+        #     return False
 
 
     def close(self):
