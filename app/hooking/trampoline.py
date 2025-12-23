@@ -17,6 +17,7 @@ class Trampoline:
 
     writer = None
     py_simple_str_addr = None
+    thread_state_addr = None
 
     def __init__(
         self,
@@ -30,6 +31,11 @@ class Trampoline:
             Trampoline.writer = MemWriter()
         if not Trampoline.py_simple_str_addr:
             Trampoline.py_simple_str_addr = Trampoline.writer.inject_python()
+        if not Trampoline.thread_state_addr:
+            thread_state_addr = Trampoline.writer.allocate_memory(1)
+            Trampoline.thread_state_addr = bytes(
+                Trampoline.writer.pack_to_int(thread_state_addr)
+            )
 
         self.name = name
         self.signature = signature
@@ -126,6 +132,12 @@ class Trampoline:
         self.ebp = backup_values_addr + 24
         self.esp = backup_values_addr + 28
 
+        # spinlock to make sure no other python code is being executed from another thread.
+        bytecode += b"\xB0\x01"                                 # mov al, 01                ; prepare to acquire
+        bytecode += b"\x86\x05" + Trampoline.thread_state_addr  # xchg byte ptr [addr], al  ; atomic test and set
+        bytecode += b"\x84\xC0"                                 # test al, al               ; test for lock
+        bytecode += b"\x75\xF4"                                 # jnz                       ; spin back if locked
+
         # address where our code will start to get executed.
         code_start_addr = mov_insts_addr + len(bytecode)
 
@@ -140,6 +152,9 @@ class Trampoline:
         # restore registers and flags
         bytecode += b"\x61\x90"  # popad; nop
         bytecode += b"\x9d\x90"  # popfd; nop
+
+        # release the spinlock
+        bytecode += b"\xC6\x05" + Trampoline.thread_state_addr + b"\x00"
 
         # address after we restore the memory registers
         after_restore = mov_insts_addr + len(bytecode)
