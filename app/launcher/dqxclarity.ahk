@@ -60,6 +60,7 @@ Launcher["Run"].ToolTip := "Run the program."
 Launcher["GitHub"].ToolTip := "View the source code in your default browser."
 
 ; function handlers
+Launcher["CommunityLogging"].OnEvent("Click", CommunityLoggingWarning)
 Launcher["UseDeepL"].OnEvent("Click", CheckedDeepL)
 Launcher["UseGoogleTranslate"].OnEvent("Click", CheckedGoogleTranslate)
 Launcher["RunProgram"].OnEvent("Click", RunProgram)
@@ -139,6 +140,17 @@ UpdateStatusBar(text) {
     ; Updates the status bar at the bottom of the GUI.
     ;; @param text Text to update the status bar.
     Launcher["StatusBar"].SetText(text)
+}
+
+
+CommunityLoggingWarning(*) {
+    ; Send a warning if community logging is enabled as it can be buggy.
+    if Launcher["CommunityLogging"].value = 1 {
+        Result := MsgBox("You have enabled community logging.`n`nThis feature is unstable and may result in unexpected behavior while playing, up to and including crashes. Do not report issues of crashing if you have this enabled.`n`nIf you still want to enable this to help with the project, click `"Yes.`" Otherwise, click `"No.`"", "Community Logging", "YN Icon! Default2 0x1000")
+        if (Result = "No") {
+            Launcher["CommunityLogging"].value := 0
+        }
+    }
 }
 
 
