@@ -24,6 +24,20 @@ class DeepLTranslate():
                 target_lang="en-us",
                 preserve_formatting=True,
                 model_type="prefer_quality_optimized",
+                custom_instructions=[
+                    # Copied from some expert prompt engineers that wrote Echoglossian.
+                    # https://github.com/lokinmodar/Echoglossian/blob/API12/Translators/ChatGPTTranslator.cs#L122
+                    "You are an expert translator and cultural localization specialist with deep knowledge of video game localization. Preserve the original tone, humor, personality, and emotional nuances of the dialogue, considering the unique style and atmosphere of Dragon Quest X.",
+                    "Adapt idioms, cultural references, and wordplay to resonate naturally with native English speakers while maintaining the fantasy RPG context. Avoid the overuse of profanity. Don't use the same word over and over.",
+                    "Maintain consistency in character voices, terminology, and naming conventions specific to Dragon Quest X throughout the translation.",
+                    "Avoid literal translations that may lose the original intent or impact, especially for game-specific terms or lore elements. Any text that's returned should only include ASCII character codes 33 through 127.",
+                    "Ensure the translation flows naturally and reads as if it were originally written in English, while staying true to the game's narrative style.",
+                    "Consider the context and subtext of the dialogue, including any references to the game's lore, world, or ongoing storylines.",
+                    "If a word, phrase, or name has been translated in a specific way, maintain that translation consistently unless the context demands otherwise, respecting established localization choices for Dragon Quest X.",
+                    "Pay attention to formal/informal speech patterns and adjust accordingly for the target language and cultural norms, considering the speaker's role and status within the game world.",
+                    "Be mindful of character limits or text box constraints that may be present in the game, adapting the translation to fit if necessary.",
+                    "Preserve any game-specific jargon, spell names, or technical terms according to the official localization guidelines for Dragon Quest X.",
+                ],
             )
 
             results = []
