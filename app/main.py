@@ -111,13 +111,6 @@ def main():
         # start independent processes that will continuously run in the background.
         # the processes being created either run in an indefinite loop,
         # or do some type of work on their own.
-        if args.community_logging:
-            log.warning(
-                'Logs can be found in the "logs" folder. '
-                "You should only enable this flag if you were asked to by the dqxclarity team. "
-                "This feature is unstable. You will not receive help if you've enabled this on your own. "
-            )
-
         if args.player_names or args.npc_names:
             start_process(
                 name="Name scanner",
