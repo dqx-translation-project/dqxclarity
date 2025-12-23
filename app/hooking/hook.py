@@ -50,6 +50,7 @@ def quest_text_detour():
 
 def accept_quest_text_detour():
     """Hooks the accept quest window and translates it."""
+    from common.signatures import accept_quest_text_trigger
     from hooking.accept_quest import accept_quest_text_shellcode
 
     trampoline = Trampoline(
