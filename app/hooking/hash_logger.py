@@ -10,94 +10,69 @@ from common.memory_local import MemWriterLocal
 from json import dumps
 from pathlib import Path
 
+import logging
 import os
 import sys
 
 
-class HashLoggerStart:
+class HashLogger:
     writer = None
+    logger = None
 
-    def __init__(self, esp_address: int):
-        if not HashLoggerStart.writer:
-            HashLoggerStart.writer = MemWriterLocal()
+    def __init__(
+        self,
+        ecx_address: int,
+        esp_address: int,
+    ):
+        if not HashLogger.writer:
+            HashLogger.writer = MemWriterLocal()
+        if not HashLogger.logger:
+            HashLogger.logger = logging.getLogger("hashlog")
+            logger = HashLogger.logger
+            logger.setLevel(logging.INFO)
 
-        mem = HashLoggerStart.writer
+            log_file = Path(get_project_root("logs/hashlog.csv"))
+            handler = logging.FileHandler(log_file, mode="a+", encoding="utf-8")
 
-        # read function arguments
+            handler.setFormatter(logging.Formatter("%(message)s"))
+
+            logger.addHandler(handler)
+            logger.propagate = False
+
+            if not log_file.exists():
+                with open(log_file, "a+") as f:
+                    f.write("hash_type,hash_input,hash_output,")
+
+        mem = HashLogger.writer
+
         esp = mem.read_uint32(address=esp_address, value=True)
-        arg_1 = mem.read_uint32(address=esp+0x4, value=True)
-        arg_2 = esp+0x8
-
-        raw_string = mem.read_string(address=arg_1)
-        length = mem.read_uint32(address=arg_2, value=True)
-
-        if len(raw_string) == length:
-            hash_call_type = "file"
-        else:
-            hash_call_type = "dir"
-
-        hash_call_input = raw_string[:length]
-
-        log_file = Path(get_project_root("logs/hashlog.csv"))
-        if not log_file.exists():
-            with open(log_file, "a+") as f:
-                f.write("hash_type,hash_input,hash_output,")
-
-        # this has part of the information that we need. HashLoggerEnd
-        # contains the actual hash value, which is the hash found in the idx.
-        with open(log_file, "a+") as f:
-            f.write(f"\"{hash_call_type}\",\"{hash_call_input}\",")
-
-
-class HashLoggerEnd:
-    writer = None
-
-    def __init__(self, ecx_address: int):
-        if not HashLoggerStart.writer:
-            HashLoggerStart.writer = MemWriterLocal()
-
-        mem = HashLoggerStart.writer
-
         ecx = mem.read_uint32(address=ecx_address, value=True)
-        hash_value = hex(ecx)
 
-        # This append the hash to the end of the existing hashlog,
+        data_type = mem.read_uint32(address=esp, value=True)
+
+        if hex(data_type) == "0xffffffff":
+            hash_type = "dir"
+            esp24 = mem.read_uint32(address=esp + 0x24, value=True)
+            filepath = mem.read_string(address=esp24)
+            hash_input = "/".join(filepath.split("/")[:-1])  # get path without filename
+        else:
+            hash_type = "file"
+            esp2c = mem.read_uint32(address=esp + 0x2C, value=True)
+            filepath = mem.read_string(address=esp2c)
+            hash_input = filepath.rsplit("/", 1)[-1]  # just get filename
+
+        hash_output = hex(ecx)
+
+        # This appends the hash to the end of the existing hashlog,
         # which contains the hash value we're interested in.
-        log_file = Path(get_project_root("logs/hashlog.csv"))
-        with open(log_file, "a+") as f:
-            f.write(f"{hash_value},\n")
+        HashLogger.logger.info(f'"{hash_type}","{hash_input}",{hash_output}')
 
 
-def hash_logger_start_shellcode(esp_address: int) -> str:
-    """Returns shellcode to log hash values.
-
-    :param esp_address: Address of esp to read call arguments.
-    """
-    local_paths = dumps(sys.path).replace("\\", "\\\\")
-    log_path = os.path.join(os.path.abspath('.'), 'logs\\console.log').replace("\\", "\\\\")
-
-    # Overwriting the process's sys.path with the one outside of the process
-    # is required to run our imports and function code. It's also necessary to
-    # escape the slashes.
-    shellcode = f"""
-try:
-    import sys
-    import traceback
-    sys.path = {local_paths}
-    from hooking.hash_logger import HashLoggerStart
-    HashLoggerStart({esp_address})
-except Exception as e:
-    with open("{log_path}", "a+") as f:
-        f.write(str(traceback.format_exc()))
-    """
-
-    return shellcode
-
-
-def hash_logger_end_shellcode(ecx_address: int) -> str:
+def hash_logger_shellcode(ecx_address: int, esp_address: int) -> str:
     """Returns shellcode to log hash values.
 
     :param ecx_address: Address of ecx that contains the hash value.
+    :param esp_address: Address of esp for stack values.
     """
     local_paths = dumps(sys.path).replace("\\", "\\\\")
     log_path = os.path.join(os.path.abspath('.'), 'logs\\console.log').replace("\\", "\\\\")
@@ -110,8 +85,8 @@ try:
     import sys
     import traceback
     sys.path = {local_paths}
-    from hooking.hash_logger import HashLoggerEnd
-    HashLoggerEnd({ecx_address})
+    from hooking.hash_logger import HashLogger
+    HashLogger({ecx_address}, {esp_address})
 except Exception as e:
     with open("{log_path}", "a+") as f:
         f.write(str(traceback.format_exc()))

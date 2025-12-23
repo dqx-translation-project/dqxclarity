@@ -36,7 +36,7 @@ class BlowfishLogger:
         log_file = Path(get_project_root("logs/blowfish_log.csv"))
         if not log_file.exists():
             with open(log_file, "a+") as f:
-                f.write("filepath,file_size,blowfish_key,")
+                f.write("filepath,file_size,blowfish_key,\n")
 
         with open(log_file, "a+") as f:
             f.write(f"\"{filename}\",{total_size},\"{blowfish_key}\"\n")
