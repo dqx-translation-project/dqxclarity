@@ -197,7 +197,37 @@ walkthrough_trigger = rb"\x57\x8B\xF7\xBB"
 #    DQXGame.exe+7211B85 - 8D 64 24 04           - lea esp,[esp+04]
 #    DQXGame.exe+7211B89 - 8B 54 24 FC           - mov edx,[esp-04]
 #    DQXGame.exe+7211B8D - 8D 64 24 04           - lea esp,[esp+04]
+# 8B 47 04 8B 88 88 01 00 00
 nameplates_trigger = rb"\x8B\x47\x04\x8B\x88\x88\x01\x00\x00"
+
+# - talk to some purple npc that has a quest
+# - when the quest comes up, copy some text from it
+# - search for it
+# - find what accesses it
+# this covers accepting a quest and quests from the map.
+# might change between patches unfortunately.
+#    DQXGame.exe+2473E0 - 55                    - push ebp
+#    DQXGame.exe+2473E1 - 8B EC                 - mov ebp,esp
+#    DQXGame.exe+2473E3 - 53                    - push ebx
+#    DQXGame.exe+2473E4 - 8B 5D 08              - mov ebx,[ebp+08]
+#    DQXGame.exe+2473E7 - 56                    - push esi
+#    DQXGame.exe+2473E8 - 8B F1                 - mov esi,ecx
+#    DQXGame.exe+2473EA - 57                    - push edi
+#    DQXGame.exe+2473EB - 8B 03                 - mov eax,[ebx]
+#    DQXGame.exe+2473ED - BF 38000000           - mov edi,00000038 { 56 }
+#    ....
+#    ....
+#    DQXGame.exe+2474E0 - 0FB6 83 56030000      - movzx eax,byte ptr [ebx+00000356]
+#    DQXGame.exe+2474E7 - 88 86 56030000        - mov [esi+00000356],al
+#    DQXGame.exe+2474ED - 0FB6 83 57030000      - movzx eax,byte ptr [ebx+00000357]
+#    DQXGame.exe+2474F4 - 5F                    - pop edi
+# >> DQXGame.exe+2474F5 - 88 86 57030000        - mov [esi+00000357],al
+# >> DQXGame.exe+2474FB - 5E                    - pop esi
+# >> DQXGame.exe+2474FC - 5B                    - pop ebx
+# >> DQXGame.exe+2474FD - 5D                    - pop ebp
+# >> DQXGame.exe+2474FE - C2 0400               - ret 0004
+# 88 86 57 03 00 00 5E 5B 5D C2 04 00
+accept_quest_text_trigger = rb"\x88\x86\x57\x03\x00\x00\x5E\x5B\x5D\xC2\x04\x00"
 
 #############################################
 # "Patterns" seen to find various text.
