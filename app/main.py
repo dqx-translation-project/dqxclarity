@@ -8,7 +8,6 @@ from common.update import (
     download_dat_files,
     import_name_overrides,
 )
-from dqxcrypt.dqxcrypt import start_logger
 from hooking.hook import activate_hooks
 from pathlib import Path
 from scans.manager import run_scans
@@ -106,6 +105,7 @@ def main():
 
         activate_hooks(
             communication_window=args.communication_window,
+            community_logging=args.community_logging,
         )
 
         # start independent processes that will continuously run in the background.
@@ -116,10 +116,7 @@ def main():
                 'Logs can be found in the "logs" folder. '
                 "You should only enable this flag if you were asked to by the dqxclarity team. "
                 "This feature is unstable. You will not receive help if you've enabled this on your own. "
-                "Once you're done logging, you will need to manually close the dqxclarity window."
             )
-
-            start_process(name="Community logging", target=start_logger, args=())
 
         if args.player_names or args.npc_names:
             start_process(

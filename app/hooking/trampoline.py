@@ -17,6 +17,7 @@ class Trampoline:
 
     writer = None
     py_simple_str_addr = None
+    thread_state_addr = None
 
     def __init__(
         self,
@@ -30,6 +31,11 @@ class Trampoline:
             Trampoline.writer = MemWriter()
         if not Trampoline.py_simple_str_addr:
             Trampoline.py_simple_str_addr = Trampoline.writer.inject_python()
+        if not Trampoline.thread_state_addr:
+            thread_state_addr = Trampoline.writer.allocate_memory(1)
+            Trampoline.thread_state_addr = bytes(
+                Trampoline.writer.pack_to_int(thread_state_addr)
+            )
 
         self.name = name
         self.signature = signature
@@ -96,10 +102,8 @@ class Trampoline:
         shellcode_addr = Trampoline.writer.allocate_memory(2048)
 
         # fmt: off
-        # bytecode to back up existing register values to a remote location, which we can use to both read
-        # registers as they were prior to the trampoline as well as put them back when we're done. since
-        # we don't easily have full control of the stack like we would in a c language, we can't use things
-        # like pushad/popad to easily do this. this is obviously slower, but not slow enough to be noticeable.
+        # bytecode to back up existing register values to a remote location, which we can use to read
+        # registers as they were prior to the trampoline.
         bytecode = b"\xA3" + Trampoline.writer.pack_to_int(backup_values_addr) + b"\x90" # mov [reg_values], eax then nop
         bytecode += b"\x89\x1D" + Trampoline.writer.pack_to_int(backup_values_addr + 4)  # mov [reg_values+6], ebx
         bytecode += b"\x89\x0D" + Trampoline.writer.pack_to_int(backup_values_addr + 8)  # mov [reg_values+12], ecx
@@ -108,6 +112,12 @@ class Trampoline:
         bytecode += b"\x89\x3D" + Trampoline.writer.pack_to_int(backup_values_addr + 20) # mov [reg_values+30], edi
         bytecode += b"\x89\x2D" + Trampoline.writer.pack_to_int(backup_values_addr + 24) # mov [reg_values+36], ebp
         bytecode += b"\x89\x25" + Trampoline.writer.pack_to_int(backup_values_addr + 28) # mov [reg_values+42], esp
+
+        # back up registers and flags.
+        bytecode += b"\x9c\x90" # pushfd; nop
+        bytecode += b"\xfc\x90" # cld; nop
+        bytecode += b"\x60\x90" # pushad; nop
+        # fmt on
 
         # capture what we have so far
         self.start = mov_insts_addr
@@ -122,6 +132,12 @@ class Trampoline:
         self.ebp = backup_values_addr + 24
         self.esp = backup_values_addr + 28
 
+        # spinlock to make sure no other python code is being executed from another thread.
+        bytecode += b"\xB0\x01"                                 # mov al, 01                ; prepare to acquire
+        bytecode += b"\x86\x05" + Trampoline.thread_state_addr  # xchg byte ptr [addr], al  ; atomic test and set
+        bytecode += b"\x84\xC0"                                 # test al, al               ; test for lock
+        bytecode += b"\x75\xF4"                                 # jnz                       ; spin back if locked
+
         # address where our code will start to get executed.
         code_start_addr = mov_insts_addr + len(bytecode)
 
@@ -129,17 +145,16 @@ class Trampoline:
         bytecode += b"\x68" + bytes(Trampoline.writer.pack_to_int(shellcode_addr))                         # push shellcode_addr
         bytecode += b"\xE8" + Trampoline.writer.calc_rel_addr(code_start_addr + 5, Trampoline.py_simple_str_addr)  # push py_run_simple_string_addr
 
-        # fmt: off
-        # bytecode to restore the registers back to before our code was run
-        bytecode += b"\xA1" + Trampoline.writer.pack_to_int(backup_values_addr) + b"\x90"  # mov eax, [backup_values_addr] then nop
-        bytecode += b"\x8B\x1D" + Trampoline.writer.pack_to_int(backup_values_addr + 4)    # mov ebx, [backup_values_addr+6]
-        bytecode += b"\x8B\x0D" + Trampoline.writer.pack_to_int(backup_values_addr + 8)    # mov ecx, [backup_values_addr+12]
-        bytecode += b"\x8B\x15" + Trampoline.writer.pack_to_int(backup_values_addr + 12)   # mov edx, [backup_values_addr+18]
-        bytecode += b"\x8B\x35" + Trampoline.writer.pack_to_int(backup_values_addr + 16)   # mov esi, [backup_values_addr+24]
-        bytecode += b"\x8B\x3D" + Trampoline.writer.pack_to_int(backup_values_addr + 20)   # mov edi, [backup_values_addr+30]
-        bytecode += b"\x8B\x2D" + Trampoline.writer.pack_to_int(backup_values_addr + 24)   # mov ebp, [backup_values_addr+36]
-        bytecode += b"\x8B\x25" + Trampoline.writer.pack_to_int(backup_values_addr + 28)   # mov esp, [backup_values_addr+42]
-        # fmt: on
+        # restore the registers back to before our code was run
+        # since PyRun_SimpleString is __cdecl, need to clean up
+        bytecode += b"\x83\xc4\x04\x90"  # add esp,04; nop
+
+        # restore registers and flags
+        bytecode += b"\x61\x90"  # popad; nop
+        bytecode += b"\x9d\x90"  # popfd; nop
+
+        # release the spinlock
+        bytecode += b"\xC6\x05" + Trampoline.thread_state_addr + b"\x00"
 
         # address after we restore the memory registers
         after_restore = mov_insts_addr + len(bytecode)
