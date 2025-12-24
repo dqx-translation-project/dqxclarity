@@ -264,7 +264,9 @@ def blowfish_logger_detour():
     return trampoline
 
 
-def activate_hooks(communication_window: bool, community_logging: bool) -> None:
+def activate_hooks(
+    communication_window: bool, nameplates: bool, community_logging: bool
+) -> None:
     """Activates all hooks.
 
     :param communication_window: True if user requested to translate
@@ -275,12 +277,16 @@ def activate_hooks(communication_window: bool, community_logging: bool) -> None:
     """
     # activates all hooks. add any new hooks to this list
     hooks = []
-    if hook := player_name_detour():
+    if hook := corner_text_detour():
         hooks.append(hook)
     if hook := network_text_detour():
         hooks.append(hook)
-    if hook := corner_text_detour():
+    if hook := player_name_detour():
         hooks.append(hook)
+
+    if nameplates:
+        if hook := nameplates_detour():
+            hooks.append(hook)
 
     if community_logging:
         if hook := hash_logger_detour():
@@ -296,8 +302,6 @@ def activate_hooks(communication_window: bool, community_logging: bool) -> None:
         if hook := quest_text_detour():
             hooks.append(hook)
         if hook := walkthrough_detour():
-            hooks.append(hook)
-        if hook := nameplates_detour():
             hooks.append(hook)
 
     if hooks:

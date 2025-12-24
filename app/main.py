@@ -35,16 +35,10 @@ def parse_arguments():
         help="Writes hooks into the game to translate the dialog window with a live translation service.",
     )
     parser.add_argument(
-        "-p",
-        "--player-names",
-        action="store_true",
-        help="Scans for player names and changes them to their Romaji counterpart.",
-    )
-    parser.add_argument(
         "-n",
-        "--npc-names",
+        "--nameplates",
         action="store_true",
-        help="Scans for NPC names and changes them to their Romaji counterpart.",
+        help="Scans for nameplate names and transliterates them to their Romaji counterpart.",
     )
     parser.add_argument(
         "-l",
@@ -105,6 +99,7 @@ def main():
 
         activate_hooks(
             communication_window=args.communication_window,
+            nameplates=args.nameplates,
             community_logging=args.community_logging,
         )
 
@@ -118,11 +113,11 @@ def main():
                 "This feature is unstable. You will not receive help if you've enabled this on your own. "
             )
 
-        if args.player_names or args.npc_names:
+        if args.nameplates:
             start_process(
-                name="Name scanner",
+                name="Nameplate scanner",
                 target=run_scans,
-                args=(args.player_names, args.npc_names),
+                args=(args.nameplates,),
             )
 
         log.success(

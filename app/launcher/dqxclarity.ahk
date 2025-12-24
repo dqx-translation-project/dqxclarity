@@ -11,8 +11,7 @@ ini.enablegoogletranslate := IniRead(".\user_settings.ini", "translation", "enab
 ini.googletranslatekey := IniRead(".\user_settings.ini", "translation", "googletranslatekey", "")
 ini.enablegoogletranslatefree := IniRead(".\user_settings.ini", "translation", "enablegoogletranslatefree", "False")
 ini.communitylogging := IniRead(".\user_settings.ini", "launcher", "communitylogging", "False")
-ini.playernames := IniRead(".\user_settings.ini", "launcher", "playernames", "False")
-ini.npcnames := IniRead(".\user_settings.ini", "launcher", "npcnames", "False")
+ini.nameplates := IniRead(".\user_settings.ini", "launcher", "nameplates", "False")
 ini.updategamefiles := IniRead(".\user_settings.ini", "launcher", "updategamefiles", "False")
 ini.disableupdates := IniRead(".\user_settings.ini", "launcher", "disableupdates", "False")
 
@@ -25,8 +24,7 @@ Launcher.AddPicture("YP+1 w150 h-1 vImage", LoadImageFromResource("img/rosie.png
 ; configuration group
 Launcher.AddGroupBox("ys+10 w200 h120 c0B817C", "Configuration")
 Launcher.AddCheckBox("XP+10 YP+20 vCommunityLogging Checked" . ConvertBoolToState(ini.communitylogging), "Community Logging")
-Launcher.AddCheckBox("vPlayerNames Checked" . ConvertBoolToState(ini.playernames), "Player Names")
-Launcher.AddCheckBox("vNPCNames Checked" . ConvertBoolToState(ini.npcnames), "NPC Names")
+Launcher.AddCheckBox("vNameplates Checked" . ConvertBoolToState(ini.nameplates), "Nameplates")
 Launcher.AddCheckBox("vUpdateGameFiles Checked" . ConvertBoolToState(ini.updategamefiles), "Update Game Files")
 Launcher.AddCheckBox("vDisableUpdates Checked"  . ConvertBoolToState(ini.disableupdates), "Disable Updates")
 Launcher.AddStatusBar("vStatusBar", "")
@@ -46,8 +44,7 @@ Launcher.AddButton("x+20 vGitHub w80 h30", "GitHub").OnEvent("Click", OpenGitHub
 
 ; tooltips
 Launcher["CommunityLogging"].ToolTip := "Enables logging of internal game files to a text file."
-Launcher["PlayerNames"].ToolTip := "Transliterates Japanese player names to English."
-Launcher["NPCNames"].ToolTip := "Translate Japanese NPC names to English."
+Launcher["Nameplates"].ToolTip := "Transliterates Japanese nameplates to English."
 Launcher["UpdateGameFiles"].ToolTip := "Downloads/updates the modded DAT/IDX files."
 Launcher["DisableUpdates"].ToolTip := "Don't check for dqxclarity updates on launch."
 Launcher["UseDeepL"].ToolTip := "Enable DeepL as your choice of external translation."
@@ -210,8 +207,7 @@ FakeFileInstall(*) {
 SaveToIni(*) {
     ; Saves all of the user settings to user_settings.ini.
     IniWrite(ConvertStateToBool(Launcher["CommunityLogging"].value), ".\user_settings.ini", "launcher", "communitylogging")
-    IniWrite(ConvertStateToBool(Launcher["PlayerNames"].value), ".\user_settings.ini", "launcher", "playernames")
-    IniWrite(ConvertStateToBool(Launcher["NPCNames"].value), ".\user_settings.ini", "launcher", "npcnames")
+    IniWrite(ConvertStateToBool(Launcher["Nameplates"].value), ".\user_settings.ini", "launcher", "nameplates")
     IniWrite(ConvertStateToBool(Launcher["UpdateGameFiles"].value), ".\user_settings.ini", "launcher", "updategamefiles")
     IniWrite(ConvertStateToBool(Launcher["DisableUpdates"].value), ".\user_settings.ini", "launcher", "disableupdates")
     IniWrite(ConvertStateToBool(Launcher["UseDeepL"].value), ".\user_settings.ini", "translation", "enabledeepltranslate")
@@ -228,10 +224,8 @@ GetClarityArgs(*) {
     args := ""
     if (Launcher["CommunityLogging"].value = 1)
         args := args . "--community-logging"
-    if (Launcher["PlayerNames"].value = 1)
-        args := args . " " . "--player-names"
-    if (Launcher["NPCNames"].value = 1)
-        args := args . " " . "--npc-names"
+    if (Launcher["Nameplates"].value = 1)
+        args := args . " " . "--nameplates"
     if (Launcher["UpdateGameFiles"].value = 1)
         args := args . " " . "--update-dat"
     if (Launcher["DisableUpdates"].value = 1)
