@@ -14,7 +14,7 @@ class Nameplates:
     names = None
     ja_pattern = re.compile(b"[\xe3\xe4\xe5\xe6\xe7\xe8\xe9\xef]")
 
-    def __init__(self, ecx_address: int):
+    def __init__(self, esp_address: int):
         if not Nameplates.names:
             # we override this a specific way --
             #   - default: monsters, npcs
@@ -28,14 +28,14 @@ class Nameplates:
 
             Nameplates.names = {**monsters, **npcs, **players, **mytown}
 
-        name_address = Nameplates.writer.read_uint32(address=ecx_address, value=True)
-        prefix = Nameplates.writer.read_bytes(address=name_address, length=1)
+        esp = Nameplates.writer.read_uint32(address=esp_address, value=True)
+        arg_1 = Nameplates.writer.read_uint32(address=esp + 0x4, value=True)
 
-        # if byte doesn't start with a jp-encoded byte, dip out - it's not a name.
-        if not Nameplates.ja_pattern.match(prefix):
+        try:
+            name = Nameplates.writer.read_string(address=arg_1)
+        except OSError:  # eat access violation errors and return.
             return
 
-        name = Nameplates.writer.read_string(address=name_address)
         length = len(name.encode('utf-8'))
 
         if name:
@@ -45,13 +45,13 @@ class Nameplates:
                 result = transliterate_player_name(name)
 
             # take care not to write more than the original size of the string.
-            Nameplates.writer.write_string(name_address, "\x04" + result[:length])
+            Nameplates.writer.write_string(arg_1, "\x04" + result[:length])
 
 
-def nameplates_shellcode(ecx_address: int) -> str:
+def nameplates_shellcode(esp_address: int) -> str:
     """Returns shellcode for the nameplates function hook.
 
-    ecx_address: Address of the nameplate name.
+    esp_address: Address of the nameplate name.
     """
     local_paths = dumps(sys.path).replace("\\", "\\\\")
     log_path = os.path.join(os.path.abspath('.'), 'logs\\console.log').replace("\\", "\\\\")
@@ -65,7 +65,7 @@ try:
     import traceback
     sys.path = {local_paths}
     from hooking.nameplates import Nameplates
-    Nameplates({ecx_address})
+    Nameplates({esp_address})
 except Exception as e:
     with open("{log_path}", "a+") as f:
         f.write(str(traceback.format_exc()))
