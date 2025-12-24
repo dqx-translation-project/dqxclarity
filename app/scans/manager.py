@@ -10,12 +10,10 @@ from scans.player_names import scan_for_menu_ai_names
 import sys
 
 
-def run_scans(player_names: bool, npc_names: bool, ready_event):
+def run_scans(nameplates: bool, ready_event):
     """Run chosen scans.
 
-    :param player_names: Run player name scans.
-    :param npc_names: Run NPC name scans.
-    :param communication_window: Run adhoc scans.
+    :param nameplates: Whether to transliterate nameplate names.
     """
     # configure logging. this function runs in multiprocessing, so it does not
     # have the same access to the main log handler.
@@ -30,10 +28,9 @@ def run_scans(player_names: bool, npc_names: bool, ready_event):
 
     while True:
         try:
-            if player_names:
+            if nameplates:
                 scan_for_menu_ai_names(players)
                 scan_for_comm_names()
-            if npc_names:
                 scan_for_concierge_names(mytown_names)
         except UnicodeDecodeError:
             pass
