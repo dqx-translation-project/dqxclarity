@@ -174,31 +174,20 @@ mem_chr_trigger = rb"\x8B\x44\x24\x0C\x53\x85\xC0\x74\x52"
 # 57 8B F7 BB
 walkthrough_trigger = rb"\x57\x8B\xF7\xBB"
 
-# - find a player
-# - on the first byte of their name, put a "break on write"
-# - can take a while to hit.. a player has to leave and a new player
-#   has to take that spot. it can take a while...
-# - click run on the first hit
-# - step through until you're out of the loop
-# >> DQXGame.exe+7211B4F - 8B 47 04              - mov eax,[edi+04]
-# >> DQXGame.exe+7211B52 - 8B 88 88010000        - mov ecx,[eax+00000188]
-#    DQXGame.exe+7211B58 - 85 C9                 - test ecx,ecx
-#    DQXGame.exe+7211B5A - 68 FDFDBA02           - push DQXGame.exe+2B8FDFD
-#    DQXGame.exe+7211B5F - 89 54 24 FC           - mov [esp-04],edx
-#    DQXGame.exe+7211B63 - 8D 64 24 FC           - lea esp,[esp-04]
-#    DQXGame.exe+7211B67 - 8D 64 24 FC           - lea esp,[esp-04]
-#    DQXGame.exe+7211B6B - 89 1C 24              - mov [esp],ebx
-#    DQXGame.exe+7211B6E - 8B 54 24 08           - mov edx,[esp+08]
-#    DQXGame.exe+7211B72 - BB 499F1700           - mov ebx,DQXGame.exe+159F49
-#    DQXGame.exe+7211B77 - 0F44 D3               - cmove edx,ebx
-#    DQXGame.exe+7211B7A - 89 54 24 08           - mov [esp+08],edx
-#    DQXGame.exe+7211B7E - 8B 1C 24              - mov ebx,[esp]
-#    DQXGame.exe+7211B81 - 8D 64 24 04           - lea esp,[esp+04]
-#    DQXGame.exe+7211B85 - 8D 64 24 04           - lea esp,[esp+04]
-#    DQXGame.exe+7211B89 - 8B 54 24 FC           - mov edx,[esp-04]
-#    DQXGame.exe+7211B8D - 8D 64 24 04           - lea esp,[esp+04]
-# 8B 47 04 8B 88 88 01 00 00
-nameplates_trigger = rb"\x8B\x47\x04\x8B\x88\x88\x01\x00\x00"
+# >> DQXGame.exe+130F60 - 55                    - push ebp
+# >> DQXGame.exe+130F61 - 8B EC                 - mov ebp,esp
+# >> DQXGame.exe+130F63 - 8B 45 08              - mov eax,[ebp+08]
+# >> DQXGame.exe+130F66 - 85 C0                 - test eax,eax
+# >> DQXGame.exe+130F68 - 74 11                 - je DQXGame.exe+130F7B
+# >> DQXGame.exe+130F6A - 6A FF                 - push -01
+# >> DQXGame.exe+130F6C - 50                    - push eax
+# >> DQXGame.exe+130F6D - 83 C1 04              - add ecx,04
+#    DQXGame.exe+130F70 - 6A 24                 - push 24
+#    DQXGame.exe+130F72 - 51                    - push ecx
+#    DQXGame.exe+130F73 - E8 52F08700           - call DQXGame.exe+9AFFCA
+#    DQXGame.exe+130F78 - 83 C4 10              - add esp,10
+# 55 8B EC 8B 45 ? 85 C0 74 ? 6A ? 50 83 C1
+nameplates_trigger = rb"\x55\x8B\xEC\x8B\x45.\x85\xC0\x74.\x6A.\x50\x83\xC1"
 
 # - talk to some purple npc that has a quest
 # - when the quest comes up, copy some text from it

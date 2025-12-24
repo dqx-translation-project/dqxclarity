@@ -195,16 +195,16 @@ def nameplates_detour():
     trampoline = Trampoline(
         name="nameplates",
         signature=nameplates_trigger,
-        num_bytes_to_steal=9,
+        num_bytes_to_steal=6,
     )
 
     if not trampoline.initialized:
         log.error(f"Trampoline {trampoline.name} failed to initialize.")
         return None
 
-    ecx, shellcode_addr = trampoline.ecx, trampoline.shellcode
+    esp, shellcode_addr = trampoline.esp, trampoline.shellcode
 
-    shellcode = nameplates_shellcode(ecx_address=ecx)
+    shellcode = nameplates_shellcode(esp_address=esp)
     trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
 
     return trampoline
