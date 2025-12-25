@@ -5,6 +5,7 @@ from json import dumps
 
 import os
 import re
+import regex
 import sys
 
 
@@ -12,7 +13,7 @@ class Nameplates:
 
     writer = MemWriterLocal()
     names = None
-    ja_pattern = re.compile(b"[\xe3\xe4\xe5\xe6\xe7\xe8\xe9\xef]")
+    jp_regex = regex.compile(r"\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Han}")
 
     def __init__(self, esp_address: int):
         if not Nameplates.names:
@@ -39,14 +40,20 @@ class Nameplates:
         length = len(name.encode('utf-8'))
 
         if name:
+            # if name isn't in japanese, return.
+            if not self.__is_japanese(name):
+                return
+
             result = Nameplates.names.get(name)
 
             if not result:
                 result = transliterate_player_name(name)
 
             # take care not to write more than the original size of the string.
-            Nameplates.writer.write_string(arg_1, "\x04" + result[:length])
+            Nameplates.writer.write_string(arg_1, "\x04" + result[: length - 1])
 
+    def __is_japanese(cls, text: str):
+        return bool(cls.jp_regex.search(text))
 
 def nameplates_shellcode(esp_address: int) -> str:
     """Returns shellcode for the nameplates function hook.
