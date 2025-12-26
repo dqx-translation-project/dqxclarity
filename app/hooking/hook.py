@@ -195,7 +195,7 @@ def nameplates_detour():
     trampoline = Trampoline(
         name="nameplates",
         signature=nameplates_trigger,
-        num_bytes_to_steal=6,
+        num_bytes_to_steal=10,
     )
 
     if not trampoline.initialized:

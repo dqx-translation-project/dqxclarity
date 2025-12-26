@@ -174,20 +174,26 @@ mem_chr_trigger = rb"\x8B\x44\x24\x0C\x53\x85\xC0\x74\x52"
 # 57 8B F7 BB
 walkthrough_trigger = rb"\x57\x8B\xF7\xBB"
 
-# >> DQXGame.exe+130F60 - 55                    - push ebp
-# >> DQXGame.exe+130F61 - 8B EC                 - mov ebp,esp
-# >> DQXGame.exe+130F63 - 8B 45 08              - mov eax,[ebp+08]
-# >> DQXGame.exe+130F66 - 85 C0                 - test eax,eax
-# >> DQXGame.exe+130F68 - 74 11                 - je DQXGame.exe+130F7B
-# >> DQXGame.exe+130F6A - 6A FF                 - push -01
-# >> DQXGame.exe+130F6C - 50                    - push eax
-# >> DQXGame.exe+130F6D - 83 C1 04              - add ecx,04
-#    DQXGame.exe+130F70 - 6A 24                 - push 24
-#    DQXGame.exe+130F72 - 51                    - push ecx
-#    DQXGame.exe+130F73 - E8 52F08700           - call DQXGame.exe+9AFFCA
-#    DQXGame.exe+130F78 - 83 C4 10              - add esp,10
-# 55 8B EC 8B 45 ? 85 C0 74 ? 6A ? 50 83 C1
-nameplates_trigger = rb"\x55\x8B\xEC\x8B\x45.\x85\xC0\x74.\x6A.\x50\x83\xC1"
+# >> DQXGame.exe+141B30 - 55                    - push ebp
+# >> DQXGame.exe+141B31 - 8B EC                 - mov ebp,esp
+# >> DQXGame.exe+141B33 - 56                    - push esi
+# >> DQXGame.exe+141B34 - 8B B1 88010000        - mov esi,[ecx+00000188]
+# >> DQXGame.exe+141B3A - 85 F6                 - test esi,esi
+# >> DQXGame.exe+141B3C - 74 16                 - je DQXGame.exe+141B54
+# >> DQXGame.exe+141B3E - 8B 45 08              - mov eax,[ebp+08]
+#    DQXGame.exe+141B41 - 8D 4E 08              - lea ecx,[esi+08]
+#    DQXGame.exe+141B44 - 51                    - push ecx
+#    DQXGame.exe+141B45 - 8B D4                 - mov edx,esp
+#    DQXGame.exe+141B47 - 89 02                 - mov [edx],eax
+#    DQXGame.exe+141B49 - E8 12F4FEFF           - call DQXGame.exe+130F60
+#    DQXGame.exe+141B4E - 8B 45 0C              - mov eax,[ebp+0C]
+#    DQXGame.exe+141B51 - 89 46 34              - mov [esi+34],eax
+#    DQXGame.exe+141B54 - 5E                    - pop esi
+#    DQXGame.exe+141B55 - 5D                    - pop ebp
+#    DQXGame.exe+141B56 - C2 0800               - ret 0008
+
+# 55 8B EC 56 8B B1 ?? ?? ?? ?? 85 F6 74 ?? 8B 45
+nameplates_trigger = rb"\x55\x8B\xEC\x56\x8B\xB1....\x85\xF6\x74.\x8B\x45"
 
 # - talk to some purple npc that has a quest
 # - when the quest comes up, copy some text from it

@@ -3,6 +3,7 @@ from common.db_ops import generate_glossary_dict, generate_m00_dict, init_db
 from common.translators.deepl import DeepLTranslate
 from common.translators.googletranslate import GoogleTranslate
 from common.translators.googletranslatefree import GoogleTranslateFree
+from functools import lru_cache
 from loguru import logger as log
 
 import langdetect
@@ -10,6 +11,24 @@ import pykakasi
 import re
 import textwrap
 import unicodedata
+
+# module constants to prevent re-initialization each run.
+_INVALID_CHARS = frozenset(
+    ["[", "]", "(", ")", "\\", "/", "*", "_", "+", "?", "$", "^", '"']
+)
+_HIRAGANA_CODEPOINTS = frozenset(
+    list(range(12353, 12430)) + [12431] + list(range(12434, 12436))
+)
+_KATAKANA_CODEPOINTS = frozenset(
+    list(range(12449, 12526))
+    + [12527]
+    + list(range(12530, 12533))
+    + list(range(12539, 12541))
+    + [65374]
+)
+_VALID_CODEPOINTS = _HIRAGANA_CODEPOINTS | _KATAKANA_CODEPOINTS
+
+_KKS = pykakasi.kakasi()
 
 
 class Translator():
@@ -527,6 +546,10 @@ def detect_lang(text: str) -> bool:
         return False
 
 
+# infinitely cache player names as we come across them. honestly shouldn't
+# be a problem as these are just small strings. we only need to capture a
+# unique name once per session, then we'll just re-use.
+@lru_cache(maxsize=None)
 def transliterate_player_name(word: str) -> str:
     """Uses the pykakasi library to phonetically convert a Japanese word into
     English.
@@ -534,35 +557,30 @@ def transliterate_player_name(word: str) -> str:
     :param word: Word to convert.
     :returns: Returns up to a 10 character name in English.
     """
-    invalid_chars = ["[", "]", "[", "(", ")", "\\", "/", "*", "_", "+", "?", "$", "^", '"']
-    hiragana_unicode_block = list(range(12353, 12430)) + [12431] + list(range(12434,12436))
-    katakana_unicode_block = list(range(12449,12526)) + [12527] + list(range(12530,12533)) + list(range(12539,12541)) + [65374]
-
-    if any(char in word for char in invalid_chars):
-        return word
-
     # dqx character names are limited to 6 characters. if we receive something longer
     # than 6 characters, just return the word.
-    if len(word) < 7:
-        for char in word:
-            if ord(char) not in (hiragana_unicode_block + katakana_unicode_block):
-                return word
-
-        kks = pykakasi.kakasi()
-
-        # kks breaks mixed alphabets into a list of dicts.
-        result = kks.convert(word)
-        romaji = "".join([char['hepburn'] for char in result]).title().replace("・", "")
-
-        # a player can name themselves "・". since we replace all instances of this, romaji
-        # could be blank. if this is the case, we'll keep the same number of interpunct chars
-        # and replace them with periods.
-        if not romaji:
-            romaji = "." * word.count("・")
-
-        return romaji[0:10]
-    else:
+    if len(word) > 6:
         return word
+
+    # check for invalid characters
+    if set(word) & _INVALID_CHARS:
+        return word
+
+    # validate all characters are hiragana/katakana
+    if not all(ord(char) in _VALID_CODEPOINTS for char in word):
+        return word
+
+    # use constant kakasi instance for conversion
+    result = _KKS.convert(word)
+    romaji = "".join([char["hepburn"] for char in result]).title().replace("・", "")
+
+    # a player can name themselves "・". since we replace all instances of this, romaji
+    # could be blank. if this is the case, we'll keep the same number of interpunct chars
+    # and replace them with periods.
+    if not romaji:
+        romaji = "." * word.count("・")
+
+    return romaji[0:10]
 
 
 def get_player_name() -> tuple:
