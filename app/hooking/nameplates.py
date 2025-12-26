@@ -4,8 +4,6 @@ from common.translate import transliterate_player_name
 from json import dumps
 
 import os
-import re
-import regex
 import sys
 
 
@@ -13,7 +11,6 @@ class Nameplates:
 
     writer = MemWriterLocal()
     names = None
-    jp_regex = regex.compile(r"\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Han}")
 
     def __init__(self, esp_address: int):
         if not Nameplates.names:
@@ -22,38 +19,33 @@ class Nameplates:
             #   - any player name overrides
             #   - any mytown names
             # this is to make sure user customizations are captured
+            # fmt: off
             monsters = generate_m00_dict(files="'monsters'")
             npcs = generate_m00_dict(files="'npcs', 'custom_npc_name_overrides'")
-            players = generate_m00_dict(files="'local_player_names'")
-            mytown = generate_m00_dict(files="'custom_concierge_mail_names', 'local_mytown_names'")
+            mytown = generate_m00_dict(files="'custom_concierge_mail_names'")
+            player_custom = generate_m00_dict(files="'local_player_names', 'local_mytown_names'")
 
-            Nameplates.names = {**monsters, **npcs, **players, **mytown}
+            Nameplates.names = {**monsters, **npcs, **mytown, **player_custom,}
 
         esp = Nameplates.writer.read_uint32(address=esp_address, value=True)
-        arg_1 = Nameplates.writer.read_uint32(address=esp + 0x4, value=True)
+        arg_1 = Nameplates.writer.read_uint32(address=esp + 0x4, value=True)  # name
+        # fmt: on
 
         try:
             name = Nameplates.writer.read_string(address=arg_1)
         except OSError:  # eat access violation errors and return.
             return
 
-        length = len(name.encode('utf-8'))
-
         if name:
-            # if name isn't in japanese, return.
-            if not self.__is_japanese(name):
-                return
-
+            # check for game name first from game files
             result = Nameplates.names.get(name)
 
             if not result:
+                # must be a player name then.
                 result = transliterate_player_name(name)
 
-            # take care not to write more than the original size of the string.
-            Nameplates.writer.write_string(arg_1, "\x04" + result[: length - 1])
+            Nameplates.writer.write_string(arg_1, "\x04" + result)
 
-    def __is_japanese(cls, text: str):
-        return bool(cls.jp_regex.search(text))
 
 def nameplates_shellcode(esp_address: int) -> str:
     """Returns shellcode for the nameplates function hook.
