@@ -4,11 +4,12 @@ from common.translate import transliterate_player_name
 from json import dumps
 
 import os
+import regex
 import sys
 
 
 class Nameplates:
-
+    jp_regex = regex.compile(r"\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Han}")
     writer = MemWriterLocal()
     names = None
 
@@ -36,6 +37,9 @@ class Nameplates:
         except OSError:  # eat access violation errors and return.
             return
 
+        if not self.__is_japanese(name):
+            return
+
         if name:
             # check for game name first from game files
             result = Nameplates.names.get(name)
@@ -46,6 +50,8 @@ class Nameplates:
 
             Nameplates.writer.write_string(arg_1, "\x04" + result)
 
+    def __is_japanese(cls, text: str):
+        return bool(cls.jp_regex.search(text))
 
 def nameplates_shellcode(esp_address: int) -> str:
     """Returns shellcode for the nameplates function hook.
