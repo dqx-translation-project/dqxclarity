@@ -74,3 +74,13 @@ def get_project_root(add_file=None):
     if add_file:
         abs_path = "/".join([abs_path, add_file])
     return abs_path
+
+
+def is_steam_deck() -> bool:
+    """Check if user is on a Steam Deck.
+
+    :returns: Returns True if yes. Else, False.
+    """
+    if os.environ.get("SteamDeck") == "1":
+        return True
+    return False

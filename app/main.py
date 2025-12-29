@@ -1,6 +1,6 @@
 from common.config import UserConfig
 from common.db_ops import create_db_schema
-from common.lib import get_project_root, setup_logging
+from common.lib import get_project_root, is_steam_deck, setup_logging
 from common.process import (
     is_dqx_process_running,
     start_process,
@@ -112,11 +112,18 @@ def main():
         # the processes being created either run in an indefinite loop,
         # or do some type of work on their own.
         if args.nameplates:
-            start_process(
-                name="Nameplate scanner",
-                target=run_scans,
-                args=(args.nameplates,),
-            )
+            if not is_steam_deck():
+                start_process(
+                    name="Nameplate scanner",
+                    target=run_scans,
+                    args=(args.nameplates,),
+                )
+            else:
+                # any pymem scanning does not currently function on steam deck. these need to be replaced
+                # with a hook. this still works on native windows though.
+                log.warning(
+                    "Some nameplate features are not available on Linux/Steam deck right now."
+                )
 
         activate_hooks(
             communication_window=args.communication_window,
