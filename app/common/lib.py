@@ -26,7 +26,7 @@ def setup_logging(log_file: str = "console.log", stdout: bool = True, level: str
     # wine does not seem to have support for ansi color codes in cmd, which
     # makes it very difficult to read the command prompt.
     colorize = True
-    if os.environ.get("SteamDeck") == "1" or os.environ.get("WINEPREFIX"):
+    if is_wine_environment():
         colorize = False
 
     if stdout:
@@ -76,11 +76,11 @@ def get_project_root(add_file=None):
     return abs_path
 
 
-def is_steam_deck() -> bool:
-    """Check if user is on a Steam Deck.
+def is_wine_environment() -> bool:
+    """Check if user is running in WINE.
 
     :returns: Returns True if yes. Else, False.
     """
-    if os.environ.get("SteamDeck") == "1":
+    if os.environ.get("SteamDeck") == "1" or os.environ.get("WINEPREFIX"):
         return True
     return False
