@@ -1,5 +1,3 @@
-from common.memory import MemWriter
-from common.signatures import notice_string
 from loguru import logger as log
 from multiprocessing import Event, Process
 
@@ -65,9 +63,5 @@ def wait_for_dqx_to_launch() -> bool:
         return True
     while not is_dqx_process_running():
         time.sleep(0.25)
-    log.success("DQXGame.exe found. Make sure you're on the \"Important notice\" screen.")
-    writer = MemWriter()
-    while True:
-        if writer.pattern_scan(pattern=notice_string, data_only=True):
-            log.success("\"Important notice\" screen found.")
-            return True
+    log.success("DQXGame.exe found.")
+    return True

@@ -1,98 +1,73 @@
-"""Hooks the start and end of the function. This logs the real game filenames
-and computed hashes so that they can be found in the game's idx lookup tables
-found in the game folder.
+"""Hooks the end of the function. This logs the real game filenames and
+computed hashes so that they can be found in the game's idx lookup tables found
+in the game folder.
 
 The function itself computes a CRC32-poly8 checksum of the filename,
 which is then used to do the lookup in the idx.
 """
 from common.lib import get_project_root
-from common.memory_local import MemWriterLocal
-from json import dumps
-from pathlib import Path
+from loguru import logger as log
 
-import logging
 import os
-import sys
+
+# module-level file handle for efficient appending
+_log_file = None
 
 
-class HashLogger:
-    writer = None
-    logger = None
+def _init_log_file():
+    """Initialize the hash log file if not already opened."""
+    global _log_file
 
-    def __init__(
-        self,
-        ecx_address: int,
-        esp_address: int,
-    ):
-        if not HashLogger.writer:
-            HashLogger.writer = MemWriterLocal()
-        if not HashLogger.logger:
-            HashLogger.logger = logging.getLogger("hashlog")
-            logger = HashLogger.logger
-            logger.setLevel(logging.INFO)
+    if _log_file is not None:
+        return _log_file
 
-            log_file = Path(get_project_root("logs/hashlog.csv"))
-            handler = logging.FileHandler(log_file, mode="a+", encoding="utf-8")
+    # determine log file path
+    log_path = get_project_root("logs/hashlog.csv")
 
-            handler.setFormatter(logging.Formatter("%(message)s"))
+    # create with header if doesn't exist
+    if not os.path.exists(log_path) or os.path.getsize(log_path) == 0:
+        with open(log_path, 'w', encoding='utf-8') as f:
+            f.write('hash_type,hash_input,hash_output\n')
 
-            logger.addHandler(handler)
-            logger.propagate = False
+    # open in append mode, unbuffered for real-time writing
+    _log_file = open(log_path, 'a', encoding='utf-8', buffering=1)
+    return _log_file
 
-            if not log_file.exists():
-                with open(log_file, "a+") as f:
-                    f.write("hash_type,hash_input,hash_output,")
 
-        mem = HashLogger.writer
+def on_message(message, data, script):
+    """Message handler for hash_logger hook.
 
-        esp = mem.read_uint32(address=esp_address, value=True)
-        ecx = mem.read_uint32(address=ecx_address, value=True)
+    Args:
+        message: Message dict from Frida script
+        data: Binary data (if any) from Frida script
+        script: Frida script instance for posting responses
+    """
+    if message['type'] == 'send':
+        payload = message['payload']
+        msg_type = payload.get('type', 'unknown')
 
-        data_type = mem.read_uint32(address=esp, value=True)
+        if msg_type == 'hash_data':
+            hash_type = payload.get('hash_type', '')
+            hash_input = payload.get('hash_input', '')
+            hash_output = payload.get('hash_output', '')
 
-        if hex(data_type) == "0xffffffff":
-            hash_type = "dir"
-            esp24 = mem.read_uint32(address=esp + 0x24, value=True)
-            filepath = mem.read_string(address=esp24)
-            hash_input = "/".join(filepath.split("/")[:-1])  # get path without filename
+            try:
+                log_file = _init_log_file()
+                log_file.write(f'"{hash_type}","{hash_input}",{hash_output}\n')
+                # no flush needed due to line buffering (buffering=1)
+
+            except Exception as e:
+                log.exception(f"Failed to log hash: {e}")
+
+        elif msg_type == 'info':
+            log.debug(f"{payload['payload']}")
+        elif msg_type == 'error':
+            log.error(f"{payload['payload']}")
         else:
-            hash_type = "file"
-            esp2c = mem.read_uint32(address=esp + 0x2C, value=True)
-            filepath = mem.read_string(address=esp2c)
-            hash_input = filepath.rsplit("/", 1)[-1]  # just get filename
+            log.debug(f"{payload}")
 
-        hash_output = hex(ecx)
-
-        # This appends the hash to the end of the existing hashlog,
-        # which contains the hash value we're interested in.
-        HashLogger.logger.info(f'"{hash_type}","{hash_input}",{hash_output}')
-
-
-def hash_logger_shellcode(ecx_address: int, esp_address: int) -> str:
-    """Returns shellcode to log hash values.
-
-    :param ecx_address: Address of ecx that contains the hash value.
-    :param esp_address: Address of esp for stack values.
-    """
-    local_paths = dumps(sys.path).replace("\\", "\\\\")
-    log_path = os.path.join(os.path.abspath('.'), 'logs\\console.log').replace("\\", "\\\\")
-
-    # Overwriting the process's sys.path with the one outside of the process
-    # is required to run our imports and function code. It's also necessary to
-    # escape the slashes.
-    shellcode = f"""
-try:
-    import sys
-    import traceback
-    sys.path = {local_paths}
-    from hooking.hash_logger import HashLogger
-    HashLogger({ecx_address}, {esp_address})
-except Exception as e:
-    with open("{log_path}", "a+") as f:
-        f.write(str(traceback.format_exc()))
-    """
-
-    return shellcode
+    elif message['type'] == 'error':
+        log.error(f"[JS ERROR] {message.get('stack', message)}")
 
 
 # unsigned int __cdecl sub_282CF0(char *a1, unsigned int a2)

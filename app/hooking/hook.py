@@ -1,311 +1,180 @@
-from hooking.trampoline import Trampoline
+from collections.abc import Callable
+from hooking.hooks.blowfish_logger import \
+    on_message as blowfish_logger_on_message
+from hooking.hooks.corner_text import on_message as corner_text_on_message
+from hooking.hooks.dialogue import on_message as dialogue_on_message
+from hooking.hooks.hash_logger import on_message as hash_logger_on_message
+from hooking.hooks.nameplates import on_message as nameplates_on_message
+from hooking.hooks.network_text import on_message as network_text_on_message
+from hooking.hooks.player import on_message as player_on_message
+from hooking.hooks.quest import on_message as quest_on_message
+from hooking.hooks.walkthrough import on_message as walkthrough_on_message
 from loguru import logger as log
 
+import os
 
-def translate_detour():
-    """Hooks the dialog window to translate text."""
-    from common.signatures import dialog_trigger
-    from hooking.dialog import translate_shellcode
+PROCESS_NAME = "DQXGame.exe"
+SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), "scripts")
 
-    trampoline = Trampoline(
-        name="game_dialogue",
-        signature=dialog_trigger,
-        num_bytes_to_steal=10,
-    )
 
-    if not trampoline.initialized:
-        log.error(f"Trampoline {trampoline.name} failed to initialize.")
-        return None
+class FridaHook:
+    """Defines a Frida hook configuration.
 
-    esi, esp, shellcode_addr = trampoline.esi, trampoline.esp, trampoline.shellcode
-
-    shellcode = translate_shellcode(esi_address=esi, esp_address=esp)
-    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
-
-    return trampoline
-
-
-def quest_text_detour():
-    """Hooks the quest dialog window and translates it."""
-    from common.signatures import quest_text_trigger
-    from hooking.quest import quest_text_shellcode
-
-    trampoline = Trampoline(
-        name="quest_list",
-        signature=quest_text_trigger,
-        num_bytes_to_steal=6,
-    )
-
-    if not trampoline.initialized:
-        log.error(f"Trampoline {trampoline.name} failed to initialize.")
-        return None
-
-    eax, shellcode_addr = trampoline.eax, trampoline.shellcode
-
-    shellcode = quest_text_shellcode(address=eax)
-    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
-
-    return trampoline
-
-
-def accept_quest_text_detour():
-    """Hooks the accept quest window and translates it."""
-    from common.signatures import accept_quest_text_trigger
-    from hooking.accept_quest import accept_quest_text_shellcode
-
-    trampoline = Trampoline(
-        name="accept_quest",
-        signature=accept_quest_text_trigger,
-        num_bytes_to_steal=6,
-    )
-
-    if not trampoline.initialized:
-        log.error(f"Trampoline {trampoline.name} failed to initialize.")
-        return None
-
-    ebx, esi, shellcode_addr = trampoline.ebx, trampoline.esi, trampoline.shellcode
-
-    shellcode = accept_quest_text_shellcode(ebx_address=ebx, esi_address=esi)
-    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
-
-    return trampoline
-
-
-def network_text_detour():
-    """Translates single string 'network text'."""
-    from common.signatures import network_text_trigger
-    from hooking.network_text import network_text_shellcode
-
-    trampoline = Trampoline(
-        name="network_text",
-        signature=network_text_trigger,
-        num_bytes_to_steal=5,
-    )
-
-    if not trampoline.initialized:
-        log.error(f"Trampoline {trampoline.name} failed to initialize.")
-        return None
-
-    edx, ebx, shellcode_addr = trampoline.edx, trampoline.ebx, trampoline.shellcode
-
-    shellcode = network_text_shellcode(edx_address=edx, ebx_address=ebx)
-    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
-
-    return trampoline
-
-
-def player_name_detour():
-    """Updates strings in the database with the logged in player's name."""
-    from common.signatures import player_sibling_name_trigger
-    from hooking.player import player_name_shellcode
-
-    trampoline = Trampoline(
-        name="player_name",
-        signature=player_sibling_name_trigger,
-        num_bytes_to_steal=6,
-    )
-
-    if not trampoline.initialized:
-        log.error(f"Trampoline {trampoline.name} failed to initialize.")
-        return None
-
-    eax, shellcode_addr = trampoline.eax, trampoline.shellcode
-
-    shellcode = player_name_shellcode(eax_address=eax)
-    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
-
-    return trampoline
-
-
-def corner_text_detour():
-    """Detours function when top-right corner text is about to happen and
-    translates it."""
-    from common.signatures import corner_text_trigger
-    from hooking.corner_text import corner_text_shellcode
-
-    trampoline = Trampoline(
-        name="corner_text",
-        signature=corner_text_trigger,
-        num_bytes_to_steal=5,
-    )
-
-    if not trampoline.initialized:
-        log.error(f"Trampoline {trampoline.name} failed to initialize.")
-        return None
-
-    eax, shellcode_addr = trampoline.eax, trampoline.shellcode
-
-    shellcode = corner_text_shellcode(eax_address=eax)
-    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
-
-    return trampoline
-
-
-def mem_chr_detour():
-    """Detours function where text is sent to memchr()."""
-    from common.signatures import mem_chr_trigger
-    from hooking.memchr import memchr_shellcode
-
-    trampoline = Trampoline(
-        name="memchr",
-        signature=mem_chr_trigger,
-        num_bytes_to_steal=5,
-    )
-
-    if not trampoline.initialized:
-        log.error(f"Trampoline {trampoline.name} failed to initialize.")
-        return None
-
-    esp, shellcode_addr = trampoline.esp, trampoline.shellcode
-
-    shellcode = memchr_shellcode(esp_address=esp)
-    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
-
-    return trampoline
-
-
-def walkthrough_detour():
-    """Detours function where walkthrough text is accessed."""
-    from common.signatures import walkthrough_trigger
-    from hooking.walkthrough import walkthrough_shellcode
-
-    trampoline = Trampoline(
-        name="walkthrough",
-        signature=walkthrough_trigger,
-        num_bytes_to_steal=8,
-    )
-
-    if not trampoline.initialized:
-        log.error(f"Trampoline {trampoline.name} failed to initialize.")
-        return None
-
-    edi, shellcode_addr = trampoline.edi, trampoline.shellcode
-
-    shellcode = walkthrough_shellcode(edi_address=edi)
-    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
-
-    return trampoline
-
-
-def nameplates_detour():
-    """Detours function where nameplates are visible."""
-    from common.signatures import nameplates_trigger
-    from hooking.nameplates import nameplates_shellcode
-
-    trampoline = Trampoline(
-        name="nameplates",
-        signature=nameplates_trigger,
-        num_bytes_to_steal=10,
-    )
-
-    if not trampoline.initialized:
-        log.error(f"Trampoline {trampoline.name} failed to initialize.")
-        return None
-
-    esp, shellcode_addr = trampoline.esp, trampoline.shellcode
-
-    shellcode = nameplates_shellcode(esp_address=esp)
-    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
-
-    return trampoline
-
-
-def hash_logger_detour():
-    """Detours function where filenames and hashes are read.
-
-    This should always be called with hash_logger_start_detour() as
-    well.
+    Each hook runs as an independent Frida script, allowing for:
+    - Fault isolation (one hook crashing doesn't affect others)
+    - Individual enable/disable
+    - Independent debugging
+    - Runtime loading/unloading
     """
-    from common.signatures import hash_logger_end_trigger
-    from hooking.hash_logger import hash_logger_shellcode
 
-    # where we found our address is a little high, but gives us a unique
-    # address. we need to move passed a relative jump to get towards the
-    # bottom of the function so we get the real hash value found in ecx.
-    trampoline = Trampoline(
-        name="hash_logger",
-        signature=hash_logger_end_trigger,
-        num_bytes_to_steal=5,
-        offset=6,
-    )
+    def __init__(
+        self,
+        name: str,
+        signature: str,
+        script_file: str,
+        message_handler: Callable,
+        enabled: bool = True,
+    ):
+        """Initialize a hook configuration.
 
-    if not trampoline.initialized:
-        log.error(f"Trampoline {trampoline.name} failed to initialize.")
-        return None
+        Args:
+            name: Name for this hook (used in logging and debugging)
+            signature: Byte pattern to locate the target function (wildcards: ??)
+            script_file: JavaScript file to execute (relative to scripts/ folder)
+            message_handler: Python function that handles messages from this hook's Frida script
+                           Signature: (message: dict, data: any, script: frida.Script) -> None
+            enabled: Whether this hook should be loaded at startup
+        """
+        self.name = name
+        self.signature = signature
+        self.script_file = script_file
+        self.message_handler = message_handler
+        self.enabled = enabled
 
-    ecx, esp, shellcode_addr = trampoline.ecx, trampoline.esp, trampoline.shellcode
-
-    shellcode = hash_logger_shellcode(ecx_address=ecx, esp_address=esp)
-    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
-
-    return trampoline
-
-
-def blowfish_logger_detour():
-    """Detours function where blowfish keys are logged."""
-    from common.signatures import blowfish_logger_trigger
-    from hooking.blowfish_logger import blowfish_logger_shellcode
-
-    trampoline = Trampoline(
-        name="blowfish_logger",
-        signature=blowfish_logger_trigger,
-        num_bytes_to_steal=5,
-    )
-
-    if not trampoline.initialized:
-        log.error(f"Trampoline {trampoline.name} failed to initialize.")
-        return None
-
-    esp, shellcode_addr = trampoline.esp, trampoline.shellcode
-
-    shellcode = blowfish_logger_shellcode(esp_address=esp)
-    trampoline.writer.write_string(address=shellcode_addr, text=shellcode)
-
-    return trampoline
+    def __repr__(self):
+        status = "enabled" if self.enabled else "disabled"
+        return f"FridaHook(name={self.name}, script={self.script_file}, {status})"
 
 
-def activate_hooks(
-    communication_window: bool, nameplates: bool, community_logging: bool
-) -> None:
-    """Activates all hooks.
+class HookScript:
+    """Manages a single hook's Frida script."""
 
-    :param communication_window: True if user requested to translate
-        game dialogue.
-    :param community_logging: True if user requested to enable community
-        logging.
-    :returns: A list of hook objects that can be enabled or disabled.
-    """
-    # activates all hooks. add any new hooks to this list
-    hooks = []
-    if hook := corner_text_detour():
-        hooks.append(hook)
-    if hook := network_text_detour():
-        hooks.append(hook)
-    if hook := player_name_detour():
-        hooks.append(hook)
+    def __init__(self, hook: FridaHook, hook_id: int, session):
+        self.hook = hook
+        self.hook_id = hook_id
+        self.session = session
+        self.script = None
 
-    if nameplates:
-        if hook := nameplates_detour():
-            hooks.append(hook)
+    def load(self):
+        """Load and attach this hook's script."""
+        script_code = self._load_script_file()
+        self.script = self.session.create_script(script_code)
+        self.script.on("message", self._on_message)
+        self.script.load()
+        log.success(f"{self.hook.name} loaded")
 
-    if community_logging:
-        if hook := hash_logger_detour():
-            hooks.append(hook)
-        if hook := blowfish_logger_detour():
-            hooks.append(hook)
+    def _load_script_file(self) -> str:
+        """Load and prepare the hook script from file."""
+        script_path = os.path.join(SCRIPTS_DIR, self.hook.script_file)
 
-    if communication_window:
-        if hook := translate_detour():
-            hooks.append(hook)
-        if hook := accept_quest_text_detour():
-            hooks.append(hook)
-        if hook := quest_text_detour():
-            hooks.append(hook)
-        if hook := walkthrough_detour():
-            hooks.append(hook)
+        if not os.path.exists(script_path):
+            raise FileNotFoundError(f"Script file not found: {script_path}")
 
-    if hooks:
-        for hook in hooks:
-            hook.enable()
+        with open(script_path, encoding="utf-8") as f:
+            script_template = f.read()
 
-    return hooks
+        # replace placeholders in the script
+        script = script_template.replace("{{HOOK_ID}}", str(self.hook_id))
+        script = script.replace("{{HOOK_NAME}}", self.hook.name)
+        script = script.replace("{{SIGNATURE}}", self.hook.signature)
+
+        return script
+
+    def _on_message(self, message, data):
+        """Delegate message handling to the hook-specific message handler."""
+        if self.hook.message_handler:
+            self.hook.message_handler(message, data, self.script)
+        else:
+            log.error(f"No message handler defined for {self.hook.name}")
+
+    def unload(self):
+        """Unload this hook's script."""
+        if self.script:
+            self.script.unload()
+            log.success(f"{self.hook.name} unloaded")
+
+
+# hooks are structured by a top level grouping category.
+HOOKS = {
+    "default": [
+        FridaHook(
+            name="corner_text",
+            signature="55 8B EC 8B 45 ?? 83 EC ?? 53 8B 5D ?? 56 8B F1 57 85 C0",
+            script_file="corner_text.ts",
+            message_handler=corner_text_on_message,
+            enabled=True,
+        ),
+        FridaHook(
+            name="network_text",
+            signature="55 8B EC 81 EC ?? ?? ?? ?? A1 ?? ?? ?? ?? 33 C5 89 45 ?? 8B 45 ?? 8B 0D ?? ?? ?? ?? 89 45 ?? 64 A1",
+            script_file="network_text.ts",
+            message_handler=network_text_on_message,
+            enabled=True,
+        ),
+        FridaHook(
+            name="player",
+            signature="55 8B EC 56 8B F1 57 8B 46 58 85 C0",
+            script_file="player.ts",
+            message_handler=player_on_message,
+            enabled=True,
+        ),
+    ],
+    "nameplates": [
+        FridaHook(
+            name="nameplates",
+            signature="55 8B EC 56 8B B1 ?? ?? ?? ?? 85 F6 74 ?? 8B 45",
+            script_file="nameplates.ts",
+            message_handler=nameplates_on_message,
+            enabled=True,
+        ),
+    ],
+    "communication_window": [
+        FridaHook(
+            name="dialogue",
+            signature="55 8B EC 56 8B F1 80 BE ?? ?? ?? ?? ?? 74 ?? C6 86 ?? ?? ?? ?? ?? FF 75",
+            script_file="dialogue.ts",
+            message_handler=dialogue_on_message,
+            enabled=True,
+        ),
+        FridaHook(
+            name="quest",
+            signature="88 86 57 03 00 00 5E 5B 5D C2 04 00",
+            script_file="quest.ts",
+            message_handler=quest_on_message,
+            enabled=True,
+        ),
+        FridaHook(
+            name="walkthrough",
+            signature="E8 ?? ?? ?? ?? 8D B8 ?? ?? ?? ?? 8B CF 8D 51",
+            script_file="walkthrough.ts",
+            message_handler=walkthrough_on_message,
+            enabled=True,
+        ),
+    ],
+    "community_logging": [
+        FridaHook(
+            name="hash_logger",
+            signature="55 8B EC 8B 55 08 85 D2 75 04 33 C0 5D C3 53",
+            script_file="hash_logger.ts",
+            message_handler=hash_logger_on_message,
+            enabled=False,
+        ),
+        FridaHook(
+            name="blowfish_logger",
+            signature="55 8B EC 53 57 8B 79 24 85 FF 74 ?? 83 7D 08 00",
+            script_file="blowfish_logger.ts",
+            message_handler=blowfish_logger_on_message,
+            enabled=True,
+        ),
+    ],
+}

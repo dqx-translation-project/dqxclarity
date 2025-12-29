@@ -1,1 +1,2 @@
+frida-tools
 pre-commit
