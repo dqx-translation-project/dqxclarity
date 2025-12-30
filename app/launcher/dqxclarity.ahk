@@ -14,6 +14,7 @@ ini.communitylogging := IniRead(".\user_settings.ini", "launcher", "communitylog
 ini.nameplates := IniRead(".\user_settings.ini", "launcher", "nameplates", "False")
 ini.updategamefiles := IniRead(".\user_settings.ini", "launcher", "updategamefiles", "False")
 ini.disableupdates := IniRead(".\user_settings.ini", "launcher", "disableupdates", "False")
+ini.debuglogging := IniRead(".\user_settings.ini", "launcher", "debuglogging", "False")
 
 ; main window
 Launcher := Gui()
@@ -27,6 +28,7 @@ Launcher.AddCheckBox("XP+10 YP+20 vCommunityLogging Checked" . ConvertBoolToStat
 Launcher.AddCheckBox("vNameplates Checked" . ConvertBoolToState(ini.nameplates), "Nameplates")
 Launcher.AddCheckBox("vUpdateGameFiles Checked" . ConvertBoolToState(ini.updategamefiles), "Update Game Files")
 Launcher.AddCheckBox("vDisableUpdates Checked"  . ConvertBoolToState(ini.disableupdates), "Disable Updates")
+Launcher.AddCheckBox("vDebugLogging Checked" . ConvertBoolToState(ini.debuglogging), "Enable Debug Logging")
 Launcher.AddStatusBar("vStatusBar", "")
 
 ; api group
@@ -47,6 +49,7 @@ Launcher["CommunityLogging"].ToolTip := "Enables logging of internal game files 
 Launcher["Nameplates"].ToolTip := "Transliterates Japanese nameplates to English."
 Launcher["UpdateGameFiles"].ToolTip := "Downloads/updates the modded DAT/IDX files."
 Launcher["DisableUpdates"].ToolTip := "Don't check for dqxclarity updates on launch."
+Launcher["DebugLogging"].ToolTip := "Enables more verbose logging."
 Launcher["UseDeepL"].ToolTip := "Enable DeepL as your choice of external translation."
 Launcher["UseGoogleTranslate"].ToolTip := "Enable Google Translate as your choice of external translation."
 Launcher["UseGoogleTranslateFree"].ToolTip := "Uses the 'free' version of Google Translate. Rate limiting may ensue under use."
@@ -210,6 +213,7 @@ SaveToIni(*) {
     IniWrite(ConvertStateToBool(Launcher["Nameplates"].value), ".\user_settings.ini", "launcher", "nameplates")
     IniWrite(ConvertStateToBool(Launcher["UpdateGameFiles"].value), ".\user_settings.ini", "launcher", "updategamefiles")
     IniWrite(ConvertStateToBool(Launcher["DisableUpdates"].value), ".\user_settings.ini", "launcher", "disableupdates")
+    IniWrite(ConvertStateToBool(Launcher["DebugLogging"].value), ".\user_settings.ini", "launcher", "debuglogging")
     IniWrite(ConvertStateToBool(Launcher["UseDeepL"].value), ".\user_settings.ini", "translation", "enabledeepltranslate")
     IniWrite(Launcher["DeepLKey"].value, ".\user_settings.ini", "translation", "deepltranslatekey")
     IniWrite(ConvertStateToBool(Launcher["UseGoogleTranslate"].value), ".\user_settings.ini", "translation", "enablegoogletranslate")
@@ -230,6 +234,8 @@ GetClarityArgs(*) {
         args := args . " " . "--update-dat"
     if (Launcher["DisableUpdates"].value = 1)
         args := args . " " . "--disable-update-check"
+    if (Launcher["DebugLogging"].value = 1)
+        args := args . " " . "--debug"
     if (Launcher["UseDeepL"].value = 1 or Launcher["UseGoogleTranslate"].value = 1 or Launcher["UseGoogleTranslateFree"].value = 1)
         args := args . " " . "--communication-window"
 

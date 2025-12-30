@@ -1,14 +1,18 @@
 from common.config import UserConfig
 from common.db_ops import create_db_schema
-from common.lib import get_project_root, setup_logging
-from common.process import start_process, wait_for_dqx_to_launch
+from common.lib import get_project_root, is_wine_environment, setup_logging
+from common.process import (
+    is_dqx_process_running,
+    start_process,
+    wait_for_dqx_to_launch,
+)
 from common.update import (
     check_for_updates,
     download_custom_files,
     download_dat_files,
     import_name_overrides,
 )
-from hooking.hook import activate_hooks
+from hooking.activate import activate_hooks, cleanup_hooks
 from pathlib import Path
 from scans.manager import run_scans
 
@@ -52,6 +56,12 @@ def parse_arguments():
         action="store_true",
         help="Update the translated idx and dat file with the latest from Github. Requires the game to be closed.",
     )
+    parser.add_argument(
+        "-v",
+        "--debug",
+        action="store_true",
+        help="Enable debug level logging.",
+    )
 
     return parser.parse_args()
 
@@ -66,7 +76,8 @@ def main():
     log_path = get_project_root("logs/console.log")
     Path(log_path).unlink(missing_ok=True)
 
-    log = setup_logging()
+    log_level = "DEBUG" if args.debug else "INFO"
+    log = setup_logging(level=log_level)
 
     log.info(
         'Running. Please wait until this window says "Done!" before logging into your character.'
@@ -97,32 +108,46 @@ def main():
 
         wait_for_dqx_to_launch()
 
+        # start independent processes that will continuously run in the background.
+        # the processes being created either run in an indefinite loop,
+        # or do some type of work on their own.
+        if args.nameplates:
+            if not is_wine_environment():
+                start_process(
+                    name="Nameplate scanner",
+                    target=run_scans,
+                    args=(args.nameplates,),
+                )
+            else:
+                # any pymem scanning does not currently function on steam deck. these need to be replaced
+                # with a hook. this still works on native windows though.
+                log.warning(
+                    "Some nameplate features are not available in WINE right now."
+                )
+
         activate_hooks(
             communication_window=args.communication_window,
             nameplates=args.nameplates,
             community_logging=args.community_logging,
         )
 
-        # start independent processes that will continuously run in the background.
-        # the processes being created either run in an indefinite loop,
-        # or do some type of work on their own.
-        if args.community_logging:
-            log.warning(
-                'Logs can be found in the "logs" folder. '
-                "You should only enable this flag if you were asked to by the dqxclarity team. "
-                "This feature is unstable. You will not receive help if you've enabled this on your own. "
-            )
-
-        if args.nameplates:
-            start_process(
-                name="Nameplate scanner",
-                target=run_scans,
-                args=(args.nameplates,),
-            )
-
         log.success(
             "Done! Keep this window open (minimize it) and have fun on your adventure!"
         )
+
+        # keep the program running to maintain Frida hooks
+        log.info("Press Ctrl+C to stop...")
+
+        try:
+            # keep running while dqx is open.
+            while True:
+                time.sleep(0.5)
+                if not is_dqx_process_running():
+                    return
+        except KeyboardInterrupt:
+            log.info("Shutting down...")
+            cleanup_hooks()
+
     except Exception:
         log.exception("An exception occurred. dqxclarity will exit.")
         sys.exit(1)
