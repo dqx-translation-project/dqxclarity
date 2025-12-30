@@ -1,11 +1,9 @@
 from hooking.hook import HOOKS, HookScript
 from loguru import logger as log
-from typing import List
 
 import ctypes
 import ctypes.wintypes
 import frida
-import sys
 import time
 
 PROCESS_NAME = "DQXGame.exe"

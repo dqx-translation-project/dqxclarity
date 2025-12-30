@@ -2,7 +2,18 @@ from common.db_ops import init_db, search_bad_strings, sql_read
 from common.translate import detect_lang, Translator
 from loguru import logger as log
 
-_translator = Translator()
+_translator = None
+
+
+def _init_translator():
+    """Initialize the translator if not already loaded."""
+    global _translator
+
+    if _translator is not None:
+        return _translator
+
+    _translator = Translator()
+    return _translator
 
 
 def dialogue_replacement(original_text: str, npc_name: str = "No_NPC") -> str:
@@ -12,6 +23,8 @@ def dialogue_replacement(original_text: str, npc_name: str = "No_NPC") -> str:
     :param original_text: The original Japanese text to translate.
     :param npc_name: Name of the NPC.
     """
+    _init_translator()
+
     # check if text is in Japanese (only translate if needed)
     if not detect_lang(original_text):
         return original_text

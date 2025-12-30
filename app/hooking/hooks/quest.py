@@ -6,7 +6,18 @@ import regex
 
 _jp_regex = regex.compile(r"\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Han}")
 _quests = None
-_translator = Translator()
+_translator = None
+
+
+def _init_translator():
+    """Initialize the translator if not already loaded."""
+    global _translator
+
+    if _translator is not None:
+        return _translator
+
+    _translator = Translator()
+    return _translator
 
 
 def _is_japanese(text: str) -> bool:
@@ -25,6 +36,8 @@ def _query_quest(text: str) -> str:
 
 def _translate_quest_desc(text: str) -> str:
     """Translate quest description using DB cache or translator."""
+    _init_translator()
+
     if db_quest_text := sql_read(text=text, table="quests"):
         return db_quest_text
 
