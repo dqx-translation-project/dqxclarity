@@ -23,7 +23,7 @@ jobs:
           fetch-depth: 0  # we want to collect tag info, so clone all history
 
       - name: Download exe
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: dqxclarity.exe
 
