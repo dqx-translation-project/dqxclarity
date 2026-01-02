@@ -159,6 +159,7 @@ def on_message(message, data, script):
                 replacement = original_text
 
             # send the replacement back to Frida
+            log.trace(f"{original_text} => {replacement}")
             script.post({
                 'type': 'replacement',
                 'text': replacement

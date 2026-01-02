@@ -56,6 +56,7 @@ def nameplate_replacement(original_name: str) -> str:
 
     # prepend \x04 prefix to replacement. we do this because without it, player
     # names turn red and their chat picture is a GM avatar.
+    log.trace(f"{original_name} => {result}")
     return "\x04" + result
 
 
