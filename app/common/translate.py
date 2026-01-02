@@ -45,11 +45,17 @@ class Translator():
         if Translator.glossary is None:
             Translator.glossary = generate_glossary_dict()
 
-
     def __glossify(self, text):
         for ja in Translator.glossary:
             en = Translator.glossary[ja]
-            text = text.replace(ja, en)
+
+            # use leading and trailing spaces in case two words are replaced back to back.
+            text = text.replace(ja, f" {en} ")
+
+        # fix any spacing issues to re-join the string.
+        text = " ".join(text.split())
+        text = text.lstrip()
+
         return text
 
 
@@ -251,6 +257,8 @@ class Translator():
         :param add_brs: Whether to inject "<br>" every three lines to
                 break up text. Used for dialog mainly.
         """
+        log.debug(f"[Original]\n{text}")
+
         # manage our own line endings later
         output = text.replace("<br>", "　")
 
@@ -320,23 +328,25 @@ class Translator():
         str_attrs = {}
 
         # iterate over each string, handling based on condition
-        for str in str_split:
-            if not re.match(tag_re, str):
+        for string in str_split:
+            if not re.match(tag_re, string):
 
                 # sole new lines need to stay where they are.
-                if str == "\n":
+                if string == "\n":
                     continue
 
                 # capture position of the string and replace with placeholder text
-                pristine_str = pristine_str.replace(str, f"<replace_me_index_{count}>")
+                pristine_str = pristine_str.replace(
+                    string, f"<replace_me_index_{count}>"
+                )
 
                 # <select*> lists always start with their first entry being a newline.
                 # if we see this, look back one index to see if we're inside a select tag.
-                if str.startswith("\n"):
-                    lookback = str_split.index(str) - 1
+                if string.startswith("\n"):
+                    lookback = str_split.index(string) - 1
                     if re.match(select_re, str_split[lookback]):
                         str_attrs[count] = {
-                            "text": str,
+                            "text": string,
                             "is_list": True,
                             "prepend_newline": False,
                             "append_newline": False,
@@ -346,17 +356,18 @@ class Translator():
 
                 # capture how the newline was originally placed
                 append_newline = False
-                if str.endswith("\n"):
+                if string.endswith("\n"):
                     append_newline = True
 
                 prepend_newline = False
-                if str.startswith("\n"):
+                if string.startswith("\n"):
                     prepend_newline = True
 
-                str = str.replace("\n", "")
+                string = string.replace("\n", "")
+                string = string.strip()
 
                 str_attrs[count] = {
-                    "text": str,
+                    "text": string,
                     "is_list": False,
                     "prepend_newline": prepend_newline,
                     "append_newline": append_newline,
@@ -378,7 +389,10 @@ class Translator():
                         to_translate.append(line)
             count += 1
 
+        log.debug(f"[Post-glossary]\n{to_translate}")
         translated_list = self.__api_translate(text=to_translate)
+        log.debug(f"[Post-translated]\n{translated_list}")
+
         if not translated_list or len(translated_list) != len(to_translate):
             log.exception(f"{self.service} translation failed.")
             return ""
@@ -413,7 +427,9 @@ class Translator():
             str_text = str_text.replace("......", "...")
             str_text = str_text.replace("....", "...")
 
-            updated_str = self.__normalize_text(str_text)
+            # game doesn't render em-dash. we use the Japanese "ー" instead to simulate one.
+            updated_str = str_text.replace("—", "--")
+            updated_str = self.__normalize_text(updated_str)
             updated_str = updated_str.replace("<&color_", "<color_")  # put our color tag back.
 
             if str_attrs[count]["is_list"]:
@@ -471,6 +487,7 @@ class Translator():
 
             count += 1
 
+        log.debug(f"[Final]\n{pristine_str}")
         return pristine_str
 
 
