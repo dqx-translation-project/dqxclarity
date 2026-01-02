@@ -94,9 +94,6 @@ def on_message(message, data, script):
             try:
                 replacement = dialogue_replacement(original_text, npc_name)
 
-                orig_preview = original_text[:40] + "..." if len(original_text) > 40 else original_text
-                log.debug(f"{orig_preview}")
-
             except Exception as e:
                 log.exception(f"Replacement failed: {e}")
 

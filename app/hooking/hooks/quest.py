@@ -123,6 +123,7 @@ def on_message(message, data, script):
                 replacements = {}
 
             # send replacements back to Frida
+            log.debug(f"\n{quest_data['quest_desc']}")
             script.post({
                 'type': 'quest_replacements',
                 'data': replacements
