@@ -52,8 +52,8 @@ class Translator():
             # use leading and trailing spaces in case two words are replaced back to back.
             text = text.replace(ja, f" {en} ")
 
-        # fix any spacing issues to re-join the string.
-        text = " ".join(text.split())
+        # if two strings are replaced back to back, they will have a double space.
+        text = text.replace("  ", " ")
         text = text.lstrip()
 
         return text
