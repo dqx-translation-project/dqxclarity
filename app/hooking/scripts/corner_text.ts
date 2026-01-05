@@ -95,12 +95,10 @@
                 op.wait();
 
                 if (replacement) {
-                    // Cache the result
-                    translationCache.set(originalText, replacement);
-
                     // Write replacement to memory if different
                     if (replacement !== originalText) {
                         textPtr.writeUtf8String(replacement);
+                        translationCache.set(originalText, replacement);
                     }
                 }
 
