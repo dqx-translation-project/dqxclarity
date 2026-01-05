@@ -152,8 +152,6 @@
 
                 // cache result to make instant for this session.
                 if (replacements) {
-                    questCache.set(questDesc, replacements);
-
                     // Write replacements back to memory
                     if (replacements.subquestName) {
                         baseAddr.add(20).writeUtf8String(replacements.subquestName);
@@ -163,6 +161,9 @@
                     }
                     if (replacements.questDesc) {
                         baseAddr.add(132).writeUtf8String(replacements.questDesc);
+
+                        // only cache if translation occurred
+                        questCache.set(questDesc, replacements);
                     }
                     if (replacements.questRewards) {
                         baseAddr.add(640).writeUtf8String(replacements.questRewards);

@@ -112,12 +112,10 @@
                 op.wait();
 
                 if (replacement !== null) {
-                    // cache result
-                    translationCache.set(cacheKey, replacement);
-
                     // write replacement to memory if different
                     if (replacement !== originalText) {
                         startOfStringAddr.writeUtf8String(replacement);
+                        translationCache.set(cacheKey, replacement);
                     }
                 }
 

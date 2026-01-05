@@ -94,12 +94,10 @@
                 op.wait();
 
                 if (replacement) {
-                    // cache result to make instant for this session.
-                    translationCache.set(originalText, replacement);
-
                     // write translation to memory if different
                     if (replacement !== originalText) {
                         textPtr.writeUtf8String(replacement);
+                        translationCache.set(originalText, replacement);
                     }
                 }
 

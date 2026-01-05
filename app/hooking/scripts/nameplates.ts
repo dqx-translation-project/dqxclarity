@@ -80,12 +80,10 @@
                 op.wait();
 
                 if (replacement) {
-                    // cache the result
-                    translationCache.set(originalName, replacement);
-
                     // write replacement to memory if different
                     if (replacement !== originalName) {
                         namePtr.writeUtf8String(replacement);
+                        translationCache.set(originalName, replacement);
                     }
                 }
 
