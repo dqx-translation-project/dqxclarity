@@ -381,15 +381,26 @@ def download_file(url: str) -> requests.models.Response:
         except Exception as e:
             retries += 1
             if retries < max_retries:
-                log.warning(f"Code: {response.status_code} :: {e}")
+                log.warning(f"Error: {e}")
                 log.warning(f"(Retry: {retries}/{max_retries}) Error downloading file {filename}. Sleeping for 3 seconds and trying again...")
                 time.sleep(3)
                 continue
             else:
-                log.exception(f"(Retry: {retries}/{max_retries}) Max retries reached. Unable to download file {filename}.")
+                log.error(f"Error: {e}")
+                log.error(
+                    f"(Retry: {retries}/{max_retries}) Max retries reached. Unable to download file {filename}."
+                )
                 log.info(
-                    "If connectivity issues persist, consider temporarily checking the \"Disable Updates\" checkbox "
-                    "or passing the -u flag to disable updates and trying again later."
+                    "\nIf connectivity issues persist, you can temporarily disable updates and try again later:\n"
+                    '1) Check the "Disable Updates" checkbox in the launcher (or remove the -d flag)\n'
+                    '2) Uncheck the "Update Game Files" checkbox in the launcher (or add the -u flag)\n\n'
+                    "This is not a dqxclarity issue and should not be reported as such. You can check:\n"
+                    "1) GitHub status page (https://www.githubstatus.com/)\n"
+                    "2) Check your DNS settings (especially if the error says it failed to resolve)\n"
+                    "3) Check that your VPN isn't blocking GitHub requests or is responding too slowly\n"
+                    "4) Make sure you have a consistent internet connection. Bad WiFi?\n"
+                    "5) If the error mentions SSL, try running Windows updates.\n"
+                    "\nSCROLL UP AND READ!"
                 )
                 input("Press enter to exit.")
                 raise SystemExit()
