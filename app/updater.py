@@ -80,7 +80,11 @@ try:
     if not z_data:
         raise
 except Exception as e:
-    input(f"Failed to download the latest update. Please try again or download the update manually from Github.\n\nError: {e}")
+    input(
+        "Failed to download the latest update. Please try again or download the update manually from Github.\n"
+        "Documentation: https://dqx-translation-project.github.io/dqxclarity\n\n"
+        f"Error: {e}"
+    )
     sys.exit(1)
 
 # we don't want to delete certain files/folders when updating. these
