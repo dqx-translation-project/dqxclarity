@@ -28,6 +28,7 @@ import re
 import requests
 import sys
 import time
+import urllib3
 import winreg
 
 
@@ -375,7 +376,12 @@ def download_file(url: str) -> requests.models.Response:
 
     while retries < max_retries:
         try:
-            response = requests.get(url)
+            # disabling TLS in general is an awful practice, but consumers of this application
+            # are not technical and troubleshooting certificate issues with users is both
+            # time consuming and exhausting. these SSL errors are primarily occurring specifically
+            # with github.
+            urllib3.disable_warnings()
+            response = requests.get(url, verify=False)
             response.raise_for_status()
             break
         except Exception as e:
