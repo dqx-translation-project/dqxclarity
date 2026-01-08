@@ -5,6 +5,7 @@ from zipfile import ZipFile as zip
 import glob
 import os
 import shutil
+import ssl
 import subprocess
 import sys
 
@@ -46,12 +47,20 @@ def kill_exe(name: str) -> None:
 
 
 def download_latest_zip():
+    # yes, this is not a great security practice, but consumers of this application
+    # are not technical and troubleshooting cert issues with non-technical
+    # users is both time consuming and exhausting.
     req = Request(CLARITY_URL)
-    data = urlopen(req, timeout=15)
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    data = urlopen(req, timeout=15, context=ctx)
+
     if data.status == 200:
         zfile = zip(BytesIO(data.read()))
     else:
         zfile = None
+
     return zfile
 
 
