@@ -1,109 +1,125 @@
-from common.lib import get_project_root
-from loguru import logger as log
-
 import configparser
 import os
+from common.lib import get_project_root
 
 
 class UserConfig:
-    def __init__(self, filepath: str = None, warnings: bool = False) -> dict:
-        if not filepath:
-            settings_file = get_project_root("user_settings.ini")
-        else:
-            settings_file = f"{filepath}/user_settings.ini"
+    def __init__(self, filepath: str = None):
+        self.file = get_project_root("user_settings.ini") if not filepath else f"{filepath}/user_settings.ini"
+        self.config = self._read_config()
 
-        self.filepath = filepath
-        self.file = settings_file
-        self.warnings = warnings
-        self.config = self.read()
-        self.service = self.eval_translation_service()
-
-        if self.service:
-            self.key = self.eval_translation_key()
-
-        self.game_path = self.config['config'].get('installdirectory')
-
-
-    def read(self) -> dict:
-        base_config = configparser.ConfigParser()
-        base_config["translation"] = {
-            "enabledeepltranslate": False,
+    def _get_default_config(self) -> configparser.ConfigParser:
+        config = configparser.ConfigParser()
+        config["translation"] = {
+            "enabledeepltranslate": "False",
             "deepltranslatekey": "",
-            "enablegoogletranslate": False,
+            "enablegoogletranslate": "False",
             "googletranslatekey": "",
-            "enablegoogletranslatefree": False,
+            "enablegoogletranslatefree": "False",
             "communityapikey": "",
-            "enablecommunityapi": False,
+            "enablecommunityapi": "False",
         }
-        base_config["config"] = {
+        config["config"] = {
             "installdirectory": ""
         }
+        return config
 
-        # Create the config if it doesn't exist.
-        if not os.path.exists(self.file):
-            with open(self.file, "w+") as configfile:
-                base_config.write(configfile)
+    def _read_config(self) -> configparser.ConfigParser:
+        defaults = self._get_default_config()
 
-            if self.warnings:
-                log.warning(
-                    "user_settings.ini was not found, so one was created for you. "
-                    "You will need to fill in the appropriate values and restart this program "
-                    "to pick up your changes."
-                )
-
-        # Compare user's config with base config to ensure all sections and keys exist.
         user_config = configparser.ConfigParser()
         user_config.read(self.file)
 
-        for section in base_config.sections():
+        needs_write = False
+
+        # add missing sections and keys from defaults
+        for section in defaults.sections():
             if section not in user_config.sections():
-                log.exception(f"{section} section missing from user_settings.ini.")
-            for key, _ in base_config.items(section):
-                if key not in user_config[section]:
-                    log.exception(f"{key} missing from {section} in user_settings.ini.")
+                user_config.add_section(section)
+                needs_write = True
+
+            for key, value in defaults.items(section):
+                if not user_config.has_option(section, key):
+                    user_config.set(section, key, value)
+                    needs_write = True
+
+        # remove keys that aren't in defaults (only within sections we manage)
+        for section in defaults.sections():
+            if section in user_config.sections():
+                for key in list(user_config.options(section)):
+                    if not defaults.has_option(section, key):
+                        user_config.remove_option(section, key)
+                        needs_write = True
+
+        # write back if there were changes or file didn't exist
+        if needs_write or not os.path.exists(self.file):
+            with open(self.file, 'w') as f:
+                user_config.write(f)
 
         return user_config
 
-
-    def reinit(self) -> dict:
-        # update class instance with new values read from file written by this method.
-        return self.__init__(self.filepath)
-
-
     def update(self, section: str, key: str, value: str) -> None:
-        config = configparser.ConfigParser()
-        config.read(self.file)
-        config.set(section, key, value)
-        with open(self.file, "w+") as configfile:
-            config.write(configfile)
+        """Update a config value and write it to disk."""
+        self.config.set(section, key, value)
+        with open(self.file, 'w') as f:
+            self.config.write(f)
 
+    @property
+    def translation_section(self):
+        return self.config['translation']
 
-    def eval_translation_service(self) -> str:
-        if self.config['translation'].getboolean('enabledeepltranslate'):
-            return "deepl"
-        if self.config['translation'].getboolean('enablegoogletranslate'):
-            return "google"
-        if self.config['translation'].getboolean('enablegoogletranslatefree'):
-            return "googlefree"
+    @property
+    def deepl_enabled(self) -> bool:
+        return self.translation_section.getboolean('enabledeepltranslate', False)
 
-        if self.warnings:
-            log.warning("You did not enable a translation service, so no live translation will be performed.")
+    @property
+    def deepl_key(self) -> str:
+        return self.translation_section.get('deepltranslatekey', '')
 
+    @property
+    def google_enabled(self) -> bool:
+        return self.translation_section.getboolean('enablegoogletranslate', False)
+
+    @property
+    def google_key(self) -> str:
+        return self.translation_section.get('googletranslatekey', '')
+
+    @property
+    def google_free_enabled(self) -> bool:
+        return self.translation_section.getboolean('enablegoogletranslatefree', False)
+
+    @property
+    def community_enabled(self) -> bool:
+        return self.translation_section.getboolean('enablecommunityapi', False)
+
+    @property
+    def community_key(self) -> str:
+        return self.translation_section.get('communityapikey', '')
+
+    @property
+    def config_section(self):
+        return self.config['config']
+
+    @property
+    def game_directory(self):
+        return self.config_section.get('installdirectory', 'C:/Program Files (x86)/SquareEnix/DRAGON QUEST X')
+
+    @property
+    def translate_key(self) -> str:
+        if self.deepl_enabled:
+            return self.deepl_key
+        if self.google_enabled:
+            return self.google_key
+        if self.google_free_enabled:
+            return ""
         return ""
 
-
-    def eval_translation_key(self) -> str:
-        service = self.eval_translation_service()
-        if service == "deepl":
-            if key := self.config['translation'].get('deepltranslatekey'):
-                return key
-        if service == "google":
-            if key := self.config['translation'].get('googletranslatekey'):
-                return key
-        if service == "googlefree":
-            return ""
-
-        if self.warnings:
-            log.exception(f"You enabled {service}, but did not specify a key.")
-
+    @property
+    def translate_service(self) -> str:
+        if self.deepl_enabled:
+            return "deepl"
+        if self.google_enabled:
+            return "google"
+        if self.google_free_enabled:
+            return "googlefree"
         return ""
