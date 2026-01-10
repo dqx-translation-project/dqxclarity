@@ -4,6 +4,11 @@ from common.lib import get_project_root
 
 
 class UserConfig:
+    """
+    Defines the user's user_settings.ini file, which contains things like the game path,
+    enabled translation services and associated api keys.
+    """
+
     def __init__(self, filepath: str = None):
         self.file = get_project_root("user_settings.ini") if not filepath else f"{filepath}/user_settings.ini"
         self.config = self._read_config()
@@ -19,9 +24,7 @@ class UserConfig:
             "communityapikey": "",
             "enablecommunityapi": "False",
         }
-        config["config"] = {
-            "installdirectory": ""
-        }
+        config["config"] = {"installdirectory": "C:/Program Files (x86)/SquareEnix/DRAGON QUEST X"}
         return config
 
     def _read_config(self) -> configparser.ConfigParser:
@@ -53,7 +56,7 @@ class UserConfig:
 
         # write back if there were changes or file didn't exist
         if needs_write or not os.path.exists(self.file):
-            with open(self.file, 'w') as f:
+            with open(self.file, "w") as f:
                 user_config.write(f)
 
         return user_config
@@ -61,48 +64,49 @@ class UserConfig:
     def update(self, section: str, key: str, value: str) -> None:
         """Update a config value and write it to disk."""
         self.config.set(section, key, value)
-        with open(self.file, 'w') as f:
+        with open(self.file, "w") as f:
             self.config.write(f)
 
     @property
     def translation_section(self):
-        return self.config['translation']
+        return self.config["translation"]
 
     @property
     def deepl_enabled(self) -> bool:
-        return self.translation_section.getboolean('enabledeepltranslate', False)
+        return self.translation_section.getboolean("enabledeepltranslate", False)
 
     @property
     def deepl_key(self) -> str:
-        return self.translation_section.get('deepltranslatekey', '')
+        return self.translation_section.get("deepltranslatekey", "")
 
     @property
     def google_enabled(self) -> bool:
-        return self.translation_section.getboolean('enablegoogletranslate', False)
+        return self.translation_section.getboolean("enablegoogletranslate", False)
 
     @property
     def google_key(self) -> str:
-        return self.translation_section.get('googletranslatekey', '')
+        return self.translation_section.get("googletranslatekey", "")
 
     @property
     def google_free_enabled(self) -> bool:
-        return self.translation_section.getboolean('enablegoogletranslatefree', False)
+        return self.translation_section.getboolean("enablegoogletranslatefree", False)
 
     @property
     def community_enabled(self) -> bool:
-        return self.translation_section.getboolean('enablecommunityapi', False)
+        return self.translation_section.getboolean("enablecommunityapi", False)
 
     @property
     def community_key(self) -> str:
-        return self.translation_section.get('communityapikey', '')
+        return self.translation_section.get("communityapikey", "")
 
     @property
     def config_section(self):
-        return self.config['config']
+        return self.config["config"]
 
     @property
     def game_directory(self):
-        return self.config_section.get('installdirectory', 'C:/Program Files (x86)/SquareEnix/DRAGON QUEST X')
+        value = self.config_section.get("installdirectory", "")
+        return value if value else "C:/Program Files (x86)/SquareEnix/DRAGON QUEST X"
 
     @property
     def translate_key(self) -> str:
