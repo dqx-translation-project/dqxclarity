@@ -14,7 +14,6 @@ class MemWriter:
     def __init__(self, process_name: str = "DQXGame.exe"):
         self.proc = self.attach(process_name)
 
-
     def attach(self, process_name: str = "DQXGame.exe"):
         proc = pymem.Pymem(process_name)
         # obscure issue seen on Windows 11 getting an OverflowError
@@ -22,7 +21,6 @@ class MemWriter:
         proc.process_handle &= 0xFFFFFFFF
 
         return proc
-
 
     def read_bytes(self, address: int, size: int):
         """Read n number of bytes at address.
@@ -39,7 +37,6 @@ class MemWriter:
         except Exception as e:
             raise MemoryReadError(address) from e
 
-
     def write_bytes(self, address: int, value: bytes):
         """Write bytes to memory at address.
 
@@ -53,7 +50,6 @@ class MemWriter:
             self.proc.write_bytes(address, value, size)
         except Exception as e:
             raise MemoryWriteError(address) from e
-
 
     def read_string(self, address: int):
         """Reads a string from memory at the given address."""
@@ -70,29 +66,30 @@ class MemWriter:
             return self.proc.read_string(address, bytes_to_read)
         return None
 
-
     def write_string(self, address: int, text: str):
         """Writes a null-terminated string to memory at the given address."""
         return self.proc.write_string(address, text + "\x00")
 
-
-    def pattern_scan(self, pattern: bytes, return_multiple=False, use_regex=False, module=None, all_protections: bool=False, data_only: bool=False):
+    def pattern_scan(
+        self,
+        pattern: bytes,
+        return_multiple=False,
+        use_regex=False,
+        module=None,
+        all_protections: bool = False,
+        data_only: bool = False,
+    ):
         """Scan for a byte pattern."""
         if module is not None:
-            return self.proc.pattern_scan_module(
-                pattern=pattern,
-                return_multiple=return_multiple,
-                module=module
-            )
+            return self.proc.pattern_scan_module(pattern=pattern, return_multiple=return_multiple, module=module)
         else:
             return self.proc.pattern_scan_all(
                 pattern=pattern,
                 all_protections=all_protections,
                 return_multiple=return_multiple,
                 use_regex=use_regex,
-                data_only=data_only
+                data_only=data_only,
             )
-
 
     def get_ptr_address(self, base: int, offsets: list):
         """Gets the address a pointer is pointing to.
@@ -108,17 +105,14 @@ class MemWriter:
 
         return addr + offsets[-1]
 
-
-    def get_base_address(self, name: str ="DQXGame.exe") -> int:
+    def get_base_address(self, name: str = "DQXGame.exe") -> int:
         """Returns the base address of a module."""
         return pymem.process.module_from_name(self.proc.process_handle, name).lpBaseOfDll
-
 
     def pack_to_int(self, address: int) -> bytes:
         """Packs the address into little endian and returns the appropriate
         bytes."""
         return struct.pack("<i", address)
-
 
     def unpack_to_int(self, address: int):
         """Unpacks the address from little endian and returns the appropriate
@@ -128,11 +122,9 @@ class MemWriter:
 
         return unpacked_address[0]
 
-
     def allocate_memory(self, size: int) -> int:
         """Allocates a defined number of bytes into the target process."""
         return self.proc.allocate(size)
-
 
     def calc_rel_addr(self, origin_address: int, destination_address: int) -> bytes:
         """Calculates the difference between addresses to return the relative
@@ -154,9 +146,7 @@ class MemWriter:
         :param address: Address to get protection from.
         :returns: Constant of the current protection.
         """
-        return pymem.memory.virtual_query(
-            self.proc.process_handle, address=address
-        ).Protect
+        return pymem.memory.virtual_query(self.proc.process_handle, address=address).Protect
 
     def set_protection(
         self,
@@ -189,8 +179,7 @@ class MemWriter:
 
     def get_hook_bytecode(self, hook_address: int):
         """Returns a formatted jump address for your hook."""
-        return b"\xE9" + self.pack_to_int(hook_address)
-
+        return b"\xe9" + self.pack_to_int(hook_address)
 
     def inject_python(self):
         """Injects the Python interpreter into the process."""
@@ -203,9 +192,10 @@ class MemWriter:
             log.exception(f"Python dll failed to inject. Details:\n{self.proc.__dict__}")
             return False
         except Exception:
-            log.exception(f"Python dll failed to inject. Error: \n{str(traceback.print_exc())}\nDetails:\n{self.proc.__dict__}")
+            log.exception(
+                f"Python dll failed to inject. Error: \n{str(traceback.print_exc())}\nDetails:\n{self.proc.__dict__}"
+            )
             return False
-
 
     def close(self):
         """Closes the process."""

@@ -1,4 +1,5 @@
 """Hooks corner text replacements using database lookups."""
+
 from common.db_ops import generate_m00_dict
 from common.lib import get_project_root, setup_logger
 from loguru import logger as log
@@ -18,9 +19,7 @@ def _init_data():
         return _data
 
     _data = generate_m00_dict("'custom_corner_text'")
-    _custom_text_logger = setup_logger(
-        "text_logger", get_project_root("logs/corner_text.log")
-    )
+    _custom_text_logger = setup_logger("text_logger", get_project_root("logs/corner_text.log"))
 
     return _data
 
@@ -60,12 +59,12 @@ def on_message(message, data, script):
     :param data: Binary data (if any) from Frida script
     :param script: Frida script instance for posting responses
     """
-    if message['type'] == 'send':
-        payload = message['payload']
-        msg_type = payload.get('type', 'unknown')
+    if message["type"] == "send":
+        payload = message["payload"]
+        msg_type = payload.get("type", "unknown")
 
-        if msg_type == 'get_replacement':
-            original_text = payload.get('text', '')
+        if msg_type == "get_replacement":
+            original_text = payload.get("text", "")
 
             try:
                 replacement = corner_text_replacement(original_text)
@@ -78,17 +77,14 @@ def on_message(message, data, script):
 
             # send the replacement back to frida
             log.debug(f"\n{original_text}")
-            script.post({
-                'type': 'replacement',
-                'text': replacement
-            })
+            script.post({"type": "replacement", "text": replacement})
 
-        elif msg_type == 'info':
+        elif msg_type == "info":
             log.debug(f"{payload['payload']}")
-        elif msg_type == 'error':
+        elif msg_type == "error":
             log.error(f"{payload['payload']}")
         else:
             log.debug(f"{payload}")
 
-    elif message['type'] == 'error':
+    elif message["type"] == "error":
         log.error(f"[JS ERROR] {message.get('stack', message)}")

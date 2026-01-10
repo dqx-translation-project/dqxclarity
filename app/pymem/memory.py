@@ -359,8 +359,8 @@ def read_uint(handle, address, is_64=False):
         return read_ctype(handle, address, ctypes.c_uint())
 
     # should this just be c_uint64? the doc string says to read as big-endian
-    raw = read_bytes(handle, address, struct.calcsize('I'))
-    return struct.unpack('>I', raw)[0]
+    raw = read_bytes(handle, address, struct.calcsize("I"))
+    return struct.unpack(">I", raw)[0]
 
 
 def read_float(handle, address):
@@ -566,7 +566,7 @@ def read_string(handle, address, byte=50):
         The raw value read as a string
     """
     buff = read_bytes(handle, address, byte)
-    i = buff.find(b'\x00')
+    i = buff.find(b"\x00")
     if i != -1:
         buff = buff[:i]
     buff = buff.decode()
@@ -641,7 +641,7 @@ def write_ctype(handle, address, ctype):
         ctypes.cast(address, ctypes.c_void_p),
         ctypes.cast(ctypes.byref(ctype), ctypes.c_void_p),
         ctypes.sizeof(ctype),
-        None
+        None,
     )
 
     if result == 0:

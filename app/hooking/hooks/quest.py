@@ -60,11 +60,11 @@ def process_quest_data(data: dict) -> dict:
     :returns: Dict with replacement strings (only includes fields that need updating)
     """
     # extract original strings
-    subquest_name = data.get('subquestName', '')
-    quest_name = data.get('questName', '')
-    quest_desc = data.get('questDesc', '')
-    quest_rewards = data.get('questRewards', '')
-    quest_repeat_rewards = data.get('questRepeatRewards', '')
+    subquest_name = data.get("subquestName", "")
+    quest_name = data.get("questName", "")
+    quest_desc = data.get("questDesc", "")
+    quest_rewards = data.get("questRewards", "")
+    quest_repeat_rewards = data.get("questRepeatRewards", "")
 
     # check if text is Japanese
     is_ja = _is_japanese(quest_desc)
@@ -74,23 +74,23 @@ def process_quest_data(data: dict) -> dict:
     if is_ja:
         if subquest_name:
             if replacement := _query_quest(subquest_name):
-                replacements['subquestName'] = replacement
+                replacements["subquestName"] = replacement
 
         if quest_name:
             if replacement := _query_quest(quest_name):
-                replacements['questName'] = replacement
+                replacements["questName"] = replacement
 
         if quest_desc:
             if replacement := _translate_quest_desc(quest_desc):
-                replacements['questDesc'] = replacement
+                replacements["questDesc"] = replacement
 
         if quest_rewards:
             if replacement := clean_up_and_return_items(quest_rewards):
-                replacements['questRewards'] = replacement
+                replacements["questRewards"] = replacement
 
         if quest_repeat_rewards:
             if replacement := clean_up_and_return_items(quest_repeat_rewards):
-                replacements['questRepeatRewards'] = replacement
+                replacements["questRepeatRewards"] = replacement
 
     return replacements
 
@@ -102,17 +102,17 @@ def on_message(message, data, script):
     :param data: Binary data (if any) from Frida script
     :param script: Frida script instance for posting responses
     """
-    if message['type'] == 'send':
-        payload = message['payload']
-        msg_type = payload.get('type', 'unknown')
+    if message["type"] == "send":
+        payload = message["payload"]
+        msg_type = payload.get("type", "unknown")
 
-        if msg_type == 'quest_data':
-            quest_data = payload.get('data', {})
+        if msg_type == "quest_data":
+            quest_data = payload.get("data", {})
 
             try:
                 replacements = process_quest_data(quest_data)
 
-                quest_name_preview = quest_data.get('questName', 'Unknown')[:50]
+                quest_name_preview = quest_data.get("questName", "Unknown")[:50]
                 if replacements:
                     log.debug(f"Processed: {quest_name_preview} ({len(replacements)} fields translated)")
                 else:
@@ -125,17 +125,14 @@ def on_message(message, data, script):
             # send replacements back to Frida
             quest_description = quest_data.get("questDesc", "No description?")
             log.debug(f"\n{quest_description}")
-            script.post({
-                'type': 'quest_replacements',
-                'data': replacements
-            })
+            script.post({"type": "quest_replacements", "data": replacements})
 
-        elif msg_type == 'info':
+        elif msg_type == "info":
             log.debug(f"{payload['payload']}")
-        elif msg_type == 'error':
+        elif msg_type == "error":
             log.error(f"{payload['payload']}")
         else:
             log.debug(f"{payload}")
 
-    elif message['type'] == 'error':
+    elif message["type"] == "error":
         log.error(f"[JS ERROR] {message.get('stack', message)}")

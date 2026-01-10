@@ -13,7 +13,9 @@ def scan_for_comm_names():
     the Japanese name."""
     writer = MemWriter()
     player_names = generate_m00_dict(files="'local_player_names'")
-    comm_name_addresses = writer.pattern_scan(pattern=comm_name_pattern, use_regex=True, return_multiple=True, data_only=True)
+    comm_name_addresses = writer.pattern_scan(
+        pattern=comm_name_pattern, use_regex=True, return_multiple=True, data_only=True
+    )
 
     for address in comm_name_addresses:
         try:

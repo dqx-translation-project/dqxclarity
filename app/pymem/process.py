@@ -52,7 +52,7 @@ def inject_dll(handle, filepath):
         0,
         len(filepath),
         pymem.ressources.structure.MEMORY_STATE.MEM_COMMIT.value | pymem.ressources.structure.MEMORY_STATE.MEM_RESERVE.value,
-        pymem.ressources.structure.MEMORY_PROTECTION.PAGE_EXECUTE_READWRITE.value
+        pymem.ressources.structure.MEMORY_PROTECTION.PAGE_EXECUTE_READWRITE.value,
     )
     pymem.ressources.kernel32.WriteProcessMemory(handle, filepath_address, filepath, len(filepath), None)
     kernel32_handle = pymem.ressources.kernel32.GetModuleHandleW("kernel32.dll")
@@ -65,14 +65,13 @@ def inject_dll(handle, filepath):
         handle, filepath_address, len(filepath), pymem.ressources.structure.MEMORY_STATE.MEM_RELEASE.value
     )
     dll_name = os.path.basename(filepath)
-    dll_name = dll_name.decode('ascii')
+    dll_name = dll_name.decode("ascii")
     module_address = pymem.ressources.kernel32.GetModuleHandleW(dll_name)
     return module_address
 
 
 def get_luid(name):
-    """Get the LUID for the SeCreateSymbolicLinkPrivilege
-    """
+    """Get the LUID for the SeCreateSymbolicLinkPrivilege"""
     luid = pymem.ressources.structure.LUID()
     res = pymem.ressources.advapi32.LookupPrivilegeValue(None, name, luid)
     if not res > 0:
@@ -81,13 +80,10 @@ def get_luid(name):
 
 
 def get_process_token():
-    """Get the current process token
-    """
+    """Get the current process token"""
     token = ctypes.c_void_p()
     res = pymem.ressources.advapi32.OpenProcessToken(
-        ctypes.windll.kernel32.GetCurrentProcess(),
-        pymem.ressources.structure.TOKEN.TOKEN_ALL_ACCESS,
-        token
+        ctypes.windll.kernel32.GetCurrentProcess(), pymem.ressources.structure.TOKEN.TOKEN_ALL_ACCESS, token
     )
     if not res > 0:
         raise RuntimeError("Couldn't get process token")
@@ -149,16 +145,13 @@ def base_module(handle):
         ctypes.byref(hModules),
         ctypes.sizeof(hModules),
         ctypes.byref(ctypes.c_ulong()),
-        pymem.ressources.structure.EnumProcessModuleEX.LIST_MODULES_ALL
+        pymem.ressources.structure.EnumProcessModuleEX.LIST_MODULES_ALL,
     )
     if not process_module_success:
         return  # xxx
     module_info = pymem.ressources.structure.MODULEINFO(handle)
     pymem.ressources.psapi.GetModuleInformation(
-        handle,
-        ctypes.c_void_p(hModules[0]),
-        ctypes.byref(module_info),
-        ctypes.sizeof(module_info)
+        handle, ctypes.c_void_p(hModules[0]), ctypes.byref(module_info), ctypes.sizeof(module_info)
     )
     return module_info
 
@@ -187,7 +180,7 @@ def open(process_id, debug=True, process_access=None):
     if not process_access:
         process_access = pymem.ressources.structure.PROCESS.PROCESS_ALL_ACCESS.value
     if debug:
-        set_debug_privilege('SeDebugPrivilege', True)
+        set_debug_privilege("SeDebugPrivilege", True)
     process_handle = pymem.ressources.kernel32.OpenProcess(process_access, False, process_id)
     return process_handle
 
@@ -386,7 +379,7 @@ def enum_process_thread(process_id):
     ret = pymem.ressources.kernel32.Thread32First(hSnap, ctypes.byref(thread_entry))
 
     if not ret:
-        raise pymem.exception.PymemError('Could not get Thread32First')
+        raise pymem.exception.PymemError("Could not get Thread32First")
 
     while ret:
         if thread_entry.th32OwnerProcessID == process_id:
@@ -416,17 +409,14 @@ def enum_process_module(handle):
         ctypes.byref(hModules),
         ctypes.sizeof(hModules),
         ctypes.byref(ctypes.c_ulong()),
-        pymem.ressources.structure.EnumProcessModuleEX.LIST_MODULES_ALL
+        pymem.ressources.structure.EnumProcessModuleEX.LIST_MODULES_ALL,
     )
     if process_module_success:
         hModules = iter(m for m in hModules if m)
         for hModule in hModules:
             module_info = pymem.ressources.structure.MODULEINFO(handle)
             pymem.ressources.psapi.GetModuleInformation(
-                handle,
-                ctypes.c_void_p(hModule),
-                ctypes.byref(module_info),
-                ctypes.sizeof(module_info)
+                handle, ctypes.c_void_p(hModule), ctypes.byref(module_info), ctypes.sizeof(module_info)
             )
             yield module_info
 

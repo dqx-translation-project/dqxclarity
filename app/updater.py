@@ -72,7 +72,9 @@ def delete_file(file: str):
 
 
 if is_dqx_process_running():
-    input("Please close DQX before updating. Re-launch dqxclarity once the game has been closed.\n\nPress ENTER to close this window.")
+    input(
+        "Please close DQX before updating. Re-launch dqxclarity once the game has been closed.\n\nPress ENTER to close this window."
+    )
     sys.exit()
 
 print("dqxclarity is updating. Please wait...")

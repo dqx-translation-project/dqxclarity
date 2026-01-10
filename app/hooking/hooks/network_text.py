@@ -1,4 +1,5 @@
 """Hooks network text template string replacements."""
+
 from common.db_ops import generate_m00_dict, sql_read
 from common.lib import get_project_root, setup_logger
 from common.translate import detect_lang, transliterate_player_name
@@ -12,25 +13,96 @@ _custom_text_logger = None
 _jp_regex = regex.compile(r"\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Han}")
 
 _translate_categories = {
-    "<%sM_pc>", "<%sM_npc>", "<%sL_SENDER_NAME>", "<%sB_TARGET_RPL>", "<%sM_00>", "<%sM_kaisetubun>",
-    "<%sC_QUEST>", "<%sC_PC>", "<%sM_OWNER>", "<%sM_hiryu>", "<%sL_HIRYU>", "<%sL_HIRYU_NAME>",
-    "<%sM_name>", "<%sM_02>", "<%sM_header>", "<%sM_item>", "<%sL_OWNER>", "<%sL_URINUSI>",
-    "<%sM_NAME>", "<%sL_PLAYER_NAME>", "<%sL_QUEST>", "<%sC_ITMR_STITLE>", "<%sCAS_gambler>",
-    "<%sCAS_target>", "<%sC_MERCENARY>", "<%sC_STR2>", "<%sL_MONSTERNAME>", "<%sEV_QUEST_NAME>",
+    "<%sM_pc>",
+    "<%sM_npc>",
+    "<%sL_SENDER_NAME>",
+    "<%sB_TARGET_RPL>",
+    "<%sM_00>",
+    "<%sM_kaisetubun>",
+    "<%sC_QUEST>",
+    "<%sC_PC>",
+    "<%sM_OWNER>",
+    "<%sM_hiryu>",
+    "<%sL_HIRYU>",
+    "<%sL_HIRYU_NAME>",
+    "<%sM_name>",
+    "<%sM_02>",
+    "<%sM_header>",
+    "<%sM_item>",
+    "<%sL_OWNER>",
+    "<%sL_URINUSI>",
+    "<%sM_NAME>",
+    "<%sL_PLAYER_NAME>",
+    "<%sL_QUEST>",
+    "<%sC_ITMR_STITLE>",
+    "<%sCAS_gambler>",
+    "<%sCAS_target>",
+    "<%sC_MERCENARY>",
+    "<%sC_STR2>",
+    "<%sL_MONSTERNAME>",
+    "<%sEV_QUEST_NAME>",
 }
 
 # categories to ignore (known but not translated)
 _to_ignore = {
-    "<%sM_Hankaku>", "<%sM_katagaki2>", "<%sW_MAP_NAME>", "<%sM_timei>", "<%sW_REP_MAX_2ND_R>",
-    "<%sW_REP_MAX_2ND_F>", "<%sB_TARGET_ID>", "<%sM_mp_hp>", "<%sB_ITEM>", "<%sB_ACTOR_ID>",
-    "<%sB_TARGET2_ID>", "<%sB_ACTION>", "<%sB_TARGET2>", "<%sB_renkin1>", "<%sB_kakko>",
-    "<%sB_renkindiff>", "<%sB_plusminus>", "<%sM_plusnum>", "<%sB_VALUE>", "<%sB_VALUE2>",
-    "<%sB_VALUE3>", "<%sB_VALUE4>", "<%sB_VALUE5>", "<%sB_VALUE6>", "<%sM_caption>", "<%sM_tuyosa>",
-    "<%sParam1>", "<%sParam2>", "<%sParam3>", "<%sB_RANK>", "<%sM_rurastone>", "<%sM_sub>", "<%sM_dot>",
-    "<%sM_TXT_00>", "<%sM_skill1>", "<%sM_01>", "<%sM_rare>", "<%sM_fugou>", "<%sM_num1>", "<%sM_emote>",
-    "<%sM_3PLeader1>", "<%sM_3PLeader2>", "<%sM_3PLeader3>", "<%sC_STR1>", "<%s_MVER1>", "<%s_MVER2>",
-    "<%s_MVER3>", "<%sW_DELIMITER>", "<%sM_slogan>", "<%sM_team>", "<%sM_monster>", "<%sM_speaker>",
-    "<%sM_chat>", "<%sM_CW_stamp>", "<%sCAS_monster>", "<%sCAS_action>", "<%sB_ACTOR>", "<%sB_TARGET>",
+    "<%sM_Hankaku>",
+    "<%sM_katagaki2>",
+    "<%sW_MAP_NAME>",
+    "<%sM_timei>",
+    "<%sW_REP_MAX_2ND_R>",
+    "<%sW_REP_MAX_2ND_F>",
+    "<%sB_TARGET_ID>",
+    "<%sM_mp_hp>",
+    "<%sB_ITEM>",
+    "<%sB_ACTOR_ID>",
+    "<%sB_TARGET2_ID>",
+    "<%sB_ACTION>",
+    "<%sB_TARGET2>",
+    "<%sB_renkin1>",
+    "<%sB_kakko>",
+    "<%sB_renkindiff>",
+    "<%sB_plusminus>",
+    "<%sM_plusnum>",
+    "<%sB_VALUE>",
+    "<%sB_VALUE2>",
+    "<%sB_VALUE3>",
+    "<%sB_VALUE4>",
+    "<%sB_VALUE5>",
+    "<%sB_VALUE6>",
+    "<%sM_caption>",
+    "<%sM_tuyosa>",
+    "<%sParam1>",
+    "<%sParam2>",
+    "<%sParam3>",
+    "<%sB_RANK>",
+    "<%sM_rurastone>",
+    "<%sM_sub>",
+    "<%sM_dot>",
+    "<%sM_TXT_00>",
+    "<%sM_skill1>",
+    "<%sM_01>",
+    "<%sM_rare>",
+    "<%sM_fugou>",
+    "<%sM_num1>",
+    "<%sM_emote>",
+    "<%sM_3PLeader1>",
+    "<%sM_3PLeader2>",
+    "<%sM_3PLeader3>",
+    "<%sC_STR1>",
+    "<%s_MVER1>",
+    "<%s_MVER2>",
+    "<%s_MVER3>",
+    "<%sW_DELIMITER>",
+    "<%sM_slogan>",
+    "<%sM_team>",
+    "<%sM_monster>",
+    "<%sM_speaker>",
+    "<%sM_chat>",
+    "<%sM_CW_stamp>",
+    "<%sCAS_monster>",
+    "<%sCAS_action>",
+    "<%sB_ACTOR>",
+    "<%sB_TARGET>",
     "<%sL_GOODS>",
 }
 
@@ -43,9 +115,7 @@ def _init_data():
         return _m00_text
 
     _m00_text = generate_m00_dict()
-    _custom_text_logger = setup_logger(
-        "text_logger", get_project_root("logs/custom_text.log")
-    )
+    _custom_text_logger = setup_logger("text_logger", get_project_root("logs/custom_text.log"))
 
     return _m00_text
 
@@ -94,10 +164,23 @@ def network_text_replacement(original_text: str, category: str) -> str:
             return "self"
 
     elif category in {
-        "<%sM_pc>", "<%sM_npc>", "<%sC_PC>", "<%sL_SENDER_NAME>", "<%sM_OWNER>", "<%sM_hiryu>",
-        "<%sL_HIRYU>", "<%sL_HIRYU_NAME>", "<%sM_name>", "<%sL_OWNER>", "<%sL_URINUSI>",
-        "<%sM_NAME>", "<%sL_PLAYER_NAME>", "<%sCAS_gambler>", "<%sCAS_target>",
-        "<%sC_MERCENARY>", "<%sL_MONSTERNAME>",
+        "<%sM_pc>",
+        "<%sM_npc>",
+        "<%sC_PC>",
+        "<%sL_SENDER_NAME>",
+        "<%sM_OWNER>",
+        "<%sM_hiryu>",
+        "<%sL_HIRYU>",
+        "<%sL_HIRYU_NAME>",
+        "<%sM_name>",
+        "<%sL_OWNER>",
+        "<%sL_URINUSI>",
+        "<%sM_NAME>",
+        "<%sL_PLAYER_NAME>",
+        "<%sCAS_gambler>",
+        "<%sCAS_target>",
+        "<%sC_MERCENARY>",
+        "<%sL_MONSTERNAME>",
     }:
         # NPC or player names
         if m00_text.get(original_text):
@@ -106,8 +189,15 @@ def network_text_replacement(original_text: str, category: str) -> str:
             return transliterate_player_name(original_text)
 
     elif category in {
-        "<%sM_00>", "<%sC_QUEST>", "<%sM_02>", "<%sM_header>", "<%sM_item>", "<%sL_QUEST>",
-        "<%sC_ITMR_STITLE>", "<%sC_STR2>", "<%sEV_QUEST_NAME>",
+        "<%sM_00>",
+        "<%sC_QUEST>",
+        "<%sM_02>",
+        "<%sM_header>",
+        "<%sM_item>",
+        "<%sL_QUEST>",
+        "<%sC_ITMR_STITLE>",
+        "<%sC_STR2>",
+        "<%sEV_QUEST_NAME>",
     }:
         # generic string
         if replacement := m00_text.get(original_text):
@@ -140,14 +230,14 @@ def on_message(message, data, script):
         data: Binary data (if any) from Frida script
         script: Frida script instance for posting responses
     """
-    if message['type'] == 'send':
-        payload = message['payload']
-        msg_type = payload.get('type', 'unknown')
+    if message["type"] == "send":
+        payload = message["payload"]
+        msg_type = payload.get("type", "unknown")
 
-        if msg_type == 'get_replacement':
+        if msg_type == "get_replacement":
             # frida is requesting a replacement
-            original_text = payload.get('text', '')
-            category = payload.get('category', '')
+            original_text = payload.get("text", "")
+            category = payload.get("category", "")
 
             try:
                 replacement = network_text_replacement(original_text, category)
@@ -160,17 +250,14 @@ def on_message(message, data, script):
 
             # send the replacement back to Frida
             log.trace(f"{original_text} => {replacement}")
-            script.post({
-                'type': 'replacement',
-                'text': replacement
-            })
+            script.post({"type": "replacement", "text": replacement})
 
-        elif msg_type == 'info':
+        elif msg_type == "info":
             log.debug(f"{payload['payload']}")
-        elif msg_type == 'error':
+        elif msg_type == "error":
             log.error(f"{payload['payload']}")
         else:
             log.debug(f"{payload}")
 
-    elif message['type'] == 'error':
+    elif message["type"] == "error":
         log.error(f"[JS ERROR] {message.get('stack', message)}")

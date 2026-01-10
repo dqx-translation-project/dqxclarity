@@ -93,9 +93,7 @@ class RemotePointer(object):
         if self._memory_value:
             return self._memory_value
         content = pymem.memory.read_bytes(self.handle, self.v.value, struct.calcsize(self.v._type_))
-        fmt = "{alignment}{type}".format(
-            **{"alignment": RemotePointer.ALIGNMENTS[self.endianess], "type": self.v._type_}
-        )
+        fmt = "{alignment}{type}".format(**{"alignment": RemotePointer.ALIGNMENTS[self.endianess], "type": self.v._type_})
         content = struct.unpack(fmt, content)
         self._memory_value = content[0]
         return self._memory_value

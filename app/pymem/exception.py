@@ -23,9 +23,7 @@ class ProcessNotFound(ProcessError):
 
 class CouldNotOpenProcess(ProcessError):
     def __init__(self, process_id):
-        message = (
-            f"Could not open process id {process_id}. Make sure you haven't run Dragon Quest X as an administrator."
-        )
+        message = f"Could not open process id {process_id}. Make sure you haven't run Dragon Quest X as an administrator."
         super(CouldNotOpenProcess, self).__init__(message)
 
 

@@ -16,7 +16,7 @@ def init_db() -> object:
 def create_db_schema():
     try:
         conn, cursor = init_db()
-        schema_file = get_project_root('common/db_scripts/schema.sql')
+        schema_file = get_project_root("common/db_scripts/schema.sql")
 
         with open(schema_file) as f:
             script = f.read()
@@ -98,9 +98,7 @@ def generate_glossary_dict() -> dict:
             return len(text[0].encode("utf-8"))
 
         # sort returned glossary by key length
-        sorted_data = {k: v for k, v in sorted(
-            data.items(), key=lambda item: key_len(item[0]), reverse=True
-        )}
+        sorted_data = {k: v for k, v in sorted(data.items(), key=lambda item: key_len(item[0]), reverse=True)}
 
         return sorted_data
 
@@ -128,7 +126,7 @@ def sql_read(text: str, table: str, wildcard: bool = False) -> str:
 
         if wildcard:
             # because of newlines in our wildcard search, we replace \n with %.
-            escaped_text = escaped_text.replace('\n', '%')
+            escaped_text = escaped_text.replace("\n", "%")
             selectQuery = f"SELECT en FROM {table} WHERE ja LIKE '%{escaped_text}%'"
 
         cursor.execute(selectQuery)

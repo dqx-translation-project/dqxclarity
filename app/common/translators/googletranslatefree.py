@@ -9,7 +9,6 @@ import requests
 # uses the free Google Translate mobile web interface to send translations.
 # parses the html response to extract the translated text.
 class GoogleTranslateFree:
-
     headers = {
         "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.6998.108 Mobile Safari/537.36"
     }
@@ -17,7 +16,6 @@ class GoogleTranslateFree:
     def __init__(self) -> None:
         self.session = requests.Session()
         self.session.headers.update(GoogleTranslateFree.headers)
-
 
     def __parse_response(self, response: str) -> str:
         """Parses the HTML response to extract the translated text."""
@@ -27,7 +25,6 @@ class GoogleTranslateFree:
 
         text = match.group(1).strip()
         return html.unescape(text)
-
 
     @measure_duration
     def translate(self, text: list[str]) -> list[str]:

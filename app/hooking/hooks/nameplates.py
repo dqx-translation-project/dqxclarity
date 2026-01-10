@@ -1,5 +1,6 @@
 """Hooks entity nameplate replacements using database lookups and
 transliteration."""
+
 from common.db_ops import generate_m00_dict
 from common.translate import transliterate_player_name
 from loguru import logger as log
@@ -67,12 +68,12 @@ def on_message(message, data, script):
     :param data: Binary data (if any) from Frida script
     :param script: Frida script instance for posting responses
     """
-    if message['type'] == 'send':
-        payload = message['payload']
-        msg_type = payload.get('type', 'unknown')
+    if message["type"] == "send":
+        payload = message["payload"]
+        msg_type = payload.get("type", "unknown")
 
-        if msg_type == 'get_replacement':
-            original_name = payload.get('name', '')
+        if msg_type == "get_replacement":
+            original_name = payload.get("name", "")
 
             try:
                 replacement = nameplate_replacement(original_name)
@@ -84,17 +85,14 @@ def on_message(message, data, script):
                 replacement = original_name
 
             # send the replacement back to Frida
-            script.post({
-                'type': 'replacement',
-                'name': replacement
-            })
+            script.post({"type": "replacement", "name": replacement})
 
-        elif msg_type == 'info':
+        elif msg_type == "info":
             log.debug(f"{payload['payload']}")
-        elif msg_type == 'error':
+        elif msg_type == "error":
             log.error(f"{payload['payload']}")
         else:
             log.debug(f"{payload}")
 
-    elif message['type'] == 'error':
+    elif message["type"] == "error":
         log.error(f"[JS ERROR] {message.get('stack', message)}")

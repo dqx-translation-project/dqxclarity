@@ -3,12 +3,12 @@ import ctypes
 import pymem.ressources.structure
 
 try:
-    dll = ctypes.WinDLL('kernel32.dll')
+    dll = ctypes.WinDLL("kernel32.dll")
 except AttributeError:
+
     class MockObject:
         def __getattr__(self, item):
             return self
-
 
     dll = MockObject()
 
@@ -29,9 +29,7 @@ TerminateProcess.restype = ctypes.c_ulong
 #: https://msdn.microsoft.com/en-us/library/windows/desktop/ms724211%28v=vs.85%29.aspx
 CloseHandle = dll.CloseHandle
 CloseHandle.restype = ctypes.c_long
-CloseHandle.argtypes = [
-    ctypes.c_void_p
-]
+CloseHandle.argtypes = [ctypes.c_void_p]
 
 #: Retrieves the calling thread's last-error code value. The last-error code is maintained on a per-thread basis.
 #: Multiple threads do not overwrite each other's last-error code.
@@ -63,7 +61,7 @@ ReadProcessMemory.argtypes = (
     ctypes.c_void_p,
     ctypes.c_void_p,
     ctypes.c_size_t,
-    ctypes.POINTER(ctypes.c_size_t)
+    ctypes.POINTER(ctypes.c_size_t),
 )
 ReadProcessMemory.restype = ctypes.c_long
 
@@ -77,7 +75,7 @@ WriteProcessMemory.argtypes = [
     ctypes.c_void_p,
     ctypes.c_void_p,
     ctypes.c_size_t,
-    ctypes.POINTER(ctypes.c_size_t)
+    ctypes.POINTER(ctypes.c_size_t),
 ]
 WriteProcessMemory.restype = ctypes.c_long
 
@@ -93,13 +91,7 @@ DebugActiveProcess.restype = ctypes.c_long
 #: https://msdn.microsoft.com/en-us/library/windows/desktop/aa366890%28v=vs.85%29.aspx
 VirtualAllocEx = dll.VirtualAllocEx
 VirtualAllocEx.restype = ctypes.c_void_p
-VirtualAllocEx.argtypes = (
-    ctypes.c_void_p,
-    ctypes.c_void_p,
-    ctypes.c_ulong,
-    ctypes.c_ulong,
-    ctypes.c_ulong
-)
+VirtualAllocEx.argtypes = (ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulong, ctypes.c_ulong, ctypes.c_ulong)
 
 #: Changes the protection on a region of committed pages in the virtual address space of a specified process.
 #:
@@ -145,31 +137,21 @@ Process32Next.restype = ctypes.c_long
 #: https://msdn.microsoft.com/en-us/library/windows/desktop/ms686728%28v=vs.85%29.aspx
 Thread32First = dll.Thread32First
 Thread32First.restype = ctypes.c_long
-Thread32First.argtypes = [
-    ctypes.c_void_p,
-    ctypes.POINTER(pymem.ressources.structure.ThreadEntry32)
-]
+Thread32First.argtypes = [ctypes.c_void_p, ctypes.POINTER(pymem.ressources.structure.ThreadEntry32)]
 
 #: Retrieves information about the next thread of any process encountered in the system memory snapshot.
 #:
 #: https://msdn.microsoft.com/en-us/library/windows/desktop/ms686731%28v=vs.85%29.aspx
 Thread32Next = dll.Thread32Next
 Thread32Next.restype = ctypes.c_long
-Thread32Next.argtypes = [
-    ctypes.c_void_p,
-    ctypes.POINTER(pymem.ressources.structure.ThreadEntry32)
-]
+Thread32Next.argtypes = [ctypes.c_void_p, ctypes.POINTER(pymem.ressources.structure.ThreadEntry32)]
 
 #: Opens an existing thread object.
 #:
 #: https://msdn.microsoft.com/en-us/library/windows/desktop/ms684335%28v=vs.85%29.aspx
 OpenThread = dll.OpenThread
 OpenThread.restype = ctypes.c_void_p
-OpenThread.argtypes = [
-    ctypes.c_ulong,
-    ctypes.c_long,
-    ctypes.c_ulong
-]
+OpenThread.argtypes = [ctypes.c_ulong, ctypes.c_long, ctypes.c_ulong]
 
 #: Suspends the specified thread.
 #:
@@ -207,22 +189,14 @@ VirtualFreeEx.restype = ctypes.c_long
 #:
 #: https://msdn.microsoft.com/en-us/library/windows/desktop/aa366907(v=vs.85).aspx
 VirtualQueryEx = dll.VirtualQueryEx
-VirtualQueryEx.argtypes = [
-    ctypes.c_void_p,
-    ctypes.c_void_p,
-    ctypes.c_void_p,
-    ctypes.c_size_t
-]
+VirtualQueryEx.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t]
 VirtualQueryEx.restype = ctypes.c_ulong
 
 #: Determines whether the specified process is running under WOW64.
 #:
 #: https://msdn.microsoft.com/en-us/library/ms684139(v=vs.85).aspx
 IsWow64Process = dll.IsWow64Process
-IsWow64Process.argtypes = [
-    ctypes.c_void_p,
-    ctypes.POINTER(ctypes.c_long)
-]
+IsWow64Process.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_long)]
 IsWow64Process.restype = ctypes.c_long
 
 #: Retrieves information about the current system.
@@ -248,36 +222,24 @@ CreateRemoteThread.argtypes = (
     ctypes.c_void_p,
     ctypes.c_void_p,
     ctypes.c_ulong,
-    ctypes.POINTER(ctypes.c_ulong)
+    ctypes.POINTER(ctypes.c_ulong),
 )
 
 GetFullPathNameA = dll.GetFullPathNameA
 GetFullPathNameA.restype = ctypes.c_ulong
-GetFullPathNameA.argtypes = [
-    ctypes.c_char_p, ctypes.c_ulong, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)
-]
+GetFullPathNameA.argtypes = [ctypes.c_char_p, ctypes.c_ulong, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
 
 WaitForSingleObject = dll.WaitForSingleObject
 WaitForSingleObject.restype = ctypes.c_ulong
-WaitForSingleObject.argtypes = [
-    ctypes.c_void_p, ctypes.c_ulong
-]
+WaitForSingleObject.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
 
 GetExitCodeThread = dll.GetExitCodeThread
 GetExitCodeThread.restype = ctypes.c_long
-GetExitCodeThread.argtypes = [
-    ctypes.c_void_p,
-    ctypes.POINTER(ctypes.c_ulong)
-]
+GetExitCodeThread.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong)]
 
 VirtualFreeEx = dll.VirtualFreeEx
 VirtualFreeEx.restype = ctypes.c_long
-VirtualFreeEx.argtypes = [
-    ctypes.c_void_p,
-    ctypes.c_void_p,
-    ctypes.c_size_t,
-    ctypes.c_ulong
-]
+VirtualFreeEx.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_ulong]
 
 GetThreadTimes = dll.GetThreadTimes
 GetThreadTimes.restype = ctypes.c_long
@@ -286,5 +248,5 @@ GetThreadTimes.artypes = [
     ctypes.POINTER(pymem.ressources.structure.FILETIME),
     ctypes.POINTER(pymem.ressources.structure.FILETIME),
     ctypes.POINTER(pymem.ressources.structure.FILETIME),
-    ctypes.POINTER(pymem.ressources.structure.FILETIME)
+    ctypes.POINTER(pymem.ressources.structure.FILETIME),
 ]
