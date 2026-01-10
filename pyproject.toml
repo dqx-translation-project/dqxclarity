@@ -1,0 +1,28 @@
+[tool.ruff]
+line-length = 125
+fix = true
+src = ["app"]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "UP",   # pyupgrade
+]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"app/pymem/**" = ["E", "W", "F", "I", "B", "C4", "UP"]  # forked module
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
+no-sections = true
