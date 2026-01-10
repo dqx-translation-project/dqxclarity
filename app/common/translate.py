@@ -1,37 +1,29 @@
-from common.config import UserConfig
-from common.db_ops import generate_glossary_dict, generate_m00_dict, init_db
-from common.translators.deepl import DeepLTranslate
-from common.translators.googletranslate import GoogleTranslate
-from common.translators.googletranslatefree import GoogleTranslateFree
-from functools import lru_cache
-from loguru import logger as log
-
 import langdetect
 import pykakasi
 import re
 import textwrap
 import unicodedata
+from common.config import UserConfig
+from common.db_ops import generate_glossary_dict, generate_m00_dict, init_db
+from common.translators.deepl import DeepLTranslate
+from common.translators.googletranslate import GoogleTranslate
+from common.translators.googletranslatefree import GoogleTranslateFree
+from functools import cache
+from loguru import logger as log
+
 
 # module constants to prevent re-initialization each run.
-_INVALID_CHARS = frozenset(
-    ["[", "]", "(", ")", "\\", "/", "*", "_", "+", "?", "$", "^", '"']
-)
-_HIRAGANA_CODEPOINTS = frozenset(
-    list(range(12353, 12430)) + [12431] + list(range(12434, 12436))
-)
+_INVALID_CHARS = frozenset(["[", "]", "(", ")", "\\", "/", "*", "_", "+", "?", "$", "^", '"'])
+_HIRAGANA_CODEPOINTS = frozenset(list(range(12353, 12430)) + [12431] + list(range(12434, 12436)))
 _KATAKANA_CODEPOINTS = frozenset(
-    list(range(12449, 12526))
-    + [12527]
-    + list(range(12530, 12533))
-    + list(range(12539, 12541))
-    + [65374]
+    list(range(12449, 12526)) + [12527] + list(range(12530, 12533)) + list(range(12539, 12541)) + [65374]
 )
 _VALID_CODEPOINTS = _HIRAGANA_CODEPOINTS | _KATAKANA_CODEPOINTS
 
 _KKS = pykakasi.kakasi()
 
 
-class Translator():
+class Translator:
     service = None
     api_key = None
     glossary = None
@@ -39,8 +31,8 @@ class Translator():
     def __init__(self):
         if Translator.service is None:
             self.user_settings = UserConfig()
-            Translator.service = self.user_settings.service
-            Translator.api_key = self.user_settings.key
+            Translator.service = self.user_settings.translate_service
+            Translator.api_key = self.user_settings.translate_key
 
         if Translator.glossary is None:
             Translator.glossary = generate_glossary_dict()
@@ -58,15 +50,13 @@ class Translator():
 
         return text
 
-
     def __normalize_text(self, text: str) -> str:
-        """"Normalize" text by only using latin alphabet.
+        """ "Normalize" text by only using latin alphabet.
 
         :param text: Text to normalize
         :returns: Normalized text.
         """
         return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
-
 
     def __swap_placeholder_tags(self, text: str, swap_back=False) -> str:
         if not swap_back:
@@ -196,11 +186,9 @@ class Translator():
 
         return text
 
-
     def __wrap_text(self, text: str, width: int, max_lines=None) -> str:
         """Wrap text to n characters per line."""
         return textwrap.fill(text, width=width, max_lines=max_lines, replace_whitespace=False)
-
 
     def __add_line_endings(self, text: str) -> str:
         """Adds <br> flags every 3 lines to a string. Used to break up the text
@@ -209,17 +197,16 @@ class Translator():
         :param text: Text to add the <br> tags to.
         :returns: A new string with the text broken up by <br> tags.
         """
-        count_list = [ i for i in range(3, 500, 4) ] # 500 is arbitrary, but we should never hit this.
+        count_list = [i for i in range(3, 500, 4)]  # 500 is arbitrary, but we should never hit this.
         split_text = text.split("\n")
         try:
             for i in count_list:
                 _ = split_text[i]
                 split_text.insert(i, "<br>")
         except IndexError:
-            split_text = [ x for x in split_text if x ]
+            split_text = [x for x in split_text if x]
             output = "\n".join(split_text)
             return output
-
 
     def __api_translate(self, text: list) -> list:
         """Translates a list of strings, passing them through our glossary
@@ -244,7 +231,6 @@ class Translator():
             return translator.translate(text)
         else:
             log.exception("Invalid translation service specified in user config.")
-
 
     def translate(self, text: str, wrap_width: int, max_lines=None, add_brs=True):
         """Sanitizes different tags and symbols, then translates the string.
@@ -283,7 +269,7 @@ class Translator():
             "……………",
             "…………",
             "………",
-            "……"
+            "……",
         ]
         for ellipse in ellipses:
             output = output.replace(ellipse, "…")
@@ -305,7 +291,7 @@ class Translator():
 
         # removes all of the honorifics added at the end of the tags
         name_tags = ["<pc>", "<cs_pchero>", "<kyodai>"]
-        honorifics = ["さま", "君", "どの", "ちゃん", "くん", "様", "さーん", "殿", "さん",]
+        honorifics = ["さま", "君", "どの", "ちゃん", "くん", "様", "さーん", "殿", "さん"]
         for tag in name_tags:
             for honorific in honorifics:
                 output = output.replace(f"{tag}{honorific}", tag)
@@ -322,7 +308,7 @@ class Translator():
         # get the text to translate, splitting on all tags that don't start with % or &
         tag_re = re.compile("(<[^%&]*?>)")
         select_re = re.compile(r"(<select.*>)")
-        str_split = [ x for x in re.split(tag_re, output) if x ]
+        str_split = [x for x in re.split(tag_re, output) if x]
 
         count = 0
         str_attrs = {}
@@ -330,15 +316,12 @@ class Translator():
         # iterate over each string, handling based on condition
         for string in str_split:
             if not re.match(tag_re, string):
-
                 # sole new lines need to stay where they are.
                 if string == "\n":
                     continue
 
                 # capture position of the string and replace with placeholder text
-                pristine_str = pristine_str.replace(
-                    string, f"<replace_me_index_{count}>"
-                )
+                pristine_str = pristine_str.replace(string, f"<replace_me_index_{count}>")
 
                 # <select*> lists always start with their first entry being a newline.
                 # if we see this, look back one index to see if we're inside a select tag.
@@ -471,14 +454,12 @@ class Translator():
 
                     # don't add a <br> to the very last line. subtract 1 as length doesn't start at 0 like index does.
                     if len(tag_list) - 1 != cur_index:
-
                         # get the index of the previous string to read
                         lookback_index = cur_index - 1
 
                         # make sure we get a valid number before checking the index
                         if lookback_index > -1:
                             if re.match(voice_re, tag_list[lookback_index]):
-
                                 # don't add a <br> if it already exists
                                 if not updated_str.endswith("<br>"):
                                     updated_str += "<br>\n"
@@ -524,8 +505,8 @@ def clean_up_and_return_items(text: str) -> str:
             if value:
                 value_length = len(value)
                 quant_length = len(quantity)
-                byte_count = len(value.encode('utf-8'))
-                num_spaces = 31 - value_length - quant_length - ((byte_count - value_length)//2)
+                byte_count = len(value.encode("utf-8"))
+                num_spaces = 31 - value_length - quant_length - ((byte_count - value_length) // 2)
                 if "・" in item:
                     if line_count == 0:
                         return "・" + value + (" " * num_spaces) + quantity
@@ -566,7 +547,7 @@ def detect_lang(text: str) -> bool:
 # infinitely cache player names as we come across them. honestly shouldn't
 # be a problem as these are just small strings. we only need to capture a
 # unique name once per session, then we'll just re-use.
-@lru_cache(maxsize=None)
+@cache
 def transliterate_player_name(word: str) -> str:
     """Uses the pykakasi library to phonetically convert a Japanese word into
     English.

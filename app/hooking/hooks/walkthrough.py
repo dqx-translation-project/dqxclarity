@@ -1,4 +1,5 @@
 """Hooks walkthrough text replacements."""
+
 from common.db_ops import sql_read, sql_write
 from common.translate import Translator
 from loguru import logger as log
@@ -43,16 +44,10 @@ def walkthrough_replacement(original_text: str) -> str:
     else:
         # not in database - translate it
         translator = _init_translator()
-        translated_text = translator.translate(
-            text=original_text, wrap_width=31, max_lines=3, add_brs=False
-        )
+        translated_text = translator.translate(text=original_text, wrap_width=31, max_lines=3, add_brs=False)
 
         # save to database for future lookups
-        sql_write(
-            source_text=original_text,
-            translated_text=translated_text,
-            table="walkthrough"
-        )
+        sql_write(source_text=original_text, translated_text=translated_text, table="walkthrough")
 
         return translated_text
 
@@ -64,13 +59,13 @@ def on_message(message, data, script):
     :param data: Binary data (if any) from Frida script
     :param script: Frida script instance for posting responses
     """
-    if message['type'] == 'send':
-        payload = message['payload']
-        msg_type = payload.get('type', 'unknown')
+    if message["type"] == "send":
+        payload = message["payload"]
+        msg_type = payload.get("type", "unknown")
 
-        if msg_type == 'get_replacement':
+        if msg_type == "get_replacement":
             # Frida is requesting a replacement
-            original_text = payload.get('text', '')
+            original_text = payload.get("text", "")
 
             try:
                 replacement = walkthrough_replacement(original_text)
@@ -82,17 +77,14 @@ def on_message(message, data, script):
                 replacement = original_text
 
             # send the replacement back to Frida
-            script.post({
-                'type': 'replacement',
-                'text': replacement
-            })
+            script.post({"type": "replacement", "text": replacement})
 
-        elif msg_type == 'info':
+        elif msg_type == "info":
             log.debug(f"{payload['payload']}")
-        elif msg_type == 'error':
+        elif msg_type == "error":
             log.error(f"{payload['payload']}")
         else:
             log.debug(f"{payload}")
 
-    elif message['type'] == 'error':
+    elif message["type"] == "error":
         log.error(f"[JS ERROR] {message.get('stack', message)}")

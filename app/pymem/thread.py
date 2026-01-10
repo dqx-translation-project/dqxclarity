@@ -30,9 +30,7 @@ class Thread(object):
         """
         THREAD_QUERY_INFORMATION = 0x0040
 
-        thread_handle = pymem.ressources.kernel32.OpenThread(
-            THREAD_QUERY_INFORMATION, False, self.th_entry_32.th32ThreadID
-        )
+        thread_handle = pymem.ressources.kernel32.OpenThread(THREAD_QUERY_INFORMATION, False, self.th_entry_32.th32ThreadID)
         res = pymem.ressources.structure.THREAD_BASIC_INFORMATION()
         ThreadBasicInformation = 0x0
 

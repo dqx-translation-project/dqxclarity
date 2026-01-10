@@ -18,4 +18,5 @@ def measure_duration(func):
         duration = time.time() - start
         log.debug(f"[{module}.{name}:{line}] Execution took {duration:.6f} seconds")
         return result
+
     return wrapper

@@ -18,9 +18,7 @@ monster_names = [
 ]
 
 # add your party members here
-party_names = [
-    "アカツキ"
-]
+party_names = ["アカツキ"]
 
 
 DQX = pymem.Pymem("DQXGame.exe")
@@ -51,10 +49,26 @@ def write_to_file(data: str):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Returns bytes following an NPC's name for pattern scanning. Used specifically to target the 'npc_monster_pattern' pattern.")
-    parser.add_argument("-n", "--npcs", default=False, action="store_true", help="Scans for configured NPCs and writes results to file.")
-    parser.add_argument("-m", "--monsters", default=False, action="store_true", help="Scans for configured monsters and writes results to file.")
-    parser.add_argument("-p", "--party", default=False, action="store_true", help="Scans for configured party members and writes results to file.")
+    parser = argparse.ArgumentParser(
+        description="Returns bytes following an NPC's name for pattern scanning. Used specifically to target the 'npc_monster_pattern' pattern."
+    )
+    parser.add_argument(
+        "-n", "--npcs", default=False, action="store_true", help="Scans for configured NPCs and writes results to file."
+    )
+    parser.add_argument(
+        "-m",
+        "--monsters",
+        default=False,
+        action="store_true",
+        help="Scans for configured monsters and writes results to file.",
+    )
+    parser.add_argument(
+        "-p",
+        "--party",
+        default=False,
+        action="store_true",
+        help="Scans for configured party members and writes results to file.",
+    )
     args = parser.parse_args(args=None if sys.argv[1:] else ["--help"])
 
     if args.npcs:

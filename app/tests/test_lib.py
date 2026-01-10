@@ -10,8 +10,8 @@ import unittest
 class TestLib(unittest.TestCase):
     def test_get_project_root(self):
         root = get_project_root()
-        self.assertTrue(root.endswith('dqxclarity/app'))
+        self.assertTrue(root.endswith("dqxclarity/app"))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

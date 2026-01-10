@@ -1,6 +1,5 @@
 from collections.abc import Callable
-from hooking.hooks.blowfish_logger import \
-    on_message as blowfish_logger_on_message
+from hooking.hooks.blowfish_logger import on_message as blowfish_logger_on_message
 from hooking.hooks.corner_text import on_message as corner_text_on_message
 from hooking.hooks.dialogue import on_message as dialogue_on_message
 from hooking.hooks.hash_logger import on_message as hash_logger_on_message

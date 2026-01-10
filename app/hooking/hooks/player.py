@@ -11,6 +11,7 @@ It uses this information to update various data in the local database that repla
 related to the above read data. This makes it so that when the strings are encountered in game, they
 exactly match when being looked up in database, returning a result.
 """
+
 from common.db_ops import db_query, generate_m00_dict, init_db
 from common.translate import transliterate_player_name
 from loguru import logger as log
@@ -142,7 +143,9 @@ def _replace_with_ja_names(string: str, ja_player_name: str, ja_sibling_name: st
     return new_string
 
 
-def _load_story_so_far_into_db(ja_player_name: str, ja_sibling_name: str, en_player_name: str, en_sibling_name: str, sibling_relationship: str):
+def _load_story_so_far_into_db(
+    ja_player_name: str, ja_sibling_name: str, en_player_name: str, en_sibling_name: str, sibling_relationship: str
+):
     """Load story so far data into database with placeholder replacements.
 
     :param ja_player_name: Japanese player name
@@ -169,14 +172,16 @@ def _load_story_so_far_into_db(ja_player_name: str, ja_sibling_name: str, en_pla
         query_value = f"('{fixed_ja}', '{fixed_en}')"
         query_list.append(query_value)
 
-    insert_values = ','.join(query_list)
+    insert_values = ",".join(query_list)
     query = f"INSERT INTO story_so_far (ja, en) VALUES {insert_values};"
     cursor.execute(query)
     conn.commit()
     conn.close()
 
 
-def _load_fixed_dialog_into_db(ja_player_name: str, ja_sibling_name: str, en_player_name: str, en_sibling_name: str, sibling_relationship: str):
+def _load_fixed_dialog_into_db(
+    ja_player_name: str, ja_sibling_name: str, en_player_name: str, en_sibling_name: str, sibling_relationship: str
+):
     """Load fixed dialog data into database with placeholder replacements.
 
     :param ja_player_name: Japanese player name
@@ -208,8 +213,8 @@ def _load_fixed_dialog_into_db(ja_player_name: str, ja_sibling_name: str, en_pla
         elif bad_string == 1:
             bad_strings_list.append(query_value)
 
-    dialog_values = ','.join(dialog_list)
-    bad_string_values = ','.join(bad_strings_list)
+    dialog_values = ",".join(dialog_list)
+    bad_string_values = ",".join(bad_strings_list)
 
     if len(dialog_values) > 0:
         query = f"INSERT OR REPLACE INTO dialog (ja, en) VALUES {dialog_values};"
@@ -282,25 +287,25 @@ def on_message(message, data, script):
         data: Binary data (if any) from Frida script
         script: Frida script instance
     """
-    if message['type'] == 'send':
-        payload = message['payload']
-        msg_type = payload.get('type', 'unknown')
+    if message["type"] == "send":
+        payload = message["payload"]
+        msg_type = payload.get("type", "unknown")
 
-        if msg_type == 'init_player':
+        if msg_type == "init_player":
             # frida script sent player data
-            ja_player_name = payload.get('player_name', '')
-            ja_sibling_name = payload.get('sibling_name', '')
-            relationship_byte = payload.get('relationship_byte', 0)
+            ja_player_name = payload.get("player_name", "")
+            ja_sibling_name = payload.get("sibling_name", "")
+            relationship_byte = payload.get("relationship_byte", 0)
 
             # process async
             initialize_player_data(ja_player_name, ja_sibling_name, relationship_byte)
 
-        elif msg_type == 'info':
+        elif msg_type == "info":
             log.debug(f"{payload['payload']}")
-        elif msg_type == 'error':
+        elif msg_type == "error":
             log.error(f"{payload['payload']}")
         else:
             log.debug(f"[player] {payload}")
 
-    elif message['type'] == 'error':
+    elif message["type"] == "error":
         log.error(f"[JS ERROR] [player] {message.get('stack', message)}")

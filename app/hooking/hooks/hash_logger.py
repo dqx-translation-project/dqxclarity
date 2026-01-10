@@ -5,6 +5,7 @@ in the game folder.
 The function itself computes a CRC32-poly8 checksum of the filename,
 which is then used to do the lookup in the idx.
 """
+
 from common.lib import get_project_root
 from loguru import logger as log
 
@@ -26,11 +27,11 @@ def _init_log_file():
 
     # create with header if doesn't exist
     if not os.path.exists(log_path) or os.path.getsize(log_path) == 0:
-        with open(log_path, 'w', encoding='utf-8') as f:
-            f.write('hash_type,hash_input,hash_output\n')
+        with open(log_path, "w", encoding="utf-8") as f:
+            f.write("hash_type,hash_input,hash_output\n")
 
     # open in append mode, unbuffered for real-time writing
-    _log_file = open(log_path, 'a', encoding='utf-8', buffering=1)
+    _log_file = open(log_path, "a", encoding="utf-8", buffering=1)
     return _log_file
 
 
@@ -42,14 +43,14 @@ def on_message(message, data, script):
         data: Binary data (if any) from Frida script
         script: Frida script instance for posting responses
     """
-    if message['type'] == 'send':
-        payload = message['payload']
-        msg_type = payload.get('type', 'unknown')
+    if message["type"] == "send":
+        payload = message["payload"]
+        msg_type = payload.get("type", "unknown")
 
-        if msg_type == 'hash_data':
-            hash_type = payload.get('hash_type', '')
-            hash_input = payload.get('hash_input', '')
-            hash_output = payload.get('hash_output', '')
+        if msg_type == "hash_data":
+            hash_type = payload.get("hash_type", "")
+            hash_input = payload.get("hash_input", "")
+            hash_output = payload.get("hash_output", "")
 
             try:
                 log_file = _init_log_file()
@@ -59,14 +60,14 @@ def on_message(message, data, script):
             except Exception as e:
                 log.exception(f"Failed to log hash: {e}")
 
-        elif msg_type == 'info':
+        elif msg_type == "info":
             log.debug(f"{payload['payload']}")
-        elif msg_type == 'error':
+        elif msg_type == "error":
             log.error(f"{payload['payload']}")
         else:
             log.debug(f"{payload}")
 
-    elif message['type'] == 'error':
+    elif message["type"] == "error":
         log.error(f"[JS ERROR] {message.get('stack', message)}")
 
 

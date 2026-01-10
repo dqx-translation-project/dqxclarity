@@ -9,12 +9,10 @@ import pymem.ressources.ntdll
 
 
 class LUID(ctypes.Structure):
-
     _fields_ = [("LowPart", ctypes.c_ulong), ("HighPart", ctypes.c_long)]
 
 
 class LUID_AND_ATTRIBUTES(ctypes.Structure):
-
     _fields_ = [
         ("Luid", LUID),
         ("Attributes", ctypes.c_ulong),
@@ -44,7 +42,6 @@ class LUID_AND_ATTRIBUTES(ctypes.Structure):
 
 
 class TOKEN_PRIVILEGES(ctypes.Structure):
-
     _fields_ = [("count", ctypes.c_ulong), ("Privileges", LUID_AND_ATTRIBUTES * 0)]
 
     def get_array(self):
@@ -126,7 +123,6 @@ class ProcessEntry32(ctypes.Structure):
 
 
 class FILETIME(ctypes.Structure):
-
     _fields_ = [("dwLowDateTime", ctypes.c_ulong), ("dwHighDateTime", ctypes.c_ulong)]
 
     @property
@@ -468,7 +464,6 @@ class MEMORY_BASIC_INFORMATION32(ctypes.Structure):
 
 
 class MEMORY_BASIC_INFORMATION64(ctypes.Structure):
-
     _fields_ = [
         ("BaseAddress", ctypes.c_ulonglong),
         ("AllocationBase", ctypes.c_ulonglong),
@@ -562,7 +557,6 @@ class THREAD_BASIC_INFORMATION(ctypes.Structure):
 
 # TEB
 class TIB_UNION(ctypes.Union):
-
     _fields_ = [
         ("FiberData", ctypes.c_void_p),
         ("Version", ctypes.c_ulong),

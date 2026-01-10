@@ -12,8 +12,7 @@ class MemWriterLocal:
         """
         string = ctypes.string_at(address)
 
-        return string.decode('utf-8')
-
+        return string.decode("utf-8")
 
     def read_uint32(self, address: int, value: bool = False) -> ctypes.c_uint32 | int:
         """Reads a 32-bit uint at address and returns its value.
@@ -29,7 +28,6 @@ class MemWriterLocal:
 
         return result
 
-
     def read_ulong32(self, address: int, value: bool = False) -> ctypes.c_ulong | int:
         """Reads a 32-bit ulong at address and returns its value.
 
@@ -44,18 +42,16 @@ class MemWriterLocal:
 
         return result
 
-
     def read_bytes(self, address: int, length: int) -> bytes:
         """Reads length number of bytes at address and returns the bytes read.
 
         :param address: Address to read.
         :param length: Number of bytes to read.
         """
-        buf = (ctypes.c_ubyte * length)
+        buf = ctypes.c_ubyte * length
         data = buf.from_address(address)
 
         return bytes(data)
-
 
     def write_string(self, address: int, text: str) -> None:
         """Writes a null-terminated string at address.
@@ -63,5 +59,5 @@ class MemWriterLocal:
         :param address: Address to write to.
         :param text: Text to write to address.
         """
-        data = text.encode('utf-8') + b"\x00"
+        data = text.encode("utf-8") + b"\x00"
         return ctypes.memmove(address, data, len(data))

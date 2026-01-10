@@ -1,36 +1,21 @@
+import argparse
+import sys
+import time
 from common.config import UserConfig
-from common.db_ops import create_db_schema
+from common.db_ops import create_db_schema, delete_translation_cache
 from common.lib import get_project_root, is_wine_environment, setup_logging
-from common.process import (
-    is_dqx_process_running,
-    start_process,
-    wait_for_dqx_to_launch,
-)
-from common.update import (
-    check_for_updates,
-    download_custom_files,
-    download_dat_files,
-    import_name_overrides,
-)
+from common.process import is_dqx_process_running, start_process, wait_for_dqx_to_launch
+from common.update import check_for_updates, download_custom_files, download_dat_files, import_name_overrides
 from hooking.activate import activate_hooks, cleanup_hooks
 from pathlib import Path
 from scans.manager import run_scans
 
-import argparse
-import sys
-import time
-
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(
-        description="dqxclarity: A Japanese to English translation tool for Dragon Quest X."
-    )
+    parser = argparse.ArgumentParser(description="dqxclarity: A Japanese to English translation tool for Dragon Quest X.")
 
     parser.add_argument(
-        "-u",
-        "--disable-update-check",
-        action="store_true",
-        help="Disables checking for updates on each launch.",
+        "-u", "--disable-update-check", action="store_true", help="Disables checking for updates on each launch."
     )
     parser.add_argument(
         "-c",
@@ -57,11 +42,12 @@ def parse_arguments():
         help="Update the translated idx and dat file with the latest from Github. Requires the game to be closed.",
     )
     parser.add_argument(
-        "-v",
-        "--debug",
+        "-f",
+        "--purge-cache",
         action="store_true",
-        help="Enable debug level logging.",
+        help="Purges all rows from the sqlite dialog table, which is used for caching translations.",
     )
+    parser.add_argument("-v", "--debug", action="store_true", help="Enable debug level logging.")
 
     return parser.parse_args()
 
@@ -79,16 +65,18 @@ def main():
     log_level = "DEBUG" if args.debug else "INFO"
     log = setup_logging(level=log_level)
 
-    log.info(
-        'Running. Please wait until this window says "Done!" before logging into your character.'
-    )
+    log.info('Running. Please wait until this window says "Done!" before logging into your character.')
 
     log.debug("Ensuring db structure.")
     create_db_schema()
 
+    if args.purge_cache:
+        log.info("Deleting translation cache.")
+        delete_translation_cache()
+
     # we don't do anything with the config here, but this will validate the config is ok before running.
     log.debug("Checking user_settings.ini.")
-    UserConfig(warnings=True)
+    UserConfig()
 
     if args.update_dat:
         log.info("Updating DAT mod.")
@@ -113,17 +101,11 @@ def main():
         # or do some type of work on their own.
         if args.nameplates:
             if not is_wine_environment():
-                start_process(
-                    name="Nameplate scanner",
-                    target=run_scans,
-                    args=(args.nameplates,),
-                )
+                start_process(name="Nameplate scanner", target=run_scans, args=(args.nameplates,))
             else:
                 # any pymem scanning does not currently function on steam deck. these need to be replaced
                 # with a hook. this still works on native windows though.
-                log.warning(
-                    "Some nameplate features are not available in WINE right now."
-                )
+                log.warning("Some nameplate features are not available in WINE right now.")
 
         activate_hooks(
             communication_window=args.communication_window,
@@ -131,9 +113,7 @@ def main():
             community_logging=args.community_logging,
         )
 
-        log.success(
-            "Done! Keep this window open (minimize it) and have fun on your adventure!"
-        )
+        log.success("Done! Keep this window open (minimize it) and have fun on your adventure!")
 
         # keep the program running to maintain Frida hooks
         log.info("Press Ctrl+C to stop...")

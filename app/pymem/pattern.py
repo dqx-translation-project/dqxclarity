@@ -4,7 +4,9 @@ import pymem.ressources.kernel32
 import pymem.ressources.structure
 
 
-def scan_pattern_page(handle, address, pattern, *, all_protections=True, use_regex=False, return_multiple=False, data_only=False):
+def scan_pattern_page(
+    handle, address, pattern, *, all_protections=True, use_regex=False, return_multiple=False, data_only=False
+):
     """Search a byte pattern given a memory location.
     Will query memory location information and search over until it reaches the
     length of the memory page. If nothing is found the function returns the
@@ -60,17 +62,17 @@ def scan_pattern_page(handle, address, pattern, *, all_protections=True, use_reg
     # clarity_custom: Only scan for data regions.
     if data_only and mbi.type not in [
         pymem.ressources.structure.MEMORY_TYPES.MEM_PRIVATE,
-        pymem.ressources.structure.MEMORY_TYPES.MEM_MAPPED
+        pymem.ressources.structure.MEMORY_TYPES.MEM_MAPPED,
     ]:
         return next_region, None
 
     try:
         page_bytes = pymem.memory.read_bytes(handle, address, mbi.RegionSize)
     except pymem.exception.WinAPIError as e:
-        if e.error_code == 299: # hiding an issue where memory changes between query and read
+        if e.error_code == 299:  # hiding an issue where memory changes between query and read
             return next_region, None
         raise pymem.exception.MemoryReadError(address, mbi.RegionSize, e.error_code)
-    except MemoryError: # we somehow read more bytes than we should have
+    except MemoryError:  # we somehow read more bytes than we should have
         return next_region, None
 
     if not return_multiple:
@@ -125,7 +127,9 @@ def pattern_scan_module(handle, module, pattern, *, all_protections=True, use_re
     if not return_multiple:
         found = None
         while page_address < max_address:
-            page_address, found = scan_pattern_page(handle, page_address, pattern, all_protections=all_protections, use_regex=use_regex)
+            page_address, found = scan_pattern_page(
+                handle, page_address, pattern, all_protections=all_protections, use_regex=use_regex
+            )
 
             if found:
                 break
@@ -133,7 +137,9 @@ def pattern_scan_module(handle, module, pattern, *, all_protections=True, use_re
     else:
         found = []
         while page_address < max_address:
-            page_address, new_found = scan_pattern_page(handle, page_address, pattern, all_protections=all_protections, use_regex=use_regex, return_multiple=True)
+            page_address, new_found = scan_pattern_page(
+                handle, page_address, pattern, all_protections=all_protections, use_regex=use_regex, return_multiple=True
+            )
 
             if new_found:
                 found += new_found
@@ -169,7 +175,7 @@ def pattern_scan_all(handle, pattern, *, all_protections=True, use_regex=False, 
             all_protections=all_protections,
             use_regex=use_regex,
             return_multiple=return_multiple,
-            data_only=data_only
+            data_only=data_only,
         )
 
         if not return_multiple and page_found:
