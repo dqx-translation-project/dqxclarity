@@ -1,14 +1,15 @@
+import requests
 from common.config import UserConfig
 from common.constants import COMMUNITY_STRING_API_URL
 from common.db_ops import init_db, search_bad_strings, sql_read
 from common.measure import measure_duration
-from common.translate import detect_lang, get_player_name, Translator
+from common.translate import Translator, detect_lang, get_player_name
 from loguru import logger as log
 
-import requests
 
 _translator = None
 _userconfig = None
+
 
 def _init_locals():
     """Initialize locals if not already loaded."""
@@ -82,19 +83,15 @@ def dialogue_replacement(original_text: str, npc_name: str = "No_NPC") -> str:
     # if translation failed, return original
     return original_text
 
-@measure_duration
-def send_string_to_community_api(
-    original_text: str,
-    translated_text: str,
-    npc_name: str,
-) -> bool:
-    """Submits string to the community api if user enabled it."""
-    community_api_status = _userconfig.config._sections["translation"]["enablecommunityapi"]
 
-    if not community_api_status:
+@measure_duration
+def send_string_to_community_api(original_text: str, translated_text: str, npc_name: str) -> bool:
+    """Submits string to the community api if user enabled it."""
+    if not _userconfig.community_enabled:
         return None
 
-    community_api_key = _userconfig.config._sections["translation"]["communityapikey"]
+    # we need to retrieve the player's name and sibling name each call in case
+    # they change characters.
     player, sibling = get_player_name()
 
     # attempt to replace player/sibling names with placeholders
@@ -108,16 +105,12 @@ def send_string_to_community_api(
 
     headers = {
         "Content-Type": "application/json",
-        "x-api-key": community_api_key,
+        "x-api-key": _userconfig.community_key,
         # must encode to utf-8 as japanese. requests uses latin-1 by default for headers
         "x-character-name": player.encode("utf-8"),
         "x-sibling-name": sibling.encode("utf-8"),
     }
-    data = {
-        "jp": text_with_placeholders,
-        "tr": translated_text,
-        "npc_name": npc_name,
-    }
+    data = {"jp": text_with_placeholders, "tr": translated_text, "npc_name": npc_name}
 
     try:
         response = requests.post(COMMUNITY_STRING_API_URL, headers=headers, json=data)
@@ -141,13 +134,13 @@ def on_message(message, data, script):
         data: Binary data (if any) from Frida script
         script: Frida script instance for posting responses
     """
-    if message['type'] == 'send':
-        payload = message['payload']
-        msg_type = payload.get('type', 'unknown')
+    if message["type"] == "send":
+        payload = message["payload"]
+        msg_type = payload.get("type", "unknown")
 
-        if msg_type == 'get_replacement':
-            original_text = payload.get('text', '')
-            npc_name = payload.get('npc_name', 'Unknown')
+        if msg_type == "get_replacement":
+            original_text = payload.get("text", "")
+            npc_name = payload.get("npc_name", "Unknown")
 
             try:
                 replacement = dialogue_replacement(original_text, npc_name)
@@ -159,17 +152,14 @@ def on_message(message, data, script):
                 replacement = original_text
 
             # send the replacement back to frida
-            script.post({
-                'type': 'replacement',
-                'text': replacement
-            })
+            script.post({"type": "replacement", "text": replacement})
 
-        elif msg_type == 'info':
+        elif msg_type == "info":
             log.debug(f"{payload['payload']}")
-        elif msg_type == 'error':
+        elif msg_type == "error":
             log.error(f"{payload['payload']}")
         else:
             log.debug(f"{payload}")
 
-    elif message['type'] == 'error':
+    elif message["type"] == "error":
         log.error(f"[JS ERROR] {message.get('stack', message)}")
