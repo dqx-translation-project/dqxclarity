@@ -2,7 +2,7 @@ import argparse
 import sys
 import time
 from common.config import UserConfig
-from common.db_ops import create_db_schema
+from common.db_ops import create_db_schema, delete_translation_cache
 from common.lib import get_project_root, is_wine_environment, setup_logging
 from common.process import is_dqx_process_running, start_process, wait_for_dqx_to_launch
 from common.update import check_for_updates, download_custom_files, download_dat_files, import_name_overrides
@@ -41,6 +41,12 @@ def parse_arguments():
         action="store_true",
         help="Update the translated idx and dat file with the latest from Github. Requires the game to be closed.",
     )
+    parser.add_argument(
+        "-f",
+        "--purge-cache",
+        action="store_true",
+        help="Purges all rows from the sqlite dialog table, which is used for caching translations.",
+    )
     parser.add_argument("-v", "--debug", action="store_true", help="Enable debug level logging.")
 
     return parser.parse_args()
@@ -63,6 +69,10 @@ def main():
 
     log.debug("Ensuring db structure.")
     create_db_schema()
+
+    if args.purge_cache:
+        log.info("Deleting translation cache.")
+        delete_translation_cache()
 
     # we don't do anything with the config here, but this will validate the config is ok before running.
     log.debug("Checking user_settings.ini.")

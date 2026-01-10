@@ -1,7 +1,6 @@
+import sqlite3
 from common.lib import get_project_root
 from loguru import logger as log
-
-import sqlite3
 
 
 def init_db() -> object:
@@ -42,6 +41,21 @@ def db_query(query: str):
         log.exception(f"Query failed. {e}")
     finally:
         conn.close()
+
+
+def delete_translation_cache():
+    """Deletes all rows from the dialog table. This exists in case an API service wrote a bad
+    string to the user's database and they want to self-service to fix."""
+    try:
+        conn, cursor = init_db()
+        delete_query = "DELETE FROM dialog;"
+        cursor.execute(delete_query)
+        conn.commit()
+    except sqlite3.Error as e:
+        log.exception(e)
+    finally:
+        if conn:
+            conn.close()
 
 
 def generate_m00_dict(files: str = "") -> dict:
@@ -167,7 +181,7 @@ def sql_write(source_text: str, translated_text: str, table: str):
             cursor.execute(update_query)
 
         conn.commit()
-    except sqlite3.Error as e:
+    except sqlite3.Error:
         log.exception(f"Unable to write data to {table}.")
     finally:
         if conn:

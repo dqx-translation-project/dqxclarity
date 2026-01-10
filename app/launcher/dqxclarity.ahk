@@ -24,28 +24,44 @@ Launcher.Opt("-MaximizeBox")
 
 Launcher.AddPicture("YP+1 w150 h-1 vImage", LoadImageFromResource("img/rosie.png"))
 
+Tabs := Launcher.AddTab3("x+10 y10 w220 h310 vMainTabs", ["General", "Advanced"])
+
+Tabs.UseTab("General")
+
 ; configuration group
-Launcher.AddGroupBox("ys+10 w200 h120 c0B817C", "Configuration")
-Launcher.AddCheckBox("XP+10 YP+20 vCommunityLogging Checked" . ConvertBoolToState(ini.communitylogging), "Community Logging")
-Launcher.AddCheckBox("vNameplates Checked" . ConvertBoolToState(ini.nameplates), "Nameplates")
+Launcher.AddGroupBox("x180 y30 w200 h102 c0B817C", "Configuration")
+Launcher.AddCheckBox("XP+10 YP+20 vNameplates Checked" . ConvertBoolToState(ini.nameplates), "Nameplates")
 Launcher.AddCheckBox("vUpdateGameFiles Checked" . ConvertBoolToState(ini.updategamefiles), "Update Game Files")
 Launcher.AddCheckBox("vDisableUpdates Checked"  . ConvertBoolToState(ini.disableupdates), "Disable Updates")
 Launcher.AddCheckBox("vDebugLogging Checked" . ConvertBoolToState(ini.debuglogging), "Enable Debug Logging")
-Launcher.AddStatusBar("vStatusBar", "")
 
 ; api group
 Launcher.AddGroupBox("Section YP+30 XP-10 w200 h170 c0B817C", "API Settings")
-Launcher.AddCheckBox("XP+10 YP+20 vUseDeepL Checked" . ConvertBoolToState(ini.enabledeepl), "Use DeepL")
+Launcher.AddButton("YP+20 XP+10 w180 vValidateKey", "Validate Enabled Key").OnEvent("Click", ValidateKey)
+Launcher.AddCheckBox("YP+30 vUseDeepL Checked" . ConvertBoolToState(ini.enabledeepl), "Use DeepL")
 Launcher.AddEdit("YP+20 W180 r1 vDeepLKey", ini.deeplkey).Opt("+Password")
 Launcher.AddCheckBox("XP vUseGoogleTranslate Checked" . ConvertBoolToState(ini.enablegoogletranslate), "Use Google Translate")
 Launcher.AddEdit("YP+20 W180 r1 vGoogleTranslateKey", ini.googletranslatekey).Opt("+Password")
-Launcher.AddCheckbox("XP vUseCommunityApi Checked" . ConvertBoolToState(ini.enablecommunityapi), "Use Community Api")
-Launcher.AddEdit("YP+20 W180 r1 vCommunityApiKey", ini.communityapikey).Opt("+Password")
-Launcher.AddButton("YP+42 w180 vValidateKey", "Validate Enabled Key").OnEvent("Click", ValidateKey)
 Launcher.AddCheckBox("XP vUseGoogleTranslateFree Checked" . ConvertBoolToState(ini.enablegoogletranslatefree), "Use Free Google Translate")
 
+Tabs.UseTab("Advanced")
+
+; configuration group
+Launcher.AddGroupBox("x180 y30 w200 h65 c0B817C", "Configuration")
+Launcher.AddCheckBox("XP+10 YP+20 vCommunityLogging Checked" . ConvertBoolToState(ini.communitylogging), "Community Logging")
+Launcher.AddCheckBox("YP+20 vPurgeDatabaseCache Checked" . ConvertBoolToState(ini.communitylogging), "Purge Database Cache")
+
+; api group
+Launcher.AddGroupBox("YP+30 XP-10 w200 h75 c0B817C", "API Settings")
+Launcher.AddCheckbox("YP+20 XP+10 vUseCommunityApi Checked" . ConvertBoolToState(ini.enablecommunityapi), "Use Community Api")
+Launcher.AddEdit("YP+20 W180 r1 vCommunityApiKey", ini.communityapikey).Opt("+Password")
+
+Tabs.UseTab(0)
+
+Launcher.AddStatusBar("vStatusBar", "")
+
 ; launch
-Launcher.AddButton("YP+30 XS+10 w80 h30 vRunProgram", "Run").Opt("+Default")
+Launcher.AddButton("YP+192 XS+10 w80 h30 vRunProgram", "Run").Opt("+Default")
 Launcher.AddButton("x+20 vGitHub w80 h30", "GitHub").OnEvent("Click", OpenGitHub)
 
 ; tooltips
@@ -62,6 +78,7 @@ Launcher["DeepLKey"].ToolTip := "Paste your DeepL API Key here."
 Launcher["GoogleTranslateKey"].ToolTip := "Paste your Google Translate API Key here."
 Launcher["CommunityApiKey"].ToolTip := "Paste your Community API Key here."
 Launcher["ValidateKey"].ToolTip := "Validate that the selected API key works. Check here for status."
+Launcher["PurgeDatabaseCache"].ToolTip := "Deletes all cached translations from your local database."
 Launcher["Run"].ToolTip := "Run the program."
 Launcher["GitHub"].ToolTip := "View the source code in your default browser."
 
@@ -69,7 +86,9 @@ Launcher["GitHub"].ToolTip := "View the source code in your default browser."
 Launcher["CommunityLogging"].OnEvent("Click", CommunityLoggingWarning)
 Launcher["UseDeepL"].OnEvent("Click", CheckedDeepL)
 Launcher["UseGoogleTranslate"].OnEvent("Click", CheckedGoogleTranslate)
+Launcher["UseGoogleTranslateFree"].OnEvent("Click", CheckedGoogleTranslateFree)
 Launcher["UseCommunityApi"].OnEvent("Click", CheckedCommunityApi)
+Launcher["PurgeDatabaseCache"].OnEvent("Click", CheckedPurgeDatabaseCache)
 Launcher["RunProgram"].OnEvent("Click", RunProgram)
 
 ; show launcher
@@ -80,7 +99,7 @@ OnMessage(0x0200, On_WM_MOUSEMOVE)
 CheckedCommunityApi(*) {
     ; Behavior when the "Use Community Api" checkbox is checked.
     if Launcher["UseCommunityApi"].value = 1 {
-        Result := MsgBox("You have enabled the community API.`n`nThis sends japanese text encountered in-game to a remote database so that the dqxclarity developers can disperse this out to everyone.`n`nIf you're interested in contributing to this, you will need to have an API key generated for you by Serany via Discord.`n`nYou must meet the following requirements to be eligible to participate:`n`n- Your in-game character name (in Japanese) is a unique name not seen in Japanese grammar`n- Your sibling's character name (in Japanese) is a unique name not seen in Japanese grammar`n`nIf you don't meet these requirements, you will be denied the ability to participate.`n`nOnly click Yes if you have been provided an API key by the dqxclarity dev team and then enter it below.", "Community Api", "YN Icon! Default2 0x1000")
+        Result := MsgBox("You have enabled the community API.`n`nThis sends japanese text encountered in-game to a remote database so that the dqxclarity developers can disperse this out to everyone.`n`nIf you're interested in contributing to this, you will need to have an API key generated for you by Serany via Discord.`n`nYou must meet the following requirements to be eligible to participate:`n`n- Your in-game character name (in Japanese) is a unique name not seen in Japanese grammar`n- Your sibling's character name (in Japanese) is a unique name not seen in Japanese grammar`n`nIf you don't meet these requirements, you are unfortunately not eligible to participate.`n`nOnly click Yes if you have been provided an API key by the dqxclarity dev team and then enter it below.", "Community Api", "YN Icon! Default2 0x1000")
         if (Result = "No") {
             Launcher["CommunityLogging"].value := 0
         }
@@ -88,19 +107,56 @@ CheckedCommunityApi(*) {
     Launcher["CommunityApiKey"].Opt("-Disabled")
 }
 
-CheckedDeepL(*) {
+
+CheckedDeepL(ctrl, *) {
     ; Behavior when the "Use DeepL" checkbox is checked.
-    Launcher["UseGoogleTranslate"].value := 0
-    Launcher["GoogleTranslateKey"].Opt("+Disabled")
-    Launcher["DeepLKey"].Opt("-Disabled")
+    if ctrl.Value {
+        Launcher["UseGoogleTranslate"].value := 0
+        Launcher["UseGoogleTranslateFree"].value := 0
+        Launcher["GoogleTranslateKey"].Opt("+Disabled")
+        Launcher["DeepLKey"].Opt("-Disabled")
+    } else {
+        Launcher["GoogleTranslateKey"].Opt("-Disabled")
+    }
 }
 
 
-CheckedGoogleTranslate(*) {
+CheckedGoogleTranslate(ctrl, *) {
     ; Behavior when the "Use Google Translate" checkbox is checked.
-    Launcher["UseDeepL"].value := 0
-    Launcher["DeepLKey"].Opt("+Disabled")
-    Launcher["GoogleTranslateKey"].Opt("-Disabled")
+    if ctrl.Value {
+        Launcher["UseDeepL"].value := 0
+        Launcher["UseGoogleTranslateFree"].value := 0
+        Launcher["DeepLKey"].Opt("+Disabled")
+        Launcher["GoogleTranslateKey"].Opt("-Disabled")
+    } else {
+        Launcher["DeepLKey"].Opt("-Disabled")
+    }
+}
+
+
+CheckedGoogleTranslateFree(ctrl, *) {
+    ; Behavior when the "Use Google Translate Free" checkbox is checked.
+    if ctrl.Value {
+        Launcher["UseDeepL"].value := 0
+        Launcher["UseGoogleTranslate"].value := 0
+        Launcher["DeepLKey"].Opt("+Disabled")
+        Launcher["GoogleTranslateKey"].Opt("+Disabled")
+    } else {
+        Launcher["DeepLKey"].Opt("-Disabled")
+        Launcher["GoogleTranslateKey"].Opt("-Disabled")
+    }
+}
+
+
+CheckedPurgeDatabaseCache(*) {
+    ; Behavior when the "Purge Database Cache" checkbox is checked.
+    if Launcher["PurgeDatabaseCache"].value = 1 {
+        Result := MsgBox("This will drop all previous translations that were previously cached within your local database.`n`nYou generally don't want to select this option unless you've been asked to or you're trying to fix a wrong translation and try again.`n`nThis option does not persist between launches and must be selected each time.`n`nSelect Yes and this will be performed when dqxclarity launches.", "Purge database cache?", "YN Icon! Default2 0x1000")
+        if (Result = "No") {
+            Launcher["PurgeDatabaseCache"].value := 0
+        }
+    }
+    Launcher["CommunityApiKey"].Opt("-Disabled")
 }
 
 
@@ -256,8 +312,12 @@ GetClarityArgs(*) {
         args := args . " " . "--disable-update-check"
     if (Launcher["DebugLogging"].value = 1)
         args := args . " " . "--debug"
-    if (Launcher["UseDeepL"].value = 1 or Launcher["UseGoogleTranslate"].value = 1 or Launcher["UseGoogleTranslateFree"].value = 1)
+    if (Launcher["UseDeepL"].value = 1 or
+        Launcher["UseGoogleTranslate"].value = 1 or
+        Launcher["UseGoogleTranslateFree"].value = 1)
         args := args . " " . "--communication-window"
+    if (Launcher["PurgeDatabaseCache"].value = 1)
+        args := args . " " . "--purge-cache"
 
     if (args)
         return args
