@@ -8,3 +8,4 @@ GITHUB_CLARITY_CUTSCENE_JSON_URL = "https://raw.githubusercontent.com/dqx-transl
 GITHUB_CLARITY_VERSION_UPDATE_URL = "https://api.github.com/repos/dqx-translation-project/dqxclarity/releases/latest"
 GITHUB_CLARITY_DAT1_URL = "https://github.com/dqx-translation-project/dqxclarity/releases/latest/download/data00000000.win32.dat1"
 GITHUB_CLARITY_IDX_URL = "https://github.com/dqx-translation-project/dqxclarity/releases/latest/download/data00000000.win32.idx"
+COMMUNITY_STRING_API_URL = "https://community-string-api.ethene.wiki"

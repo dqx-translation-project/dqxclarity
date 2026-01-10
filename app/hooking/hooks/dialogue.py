@@ -1,19 +1,25 @@
+from common.config import UserConfig
+from common.constants import COMMUNITY_STRING_API_URL
 from common.db_ops import init_db, search_bad_strings, sql_read
-from common.translate import detect_lang, Translator
+from common.measure import measure_duration
+from common.translate import detect_lang, get_player_name, Translator
 from loguru import logger as log
 
+import requests
+
 _translator = None
+_userconfig = None
 
-
-def _init_translator():
-    """Initialize the translator if not already loaded."""
+def _init_locals():
+    """Initialize locals if not already loaded."""
     global _translator
+    global _userconfig
 
-    if _translator is not None:
-        return _translator
+    if not _translator:
+        _translator = Translator()
 
-    _translator = Translator()
-    return _translator
+    if not _userconfig:
+        _userconfig = UserConfig()
 
 
 def dialogue_replacement(original_text: str, npc_name: str = "No_NPC") -> str:
@@ -23,7 +29,7 @@ def dialogue_replacement(original_text: str, npc_name: str = "No_NPC") -> str:
     :param original_text: The original Japanese text to translate.
     :param npc_name: Name of the NPC.
     """
-    _init_translator()
+    _init_locals()
 
     # check if text is in Japanese (only translate if needed)
     if not detect_lang(original_text):
@@ -43,6 +49,8 @@ def dialogue_replacement(original_text: str, npc_name: str = "No_NPC") -> str:
     translated_text = _translator.translate(text=original_text, wrap_width=46)
 
     if translated_text:
+        send_string_to_community_api(original_text=original_text, translated_text=translated_text, npc_name=npc_name)
+
         # write to database for future lookups
         try:
             conn, cursor = init_db()
@@ -73,6 +81,56 @@ def dialogue_replacement(original_text: str, npc_name: str = "No_NPC") -> str:
 
     # if translation failed, return original
     return original_text
+
+@measure_duration
+def send_string_to_community_api(
+    original_text: str,
+    translated_text: str,
+    npc_name: str,
+) -> bool:
+    """Submits string to the community api if user enabled it."""
+    community_api_status = _userconfig.config._sections["translation"]["enablecommunityapi"]
+
+    if not community_api_status:
+        return None
+
+    community_api_key = _userconfig.config._sections["translation"]["communityapikey"]
+    player, sibling = get_player_name()
+
+    # attempt to replace player/sibling names with placeholders
+    text_with_placeholders = original_text.replace(player, "<pnplacehold>")
+    text_with_placeholders = original_text.replace(sibling, "<snplacehold>")
+
+    # don't use the translated text if the placeholders were added. this would submit
+    # the player's name in the translated text, which we don't want.
+    if original_text != text_with_placeholders:
+        translated_text = text_with_placeholders
+
+    headers = {
+        "Content-Type": "application/json",
+        "x-api-key": community_api_key,
+        # must encode to utf-8 as japanese. requests uses latin-1 by default for headers
+        "x-character-name": player.encode("utf-8"),
+        "x-sibling-name": sibling.encode("utf-8"),
+    }
+    data = {
+        "jp": text_with_placeholders,
+        "tr": translated_text,
+        "npc_name": npc_name,
+    }
+
+    try:
+        response = requests.post(COMMUNITY_STRING_API_URL, headers=headers, json=data)
+        if response.status_code == 200:
+            log.debug("Sent string to community api.")
+        else:
+            log.warning(
+                f"Failed to send string to community api. Status code: {response.status_code}. Error: {response.text}"
+            )
+    except Exception as e:
+        # don't stop the rest of the translation from falling over just because this failed to POST.
+        # log the error and keep moving.
+        log.exception(f"Failed to send string to community api. Error: {e}")
 
 
 def on_message(message, data, script):

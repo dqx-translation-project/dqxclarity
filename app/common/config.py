@@ -32,6 +32,8 @@ class UserConfig:
             "enablegoogletranslate": False,
             "googletranslatekey": "",
             "enablegoogletranslatefree": False,
+            "communityapikey": "",
+            "enablecommunityapi": False,
         }
         base_config["config"] = {
             "installdirectory": ""

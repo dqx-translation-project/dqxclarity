@@ -9,6 +9,8 @@ ini.enabledeepl := IniRead(".\user_settings.ini", "translation", "enabledeepltra
 ini.deeplkey := IniRead(".\user_settings.ini", "translation", "deepltranslatekey", "")
 ini.enablegoogletranslate := IniRead(".\user_settings.ini", "translation", "enablegoogletranslate", "False")
 ini.googletranslatekey := IniRead(".\user_settings.ini", "translation", "googletranslatekey", "")
+ini.enablecommunityapi := IniRead(".\user_settings.ini", "translation", "enablecommunityapi", "False")
+ini.communityapikey := IniRead(".\user_settings.ini", "translation", "communityapikey", "")
 ini.enablegoogletranslatefree := IniRead(".\user_settings.ini", "translation", "enablegoogletranslatefree", "False")
 ini.communitylogging := IniRead(".\user_settings.ini", "launcher", "communitylogging", "False")
 ini.nameplates := IniRead(".\user_settings.ini", "launcher", "nameplates", "False")
@@ -37,11 +39,13 @@ Launcher.AddCheckBox("XP+10 YP+20 vUseDeepL Checked" . ConvertBoolToState(ini.en
 Launcher.AddEdit("YP+20 W180 r1 vDeepLKey", ini.deeplkey).Opt("+Password")
 Launcher.AddCheckBox("XP vUseGoogleTranslate Checked" . ConvertBoolToState(ini.enablegoogletranslate), "Use Google Translate")
 Launcher.AddEdit("YP+20 W180 r1 vGoogleTranslateKey", ini.googletranslatekey).Opt("+Password")
-Launcher.AddButton("YP+30 w180 vValidateKey", "Validate Enabled Key").OnEvent("Click", ValidateKey)
+Launcher.AddCheckbox("XP vUseCommunityApi Checked" . ConvertBoolToState(ini.enablecommunityapi), "Use Community Api")
+Launcher.AddEdit("YP+20 W180 r1 vCommunityApiKey", ini.communityapikey).Opt("+Password")
+Launcher.AddButton("YP+42 w180 vValidateKey", "Validate Enabled Key").OnEvent("Click", ValidateKey)
 Launcher.AddCheckBox("XP vUseGoogleTranslateFree Checked" . ConvertBoolToState(ini.enablegoogletranslatefree), "Use Free Google Translate")
 
 ; launch
-Launcher.AddButton("YP+60 XS+10 w80 h30 vRunProgram", "Run").Opt("+Default")
+Launcher.AddButton("YP+30 XS+10 w80 h30 vRunProgram", "Run").Opt("+Default")
 Launcher.AddButton("x+20 vGitHub w80 h30", "GitHub").OnEvent("Click", OpenGitHub)
 
 ; tooltips
@@ -52,9 +56,11 @@ Launcher["DisableUpdates"].ToolTip := "Don't check for dqxclarity updates on lau
 Launcher["DebugLogging"].ToolTip := "Enables more verbose logging."
 Launcher["UseDeepL"].ToolTip := "Enable DeepL as your choice of external translation."
 Launcher["UseGoogleTranslate"].ToolTip := "Enable Google Translate as your choice of external translation."
+Launcher["UseCommunityApi"].ToolTip := "Enable Community Api for submitting game strings to devs."
 Launcher["UseGoogleTranslateFree"].ToolTip := "Uses the 'free' version of Google Translate. Rate limiting may ensue under use."
 Launcher["DeepLKey"].ToolTip := "Paste your DeepL API Key here."
 Launcher["GoogleTranslateKey"].ToolTip := "Paste your Google Translate API Key here."
+Launcher["CommunityApiKey"].ToolTip := "Paste your Community API Key here."
 Launcher["ValidateKey"].ToolTip := "Validate that the selected API key works. Check here for status."
 Launcher["Run"].ToolTip := "Run the program."
 Launcher["GitHub"].ToolTip := "View the source code in your default browser."
@@ -63,12 +69,24 @@ Launcher["GitHub"].ToolTip := "View the source code in your default browser."
 Launcher["CommunityLogging"].OnEvent("Click", CommunityLoggingWarning)
 Launcher["UseDeepL"].OnEvent("Click", CheckedDeepL)
 Launcher["UseGoogleTranslate"].OnEvent("Click", CheckedGoogleTranslate)
+Launcher["UseCommunityApi"].OnEvent("Click", CheckedCommunityApi)
 Launcher["RunProgram"].OnEvent("Click", RunProgram)
 
 ; show launcher
 Launcher.Show("AutoSize Center")
 OnMessage(0x0200, On_WM_MOUSEMOVE)
 
+
+CheckedCommunityApi(*) {
+    ; Behavior when the "Use Community Api" checkbox is checked.
+    if Launcher["UseCommunityApi"].value = 1 {
+        Result := MsgBox("You have enabled the community API.`n`nThis sends japanese text encountered in-game to a remote database so that the dqxclarity developers can disperse this out to everyone.`n`nIf you're interested in contributing to this, you will need to have an API key generated for you by Serany via Discord.`n`nYou must meet the following requirements to be eligible to participate:`n`n- Your in-game character name (in Japanese) is a unique name not seen in Japanese grammar`n- Your sibling's character name (in Japanese) is a unique name not seen in Japanese grammar`n`nIf you don't meet these requirements, you will be denied the ability to participate.`n`nOnly click Yes if you have been provided an API key by the dqxclarity dev team and then enter it below.", "Community Api", "YN Icon! Default2 0x1000")
+        if (Result = "No") {
+            Launcher["CommunityLogging"].value := 0
+        }
+    }
+    Launcher["CommunityApiKey"].Opt("-Disabled")
+}
 
 CheckedDeepL(*) {
     ; Behavior when the "Use DeepL" checkbox is checked.
@@ -218,6 +236,8 @@ SaveToIni(*) {
     IniWrite(Launcher["DeepLKey"].value, ".\user_settings.ini", "translation", "deepltranslatekey")
     IniWrite(ConvertStateToBool(Launcher["UseGoogleTranslate"].value), ".\user_settings.ini", "translation", "enablegoogletranslate")
     IniWrite(Launcher["GoogleTranslateKey"].value, ".\user_settings.ini", "translation", "googletranslatekey")
+    IniWrite(ConvertStateToBool(Launcher["UseCommunityApi"].value), ".\user_settings.ini", "translation", "enablecommunityapi")
+    IniWrite(Launcher["CommunityApiKey"].value, ".\user_settings.ini", "translation", "communityapikey")
     IniWrite(ConvertStateToBool(Launcher["UseGoogleTranslateFree"].value), ".\user_settings.ini", "translation", "enablegoogletranslatefree")
 }
 
