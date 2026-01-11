@@ -96,7 +96,7 @@ def send_string_to_community_api(original_text: str, translated_text: str, npc_n
 
     # attempt to replace player/sibling names with placeholders
     text_with_placeholders = original_text.replace(player, "<pnplacehold>")
-    text_with_placeholders = original_text.replace(sibling, "<snplacehold>")
+    text_with_placeholders = text_with_placeholders.replace(sibling, "<snplacehold>")
 
     # don't use the translated text if the placeholders were added. this would submit
     # the player's name in the translated text, which we don't want.
