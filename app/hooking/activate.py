@@ -98,6 +98,7 @@ def wait_for_memory_threshold(process_name: str, threshold_mb: int = 200):
 
         if count == 10:
             log.warning("Waited 10 seconds, attempting to hook anyways...")
+            return
 
         time.sleep(1)
         count += 1
