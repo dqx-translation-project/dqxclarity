@@ -1,10 +1,10 @@
-from hooking.hook import HOOKS, HookScript
-from loguru import logger as log
-
 import ctypes
 import ctypes.wintypes
 import frida
 import time
+from hooking.hook import HOOKS, HookScript
+from loguru import logger as log
+
 
 PROCESS_NAME = "DQXGame.exe"
 
@@ -84,6 +84,7 @@ def wait_for_memory_threshold(process_name: str, threshold_mb: int = 200):
     """
     log.debug("Waiting for game to load...")
 
+    count = 0
     while True:
         memory_mb = get_process_memory_mb(process_name)
 
@@ -95,7 +96,12 @@ def wait_for_memory_threshold(process_name: str, threshold_mb: int = 200):
         if memory_mb > 0:
             log.debug(f"Current memory: {memory_mb:.1f}MB")
 
-        time.sleep(0.5)
+        if count == 10:
+            log.warning("Waited 10 seconds, attempting to hook anyways...")
+            return
+
+        time.sleep(1)
+        count += 1
 
 
 def activate_hooks(communication_window: bool, nameplates: bool, community_logging: bool):
