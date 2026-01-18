@@ -1,11 +1,10 @@
+import traceback
 from common.db_ops import generate_m00_dict
 from common.memory import MemWriter
 from common.signatures import comm_name_pattern
 from common.translate import transliterate_player_name
 from loguru import logger as log
 from pymem.exception import MemoryReadError, WinAPIError
-
-import traceback
 
 
 def scan_for_comm_names():

@@ -216,10 +216,8 @@ class Translator:
         :returns: A translated list of strings in the same order they
             were given.
         """
-        count = 0
-        for i in text:
-            text[count] = self.__glossify(i)
-            count += 1
+        for i, phrase in enumerate(text):
+            text[phrase] = self.__glossify(i)
         if Translator.service == "deepl":
             translator = DeepLTranslate(Translator.api_key)
             return translator.translate(text)
@@ -360,17 +358,15 @@ class Translator:
 
         # translate our list of strings
         to_translate = []
-        count = 0
-        for i in str_attrs:
+        for i in enumerate(str_attrs):
             # dqx <select> lists are always at the end of the string. we'll append all list items
             # to the end of our python list so we can pass them to the translation service individually.
-            if not str_attrs[count]["is_list"]:
-                to_translate.append(str_attrs[count]["text"])
+            if not str_attrs[i]["is_list"]:
+                to_translate.append(str_attrs[i]["text"])
             else:
-                for line in str_attrs[count]["text"].splitlines():
+                for line in str_attrs[i]["text"].splitlines():
                     if line:
                         to_translate.append(line)
-            count += 1
 
         log.debug(f"[Post-glossary]\n{to_translate}")
         translated_list = self.__api_translate(text=to_translate)
@@ -458,11 +454,10 @@ class Translator:
                         lookback_index = cur_index - 1
 
                         # make sure we get a valid number before checking the index
-                        if lookback_index > -1:
-                            if re.match(voice_re, tag_list[lookback_index]):
-                                # don't add a <br> if it already exists
-                                if not updated_str.endswith("<br>"):
-                                    updated_str += "<br>\n"
+                        if lookback_index > -1 and re.match(voice_re, tag_list[lookback_index]):  # noqa: SIM102
+                            # don't add a <br> if it already exists
+                            if not updated_str.endswith("<br>"):
+                                updated_str += "<br>\n"
 
                 pristine_str = pristine_str.replace(f"<replace_me_index_{count}>", updated_str)
 
@@ -495,10 +490,7 @@ def clean_up_and_return_items(text: str) -> str:
             quantity = re.sub(" ", "", quantity)
         if no_bullet.endswith("他"):
             bad_strings = ["必殺技を覚える", "入れられるよう"]
-            if any(string in no_bullet for string in bad_strings):
-                quantity = ""
-            else:
-                quantity = "(1)"
+            quantity = "" if any(string in no_bullet for string in bad_strings) else "(1)"
         no_bullet = re.sub("(　　.*)", "", no_bullet)
         if no_bullet in quest_rewards:
             value = quest_rewards.get(no_bullet)

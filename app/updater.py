@@ -89,10 +89,7 @@ def download_latest_zip():
     ctx.verify_mode = ssl.CERT_NONE
     data = urlopen(req, timeout=15, context=ctx)
 
-    if data.status == 200:
-        zfile = zip(BytesIO(data.read()))
-    else:
-        zfile = None
+    zfile = zip(BytesIO(data.read())) if data.status == 200 else None
 
     return zfile
 
@@ -100,13 +97,14 @@ def download_latest_zip():
 def delete_file(file: str):
     try:
         os.remove(file)
-    except:
+    except OSError:
         shutil.rmtree(file, ignore_errors=True)
 
 
 if is_dqx_process_running():
     input(
-        "Please close DQX before updating. Re-launch dqxclarity once the game has been closed.\n\nPress ENTER to close this window."
+        "Please close DQX before updating. Re-launch dqxclarity once the game has been closed.\n\n"
+        "Press ENTER to close this window."
     )
     sys.exit()
 

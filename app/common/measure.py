@@ -1,8 +1,7 @@
-from functools import wraps
-from loguru import logger as log
-
 import inspect
 import time
+from functools import wraps
+from loguru import logger as log
 
 
 def measure_duration(func):

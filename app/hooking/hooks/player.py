@@ -16,6 +16,7 @@ from common.db_ops import db_query, generate_m00_dict, init_db
 from common.translate import transliterate_player_name
 from loguru import logger as log
 
+
 _player_names = None
 
 
@@ -30,22 +31,20 @@ def _init_player_names():
     return _player_names
 
 
-def _determine_sibling_relationship(relationship_byte: int) -> str:
+def _determine_sibling_relationship(value: int) -> str:
     """Determine sibling relationship from byte value.
 
-    :param relationship_byte: Byte value from memory (1-4)
+    :param value: Byte value from memory (1-4)
     :returns: String describing relationship
     """
-    if relationship_byte == 0x01:
-        return "older_brother"
-    elif relationship_byte == 0x02:
-        return "younger_brother"
-    elif relationship_byte == 0x03:
-        return "older_sister"
-    elif relationship_byte == 0x04:
-        return "younger_sister"
-    else:
-        return "unknown"
+    relationship = {
+        0x01: "older_brother",
+        0x02: "younger_brother",
+        0x03: "older_sister",
+        0x04: "younger_sister",
+    }
+
+    return relationship.get(value)
 
 
 def _get_en_player_name(name: str) -> str:

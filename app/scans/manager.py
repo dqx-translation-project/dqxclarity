@@ -1,3 +1,4 @@
+import sys
 from common.db_ops import generate_m00_dict
 from common.errors import MemoryReadError
 from common.lib import setup_logging
@@ -6,8 +7,6 @@ from pymem.exception import WinAPIError
 from scans.comms import scan_for_comm_names
 from scans.npc_names import scan_for_concierge_names
 from scans.player_names import scan_for_menu_ai_names
-
-import sys
 
 
 def run_scans(nameplates: bool, ready_event):
@@ -37,9 +36,7 @@ def run_scans(nameplates: bool, ready_event):
         except MemoryReadError:
             continue
         except WinAPIError as e:
-            if e.error_code == 299:  # memory page changed
-                continue
-            elif e.error_code == 5:  # game closed
+            if e.error_code == 299 or e.error_code == 5:  # memory page changed
                 continue
             else:
                 raise e

@@ -1,8 +1,8 @@
-from loguru import logger as log
-
+import contextlib
 import logging
 import os
 import sys
+from loguru import logger as log
 
 
 def setup_logging(log_file: str = "console.log", stdout: bool = True, level: str = "INFO"):
@@ -18,10 +18,8 @@ def setup_logging(log_file: str = "console.log", stdout: bool = True, level: str
     """
     log_path = get_project_root(f"logs/{log_file}")
 
-    try:
+    with contextlib.suppress(ValueError):
         log.remove(0)
-    except ValueError:
-        pass
 
     # wine does not seem to have support for ansi color codes in cmd, which
     # makes it very difficult to read the command prompt.
@@ -81,6 +79,4 @@ def is_wine_environment() -> bool:
 
     :returns: Returns True if yes. Else, False.
     """
-    if os.environ.get("SteamDeck") == "1" or os.environ.get("WINEPREFIX"):
-        return True
-    return False
+    return os.environ.get("SteamDeck") == "1" or os.environ.get("WINEPREFIX")  # noqa: SIM112

@@ -78,7 +78,7 @@ def generate_m00_dict(files: str = "") -> dict:
         cursor.execute(query)
         results = cursor.fetchall()
 
-        for ja, en, file in results:
+        for ja, en, _file in results:
             data[ja] = en
 
         return data

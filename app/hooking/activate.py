@@ -1,3 +1,4 @@
+import contextlib
 import ctypes
 import ctypes.wintypes
 import frida
@@ -122,7 +123,7 @@ def activate_hooks(communication_window: bool, nameplates: bool, community_loggi
                 enabled_hooks.extend(HOOKS[category])
 
         log.info(f"Enabled hooks ({len(enabled_hooks)}):")
-        for i, hook in enumerate(enabled_hooks):
+        for hook in enabled_hooks:
             log.info(f"  {hook.name}")
 
         # wait for binary to be fully loaded into memory before attaching
@@ -160,8 +161,6 @@ def cleanup_hooks():
     global active_scripts
     log.info("Cleaning up hooks...")
     for hook_script in active_scripts:
-        try:
+        with contextlib.suppress(Exception):
             hook_script.unload()
-        except Exception:
-            pass
     active_scripts.clear()

@@ -6,10 +6,10 @@ The function itself computes a CRC32-poly8 checksum of the filename,
 which is then used to do the lookup in the idx.
 """
 
+import os
 from common.lib import get_project_root
 from loguru import logger as log
 
-import os
 
 # module-level file handle for efficient appending
 _log_file = None
@@ -31,7 +31,7 @@ def _init_log_file():
             f.write("hash_type,hash_input,hash_output\n")
 
     # open in append mode, unbuffered for real-time writing
-    _log_file = open(log_path, "a", encoding="utf-8", buffering=1)
+    _log_file = open(log_path, "a", encoding="utf-8", buffering=1)  # noqa: SIM115
     return _log_file
 
 
