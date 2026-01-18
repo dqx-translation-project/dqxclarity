@@ -145,16 +145,15 @@ def network_text_replacement(original_text: str, category: str) -> str:
     if category in _to_ignore:
         return original_text
 
+    if original_text.endswith("自分"):
+        # "self" text when player/monster uses spell on themselves
+        return original_text.replace("自分", "self")
+
     if category not in _translate_categories:
         # log unknown category
         if category and original_text:
             _custom_text_logger.info(f"--\n{category} ::\n{original_text}")
         return original_text
-
-    if category == "<%sB_TARGET_RPL>":
-        # "self" text when player/monster uses spell on themselves
-        if original_text == "自分":
-            return "self"
 
     elif category in {
         "<%sM_pc>",
@@ -201,7 +200,7 @@ def network_text_replacement(original_text: str, category: str) -> str:
             _custom_text_logger.info(f"--\n>>{category} ::\n{log_text}")
             return original_text
 
-    elif category == "<%sM_kaisetubun>" and is_text_japanese(original_text):
+    elif category == "<%sM_kaisetubun>":
         # Story so far AND monster trivia
         if story_text := sql_read(text=original_text, table="story_so_far"):
             # truncate to original length to avoid overwriting game data
