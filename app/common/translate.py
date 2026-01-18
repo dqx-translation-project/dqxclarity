@@ -217,18 +217,19 @@ class Translator:
             were given.
         """
         for i, phrase in enumerate(text):
-            text[phrase] = self.__glossify(i)
+            text[i] = self.__glossify(phrase)
+
         if Translator.service == "deepl":
             translator = DeepLTranslate(Translator.api_key)
             return translator.translate(text)
+
         elif Translator.service == "google":
             translator = GoogleTranslate(Translator.api_key)
             return translator.translate(text)
+
         elif Translator.service == "googlefree":
             translator = GoogleTranslateFree()
             return translator.translate(text)
-        else:
-            log.exception("Invalid translation service specified in user config.")
 
     def translate(self, text: str, wrap_width: int, max_lines=None, add_brs=True):
         """Sanitizes different tags and symbols, then translates the string.
@@ -358,7 +359,7 @@ class Translator:
 
         # translate our list of strings
         to_translate = []
-        for i in enumerate(str_attrs):
+        for i, _attr in enumerate(str_attrs):
             # dqx <select> lists are always at the end of the string. we'll append all list items
             # to the end of our python list so we can pass them to the translation service individually.
             if not str_attrs[i]["is_list"]:
