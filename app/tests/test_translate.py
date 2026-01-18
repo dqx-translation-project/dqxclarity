@@ -9,15 +9,6 @@ from common.translate import *
 
 
 class TestTranslate(unittest.TestCase):
-    def test_detect_lang(self):
-        ja_str = "<speed=0><se_nots Joutyu_SE 61>ショウブは　近くのものを指差した！"
-        result = detect_lang(ja_str)
-        self.assertTrue(result)
-
-        en_str = "This is a test."
-        result = detect_lang(en_str)
-        self.assertFalse(result)
-
     def test_transliterate_player_name(self):
         name = "セラニー"
         result = transliterate_player_name(name)

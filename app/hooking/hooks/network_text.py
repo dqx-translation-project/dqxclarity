@@ -1,16 +1,14 @@
 """Hooks network text template string replacements."""
 
-import regex
 from common.db_ops import generate_m00_dict, sql_read
 from common.lib import get_project_root, setup_logger
-from common.translate import detect_lang, transliterate_player_name
+from common.translate import is_text_japanese, transliterate_player_name
 from loguru import logger as log
 
 
 # Module-level cache and logger
 _m00_text = None
 _custom_text_logger = None
-_jp_regex = regex.compile(r"\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Han}")
 
 _translate_categories = {
     "<%sM_pc>",
@@ -120,11 +118,6 @@ def _init_data():
     return _m00_text
 
 
-def _is_japanese(text: str) -> bool:
-    """Check if text contains Japanese characters."""
-    return bool(_jp_regex.search(text))
-
-
 def _format_to_json(text: str) -> str:
     """Format text for logging as JSON."""
     replaced = text.replace("\n", "\\n")
@@ -139,7 +132,7 @@ def network_text_replacement(original_text: str, category: str) -> str:
     :return: Replacement text, or original if no replacement.
     """
     # only process Japanese text
-    if not _is_japanese(original_text):
+    if not is_text_japanese(original_text):
         return original_text
 
     # this hook hits on login screen, but we don't init data until player is logged in.
@@ -208,7 +201,7 @@ def network_text_replacement(original_text: str, category: str) -> str:
             _custom_text_logger.info(f"--\n>>{category} ::\n{log_text}")
             return original_text
 
-    elif category == "<%sM_kaisetubun>" and detect_lang(original_text):
+    elif category == "<%sM_kaisetubun>" and is_text_japanese(original_text):
         # Story so far AND monster trivia
         if story_text := sql_read(text=original_text, table="story_so_far"):
             # truncate to original length to avoid overwriting game data

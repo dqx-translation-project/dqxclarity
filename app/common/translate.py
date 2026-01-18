@@ -1,6 +1,6 @@
-import langdetect
 import pykakasi
 import re
+import regex
 import textwrap
 import unicodedata
 from common.config import UserConfig
@@ -19,6 +19,7 @@ _KATAKANA_CODEPOINTS = frozenset(
     list(range(12449, 12526)) + [12527] + list(range(12530, 12533)) + list(range(12539, 12541)) + [65374]
 )
 _VALID_CODEPOINTS = _HIRAGANA_CODEPOINTS | _KATAKANA_CODEPOINTS
+_JP_REGEX = regex.compile(r"\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Han}")
 
 _KKS = pykakasi.kakasi()
 
@@ -521,25 +522,19 @@ def clean_up_and_return_items(text: str) -> str:
     return final_string.rstrip()
 
 
-def detect_lang(text: str) -> bool:
-    """Detects if the language is Japanese or not.
+def is_text_japanese(text: str) -> bool:
+    """
+    Checks text to see if it contains any Japanese.
 
     :param text: Text to check against.
-    :returns: True if text is Japanese.
+    :returns: True if text contains Japanese.
     """
+    # remove any tags that use ascii alphabet
     sanitized = re.sub("<.+?>", "", text)
-    sanitized = re.sub("\n", "", sanitized)
 
-    try:
-        if langdetect.detect(sanitized) == "ja":
-            return True
-    except langdetect.lang_detect_exception.LangDetectException:  # Could not detect language
-        return False
+    return bool(_JP_REGEX.search(sanitized))
 
 
-# infinitely cache player names as we come across them. honestly shouldn't
-# be a problem as these are just small strings. we only need to capture a
-# unique name once per session, then we'll just re-use.
 @cache
 def transliterate_player_name(word: str) -> str:
     """Uses the pykakasi library to phonetically convert a Japanese word into

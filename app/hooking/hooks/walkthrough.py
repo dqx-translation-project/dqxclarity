@@ -1,13 +1,11 @@
 """Hooks walkthrough text replacements."""
 
-import regex
 from common.db_ops import sql_read, sql_write
-from common.translate import Translator
+from common.translate import Translator, is_text_japanese
 from loguru import logger as log
 
 
 _translator = None
-_jp_regex = regex.compile(r"\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Han}")
 
 
 def _init_translator():
@@ -21,11 +19,6 @@ def _init_translator():
     return _translator
 
 
-def _is_japanese(text: str) -> bool:
-    """Check if text contains Japanese characters."""
-    return bool(_jp_regex.search(text))
-
-
 def walkthrough_replacement(original_text: str) -> str:
     """Replace walkthrough text using database lookup or translation.
 
@@ -33,7 +26,7 @@ def walkthrough_replacement(original_text: str) -> str:
     :return: Replacement text, or original if no replacement.
     """
     # only process Japanese text
-    if not _is_japanese(original_text):
+    if not is_text_japanese(original_text):
         return original_text
 
     # check database first
