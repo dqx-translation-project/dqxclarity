@@ -1,14 +1,13 @@
 """Hooks corner text replacements using database lookups."""
 
-import regex
 from common.db_ops import generate_m00_dict
 from common.lib import get_project_root, setup_logger
+from common.translate import is_text_japanese
 from loguru import logger as log
 
 
 _data = None
 _custom_text_logger = None
-_jp_regex = regex.compile(r"\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Han}")
 
 
 def _init_data():
@@ -24,11 +23,6 @@ def _init_data():
     return _data
 
 
-def _is_japanese(text: str) -> bool:
-    """Check if text contains Japanese characters."""
-    return bool(_jp_regex.search(text))
-
-
 def corner_text_replacement(original_text: str) -> str:
     """Replace corner text using database lookup.
 
@@ -36,7 +30,7 @@ def corner_text_replacement(original_text: str) -> str:
     :return: Replacement text, or original if no replacement found.
     """
     # Only process Japanese text
-    if not _is_japanese(original_text):
+    if not is_text_japanese(original_text):
         return original_text
 
     data = _init_data()

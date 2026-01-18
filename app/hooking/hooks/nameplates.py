@@ -1,15 +1,13 @@
 """Hooks entity nameplate replacements using database lookups and
 transliteration."""
 
-import regex
 from common.db_ops import generate_m00_dict
-from common.translate import transliterate_player_name
+from common.translate import is_text_japanese, transliterate_player_name
 from loguru import logger as log
 
 
 # Module-level cache
 _names = None
-_jp_regex = regex.compile(r"\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Han}")
 
 
 def _init_names():
@@ -30,11 +28,6 @@ def _init_names():
     return _names
 
 
-def _is_japanese(text: str) -> bool:
-    """Check if text contains Japanese characters."""
-    return bool(_jp_regex.search(text))
-
-
 def nameplate_replacement(original_name: str) -> str:
     """Replace nameplate using database lookup or transliteration.
 
@@ -43,7 +36,7 @@ def nameplate_replacement(original_name: str) -> str:
         replacement.
     """
     # only process Japanese text
-    if not _is_japanese(original_name):
+    if not is_text_japanese(original_name):
         return original_name
 
     names = _init_names()

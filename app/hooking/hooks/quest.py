@@ -1,10 +1,8 @@
-import regex
 from common.db_ops import generate_m00_dict, sql_read, sql_write
-from common.translate import Translator, clean_up_and_return_items
+from common.translate import Translator, clean_up_and_return_items, is_text_japanese
 from loguru import logger as log
 
 
-_jp_regex = regex.compile(r"\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Han}")
 _quests = None
 _translator = None
 
@@ -18,11 +16,6 @@ def _init_translator():
 
     _translator = Translator()
     return _translator
-
-
-def _is_japanese(text: str) -> bool:
-    """Check if text contains Japanese characters."""
-    return bool(_jp_regex.search(text))
 
 
 def _query_quest(text: str) -> str:
@@ -67,7 +60,7 @@ def process_quest_data(data: dict) -> dict:
     quest_repeat_rewards = data.get("questRepeatRewards", "")
 
     # check if text is Japanese
-    is_ja = _is_japanese(quest_desc)
+    is_ja = is_text_japanese(quest_desc)
 
     replacements = {}
 

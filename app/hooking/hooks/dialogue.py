@@ -3,7 +3,7 @@ from common.config import UserConfig
 from common.constants import COMMUNITY_STRING_API_URL
 from common.db_ops import init_db, search_bad_strings, sql_read
 from common.measure import measure_duration
-from common.translate import Translator, detect_lang, get_player_name
+from common.translate import Translator, get_player_name, is_text_japanese
 from loguru import logger as log
 
 
@@ -33,7 +33,7 @@ def dialogue_replacement(original_text: str, npc_name: str = "No_NPC") -> str:
     _init_locals()
 
     # check if text is in Japanese (only translate if needed)
-    if not detect_lang(original_text):
+    if not is_text_japanese(original_text):
         return original_text
 
     # check bad_strings table for known problematic translations

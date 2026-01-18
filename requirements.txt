@@ -3,10 +3,8 @@ deepl==1.27.0
 frida==17.5.2
 google-api-core==2.29.0
 google-api-python-client==2.188.0
-langdetect==1.0.9
 loguru==0.7.3
 openpyxl==3.1.5
 pykakasi==2.2.1
 regex==2026.1.15
 requests==2.32.5
-unidecode==1.4.0
