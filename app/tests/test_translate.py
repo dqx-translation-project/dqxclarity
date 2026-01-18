@@ -1,10 +1,11 @@
+# ruff: noqa: F403, F405
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from common.translate import *
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import unittest
+from common.translate import *
 
 
 class TestTranslate(unittest.TestCase):

@@ -1,13 +1,12 @@
-from common.errors import AddressOutOfRange, MemoryReadError, MemoryWriteError
-from ctypes import byref, wintypes
-from loguru import logger as log
-
 import pymem
 import pymem.process
 import pymem.ressources
 import pymem.ressources.structure
 import struct
 import traceback
+from common.errors import AddressOutOfRange, MemoryReadError, MemoryWriteError
+from ctypes import byref, wintypes
+from loguru import logger as log
 
 
 class MemWriter:
@@ -185,9 +184,8 @@ class MemWriter:
         """Injects the Python interpreter into the process."""
         try:
             self.proc.inject_python_interpreter()
-            if self.proc._python_injected:
-                if self.proc.py_run_simple_string:
-                    return self.proc.py_run_simple_string
+            if self.proc._python_injected and self.proc.py_run_simple_string:
+                return self.proc.py_run_simple_string
 
             log.exception(f"Python dll failed to inject. Details:\n{self.proc.__dict__}")
             return False

@@ -1,8 +1,8 @@
+import regex
 from common.db_ops import generate_m00_dict, sql_read, sql_write
-from common.translate import clean_up_and_return_items, Translator
+from common.translate import Translator, clean_up_and_return_items
 from loguru import logger as log
 
-import regex
 
 _jp_regex = regex.compile(r"\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Han}")
 _quests = None
@@ -72,23 +72,23 @@ def process_quest_data(data: dict) -> dict:
     replacements = {}
 
     if is_ja:
-        if subquest_name:
+        if subquest_name:  # noqa: SIM102
             if replacement := _query_quest(subquest_name):
                 replacements["subquestName"] = replacement
 
-        if quest_name:
+        if quest_name:  # noqa: SIM102
             if replacement := _query_quest(quest_name):
                 replacements["questName"] = replacement
 
-        if quest_desc:
+        if quest_desc:  # noqa: SIM102
             if replacement := _translate_quest_desc(quest_desc):
                 replacements["questDesc"] = replacement
 
-        if quest_rewards:
+        if quest_rewards:  # noqa: SIM102
             if replacement := clean_up_and_return_items(quest_rewards):
                 replacements["questRewards"] = replacement
 
-        if quest_repeat_rewards:
+        if quest_repeat_rewards:  # noqa: SIM102
             if replacement := clean_up_and_return_items(quest_repeat_rewards):
                 replacements["questRepeatRewards"] = replacement
 

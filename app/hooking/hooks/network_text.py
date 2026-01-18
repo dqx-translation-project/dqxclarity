@@ -1,11 +1,11 @@
 """Hooks network text template string replacements."""
 
+import regex
 from common.db_ops import generate_m00_dict, sql_read
 from common.lib import get_project_root, setup_logger
 from common.translate import detect_lang, transliterate_player_name
 from loguru import logger as log
 
-import regex
 
 # Module-level cache and logger
 _m00_text = None
@@ -208,16 +208,15 @@ def network_text_replacement(original_text: str, category: str) -> str:
             _custom_text_logger.info(f"--\n>>{category} ::\n{log_text}")
             return original_text
 
-    elif category == "<%sM_kaisetubun>":
+    elif category == "<%sM_kaisetubun>" and detect_lang(original_text):
         # Story so far AND monster trivia
-        if detect_lang(original_text):
-            if story_text := sql_read(text=original_text, table="story_so_far"):
-                # truncate to original length to avoid overwriting game data
-                story_desc_len = len(bytes(original_text, encoding="utf-8"))
-                return story_text[:story_desc_len]
-            else:
-                _custom_text_logger.info(f"--\n{category} ::\n{original_text}")
-                return original_text
+        if story_text := sql_read(text=original_text, table="story_so_far"):
+            # truncate to original length to avoid overwriting game data
+            story_desc_len = len(bytes(original_text, encoding="utf-8"))
+            return story_text[:story_desc_len]
+        else:
+            _custom_text_logger.info(f"--\n{category} ::\n{original_text}")
+            return original_text
 
     return original_text
 

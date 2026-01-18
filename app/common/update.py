@@ -66,10 +66,9 @@ def download_custom_files() -> None:
 
         # ignore.py exists in the remote repo. we'll purge the strings found in this file
         # from the m00_strings table.
-        if "/generate_glossary/" in obj.filename:
-            if obj.filename.endswith("ignore.py"):
-                with zfile.open(obj.filename, "r") as f:
-                    ignore_data = f.read()
+        if "/generate_glossary/" in obj.filename and obj.filename.endswith("ignore.py"):
+            with zfile.open(obj.filename, "r") as f:
+                ignore_data = f.read()
 
     log.info("Downloading translation files from dqx-translation-project/dqx_translations.")
 
@@ -209,12 +208,11 @@ def read_xlsx_and_import(data: str) -> None:
             # when we get rid of all of the partial strings and get the original source strings, we can remove this
             # logic.
             bad_string = 0
-            if notes:
-                if "BAD STRING" in notes:
-                    if not original_bad_string_text:
-                        bad_string = 1
-                    else:
-                        source_text = original_bad_string_text
+            if notes and "BAD STRING" in notes:
+                if not original_bad_string_text:
+                    bad_string = 1
+                else:
+                    source_text = original_bad_string_text
             escaped_text = en_text.replace("'", "''")
             values.append(f"('{source_text}', '{escaped_text}', {bad_string})")
 
@@ -388,7 +386,8 @@ def download_file(url: str) -> requests.models.Response:
             if retries < max_retries:
                 log.warning(f"Error: {e}")
                 log.warning(
-                    f"(Retry: {retries}/{max_retries}) Error downloading file {filename}. Sleeping for 3 seconds and trying again..."
+                    f"(Retry: {retries}/{max_retries}) Error downloading file {filename}. ",
+                    "Sleeping for 3 seconds and trying again...",
                 )
                 time.sleep(3)
                 continue
@@ -408,7 +407,7 @@ def download_file(url: str) -> requests.models.Response:
                     "\nSCROLL UP AND READ!"
                 )
                 input("Press enter to exit.")
-                raise SystemExit()
+                sys.exit(1)
 
     return response
 

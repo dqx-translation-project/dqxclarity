@@ -1,10 +1,10 @@
 """Hooks walkthrough text replacements."""
 
+import regex
 from common.db_ops import sql_read, sql_write
 from common.translate import Translator
 from loguru import logger as log
 
-import regex
 
 _translator = None
 _jp_regex = regex.compile(r"\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Han}")

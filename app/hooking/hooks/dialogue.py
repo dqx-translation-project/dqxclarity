@@ -64,7 +64,7 @@ def dialogue_replacement(original_text: str, npc_name: str = "No_NPC") -> str:
 
             if results.fetchone() is None:
                 # insert new translation with NPC name
-                insert_query = f"INSERT INTO dialog (ja, npc_name, en) VALUES ('{escaped_original}', '{escaped_npc_name}', '{escaped_translated}')"
+                insert_query = f"INSERT INTO dialog (ja, npc_name, en) VALUES ('{escaped_original}', '{escaped_npc_name}', '{escaped_translated}')"  # noqa: E501
                 cursor.execute(insert_query)
             else:
                 # update existing translation

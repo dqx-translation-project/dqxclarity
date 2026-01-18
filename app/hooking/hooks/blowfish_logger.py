@@ -1,9 +1,9 @@
 """Logs blowfish decryption keys used for game files."""
 
+import os
 from common.lib import get_project_root
 from loguru import logger as log
 
-import os
 
 # Module-level file handle for efficient appending
 _log_file = None
@@ -24,7 +24,7 @@ def _init_log_file():
             f.write("filepath,file_size,blowfish_key\n")
 
     # open in append mode, line buffering for real-time writing
-    _log_file = open(log_path, "a", encoding="utf-8", buffering=1)
+    _log_file = open(log_path, "a", encoding="utf-8", buffering=1)  # noqa: SIM115
     return _log_file
 
 

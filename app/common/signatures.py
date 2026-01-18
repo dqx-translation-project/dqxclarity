@@ -1,4 +1,5 @@
 # fmt: off
+# ruff: noqa
 
 # devs made a custom implementation of memchr from cpp to search byte arrays.
 # think I found this backtracing from ws2_32.recv, but there are several strings

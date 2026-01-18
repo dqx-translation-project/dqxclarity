@@ -1,10 +1,10 @@
 """Hooks corner text replacements using database lookups."""
 
+import regex
 from common.db_ops import generate_m00_dict
 from common.lib import get_project_root, setup_logger
 from loguru import logger as log
 
-import regex
 
 _data = None
 _custom_text_logger = None

@@ -1,11 +1,11 @@
 """Hooks entity nameplate replacements using database lookups and
 transliteration."""
 
+import regex
 from common.db_ops import generate_m00_dict
 from common.translate import transliterate_player_name
 from loguru import logger as log
 
-import regex
 
 # Module-level cache
 _names = None

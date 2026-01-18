@@ -2,3 +2,7 @@
 # instead of the deliverable zip asset that's shipped. this tells github
 # to generate a blank source code zip.
 * export-ignore
+
+# force crlf on all files as this is primarily developed and distributed
+# on windows.
+* text eol=crlf

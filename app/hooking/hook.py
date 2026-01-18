@@ -1,3 +1,4 @@
+import os
 from collections.abc import Callable
 from hooking.hooks.blowfish_logger import on_message as blowfish_logger_on_message
 from hooking.hooks.corner_text import on_message as corner_text_on_message
@@ -10,7 +11,6 @@ from hooking.hooks.quest import on_message as quest_on_message
 from hooking.hooks.walkthrough import on_message as walkthrough_on_message
 from loguru import logger as log
 
-import os
 
 PROCESS_NAME = "DQXGame.exe"
 SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), "scripts")

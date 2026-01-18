@@ -1,16 +1,15 @@
-from common.measure import measure_duration
-from loguru import logger as log
-
 import html
 import re
 import requests
+from common.measure import measure_duration
+from loguru import logger as log
 
 
 # uses the free Google Translate mobile web interface to send translations.
 # parses the html response to extract the translated text.
 class GoogleTranslateFree:
     headers = {
-        "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.6998.108 Mobile Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.6998.108 Mobile Safari/537.36"  # noqa: E501
     }
 
     def __init__(self) -> None:
