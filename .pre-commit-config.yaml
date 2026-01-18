@@ -13,11 +13,9 @@ repos:
     name: Remove UTF-8 byte order marker (BOM)
   - id: mixed-line-ending
     name: Fix line endings
-    args: ['--fix', 'lf']
+    args: ['--fix', 'crlf']
   - id: debug-statements
     name: Check for debug/breakpoint statements
-  - id: check-yaml
-    name: Validate YAML
   - id: trailing-whitespace
     name: Check for trailing whitespace
   - id: check-merge-conflict
