@@ -243,12 +243,12 @@ def on_message(message, data, script):
             log.trace(f"{original_text} => {replacement}")
             script.post({"type": "replacement", "text": replacement})
 
-        # elif msg_type == "info":
-        #     log.debug(f"{payload['payload']}")
-        # elif msg_type == "error":
-        #     log.error(f"{payload['payload']}")
-        # else:
-        #     log.debug(f"{payload}")
+        elif msg_type == "info":
+            log.debug(f"{payload['payload']}")
+        elif msg_type == "error":
+            log.error(f"{payload['payload']}")
+        else:
+            log.debug(f"{payload}")
 
     elif message["type"] == "error":
         log.error(f"[JS ERROR] {message.get('stack', message)}")
