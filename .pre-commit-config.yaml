@@ -37,7 +37,7 @@ repos:
     args: ['--py311-plus']
     exclude: ^app/pymem  # forked module
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.14.11
+  rev: v0.14.14
   hooks:
     - id: ruff-check
       args: ['--fix']
