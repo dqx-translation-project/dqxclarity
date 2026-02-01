@@ -23,18 +23,20 @@ class NpcDialoguePacket:
 
     def __calculate_crc(self, text: str):
         """Calculates a new CRC value for text modified in the built packet."""
-        return zlib.crc32(text.encode('utf-8')) & self.bitwise
+        return zlib.crc32(text.encode("utf-8")) & self.bitwise
 
     def build(self) -> bytes:
         writer = PacketWriter()
 
         # would replace with code that translates text.
-        self.modified_text = self.text.replace("「プッ", "aaaaaaaaaaasdasdasdadsadasdsadasda")  # test that text replace works.
+        self.modified_text = self.text.replace(
+            "「プッ", "aaaaaaaaaaasdasdasdadsadasdsadasda"
+        )  # test that text replace works.
 
         text = self.modified_text if self.modified_text is not None else self.text
 
         # add null terminator to length
-        text_length = len(text.encode('utf-8')) + 1 if self.modified_text is not None else self.text_length
+        text_length = len(text.encode("utf-8")) + 1 if self.modified_text is not None else self.text_length
         crc = self.crc_value if self.modified_text is None else self.__calculate_crc(text)
 
         writer.write_u32(self.num_times_opened)

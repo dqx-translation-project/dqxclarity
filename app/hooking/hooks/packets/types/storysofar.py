@@ -32,10 +32,10 @@ class StorySoFarTextPacket:
 
         writer = PacketWriter()
         writer.write_u32(self.num_times_opened)
-        writer.write_bytes(b'\x00' * 4)
+        writer.write_bytes(b"\x00" * 4)
         writer.write_cstring(text[:516])  # don't exceed the packet maximum.
 
-        padding = 516 - len(text.encode('utf-8'))
+        padding = 516 - len(text.encode("utf-8"))
         writer.write_bytes(b"\x00" * padding)
 
         self.modified_data = writer.build()

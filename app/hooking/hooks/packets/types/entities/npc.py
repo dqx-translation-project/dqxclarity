@@ -39,7 +39,7 @@ class EntityNpcPacket:
         # unsure what the max name length is here, so we're just
         # going to yolo it until it crashes.
         # lookup name: self.entity_name
-        name_length = len(name.encode('utf-8')) + 1  # include NT.
+        name_length = len(name.encode("utf-8")) + 1  # include NT.
 
         writer.write_u32(name_length)
         writer.write_cstring(name)

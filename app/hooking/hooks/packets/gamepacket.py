@@ -10,6 +10,7 @@ class GamePacket:
     reading in the correct number of payload bytes, while still making sure the
     remainder of the packet is appended to any modifications.
     """
+
     def __init__(self, raw: bytes):
         self.raw = raw
         self.outer = None
@@ -96,23 +97,23 @@ class GamePacket:
             case 0:
                 self.size = struct.unpack("<B", self.raw[1:2])[0]
                 self.original_size = self.size + len(self.raw[0:2])
-                self.payload = self.raw[2:2+self.size]
-                self.remainder = self.raw[2+self.size:]
+                self.payload = self.raw[2 : 2 + self.size]
+                self.remainder = self.raw[2 + self.size :]
             case 1:
                 self.size = struct.unpack("<H", self.raw[1:3])[0]
                 self.original_size = self.size + len(self.raw[0:3])
-                self.payload = self.raw[3:3+self.size]
-                self.remainder = self.raw[3+self.size:]
+                self.payload = self.raw[3 : 3 + self.size]
+                self.remainder = self.raw[3 + self.size :]
             case 2:
                 self.size = struct.unpack("<I", self.raw[1:5])[0]
                 self.original_size = self.size + len(self.raw[0:4])
-                self.payload = self.raw[5:5+self.size] # might be right? could be 4, haven't seen.
-                self.remainder = self.raw[5+self.size:]
+                self.payload = self.raw[5 : 5 + self.size]  # might be right? could be 4, haven't seen.
+                self.remainder = self.raw[5 + self.size :]
             case 3:
                 self.size = struct.unpack("<I", self.raw[1:5])[0]
                 self.original_size = self.size + len(self.raw[0:4])
-                self.payload = self.raw[5:5+self.size]
-                self.remainder = self.raw[5+self.size:]
+                self.payload = self.raw[5 : 5 + self.size]
+                self.remainder = self.raw[5 + self.size :]
 
     def __recalculate_size(self, size: int) -> bytes:
         """Recalculate size of payload. Returns correct size based on identifier."""
@@ -134,6 +135,4 @@ class GamePacket:
             router.parse()
 
             if router.modified_data and router.modified_size:
-                self.modified_data = (self.__recalculate_size(router.modified_size) +
-                                      router.modified_data +
-                                      self.remainder)
+                self.modified_data = self.__recalculate_size(router.modified_size) + router.modified_data + self.remainder

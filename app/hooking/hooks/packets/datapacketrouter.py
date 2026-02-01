@@ -54,23 +54,23 @@ class DataPacketRouter:
         packet = None
 
         if self.op_code == b"\x21":
-            if self.marker == b"\xE5\x35":
+            if self.marker == b"\xe5\x35":
                 log.debug("[DATA] story_so_far window opened.")
 
-            elif self.marker == b"\xBE\x01":
+            elif self.marker == b"\xbe\x01":
                 log.debug("[DATA] story_so_far text found.")
                 packet = StorySoFarTextPacket(self.data)
 
-            elif self.marker == b"\xA8\x3C":
+            elif self.marker == b"\xa8\x3c":
                 log.debug("[DATA] npc dialogue visible.")
                 packet = NpcDialoguePacket(self.data)
 
-            elif self.marker == b"\x6D\xD4":
+            elif self.marker == b"\x6d\xd4":
                 log.debug("[DATA] walkthrough text visible.")
                 packet = WalkthroughPacket(self.data)
 
-        elif self.op_code == b"\x5D":
-            if self.marker == b"\x2B\x15" or self.marker == b"\xCC\x51":
+        elif self.op_code == b"\x5d":
+            if self.marker == b"\x2b\x15" or self.marker == b"\xcc\x51":
                 log.debug("[DATA] quest text window opened.")
                 packet = QuestPacket(self.data)
 
@@ -82,12 +82,12 @@ class DataPacketRouter:
             if self.marker == b"\x61\x85":
                 log.debug("[DATA] important notice message.")
 
-        elif self.op_code == b"\x0D":
-            if self.marker == b"\x9E\xE1":
+        elif self.op_code == b"\x0d":
+            if self.marker == b"\x9e\xe1":
                 log.debug("[DATA] team list.")
                 packet = CommWindowListPacket(self.data)
 
-            if self.marker == b"\xEE\x25":
+            if self.marker == b"\xee\x25":
                 log.debug("[DATA] party message.")
 
             if self.marker == b"\x27\x11":
@@ -96,51 +96,51 @@ class DataPacketRouter:
             if self.marker == b"\x76\x90":
                 log.debug("[DATA] private message.")
 
-            if self.marker == b"\x75\x5D":
+            if self.marker == b"\x75\x5d":
                 log.debug("[DATA] room message.")
 
-        elif self.op_code == b"\x3D":
-            if self.marker == b"\x16\xB6":
+        elif self.op_code == b"\x3d":
+            if self.marker == b"\x16\xb6":
                 log.debug("[DATA] team quest.")
                 packet = TeamQuestPacket(self.data)
 
         elif self.op_code == b"\x52":
-            if self.marker == b"\xEE\x25": # noqa: SIM102
+            if self.marker == b"\xee\x25":  # noqa: SIM102
                 log.warning(f"[DATA] entity found.\n{hexdump(self.raw)}")
                 packet = EntityPacket(self.data)
 
         elif self.op_code == b"\x66":
-            if self.marker == b"\x4C\xC2":
+            if self.marker == b"\x4c\xc2":
                 log.debug("[DATA] memory main list.")
                 packet = MemoryListMainPacket(self.data)
 
-            elif self.marker == b"\xDA\x30":
+            elif self.marker == b"\xda\x30":
                 log.debug("[DATA] memory chapter list.")
             elif self.marker == b"\x45\x69":
                 log.debug("[DATA] memory sub chapter list.")
 
         elif self.op_code == b"\x79":
-            if self.marker == b"\x99\x4B":
+            if self.marker == b"\x99\x4b":
                 log.debug("[DATA] master quest window opened.")
                 packet = MasterQuestPacket(self.data)
 
         elif self.op_code == b"\x03":
-            if self.marker == b"\xF7\xF5": #or self.marker == b"\x54\x08":
+            if self.marker == b"\xf7\xf5":  # or self.marker == b"\x54\x08":
                 log.debug("[DATA] party list.")
                 packet = PartyListPacket(self.data)
 
         elif self.op_code == b"\x46":
-            if self.marker == b"\x6B\xB8":
+            if self.marker == b"\x6b\xb8":
                 log.debug("weekly request window open.")
                 packet = WeeklyRequestPacket(self.data)
 
-        elif self.op_code == b"\x4B":
+        elif self.op_code == b"\x4b":
             if self.marker == b"\x45\x69":
                 log.debug("[DATA] mytown amenity name")
                 packet = MyTownAmenityPacket(self.data)
 
         elif self.op_code == b"\x05":  # noqa: SIM102
-            if self.marker == b"\xEA\x73":
+            if self.marker == b"\xea\x73":
                 log.debug(f"[DATA] concierge name\n{hexdump(self.raw)}")
 
         if packet:

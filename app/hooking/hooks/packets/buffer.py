@@ -9,28 +9,28 @@ class PacketReader:
         self.pos = 0
 
     def read_bytes(self, size: int) -> bytes:
-        result = self.data[self.pos:self.pos + size]
+        result = self.data[self.pos : self.pos + size]
         self.pos += size
         return result
 
     def read_u8(self) -> int:
-        return struct.unpack('<B', self.read_bytes(1))[0]
+        return struct.unpack("<B", self.read_bytes(1))[0]
 
     def read_u16(self) -> int:
-        return struct.unpack('<H', self.read_bytes(2))[0]
+        return struct.unpack("<H", self.read_bytes(2))[0]
 
     def read_u32(self) -> int:
-        return struct.unpack('<I', self.read_bytes(4))[0]
+        return struct.unpack("<I", self.read_bytes(4))[0]
 
     def read_u64(self) -> int:
-        return struct.unpack('<Q', self.read_bytes(8))[0]
+        return struct.unpack("<Q", self.read_bytes(8))[0]
 
-    def read_cstring(self, encoding: str = 'utf-8') -> str:
+    def read_cstring(self, encoding: str = "utf-8") -> str:
         """Read a null-terminated string."""
-        end = self.data.find(b'\x00', self.pos)
+        end = self.data.find(b"\x00", self.pos)
         if end == -1:
             end = len(self.data)
-        result = self.data[self.pos:end].decode(encoding)
+        result = self.data[self.pos : end].decode(encoding)
         self.pos = end + 1  # skip past null terminator
         return result
 
@@ -41,7 +41,7 @@ class PacketReader:
         self.pos += size
 
     def remaining(self) -> bytes:
-        return self.data[self.pos:]
+        return self.data[self.pos :]
 
     def remaining_size(self) -> int:
         return len(self.data) - self.pos
@@ -60,18 +60,18 @@ class PacketWriter:
         self.data.extend(data)
 
     def write_u8(self, value: int):
-        self.data.extend(struct.pack('<B', value))
+        self.data.extend(struct.pack("<B", value))
 
     def write_u16(self, value: int):
-        self.data.extend(struct.pack('<H', value))
+        self.data.extend(struct.pack("<H", value))
 
     def write_u32(self, value: int):
-        self.data.extend(struct.pack('<I', value))
+        self.data.extend(struct.pack("<I", value))
 
     def write_u64(self, value: int):
-        self.data.extend(struct.pack('<Q', value))
+        self.data.extend(struct.pack("<Q", value))
 
-    def write_cstring(self, value: str, encoding: str = 'utf-8'):
+    def write_cstring(self, value: str, encoding: str = "utf-8"):
         self.data.extend(value.encode(encoding))
         self.data.append(0)
 

@@ -9,8 +9,8 @@ class ServerListPacket:
         self.modified_data = None
 
     def __pad_string(self, source: str, target: str):
-        encoded_jp = source.encode('utf-8')
-        encoded_en = target.encode('utf-8')
+        encoded_jp = source.encode("utf-8")
+        encoded_en = target.encode("utf-8")
 
         if len(encoded_en) < len(encoded_jp):
             encoded_en += b"\x00" * (len(encoded_jp) - len(encoded_en))
@@ -111,6 +111,5 @@ class ServerListPacket:
 
         for server in servers:
             self.modified_data = self.modified_data.replace(
-                server.encode('utf-8'),
-                self.__pad_string(server, servers[server])
+                server.encode("utf-8"), self.__pad_string(server, servers[server])
             )
