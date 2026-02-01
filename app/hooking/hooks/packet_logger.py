@@ -60,8 +60,8 @@ def on_message(message, data, script):
                         {"type": "modified_packet", "modified": True, "size": packet.original_size}, packet.modified_data
                     )
 
-                    with open(_log_file, "a+") as f:
-                        f.write(f"{packet_length} bytes =>\n{hex_view}\n\n")
+                    # with open(_log_file, "a+") as f:
+                    #     f.write(f"{packet_length} bytes =>\n{hex_view}\n\n")
 
                     # log.info(f"Modified ({len(packet.modified_data)} bytes) =>\n{hexdump(packet.modified_data)}")
 
