@@ -106,7 +106,8 @@ class DataPacketRouter:
 
         elif self.op_code == b"\x52":
             if self.marker == b"\xee\x25":  # noqa: SIM102
-                log.warning(f"[DATA] entity found.\n{hexdump(self.raw)}")
+                # log.warning(f"[DATA] entity found.\n{hexdump(self.raw)}")
+                # log.warning("[DATA] entity found.")
                 packet = EntityPacket(self.data)
 
         elif self.op_code == b"\x66":
@@ -148,4 +149,4 @@ class DataPacketRouter:
             if packet.modified_data:
                 self.modified_data = self.op_code + self.marker + packet.modified_data
                 self.modified_size = len(self.modified_data)
-                log.info(f"[DATA] Packet was modified!\n{hexdump(self.modified_data)}")
+                # log.info(f"[DATA] Packet was modified!\n{hexdump(self.modified_data)}")
