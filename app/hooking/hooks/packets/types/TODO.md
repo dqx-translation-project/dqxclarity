@@ -1,4 +1,3 @@
-- rooms tab in comms window
-- story projector [main,chapter,sub] - memory_list_[main,chapters,sub_chapters].txt
+- rooms tab in comms window (maybe, maybe not)
+- story projector [chapter,sub] - memory_list_[chapters,sub_chapters].txt
 - party list - party_list.txt
-- concierge
