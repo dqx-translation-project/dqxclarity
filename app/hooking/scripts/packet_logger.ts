@@ -21,6 +21,50 @@
     const hookName = '{{HOOK_NAME}}';
     const signature = '{{SIGNATURE}}';
 
+    // Known op_code + marker combinations from DataPacketRouter.
+    // Each key is (op_code << 16) | (marker_byte1 << 8) | marker_byte2.
+    var KNOWN_PACKETS = {};
+    KNOWN_PACKETS[0x21e535] = true;  // story_so_far window opened
+    KNOWN_PACKETS[0x21be01] = true;  // story_so_far text
+    KNOWN_PACKETS[0x21a83c] = true;  // npc dialogue
+    KNOWN_PACKETS[0x216dd4] = true;  // walkthrough text
+    KNOWN_PACKETS[0x5d2b15] = true;  // quest text
+    KNOWN_PACKETS[0x5dcc51] = true;  // quest text
+    KNOWN_PACKETS[0x875408] = true;  // server list
+    KNOWN_PACKETS[0x878408] = true;  // server list
+    KNOWN_PACKETS[0x876185] = true;  // important notice
+    KNOWN_PACKETS[0x0d9ee1] = true;  // team list
+    KNOWN_PACKETS[0x0dee25] = true;  // party message
+    KNOWN_PACKETS[0x0d2711] = true;  // team message
+    KNOWN_PACKETS[0x0d7690] = true;  // private message
+    KNOWN_PACKETS[0x0d755d] = true;  // room message
+    KNOWN_PACKETS[0x3d16b6] = true;  // team quest
+    KNOWN_PACKETS[0x52ee25] = true;  // entity
+    KNOWN_PACKETS[0x664cc2] = true;  // memory main list
+    KNOWN_PACKETS[0x66da30] = true;  // memory chapter list
+    KNOWN_PACKETS[0x664569] = true;  // memory sub chapter list
+    KNOWN_PACKETS[0x79994b] = true;  // master quest
+    KNOWN_PACKETS[0x03f7f5] = true;  // party list
+    KNOWN_PACKETS[0x466bb8] = true;  // weekly request
+    KNOWN_PACKETS[0x4b4569] = true;  // mytown amenity
+    KNOWN_PACKETS[0x05ea73] = true;  // concierge name
+
+    // Entity packet (0x52ee25) sub-filter: only forward known entity types.
+    // The entity type byte is at payload + 14 (3 bytes op_code+marker, then 11 bytes into entity data).
+    var ENTITY_KEY = 0x52ee25;
+    var KNOWN_ENTITY_TYPES = {};
+    KNOWN_ENTITY_TYPES[0x01] = true;  // player
+    KNOWN_ENTITY_TYPES[0x02] = true;  // monster
+    KNOWN_ENTITY_TYPES[0x04] = true;  // npc
+    KNOWN_ENTITY_TYPES[0x85] = true;  // fellow
+
+    // Payload offset by size_identifier (lower nibble of byte 0 for data packets).
+    //   0: 1-byte header + 1-byte size  -> payload at offset 2
+    //   1: 1-byte header + 2-byte size  -> payload at offset 3
+    //   2: 1-byte header + 4-byte size  -> payload at offset 5
+    //   3: 1-byte header + 4-byte size  -> payload at offset 5
+    var PAYLOAD_OFFSETS = [2, 3, 5, 5];
+
     const baseAddr = Process.enumerateModules()[0].base;
     const baseSize = Process.enumerateModules()[0].size;
 
@@ -64,6 +108,50 @@
                 // sanity check on packet length
                 if (packetLength === 0) {
                     return;
+                }
+
+                // Filter: only forward data packets with known op_code + marker to Python.
+                // This avoids expensive IPC round-trips for packets we don't handle.
+                const firstByte = packetDataPtr.readU8();
+                const packetType = firstByte >> 4;
+
+                // only data packets (upper nibble 0) are processed by Python
+                if (packetType !== 0) {
+                    return;
+                }
+
+                const sizeIdentifier = firstByte & 0x0F;
+                if (sizeIdentifier > 3) {
+                    return;
+                }
+
+                const payloadOffset = PAYLOAD_OFFSETS[sizeIdentifier];
+
+                // need at least 3 payload bytes (op_code + marker) to identify the packet
+                if (packetLength < payloadOffset + 3) {
+                    return;
+                }
+
+                // read op_code (1 byte) + marker (2 bytes) and combine into a 24-bit key
+                const opCode = packetDataPtr.add(payloadOffset).readU8();
+                const marker1 = packetDataPtr.add(payloadOffset + 1).readU8();
+                const marker2 = packetDataPtr.add(payloadOffset + 2).readU8();
+                const key = (opCode << 16) | (marker1 << 8) | marker2;
+
+                if (!KNOWN_PACKETS[key]) {
+                    return;
+                }
+
+                // for entity packets, also filter by entity type byte
+                if (key === ENTITY_KEY) {
+                    var entityTypeOffset = payloadOffset + 14;
+                    if (packetLength < entityTypeOffset + 1) {
+                        return;
+                    }
+                    var entityType = packetDataPtr.add(entityTypeOffset).readU8();
+                    if (!KNOWN_ENTITY_TYPES[entityType]) {
+                        return;
+                    }
                 }
 
                 const packetData = packetDataPtr.readByteArray(packetLength);
