@@ -21,8 +21,29 @@
     const hookName = '{{HOOK_NAME}}';
     const signature = '{{SIGNATURE}}';
 
-    // Known op_code + marker combinations from DataPacketRouter.
-    // Each key is (op_code << 16) | (marker_byte1 << 8) | marker_byte2.
+    // known op_code + marker combinations from DataPacketRouter.
+    // each key is the op_code + two marker bytes.
+    //
+    // a very expensive idea here is to refactor all of the python
+    // packet code directly into typescript, using python only
+    // to do the translation logic. this would severely reduce the
+    // overhead of needing to call python for every matching packet
+    // and instead, only make calls for new translations. we could
+    // cache any previously seen values in typescript to reduce
+    // calls.
+    //
+    // to make this as performant as possible, we look up these known
+    // packets so that literally everything isn't being sent to python.
+    // when going to very busy places like megi 1 during primetime,
+    // heavy lag is seen with the hundreds of calls/second being sent
+    // to python to process every packet. this should fix that issue
+    // somewhat by only sending what we want to process.
+    //
+    // if debugging or wanting to add new packets to reverse, you will
+    // need to comment out the lookup on KNOWN_PACKETS further down
+    // below, which will give you access to every single packet in
+    // the stream. don't forget to add it to this filter list once
+    // you've settled!
     var KNOWN_PACKETS = {};
     KNOWN_PACKETS[0x21e535] = true;  // story_so_far window opened
     KNOWN_PACKETS[0x21be01] = true;  // story_so_far text
@@ -48,15 +69,6 @@
     KNOWN_PACKETS[0x466bb8] = true;  // weekly request
     KNOWN_PACKETS[0x4b4569] = true;  // mytown amenity
     KNOWN_PACKETS[0x05ea73] = true;  // concierge name
-
-    // Entity packet (0x52ee25) sub-filter: only forward known entity types.
-    // The entity type byte is at payload + 14 (3 bytes op_code+marker, then 11 bytes into entity data).
-    var ENTITY_KEY = 0x52ee25;
-    var KNOWN_ENTITY_TYPES = {};
-    KNOWN_ENTITY_TYPES[0x01] = true;  // player
-    KNOWN_ENTITY_TYPES[0x02] = true;  // monster
-    KNOWN_ENTITY_TYPES[0x04] = true;  // npc
-    KNOWN_ENTITY_TYPES[0x85] = true;  // fellow
 
     // Payload offset by size_identifier (lower nibble of byte 0 for data packets).
     //   0: 1-byte header + 1-byte size  -> payload at offset 2
@@ -176,6 +188,7 @@
                     return;
                 }
 
+<<<<<<< HEAD
                 // for entity packets, also filter by entity type byte
                 var entityType = 0;
                 if (key === ENTITY_KEY) {
@@ -265,6 +278,8 @@
                     }
                 }
 
+=======
+>>>>>>> 1ed995b (only send known packets to python.)
                 const packetData = packetDataPtr.readByteArray(packetLength);
 
                 // send to python and wait for response

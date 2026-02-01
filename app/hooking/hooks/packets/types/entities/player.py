@@ -1,4 +1,5 @@
 from hooking.hooks.packets.buffer import PacketReader, PacketWriter
+from loguru import logger as log
 
 
 class EntityPlayerPacket:
@@ -39,7 +40,7 @@ class EntityPlayerPacket:
         writer.write_u32(name_length)
         writer.write_cstring(name)
 
-        # log.debug(f"Updated player: {self.entity_name} => {name}.")
+        log.debug(f"Updated player: {self.entity_name} => {name}.")
 
         writer.write_bytes(self.remaining)
 
