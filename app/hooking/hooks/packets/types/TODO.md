@@ -1,5 +1,4 @@
-- party tab in comms window
-- entity (player, npc) - entity.txt (unsure if complete)
+- rooms tab in comms window
 - story projector [main,chapter,sub] - memory_list_[main,chapters,sub_chapters].txt
 - party list - party_list.txt
 - concierge
