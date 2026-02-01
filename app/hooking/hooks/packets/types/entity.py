@@ -13,6 +13,7 @@ class EntityPacket:
     it easier to read. This does duplicate things, but readability is more
     important.
     """
+
     def __init__(self, raw: bytes):
         reader = PacketReader(raw)
         self.raw = raw
@@ -44,7 +45,6 @@ class EntityPacket:
                 self.data = EntityFellowMonsterPacket(self.raw)
 
         self.entity_name = self.data.entity_name
-
 
     def build(self) -> bytes:
         # not an entity we are aware of.

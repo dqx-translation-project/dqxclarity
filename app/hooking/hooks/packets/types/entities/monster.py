@@ -34,7 +34,7 @@ class EntityMonsterPacket:
         writer.write_bytes(self.header_data)
 
         # lookup name: self.entity_name
-        name_length = len(name.encode('utf-8')) + 1  # include NT.
+        name_length = len(name.encode("utf-8")) + 1  # include NT.
 
         writer.write_u32(name_length)
         writer.write_cstring(name)

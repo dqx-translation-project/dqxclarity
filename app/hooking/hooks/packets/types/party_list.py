@@ -42,7 +42,7 @@ class PartyListPacket:
 
     def __pad_name(self, name: str):
         max_buffer_size = 18
-        name_length = len(name.encode('utf-8'))
+        name_length = len(name.encode("utf-8"))
         difference = max_buffer_size - name_length
 
         return name + ("\x00" * difference)
@@ -56,5 +56,6 @@ class PartyListPacket:
             self.modified_data = self.modified_data.replace(
                 # "セラニー".encode(),
                 # b"Serany\x00\x00\x00\x00\x00\x00")
-                self.__pad_name(member).encode('utf-8'),
-                self.__pad_name("Serany").encode('utf-8'))
+                self.__pad_name(member).encode("utf-8"),
+                self.__pad_name("Serany").encode("utf-8"),
+            )

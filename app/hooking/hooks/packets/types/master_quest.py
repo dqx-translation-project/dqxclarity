@@ -23,7 +23,7 @@ class MasterQuestPacket:
         if self.number_of_nulls != 0:
             self.number_of_nulls = self.number_of_nulls - 1
 
-        quest_data = [s.decode('utf-8') for s in quest_data if s]
+        quest_data = [s.decode("utf-8") for s in quest_data if s]
 
         # if user does not have master quest unlocked, this will be blank!
         # these packets are received on player login.
@@ -51,12 +51,12 @@ class MasterQuestPacket:
         writer.write_bytes(self.header_data)
 
         # look up quest name logic here. self.quest_name
-        #writer.write_cstring(self.quest_name)
+        # writer.write_cstring(self.quest_name)
         writer.write_cstring("quest name")
 
         # look up quest objectives logic here.
         for quest in self.quest_objectives:
-            #writer.write_cstring(quest)
+            # writer.write_cstring(quest)
             writer.write_cstring("some quest objective")
 
         # append nulls read to keep structure the same.

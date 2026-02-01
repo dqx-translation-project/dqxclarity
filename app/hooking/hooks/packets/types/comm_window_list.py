@@ -12,9 +12,8 @@ class CommWindowListPacket:
 
         self.modified_data = None
 
-
     def __pad(self, string: str):
-        str_len = len(string.encode('utf-8'))
+        str_len = len(string.encode("utf-8"))
 
         # 20 is the buffer size allocated for names
         difference = 20 - str_len - 1  # leave one off for null terminiator.
@@ -40,14 +39,12 @@ class CommWindowListPacket:
             name_offset = start + (i * entry_size) + name_position
             name_end = name_offset
 
-            while self.data[name_end:name_end+1] != b'\x00':
+            while self.data[name_end : name_end + 1] != b"\x00":
                 name_end += 1
 
             # do translation here.
-            jp_name = self.data[name_offset:name_end].decode('utf-8')
-            replacement = self.__pad(
-                "asdasdasd"[:max_name_length]
-            ).encode('utf-8')[:name_buffer_size]
-            self.data[name_offset:name_offset+name_buffer_size] = replacement
+            jp_name = self.data[name_offset:name_end].decode("utf-8")
+            replacement = self.__pad("asdasdasd"[:max_name_length]).encode("utf-8")[:name_buffer_size]
+            self.data[name_offset : name_offset + name_buffer_size] = replacement
 
         self.modified_data = self.data

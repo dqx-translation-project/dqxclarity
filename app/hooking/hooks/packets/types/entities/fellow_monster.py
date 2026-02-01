@@ -35,7 +35,7 @@ class EntityFellowMonsterPacket:
         # name should be no longer than 11 bytes. any more can cause crashes.
         # lookup name: self.entity_name
         name = name[:11]
-        name_length = len(name.encode('utf-8')) + 1  # include NT.
+        name_length = len(name.encode("utf-8")) + 1  # include NT.
 
         writer.write_u32(name_length)
         writer.write_cstring(name)
