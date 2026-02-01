@@ -49,37 +49,28 @@ def on_message(message, data, script):
                 packet_length = len(data)
                 hex_view = hexdump(data)
 
-                #log.debug(f"{packet_length} bytes =>\n{hex_view}")
+                # log.debug(f"{packet_length} bytes =>\n{hex_view}")
 
                 packet = GamePacket(data)
                 packet.parse_data()
 
                 if packet.modified_data and packet.original_size:
                     # send modified packet back to frida with binary data
-                    script.post({
-                        "type": "modified_packet",
-                        "modified": True,
-                        "size": packet.original_size
-                    }, packet.modified_data)
+                    script.post(
+                        {"type": "modified_packet", "modified": True, "size": packet.original_size}, packet.modified_data
+                    )
 
-                    #log.info(f"Modified ({len(packet.modified_data)} bytes) =>\n{hexdump(packet.modified_data)}")
+                    # log.info(f"Modified ({len(packet.modified_data)} bytes) =>\n{hexdump(packet.modified_data)}")
 
                 else:
                     # no modification, but still send original_size for return value
-                    script.post({
-                        "type": "modified_packet",
-                        "modified": False,
-                        "size": packet.original_size
-                    })
+                    script.post({"type": "modified_packet", "modified": False, "size": packet.original_size})
 
                 with open(_log_file, "a+") as f:
                     f.write(f"{packet_length} bytes =>\n{hex_view}\n\n")
             else:
                 # no data, unblock frida
-                script.post({
-                    "type": "modified_packet",
-                    "modified": False
-                })
+                script.post({"type": "modified_packet", "modified": False})
 
         elif msg_type == "info":
             log.debug(f"{payload['payload']}")
