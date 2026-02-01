@@ -1,4 +1,5 @@
 from hooking.hooks.packets.types.comm_window_list import CommWindowListPacket
+from hooking.hooks.packets.types.concierge import ConciergePacket
 from hooking.hooks.packets.types.entity import EntityPacket
 from hooking.hooks.packets.types.master_quest import MasterQuestPacket
 from hooking.hooks.packets.types.memory_list_main import MemoryListMainPacket
@@ -105,9 +106,8 @@ class DataPacketRouter:
                 packet = TeamQuestPacket(self.data)
 
         elif self.op_code == b"\x52":
-            if self.marker == b"\xee\x25":  # noqa: SIM102
-                # log.warning(f"[DATA] entity found.\n{hexdump(self.raw)}")
-                # log.warning("[DATA] entity found.")
+            if self.marker == b"\xee\x25":
+                log.debug("[DATA] entity found.")
                 packet = EntityPacket(self.data)
 
         elif self.op_code == b"\x66":
@@ -141,8 +141,9 @@ class DataPacketRouter:
                 packet = MyTownAmenityPacket(self.data)
 
         elif self.op_code == b"\x05":  # noqa: SIM102
-            if self.marker == b"\xea\x73":
-                log.debug(f"[DATA] concierge name\n{hexdump(self.raw)}")
+            if self.marker == b"\x2b\x66":
+                log.debug("[DATA] concierge name")
+                packet = ConciergePacket(self.data)
 
         if packet:
             packet.build()

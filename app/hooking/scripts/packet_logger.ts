@@ -70,46 +70,12 @@
     KNOWN_PACKETS[0x4b4569] = true;  // mytown amenity
     KNOWN_PACKETS[0x05ea73] = true;  // concierge name
 
-    // Payload offset by size_identifier (lower nibble of byte 0 for data packets).
+    // payload offset by size_identifier (lower nibble of byte 0 for data packets).
     //   0: 1-byte header + 1-byte size  -> payload at offset 2
     //   1: 1-byte header + 2-byte size  -> payload at offset 3
     //   2: 1-byte header + 4-byte size  -> payload at offset 5
     //   3: 1-byte header + 4-byte size  -> payload at offset 5
     var PAYLOAD_OFFSETS = [2, 3, 5, 5];
-
-    // Cache for player entity name translations (origName -> {nameLen, nameBytes})
-    var playerNameCache = {};
-    var ORIGINAL_SIZE_HEADERS = [2, 3, 4, 4];
-
-    function readPayloadSize(ptr, sizeIdentifier) {
-        if (sizeIdentifier === 0) {
-            return ptr.add(1).readU8();
-        } else if (sizeIdentifier === 1) {
-            return ptr.add(1).readU16();
-        } else {
-            return ptr.add(1).readU32();
-        }
-    }
-
-    function writeSizeHeader(ptr, size) {
-        if (size <= 0xFF) {
-            ptr.writeU8(0x00);
-            ptr.add(1).writeU8(size);
-            return 2;
-        } else if (size <= 0xFFFF) {
-            ptr.writeU8(0x01);
-            ptr.add(1).writeU16(size);
-            return 3;
-        } else if (size <= 0xFFFFFF) {
-            ptr.writeU8(0x02);
-            ptr.add(1).writeU32(size);
-            return 5;
-        } else {
-            ptr.writeU8(0x03);
-            ptr.add(1).writeU32(size);
-            return 5;
-        }
-    }
 
     const baseAddr = Process.enumerateModules()[0].base;
     const baseSize = Process.enumerateModules()[0].size;
@@ -184,102 +150,10 @@
                 const marker2 = packetDataPtr.add(payloadOffset + 2).readU8();
                 const key = (opCode << 16) | (marker1 << 8) | marker2;
 
-                if (!KNOWN_PACKETS[key]) {
-                    return;
-                }
+                // if (!KNOWN_PACKETS[key]) {
+                //     return;
+                // }
 
-<<<<<<< HEAD
-                // for entity packets, also filter by entity type byte
-                var entityType = 0;
-                if (key === ENTITY_KEY) {
-                    var entityTypeOffset = payloadOffset + 14;
-                    if (packetLength < entityTypeOffset + 1) {
-                        return;
-                    }
-                    entityType = packetDataPtr.add(entityTypeOffset).readU8();
-                    if (!KNOWN_ENTITY_TYPES[entityType]) {
-                        return;
-                    }
-                }
-
-                // player entity cache path
-                var origName = null;
-                if (key === ENTITY_KEY && entityType === 0x01) {
-                    var nameStartOffset = payloadOffset + 581;
-                    if (packetLength >= nameStartOffset + 1) {
-                        var payloadSize = readPayloadSize(packetDataPtr, sizeIdentifier);
-                        var origNameLen = packetDataPtr.add(payloadOffset + 577).readU32();
-                        if (origNameLen > 0 && payloadOffset + 581 + origNameLen <= packetLength) {
-                            origName = packetDataPtr.add(nameStartOffset).readUtf8String(origNameLen - 1);
-
-                            var cached = playerNameCache[origName];
-                            if (cached) {
-                                // cache hit: rebuild packet in JS, skip Python
-                                var newPayloadSize = payloadSize - origNameLen + cached.nameLen;
-
-                                // determine new size header length
-                                var newSizeHeaderLen;
-                                if (newPayloadSize <= 0xFF) {
-                                    newSizeHeaderLen = 2;
-                                } else if (newPayloadSize <= 0xFFFF) {
-                                    newSizeHeaderLen = 3;
-                                } else {
-                                    newSizeHeaderLen = 5;
-                                }
-
-                                // remainder after this entity's payload (other packets in buffer)
-                                var payloadEnd = payloadOffset + payloadSize;
-                                var remainderLen = packetLength - payloadEnd;
-
-                                // remaining entity data after name
-                                var afterNameOffset = nameStartOffset + origNameLen;
-                                var afterNameLen = payloadEnd - afterNameOffset;
-
-                                var totalLen = newSizeHeaderLen + newPayloadSize + remainderLen;
-                                var newBuf = Memory.alloc(totalLen);
-
-                                // write size header
-                                writeSizeHeader(newBuf, newPayloadSize);
-
-                                // copy 577 bytes: op_code + marker + entity header up to name_length
-                                Memory.copy(newBuf.add(newSizeHeaderLen), packetDataPtr.add(payloadOffset), 577);
-
-                                // write translated name length
-                                newBuf.add(newSizeHeaderLen + 577).writeU32(cached.nameLen);
-
-                                // write translated name bytes
-                                newBuf.add(newSizeHeaderLen + 581).writeByteArray(cached.nameBytes);
-
-                                // copy remaining entity data after name
-                                if (afterNameLen > 0) {
-                                    Memory.copy(
-                                        newBuf.add(newSizeHeaderLen + 581 + cached.nameLen),
-                                        packetDataPtr.add(afterNameOffset),
-                                        afterNameLen
-                                    );
-                                }
-
-                                // copy remainder
-                                if (remainderLen > 0) {
-                                    Memory.copy(
-                                        newBuf.add(newSizeHeaderLen + newPayloadSize),
-                                        packetDataPtr.add(payloadEnd),
-                                        remainderLen
-                                    );
-                                }
-
-                                var originalSize = payloadSize + ORIGINAL_SIZE_HEADERS[sizeIdentifier];
-                                this.originalSize = originalSize;
-                                this.newBuffer = newBuf;
-                                args[0] = newBuf;
-                                return;
-                            }
-                        }
-                    }
-                }
-
-=======
->>>>>>> 1ed995b (only send known packets to python.)
                 const packetData = packetDataPtr.readByteArray(packetLength);
 
                 // send to python and wait for response
@@ -297,37 +171,6 @@
                         originalSize = message.size;
                     }
                 }).wait();
-
-                // cache translated player name from Python response
-                if (modifiedData !== null && origName !== null) {
-                    var modBytes = new Uint8Array(modifiedData);
-                    // determine modified size header length from first byte
-                    var modFirstByte = modBytes[0];
-                    var modSizeHeaderLen;
-                    if (modFirstByte === 0x00) {
-                        modSizeHeaderLen = 2;
-                    } else if (modFirstByte === 0x01) {
-                        modSizeHeaderLen = 3;
-                    } else {
-                        modSizeHeaderLen = 5;
-                    }
-
-                    var nameLenOff = modSizeHeaderLen + 577;
-                    if (modBytes.length >= nameLenOff + 4) {
-                        var transNameLen = modBytes[nameLenOff]
-                            | (modBytes[nameLenOff + 1] << 8)
-                            | (modBytes[nameLenOff + 2] << 16)
-                            | (modBytes[nameLenOff + 3] << 24);
-                        var nameOff = modSizeHeaderLen + 581;
-                        if (transNameLen > 0 && modBytes.length >= nameOff + transNameLen) {
-                            var nameSlice = modifiedData.slice(nameOff, nameOff + transNameLen);
-                            playerNameCache[origName] = {
-                                nameLen: transNameLen,
-                                nameBytes: nameSlice
-                            };
-                        }
-                    }
-                }
 
                 // we return the original size as we may alter the packet size
                 // to be smaller or larger depending on translation. why this is
