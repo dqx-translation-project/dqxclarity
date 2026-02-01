@@ -1,5 +1,4 @@
 from hooking.hooks.packets.buffer import PacketReader, PacketWriter
-from loguru import logger as log
 
 
 class EntityPlayerPacket:
@@ -34,13 +33,13 @@ class EntityPlayerPacket:
 
         # name should be no longer than 11 bytes. any more can cause crashes.
         # lookup name: self.entity_name
-        name = name[:11]
+        name = "\x04" + name[:10]
         name_length = len(name.encode("utf-8")) + 1  # include NT.
 
         writer.write_u32(name_length)
         writer.write_cstring(name)
 
-        log.debug(f"Updated player: {self.entity_name} => {name}.")
+        # log.debug(f"Updated player: {self.entity_name} => {name}.")
 
         writer.write_bytes(self.remaining)
 

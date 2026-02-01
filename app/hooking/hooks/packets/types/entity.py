@@ -1,4 +1,3 @@
-from hooking.hooks.packets.buffer import PacketReader
 from hooking.hooks.packets.types.entities.fellow_monster import EntityFellowMonsterPacket
 from hooking.hooks.packets.types.entities.monster import EntityMonsterPacket
 from hooking.hooks.packets.types.entities.npc import EntityNpcPacket
@@ -15,34 +14,30 @@ class EntityPacket:
     """
 
     def __init__(self, raw: bytes):
-        reader = PacketReader(raw)
         self.raw = raw
         self.modified_data = None
+        self.entity_type = None
 
-        reader.seek(11)
-        type_byte = reader.read_bytes(1)
+        type_byte = raw[11:12]
 
-        entity_types = {
-            b"\x01": "player",
-            b"\x02": "monster",
-            b"\x04": "npc",
-            b"\x85": "fellow",
-        }
-
-        self.entity_type = entity_types.get(type_byte, b"")
-
-        if not self.entity_type:
-            return
-
-        match self.entity_type:
-            case "player":
+        match type_byte:
+            case b"\x01":
                 self.data = EntityPlayerPacket(self.raw)
-            case "monster":
+                self.entity_type = "player"
+            case b"\x02":
                 self.data = EntityMonsterPacket(self.raw)
-            case "npc":
+                self.entity_type = "monster"
+            case b"\x04":
                 self.data = EntityNpcPacket(self.raw)
-            case "fellow":
+                self.entity_type = "npc"
+            case b"\x85":
                 self.data = EntityFellowMonsterPacket(self.raw)
+                self.entity_type = "fellow"
+            case _:
+                return
+
+        if self.data.invalid_entity:
+            return
 
         self.entity_name = self.data.entity_name
 
