@@ -126,10 +126,47 @@ class GamePacket:
         elif size > 0xFFFFFF:
             return b"\x03" + struct.pack("<I", size)
 
+    def hexdump(self, data: bytes, bytes_per_line: int = 16) -> str:
+        """Format bytes as a hex dump with offset, hex, and ASCII columns.
+
+        Args:
+            data: Bytes to format.
+            bytes_per_line: Number of bytes per line.
+
+        Returns:
+            Formatted hex dump string.
+        """
+        lines = []
+        for offset in range(0, len(data), bytes_per_line):
+            chunk = data[offset : offset + bytes_per_line]
+
+            # hex column
+            hex_parts = [f"{b:02X}" for b in chunk]
+            hex_str = " ".join(hex_parts).ljust(bytes_per_line * 3 - 1)
+
+            # ascii column
+            ascii_str = "".join(chr(b) if 0x20 <= b < 0x7F else "." for b in chunk)
+
+            lines.append(f"{offset:08X}  {hex_str}  |{ascii_str}|")
+
+        return "\n".join(lines)
+
     def parse_data(self) -> bytes:
         if self.type == "data":
             if not self.payload:
                 log.warning("[DATA] Could not determine payload.")
+                return
+
+            # have seen numerous times where the size of the packet does not
+            # actually match the size of the payload. this does happen in
+            # tcp networking, but it seems like it happens wayyy too much
+            # in this game. perhaps the whole jp -> across the globe transit?
+            if self.size != len(self.payload):
+                log.warning("[DATA] Received payload invalid! Will not process.")
+                return
+
+            # if "ミナルバ".encode() in self.payload:
+            #     log.info(self.hexdump(self.payload))
 
             router = DataPacketRouter(self.payload)
             router.parse()

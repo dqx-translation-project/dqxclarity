@@ -6,13 +6,7 @@ class EntityMonsterPacket:
     def __init__(self, raw: bytes):
         reader = PacketReader(raw)
         self.modified_data = None
-        self.invalid_entity = False
         self.entity_offset = 401
-
-        # here for protection as there are so many variations.
-        if len(raw) < self.entity_offset:
-            self.invalid_entity = True
-            return
 
         # read up to name data.
         self.header_data = reader.read_bytes(self.entity_offset)

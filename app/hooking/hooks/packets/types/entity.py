@@ -36,9 +36,6 @@ class EntityPacket:
             case _:
                 return
 
-        if self.data.invalid_entity:
-            return
-
         self.entity_name = self.data.entity_name
 
     def build(self) -> bytes:
@@ -46,10 +43,6 @@ class EntityPacket:
         if not self.entity_type:
             return
 
-        # entity matched, but was incomplete.
-        if self.data.invalid_entity:
-            return
-
         # look up entity name and pass to self.data.build()
-        self.data.build("skdl")
+        self.data.build(self.entity_name)
         self.modified_data = self.data.modified_data
