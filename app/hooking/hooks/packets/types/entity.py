@@ -1,6 +1,7 @@
 from hooking.hooks.packets.types.entities.fellow_monster import EntityFellowMonsterPacket
 from hooking.hooks.packets.types.entities.monster import EntityMonsterPacket
 from hooking.hooks.packets.types.entities.npc import EntityNpcPacket
+from hooking.hooks.packets.types.entities.party import EntityPartyPacket
 from hooking.hooks.packets.types.entities.player import EntityPlayerPacket
 
 
@@ -30,10 +31,23 @@ class EntityPacket:
             case b"\x04":
                 self.data = EntityNpcPacket(self.raw)
                 self.entity_type = "npc"
+            case b"\x81":
+                self.data = EntityPartyPacket(self.raw)
+                self.entity_type = "party_slot_2"
+                print("party_slot_2")
+            case b"\x82":
+                self.data = EntityPartyPacket(self.raw)
+                self.entity_type = "party_slot_3"
+                print("party_slot_3")
+            case b"\x83":
+                self.data = EntityPartyPacket(self.raw)
+                self.entity_type = "party_slot_4"
+                print("party_slot_4")
             case b"\x85":
                 self.data = EntityFellowMonsterPacket(self.raw)
                 self.entity_type = "fellow"
             case _:
+                print(f"Unknown entity type byte! {type_byte}")
                 return
 
         self.entity_name = self.data.entity_name

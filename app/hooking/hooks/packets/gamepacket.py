@@ -165,11 +165,11 @@ class GamePacket:
                 log.warning("[DATA] Received payload invalid! Will not process.")
                 return
 
-            # if "ミナルバ".encode() in self.payload:
-            #     log.info(self.hexdump(self.payload))
-
             router = DataPacketRouter(self.payload)
             router.parse()
+
+            # if "スラリン".encode() in self.payload:
+            # log.info(f"\n{self.hexdump(self.payload)}")
 
             if router.modified_data and router.modified_size:
                 self.modified_data = self.__recalculate_size(router.modified_size) + router.modified_data + self.remainder

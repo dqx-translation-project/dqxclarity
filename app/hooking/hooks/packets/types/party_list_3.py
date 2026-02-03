@@ -1,36 +1,37 @@
-from common.translate import transliterate_player_name
 from hooking.hooks.packets.buffer import PacketReader, PacketWriter
 
 
-class EntityPlayerPacket:
+class PartyList3Packet:
     def __init__(self, raw: bytes):
         reader = PacketReader(raw)
         self.modified_data = None
-        self.entity_offset = 574
+        self.header_data = reader.read_bytes(78)
 
-        # read up to name data.
-        self.header_data = reader.read_bytes(self.entity_offset)
+        # read over length. we will build our own
+        self.name_length = reader.read_u32()
 
-        # get entity info.
-        self.entity_length = reader.read_u32()
-        self.entity_name = reader.read_cstring()
+        # there's no name, don't build.
+        if self.name_length == 0:
+            return
 
-        # get remaining data.
+        self.name = reader.read_cstring()
+
         self.remaining = reader.remaining()
 
-    def build(self, name: str):
+    def build(self):
+        if not self.name_length:
+            return
+
         writer = PacketWriter()
 
         writer.write_bytes(self.header_data)
 
-        name = "\x04" + transliterate_player_name(name)
+        # lookup name: self.name
+        name = "partylistthree"[:11]
         name_length = len(name.encode("utf-8")) + 1  # include NT.
 
         writer.write_u32(name_length)
         writer.write_cstring(name)
-
-        # log.debug(f"Updated player: {self.entity_name} => {name}.")
-
         writer.write_bytes(self.remaining)
 
         self.modified_data = writer.build()

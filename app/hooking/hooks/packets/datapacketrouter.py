@@ -2,13 +2,19 @@ from hooking.hooks.packets.types.comm_window_list import CommWindowListPacket
 from hooking.hooks.packets.types.concierge import ConciergePacket
 from hooking.hooks.packets.types.entity import EntityPacket
 from hooking.hooks.packets.types.master_quest import MasterQuestPacket
+from hooking.hooks.packets.types.memory_list_chapters import MemoryListChaptersPacket
 from hooking.hooks.packets.types.memory_list_main import MemoryListMainPacket
+from hooking.hooks.packets.types.memory_list_sub_chapters import MemoryListSubChaptersPacket
 from hooking.hooks.packets.types.mytown_amenity import MyTownAmenityPacket
 from hooking.hooks.packets.types.npc_dialogue import NpcDialoguePacket
 from hooking.hooks.packets.types.party_list import PartyListPacket
+from hooking.hooks.packets.types.party_list_2 import PartyList2Packet
+from hooking.hooks.packets.types.party_list_3 import PartyList3Packet
+from hooking.hooks.packets.types.party_list_4 import PartyList4Packet
 from hooking.hooks.packets.types.quest import QuestPacket
 from hooking.hooks.packets.types.server_list import ServerListPacket
 from hooking.hooks.packets.types.storysofar import StorySoFarTextPacket
+from hooking.hooks.packets.types.support_party_list import SupportyPartyListPacket
 from hooking.hooks.packets.types.team_quest import TeamQuestPacket
 from hooking.hooks.packets.types.walkthrough import WalkthroughPacket
 from hooking.hooks.packets.types.weekly_request import WeeklyRequestPacket
@@ -16,28 +22,15 @@ from loguru import logger as log
 
 
 def hexdump(data: bytes, bytes_per_line: int = 16) -> str:
-    """Format bytes as a hex dump with offset, hex, and ASCII columns.
-
-    Args:
-        data: Bytes to format.
-        bytes_per_line: Number of bytes per line.
-
-    Returns:
-        Formatted hex dump string.
-    """
     lines = []
     for offset in range(0, len(data), bytes_per_line):
         chunk = data[offset : offset + bytes_per_line]
-
         # hex column
         hex_parts = [f"{b:02X}" for b in chunk]
         hex_str = " ".join(hex_parts).ljust(bytes_per_line * 3 - 1)
-
         # ascii column
         ascii_str = "".join(chr(b) if 0x20 <= b < 0x7F else "." for b in chunk)
-
         lines.append(f"{offset:08X}  {hex_str}  |{ascii_str}|")
-
     return "\n".join(lines)
 
 
@@ -50,6 +43,31 @@ class DataPacketRouter:
 
         self.modified_data = None
         self.modified_size = None
+
+    def hexdump(self, data: bytes, bytes_per_line: int = 16) -> str:
+        """Format bytes as a hex dump with offset, hex, and ASCII columns.
+
+        Args:
+            data: Bytes to format.
+            bytes_per_line: Number of bytes per line.
+
+        Returns:
+            Formatted hex dump string.
+        """
+        lines = []
+        for offset in range(0, len(data), bytes_per_line):
+            chunk = data[offset : offset + bytes_per_line]
+
+            # hex column
+            hex_parts = [f"{b:02X}" for b in chunk]
+            hex_str = " ".join(hex_parts).ljust(bytes_per_line * 3 - 1)
+
+            # ascii column
+            ascii_str = "".join(chr(b) if 0x20 <= b < 0x7F else "." for b in chunk)
+
+            lines.append(f"{offset:08X}  {hex_str}  |{ascii_str}|")
+
+        return "\n".join(lines)
 
     def parse(self):
         packet = None
@@ -117,8 +135,11 @@ class DataPacketRouter:
 
             elif self.marker == b"\xda\x30":
                 log.debug("[DATA] memory chapter list.")
+                packet = MemoryListChaptersPacket(self.data)
+
             elif self.marker == b"\x45\x69":
                 log.debug("[DATA] memory sub chapter list.")
+                packet = MemoryListSubChaptersPacket(self.data)
 
         elif self.op_code == b"\x79":
             if self.marker == b"\x99\x4b":
@@ -126,9 +147,12 @@ class DataPacketRouter:
                 packet = MasterQuestPacket(self.data)
 
         elif self.op_code == b"\x03":
-            if self.marker == b"\xf7\xf5":  # or self.marker == b"\x54\x08":
+            if self.marker == b"\xf7\xf5":
                 log.debug("[DATA] party list.")
                 packet = PartyListPacket(self.data)
+            if self.marker == b"\x54\x08":
+                log.debug("[DATA] party list (2) .. no idea")
+                packet = PartyList2Packet(self.data)
 
         elif self.op_code == b"\x46":
             if self.marker == b"\x6b\xb8":
@@ -145,9 +169,27 @@ class DataPacketRouter:
                 log.debug("[DATA] concierge name")
                 packet = ConciergePacket(self.data)
 
+        elif self.op_code == b"\xa1":  # noqa: SIM102
+            if self.marker == b"\x27\x11":
+                log.debug("[DATA] party list (3).. no idea")
+                packet = PartyList3Packet(self.data)
+            if self.marker == b"\x8a\x6a":
+                log.debug("[DATA] party list (4).. no idea")
+                packet = PartyList4Packet(self.data)
+            if self.marker == b"\xba\x21":
+                log.debug("[DATA] tavern fellow monster list")
+
+        elif self.op_code == b"\xaa":  # noqa: SIM102
+            if self.marker == b"\xde\x02":
+                log.debug("[DATA] tavern recruitment list")
+            if self.marker == b"\x7a\x64":
+                log.debug("[DATA] command menu support party list")
+                packet = SupportyPartyListPacket(self.data)
+                log.info(f"\n{hexdump(self.data)}")
+
         if packet:
             packet.build()
             if packet.modified_data:
                 self.modified_data = self.op_code + self.marker + packet.modified_data
                 self.modified_size = len(self.modified_data)
-                # log.info(f"[DATA] Packet was modified!\n{hexdump(self.modified_data)}")
+                log.error(f"\n{hexdump(self.modified_data)}")
