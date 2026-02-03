@@ -1,5 +1,4 @@
 from hooking.hooks.packets.buffer import PacketReader, PacketWriter
-from loguru import logger as log
 
 
 class EntityMonsterPacket:
@@ -35,6 +34,6 @@ class EntityMonsterPacket:
 
         writer.write_bytes(self.remaining)
 
-        log.debug(f"Updated monster: {self.entity_name} => {name}.")
+        # log.debug(f"Updated monster: {self.entity_name} => {name}.")
 
         self.modified_data = writer.build()

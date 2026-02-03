@@ -66,9 +66,13 @@
     KNOWN_PACKETS[0x664569] = true;  // memory sub chapter list
     KNOWN_PACKETS[0x79994b] = true;  // master quest
     KNOWN_PACKETS[0x03f7f5] = true;  // party list
+    KNOWN_PACKETS[0x035408] = true;  // party list 2
+    KNOWN_PACKETS[0xa12711] = true;  // party list 3
+    KNOWN_PACKETS[0xa18a6a] = true;  // party list 4
     KNOWN_PACKETS[0x466bb8] = true;  // weekly request
     KNOWN_PACKETS[0x4b4569] = true;  // mytown amenity
-    KNOWN_PACKETS[0x05ea73] = true;  // concierge name
+    KNOWN_PACKETS[0xa1b121] = true;  // tavern fellow monster list
+    KNOWN_PACKETS[0xaade02] = true;  // tavern recruitment list
 
     // payload offset by size_identifier (lower nibble of byte 0 for data packets).
     //   0: 1-byte header + 1-byte size  -> payload at offset 2

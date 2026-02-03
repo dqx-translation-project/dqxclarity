@@ -54,8 +54,8 @@ class PartyListPacket:
         # packet, so we just jump straight to them and replace them.
         for member in self.party_members:
             self.modified_data = self.modified_data.replace(
-                # "セラニー".encode(),
+                # "ボロンゴ".encode(),
                 # b"Serany\x00\x00\x00\x00\x00\x00")
                 self.__pad_name(member).encode("utf-8"),
-                self.__pad_name("Serany").encode("utf-8"),
+                self.__pad_name("partylistone"[:11]).encode("utf-8"),
             )
