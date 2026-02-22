@@ -1,4 +1,5 @@
-"""Hooks the end of the function. This logs the real game filenames and
+"""
+Hooks the end of the function. This logs the real game filenames and
 computed hashes so that they can be found in the game's idx lookup tables found
 in the game folder.
 
