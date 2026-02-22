@@ -1,4 +1,6 @@
-"""Logs blowfish decryption keys used for game files."""
+"""
+Logs blowfish decryption keys used for game files.
+"""
 
 import os
 from common.lib import get_project_root

@@ -12,11 +12,10 @@
     56                    - push esi
     57                    - push edi
     8B 7D 0C              - mov edi,[ebp+0C]
-
 */
 (function() {
-    const hookName = '{{HOOK_NAME}}';
-    const signature = '{{SIGNATURE}}';
+    const hookName = 'hash_logger';
+    const signature = '55 8B EC 8B 55 08 85 D2 75 04 33 C0 5D C3 53';
 
     const baseAddr = Process.enumerateModules()[0].base;
     const baseSize = Process.enumerateModules()[0].size;

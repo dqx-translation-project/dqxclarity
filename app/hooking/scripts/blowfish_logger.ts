@@ -10,11 +10,10 @@
     83 7D 08 00           - cmp dword ptr [ebp+08],00
     74 53                 - je DQXGame.exe+104265
     8B 45 0C              - mov eax,[ebp+0C]
-
 */
 (function() {
-    const hookName = '{{HOOK_NAME}}';
-    const signature = '{{SIGNATURE}}';
+    const hookName = 'blowfish_logger';
+    const signature = '55 8B EC 53 57 8B 79 24 85 FF 74 ?? 83 7D 08 00';
 
     const baseAddr = Process.enumerateModules()[0].base;
     const baseSize = Process.enumerateModules()[0].size;

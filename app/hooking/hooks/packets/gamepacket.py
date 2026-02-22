@@ -154,7 +154,7 @@ class GamePacket:
     def parse_data(self) -> bytes:
         if self.type == "data":
             if not self.payload:
-                log.warning("[DATA] Could not determine payload.")
+                log.debug("[DATA] Could not determine payload.")
                 return
 
             # have seen numerous times where the size of the packet does not
@@ -162,14 +162,11 @@ class GamePacket:
             # tcp networking, but it seems like it happens wayyy too much
             # in this game. perhaps the whole jp -> across the globe transit?
             if self.size != len(self.payload):
-                log.warning("[DATA] Received payload invalid! Will not process.")
+                log.debug("Received payload invalid! Will not process.")
                 return
 
             router = DataPacketRouter(self.payload)
             router.parse()
-
-            # if "スラリン".encode() in self.payload:
-            # log.info(f"\n{self.hexdump(self.payload)}")
 
             if router.modified_data and router.modified_size:
                 self.modified_data = self.__recalculate_size(router.modified_size) + router.modified_data + self.remainder
