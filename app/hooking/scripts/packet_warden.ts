@@ -73,6 +73,7 @@
     KNOWN_PACKETS[0xa1b121] = true;  // tavern fellow monster list
     KNOWN_PACKETS[0xaade02] = true;  // tavern recruitment list
     KNOWN_PACKETS[0xaa7a64] = true;  // command menu support party list
+    KNOWN_PACKETS[0x052b66] = true;  // concierge names
 
     // payload offset by size_identifier (lower nibble of byte 0 for data packets).
     //   0: 1-byte header + 1-byte size  -> payload at offset 2
