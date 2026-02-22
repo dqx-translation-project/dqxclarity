@@ -1,4 +1,8 @@
+from common.db_ops import generate_m00_dict
 from hooking.hooks.packets.buffer import PacketReader, PacketWriter
+
+
+_master_quest_strings = generate_m00_dict("'custom_master_quests'")
 
 
 class MasterQuestPacket:
@@ -41,6 +45,9 @@ class MasterQuestPacket:
 
         self.modified_data = None
 
+    def _translate(self, string: str) -> str:
+        return _master_quest_strings.get(string, string)
+
     def build(self) -> bytes:
         if not self.unlocked:
             self.modified_data = self.raw
@@ -50,14 +57,13 @@ class MasterQuestPacket:
 
         writer.write_bytes(self.header_data)
 
-        # look up quest name logic here. self.quest_name
-        # writer.write_cstring(self.quest_name)
-        writer.write_cstring("quest name")
+        trl_quest_name = self._translate(self.quest_name)
+        writer.write_cstring(trl_quest_name)
 
         # look up quest objectives logic here.
         for quest in self.quest_objectives:
-            # writer.write_cstring(quest)
-            writer.write_cstring("some quest objective")
+            trl_quest_objective = self._translate(quest)
+            writer.write_cstring(trl_quest_objective)
 
         # append nulls read to keep structure the same.
         writer.write_bytes(b"\x00" * self.number_of_nulls)
