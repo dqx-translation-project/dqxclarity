@@ -1,4 +1,9 @@
+from common.db_ops import generate_m00_dict
+from common.translate import transliterate_player_name
 from hooking.hooks.packets.buffer import PacketReader
+
+
+_player_names = generate_m00_dict(files="'local_player_names'")
 
 
 class CommWindowListPacket:
@@ -19,6 +24,13 @@ class CommWindowListPacket:
         difference = 20 - str_len - 1  # leave one off for null terminiator.
 
         return string + ("\x00" * difference)
+
+    def __translate(self, name: str):
+        translated_name = _player_names.get(name)
+        if not translated_name:
+            translated_name = transliterate_player_name(name)
+
+        return translated_name
 
     def build(self) -> bytes:
         """
@@ -42,9 +54,11 @@ class CommWindowListPacket:
             while self.data[name_end : name_end + 1] != b"\x00":
                 name_end += 1
 
-            # do translation here.
             jp_name = self.data[name_offset:name_end].decode("utf-8")
-            replacement = self.__pad("asdasdasd"[:max_name_length]).encode("utf-8")[:name_buffer_size]
+            trl_name = self.__translate(jp_name)
+
+            replacement = self.__pad(trl_name[:max_name_length]).encode("utf-8")[:name_buffer_size]
+
             self.data[name_offset : name_offset + name_buffer_size] = replacement
 
         self.modified_data = self.data
