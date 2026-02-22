@@ -25,7 +25,7 @@ class CommWindowListPacket:
 
         return string + ("\x00" * difference)
 
-    def __translate(self, name: str):
+    def __translate(self, name: str) -> str:
         translated_name = _player_names.get(name)
         if not translated_name:
             translated_name = transliterate_player_name(name)
