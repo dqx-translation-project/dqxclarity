@@ -1,4 +1,9 @@
+from common.db_ops import generate_m00_dict
 from hooking.hooks.packets.buffer import PacketReader, PacketWriter
+
+
+# replace when we implement this.
+_memory_list = generate_m00_dict("'quests'")
 
 
 class MemoryListMainPacket:
@@ -15,6 +20,9 @@ class MemoryListMainPacket:
 
         self.modified_data = None
 
+    def __translate(self, text: str) -> str:
+        return _memory_list.get(text, text)
+
     def build(self) -> bytes:
         writer = PacketWriter()
 
@@ -24,6 +32,7 @@ class MemoryListMainPacket:
         # string can only be 29 characters long. any longer
         # and the window will lock up.
         for chapter in self.text_list:
-            writer.write_cstring("aaaaaaaaaaaaaaaaaaaaaaaaaaaaa"[:29])
+            trl_name = self.__translate(chapter.decode("utf-8"))
+            writer.write_cstring(trl_name[:29])
 
         self.modified_data = writer.build()
