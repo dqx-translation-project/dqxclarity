@@ -49,9 +49,6 @@ select = [
 ]
 ignore = []
 
-[tool.ruff.lint.per-file-ignores]
-"app/pymem/**" = ["E", "W", "F", "I", "B", "C4", "UP"]  # forked module
-
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
@@ -59,3 +56,4 @@ indent-style = "space"
 [tool.ruff.lint.isort]
 lines-after-imports = 2
 no-sections = true
+known-first-party = ["app"]
