@@ -34,20 +34,16 @@ class EntityPacket:
             case b"\x81":
                 self.data = EntityPartyPacket(self.raw)
                 self.entity_type = "party_slot_2"
-                print("party_slot_2")
             case b"\x82":
                 self.data = EntityPartyPacket(self.raw)
                 self.entity_type = "party_slot_3"
-                print("party_slot_3")
             case b"\x83":
                 self.data = EntityPartyPacket(self.raw)
                 self.entity_type = "party_slot_4"
-                print("party_slot_4")
             case b"\x85":
                 self.data = EntityFellowMonsterPacket(self.raw)
                 self.entity_type = "fellow"
             case _:
-                print(f"Unknown entity type byte! {type_byte}")
                 return
 
         self.entity_name = self.data.entity_name
