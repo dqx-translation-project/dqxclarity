@@ -1,4 +1,9 @@
+from common.db_ops import generate_m00_dict
 from hooking.hooks.packets.buffer import PacketReader, PacketWriter
+
+
+# replace when we implement this.
+_memory_list = generate_m00_dict("'quests'")
 
 
 class MemoryListChaptersPacket:
@@ -27,6 +32,9 @@ class MemoryListChaptersPacket:
             name = reader.read_cstring()
             self.stories.append([unknown, name])
 
+    def __translate(self, text: str) -> str:
+        return _memory_list.get(text, text)
+
     def build(self) -> bytes:
         writer = PacketWriter()
 
@@ -40,8 +48,8 @@ class MemoryListChaptersPacket:
             if not name:
                 writer.write_bytes(b"\x00")
             else:
-                # look up name to replace with...
-                writer.write_cstring("another")
+                trl_name = self.__translate(name)
+                writer.write_cstring(trl_name[:29])
 
         writer.write_u32(self.num_stories)
 
@@ -51,7 +59,7 @@ class MemoryListChaptersPacket:
             if not name:
                 writer.write_bytes(b"\x00")
             else:
-                # look up name to replace with...
-                writer.write_cstring("something")
+                trl_name = self.__translate(name)
+                writer.write_cstring(trl_name[:29])
 
         self.modified_data = writer.build()
