@@ -58,9 +58,8 @@ class MasterQuestPacket:
         writer.write_bytes(self.header_data)
 
         trl_quest_name = self._translate(self.quest_name)
-        writer.write_cstring(trl_quest_name)
+        writer.write_cstring(trl_quest_name[:34])
 
-        # look up quest objectives logic here.
         for quest in self.quest_objectives:
             trl_quest_objective = self._translate(quest)
             writer.write_cstring(trl_quest_objective)
