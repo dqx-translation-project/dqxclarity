@@ -3,12 +3,11 @@ import sys
 import time
 from common.config import UserConfig
 from common.db_ops import create_db_schema, delete_translation_cache
-from common.lib import get_project_root, is_wine_environment, setup_logging
-from common.process import is_dqx_process_running, start_process, wait_for_dqx_to_launch
+from common.lib import get_project_root, setup_logging
+from common.process import is_dqx_process_running, wait_for_dqx_to_launch
 from common.update import check_for_updates, download_custom_files, download_dat_files, import_name_overrides
 from hooking.activate import activate_hooks, cleanup_hooks
 from pathlib import Path
-from scans.manager import run_scans
 
 
 def parse_arguments():
@@ -95,17 +94,6 @@ def main():
             sys.exit(0)
 
         wait_for_dqx_to_launch()
-
-        # start independent processes that will continuously run in the background.
-        # the processes being created either run in an indefinite loop,
-        # or do some type of work on their own.
-        if args.nameplates:
-            if not is_wine_environment():
-                start_process(name="Nameplate scanner", target=run_scans, args=(args.nameplates,))
-            else:
-                # any pymem scanning does not currently function on steam deck. these need to be replaced
-                # with a hook. this still works on native windows though.
-                log.warning("Some nameplate features are not available in WINE right now.")
 
         activate_hooks(
             communication_window=args.communication_window,

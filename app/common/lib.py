@@ -1,5 +1,4 @@
 import contextlib
-import logging
 import os
 import sys
 from loguru import logger as log
@@ -34,31 +33,6 @@ def setup_logging(log_file: str = "console.log", stdout: bool = True, level: str
     log.add(sink=log_path, level=level, colorize=False)
 
     return log
-
-
-def setup_logger(name: str, log_file: str, level=logging.INFO):
-    """Sets up a logger for hook shellcode. This is used for custom logging
-    outside of our regular logging to record strings to a file.
-
-    :param name: Name of the logger to create.
-    :param log_file: Path to the log file.
-    :param level: Logging level. Defaults to INFO.
-    :returns: A logging handle.
-    """
-    # pylint: disable=redefined-outer-name
-    formatter = logging.Formatter("%(message)s")
-    handler = logging.FileHandler(log_file, encoding="utf-8")
-    handler.setFormatter(formatter)
-
-    log_handle = logging.getLogger(name)
-    if log_handle.hasHandlers():
-        log_handle.handlers.clear()
-
-    log_handle.setLevel(level)
-    log_handle.addHandler(handler)
-    log_handle.propagate = False  # Prevent propagation to root logger
-
-    return log_handle
 
 
 def get_project_root(add_file=None):
