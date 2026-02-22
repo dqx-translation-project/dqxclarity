@@ -1,3 +1,0 @@
-- rooms tab in comms window (maybe, maybe not)
-- story projector [chapter,sub] - memory_list_[chapters,sub_chapters].txt
-- party list - party_list.txt
