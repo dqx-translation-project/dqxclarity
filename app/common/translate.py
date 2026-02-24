@@ -13,12 +13,6 @@ from loguru import logger as log
 
 
 # module constants to prevent re-initialization each run.
-_INVALID_CHARS = frozenset(["[", "]", "(", ")", "\\", "/", "*", "_", "+", "?", "$", "^", '"'])
-_HIRAGANA_CODEPOINTS = frozenset(list(range(12353, 12430)) + [12431] + list(range(12434, 12436)))
-_KATAKANA_CODEPOINTS = frozenset(
-    list(range(12449, 12526)) + [12527] + list(range(12530, 12533)) + list(range(12539, 12541)) + [65374]
-)
-_VALID_CODEPOINTS = _HIRAGANA_CODEPOINTS | _KATAKANA_CODEPOINTS
 _JP_REGEX = regex.compile(r"\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Han}")
 
 _KKS = pykakasi.kakasi()
@@ -566,26 +560,15 @@ def is_text_japanese(text: str) -> bool:
 
 
 @cache
-def transliterate_player_name(word: str) -> str:
+def transliterate_player_name(word: str, max_length: int = 10) -> str:
     """Uses the pykakasi library to phonetically convert a Japanese word into
     English.
 
     :param word: Word to convert.
-    :returns: Returns up to a 10 character name in English.
+    :param max_length: Maximum name length. Needed based on where this is
+        being used to prevent crashes.
+    :returns: Returns a transliterated name.
     """
-    # dqx character names are limited to 6 characters. if we receive something longer
-    # than 6 characters, just return the word.
-    if len(word) > 6:
-        return word
-
-    # check for invalid characters
-    if set(word) & _INVALID_CHARS:
-        return word
-
-    # validate all characters are hiragana/katakana
-    if not all(ord(char) in _VALID_CODEPOINTS for char in word):
-        return word
-
     # use constant kakasi instance for conversion
     result = _KKS.convert(word)
     romaji = "".join([char["hepburn"] for char in result]).title().replace("・", "")
@@ -596,7 +579,7 @@ def transliterate_player_name(word: str) -> str:
     if not romaji:
         romaji = "." * word.count("・")
 
-    return romaji[0:10]
+    return romaji[0:max_length]
 
 
 def get_player_name() -> tuple:
