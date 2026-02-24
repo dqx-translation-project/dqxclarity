@@ -30,7 +30,7 @@ class ConciergePacket:
         writer.write_bytes(self.header_data)
 
         trl_name = self.__translate(self.name)
-        writer.write_cstring(trl_name)
+        writer.write_cstring("\x04" + trl_name)  # prevent GM face.
         writer.write_bytes(self.remaining)
 
         self.modified_data = writer.build()
