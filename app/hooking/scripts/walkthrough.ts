@@ -50,50 +50,31 @@
         return;
     }
 
-    // subtract 0x38 to get to function prologue
-    const funcAddress = results[0].address.sub(0x38);
+    // derive callee address dynamically from the call instruction (E8 <rel32>)
+    const callAddr = results[0].address;
+    const rel32 = callAddr.add(1).readS32();
+    const calleeAddr = callAddr.add(5).add(rel32);
 
-    // verify we're at a valid function prologue (55 8B EC = push ebp; mov ebp, esp)
-    const prologueBytes = funcAddress.readByteArray(3);
-    if (prologueBytes === null) {
-        send({
-            type: 'error',
-            payload: `[${hookName}] Failed to read function prologue`
-        });
-        return;
-    }
-
-    const bytes = new Uint8Array(prologueBytes);
-    if (bytes[0] !== 0x55 || bytes[1] !== 0x8B || bytes[2] !== 0xEC) {
-        send({
-            type: 'error',
-            payload: `[${hookName}] Invalid prologue at ${funcAddress}: expected 55 8B EC, got ${bytes[0].toString(16)} ${bytes[1].toString(16)} ${bytes[2].toString(16)}`
-        });
-        return;
-    }
+    // return address when called from here is always the instruction after the call
+    // this makes sure that we only process when our hooked function makes this call
+    const expectedReturnAddr = callAddr.add(5);
 
     send({
         type: 'info',
-        payload: `[${hookName}] Found at: ${funcAddress} (verified prologue)`
+        payload: `[${hookName}] Found at: ${callAddr}, hooking callee at: ${calleeAddr}`
     });
 
     // cache for translations to avoid blocking
     const translationCache = new Map();
 
-    Interceptor.attach(funcAddress, {
-        onEnter: function(args) {
+    Interceptor.attach(calleeAddr, {
+        onLeave: function(retval) {
+            if (!this.returnAddress.equals(expectedReturnAddr)) {
+                return;
+            }
             try {
-                // int __thiscall sub_DADA60(_DWORD *this, int a2)
-                // this = ECX (implicit), a2 = args[0]
-
-                const esp = this.context.esp;
-                const textPtrAddress = esp.add(8).readPointer();
-
-                if (textPtrAddress.isNull()) {
-                    return;
-                }
-
-                const textAddress = textPtrAddress.add(236);
+                // retval (eax) = object pointer; retval + 0xEC = text address
+                const textAddress = retval.add(236);
                 const originalText = textAddress.readUtf8String();
 
                 if (!originalText || originalText.length === 0) {
@@ -133,7 +114,7 @@
             } catch (e) {
                 send({
                     type: 'error',
-                    payload: `[${hookName}] onEnter error: ${e.message}`
+                    payload: `[${hookName}] onLeave error: ${e.message}`
                 });
             }
         }
