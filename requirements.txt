@@ -1,5 +1,5 @@
 configparser==7.2.0
-deepl==1.27.0
+deepl==1.28.0
 frida==17.5.2
 google-api-core==2.29.0
 google-api-python-client==2.188.0
