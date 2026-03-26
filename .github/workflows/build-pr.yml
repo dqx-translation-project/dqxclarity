@@ -48,7 +48,7 @@ jobs:
           if-no-files-found: error
 
       - name: Post comment to PR
-        uses: mshick/add-pr-comment@v2
+        uses: mshick/add-pr-comment@v3
         with:
           message: |
             Link to workflow: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
