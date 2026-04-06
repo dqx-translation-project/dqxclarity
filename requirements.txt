@@ -5,6 +5,6 @@ google-api-core==2.30.2
 google-api-python-client==2.193.0
 loguru==0.7.3
 openpyxl==3.1.5
-pykakasi==2.2.1
+pykakasi==2.3.0
 regex==2026.4.4
 requests==2.33.1
