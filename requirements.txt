@@ -1,6 +1,6 @@
 configparser==7.2.0
 deepl==1.29.0
-frida==17.5.2
+frida==17.9.1
 google-api-core==2.30.2
 google-api-python-client==2.188.0
 loguru==0.7.3
