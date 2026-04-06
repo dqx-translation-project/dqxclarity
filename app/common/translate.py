@@ -409,7 +409,7 @@ class Translator:
             str_text = str_text.replace("....", "...")
 
             # game doesn't render curly apostrophes, replace with straight apostrophes.
-            str_text = str_text.replace("\u2019", "'")
+            str_text = str_text.replace("’", "'")
 
             # game doesn't render em-dash. we use the Japanese "ー" instead to simulate one.
             updated_str = str_text.replace("—", "--")
