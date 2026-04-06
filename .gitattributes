@@ -6,3 +6,7 @@
 # force crlf on all files as this is primarily developed and distributed
 # on windows.
 * text eol=crlf
+
+*.ico binary
+*.png binary
+*.db binary
