@@ -33,6 +33,20 @@ function PromptForInputAndExit() {
     Exit
 }
 
+function DisableQuickEdit() {
+    $Kernel32 = Add-Type -MemberDefinition @"
+        [DllImport("kernel32.dll")] public static extern IntPtr GetStdHandle(int nStdHandle);
+        [DllImport("kernel32.dll")] public static extern bool GetConsoleMode(IntPtr hConsoleHandle, out uint lpMode);
+        [DllImport("kernel32.dll")] public static extern bool SetConsoleMode(IntPtr hConsoleHandle, uint dwMode);
+"@ -Name Kernel32 -Namespace Win32 -PassThru
+
+    $handle = [Win32.Kernel32]::GetStdHandle(-10)  # STD_INPUT_HANDLE
+    $mode = 0
+    [Win32.Kernel32]::GetConsoleMode($handle, [ref]$mode) | Out-Null
+    $mode = ($mode -band (-bnot 0x0040)) -bor 0x0080  # clear ENABLE_QUICK_EDIT, set ENABLE_EXTENDED_FLAGS
+    [Win32.Kernel32]::SetConsoleMode($handle, $mode) | Out-Null
+}
+
 function DownloadPythonInstaller() {
     $ProgressPreference = "SilentlyContinue"  # workaround to faster download speeds using IWR
     LogWrite "Downloading Python executable from the internet."
@@ -126,6 +140,7 @@ Stop-Transcript | Out-Null
 $ErrorActionPreference = "Continue"
 New-Item -ItemType Directory -Force -Path logs/ | Out-Null
 Start-Transcript -path logs/startup.log
+DisableQuickEdit
 
 $HelpMessage = "If you need help, please join the DQX Discord and post your question in the #clarity-questions channel. https://discord.gg/dragonquestx"
 $Shell = New-Object -comobject "WScript.Shell"
