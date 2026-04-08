@@ -8,3 +8,6 @@ openpyxl==3.1.5
 pykakasi==2.2.1
 regex==2026.4.4
 requests==2.33.1
+# setuptools is explicitly required because pykakasi uses pkg_resources internally,
+# which is part of setuptools. python 3.12+ no longer bundles setuptools by default.
+setuptools==82.0.1
