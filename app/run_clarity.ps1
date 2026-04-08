@@ -59,6 +59,37 @@ function InstallPython() {
     RemoveFile $PythonInstaller
 }
 
+function FindOrphanedPythonInstall() {
+    # Returns true if Python 3.11 32-bit appears to be installed on the system but
+    # not in the all-users location that dqxclarity expects (e.g. installed for current
+    # user only, or installed via a different method that skips the standard registry key).
+    $ErrorActionPreference = "SilentlyContinue"
+
+    $UserRegKey = "Registry::HKEY_CURRENT_USER\SOFTWARE\Python\PythonCore\3.11-32\InstallPath"
+    $UserInstall = try { Get-ItemProperty -Path $UserRegKey -ErrorAction SilentlyContinue } catch { $null }
+    if ($UserInstall) {
+        $ErrorActionPreference = "Continue"
+        return $true
+    }
+
+    $UninstallRoots = @(
+        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
+        "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+    )
+    foreach ($root in $UninstallRoots) {
+        $found = Get-ChildItem $root -ErrorAction SilentlyContinue |
+            Get-ItemProperty -ErrorAction SilentlyContinue |
+            Where-Object { $_.DisplayName -like "Python 3.11*(32-bit)*" }
+        if ($found) {
+            $ErrorActionPreference = "Continue"
+            return $true
+        }
+    }
+
+    $ErrorActionPreference = "Continue"
+    return $false
+}
+
 function CheckForRunningInstallers() {
     $MsiExecRunning = Get-Process -Name msiexec.exe -ErrorAction SilentlyContinue
     if ($MsiExecRunning) {
@@ -89,6 +120,13 @@ $PythonInstallPath = PythonExePath
 
 # install Python if missing
 if (!$PythonInstallPath) {
+    if (FindOrphanedPythonInstall) {
+        $Message = "Python 3.11 32-bit was found on your system, but wasn't installed in a way dqxclarity can use. Please uninstall Python 3.11 32-bit from Settings > Apps, then relaunch dqxclarity."
+        LogWrite $Message
+        $Shell.popup($Message, 0, "Action Required", 0 + 48) | Out-Null
+        PromptForInputAndExit
+    }
+
     LogWrite "Could not find Python installation for Python 3.11-32."
 
     $Result = $Shell.popup("Could not find Python 3.11 installation. Do you want to install it?", 0, "Question", 4 + 32)
