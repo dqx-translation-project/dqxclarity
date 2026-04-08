@@ -59,11 +59,6 @@ function InstallPython() {
     RemoveFile $PythonInstaller
 }
 
-function UninstallPython() {
-    LogWrite "Uninstalling Python."
-    .\$PythonInstaller /uninstall | Out-Null
-}
-
 function CheckForRunningInstallers() {
     $MsiExecRunning = Get-Process -Name msiexec.exe -ErrorAction SilentlyContinue
     if ($MsiExecRunning) {
@@ -123,28 +118,6 @@ if (-not (Test-Path -Path "venv")) {
             LogWrite "An error occurred during virtual environment initialization. Please try again. $HelpMessage"
         }
         RemoveFile "venv"
-        PromptForInputAndExit
-    }
-}
-
-# install tkinter if it's missing.
-# we used to automate installations without tkinter enabled, so we now need to check
-# if it's installed. when we upgrade Python versions again, we can remove this block
-# and install tkinter by default.
-& .\venv\Scripts\python.exe -c "import tkinter" 2> $null
-if ($? -eq $False) {
-    $Shell = New-Object -comobject "WScript.Shell"
-    $Result = $Shell.popup("Python installation must be uninstalled and reinstalled to support a new feature Clarity requires. Install now?", 0, "Question", 4 + 32)
-    if ($Result -eq 6) {
-        DownloadPythonInstaller
-        UninstallPython
-        InstallPython
-        Write-Host "Clarity must be restarted to use the new changes. Please close Clarity and relaunch."
-        RemoveFile "venv"
-        PromptForInputAndExit
-    }
-    else {
-        LogWrite "You selected 'No'. Clarity will not function correctly without this installation. Exiting."
         PromptForInputAndExit
     }
 }
