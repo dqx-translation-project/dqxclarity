@@ -107,6 +107,20 @@ function CheckForRunningInstallers() {
     }
 }
 
+$LockFile = "dqxclarity.lock"
+
+if (Test-Path $LockFile) {
+    $OldPid = Get-Content $LockFile -ErrorAction SilentlyContinue
+    if ($OldPid) {
+        $OldProcess = Get-Process -Id ([int]$OldPid) -ErrorAction SilentlyContinue
+        if ($OldProcess) {
+            LogWrite "A previous dqxclarity instance was found running. Stopping it."
+            taskkill /PID $OldPid /T /F 2>$null | Out-Null
+        }
+    }
+}
+Set-Content $LockFile $PID
+
 $ErrorActionPreference = "SilentlyContinue"
 Stop-Transcript | Out-Null
 $ErrorActionPreference = "Continue"
@@ -190,3 +204,4 @@ LogWrite "Clarity args: $args"
 
 LogWrite "Running dqxclarity."
 & .\venv\Scripts\python.exe -m main @args
+RemoveFile $LockFile
