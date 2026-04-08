@@ -122,7 +122,7 @@ if (-not (Test-Path -Path "venv")) {
     }
 }
 
-LogWrite "Installing dqxclarity dependencies."
+LogWrite "Installing dqxclarity dependencies. This may take a few minutes on first run or after an update."
 & .\venv\Scripts\pip.exe install --disable-pip-version-check -r requirements.txt --quiet --use-pep517
 if ($? -eq $False) {
     LogWrite "An error occurred during dependency installation. Please try again. $HelpMessage"
