@@ -76,8 +76,7 @@ function CheckForRunningInstallers() {
         }
         else {
             LogWrite "No problem. You will need to either terminate the process yourself or reboot your computer. Launch dqxclarity again when you're ready."
-            Read-Host "Press ENTER to close."
-            Exit
+            PromptForInputAndExit
         }
     }
 }
@@ -107,8 +106,7 @@ if (!$PythonInstallPath) {
     }
     else {
         LogWrite "You selected 'No'. Python 3.11 is required to use dqxclarity. Exiting."
-        Read-Host "Press ENTER to close."
-        Exit
+        PromptForInputAndExit
     }
 }
 
