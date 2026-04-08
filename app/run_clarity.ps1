@@ -127,14 +127,6 @@ if (-not (Test-Path -Path "venv")) {
     }
 }
 
-# try to activate the found virtual environment
-& .\venv\Scripts\activate
-if ($? -eq $False) {
-    LogWrite "Could not activate virtual environment. Please try again. $HelpMessage"
-    RemoveFile "venv"
-    PromptForInputAndExit
-}
-
 # install tkinter if it's missing.
 # we used to automate installations without tkinter enabled, so we now need to check
 # if it's installed. when we upgrade Python versions again, we can remove this block
