@@ -33,6 +33,10 @@ function PromptForInputAndExit() {
     Exit
 }
 
+# disables quickedit mode on the console window. quickedit is enabled by default on windows
+# consoles and pauses the running process the moment a user clicks anywhere in the window.
+# since this script is spawned from dqxclarity.exe, a user clicking the console would silently
+# stall the program with no indication of why. disabling it prevents this.
 function DisableQuickEdit() {
     $Kernel32 = Add-Type -MemberDefinition @"
         [DllImport("kernel32.dll")] public static extern IntPtr GetStdHandle(int nStdHandle);
