@@ -122,20 +122,28 @@ if (-not (Test-Path -Path "venv")) {
     }
 }
 
-LogWrite "Installing dqxclarity dependencies. This may take a few minutes on first run or after an update."
-& .\venv\Scripts\pip.exe install --disable-pip-version-check -r requirements.txt --quiet --use-pep517
-if ($? -eq $False) {
-    LogWrite "An error occurred during dependency installation. Please try again. $HelpMessage"
-    RemoveFile "venv"
-    PromptForInputAndExit
-}
+$RequirementsHash = (Get-FileHash .\requirements.txt -Algorithm MD5).Hash
+$HashFile = ".\venv\.requirements_hash"
+$StoredHash = if (Test-Path $HashFile) { Get-Content $HashFile } else { "" }
 
-# verify dependencies installed correctly by attempting to import something that was installed.
-& .\venv\Scripts\python.exe -c "import pykakasi" 2> $null
-if ($? -eq $False) {
-    LogWrite "An error occurred while verifying dependency installation. Please try again. $HelpMessage"
-    RemoveFile "venv"
-    PromptForInputAndExit
+if ($RequirementsHash -ne $StoredHash) {
+    LogWrite "Installing dqxclarity dependencies. This may take a few minutes on first run or after an update."
+    & .\venv\Scripts\pip.exe install --disable-pip-version-check -r requirements.txt --quiet --use-pep517
+    if ($? -eq $False) {
+        LogWrite "An error occurred during dependency installation. Please try again. $HelpMessage"
+        RemoveFile "venv"
+        PromptForInputAndExit
+    }
+
+    # verify dependencies installed correctly by attempting to import something that was installed.
+    & .\venv\Scripts\python.exe -c "import pykakasi" 2> $null
+    if ($? -eq $False) {
+        LogWrite "An error occurred while verifying dependency installation. Please try again. $HelpMessage"
+        RemoveFile "venv"
+        PromptForInputAndExit
+    }
+
+    Set-Content $HashFile $RequirementsHash
 }
 
 LogWrite "Python install location: $PythonInstallPath"
