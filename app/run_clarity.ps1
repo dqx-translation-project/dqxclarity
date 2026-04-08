@@ -55,6 +55,8 @@ function InstallPython() {
         LogWrite "Failed to install Python. Please try again. $HelpMessage"
         PromptForInputAndExit
     }
+
+    RemoveFile $PythonInstaller
 }
 
 function UninstallPython() {
