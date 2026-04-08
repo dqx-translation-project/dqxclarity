@@ -2,6 +2,13 @@
 # by the user's profile.
 Set-Location (Split-Path $MyInvocation.MyCommand.Path)
 
+$PythonVersion   = "3.11.3"
+$PythonArch      = "32"
+$PythonInstaller = "python-$PythonVersion.exe"
+$PythonUrl       = "https://www.python.org/ftp/python/$PythonVersion/$PythonInstaller"
+$PythonMD5Hash   = "691232496E346CE0860AEF052DD6844F"  # pragma: allowlist secret
+$PythonRegKey    = "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Python\PythonCore\3.11-$PythonArch\InstallPath"
+
 function LogWrite($string) {
     Write-Host $string -ForegroundColor "Yellow"
 }
@@ -9,7 +16,6 @@ function LogWrite($string) {
 function PythonExePath() {
     # Because of the pymem lib, required to install Python for all users.
     # No longer supporting "Install for Me" installations, just "Install for all users"
-    $PythonRegKey = "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Python\PythonCore\3.11-32\InstallPath"
     $ErrorActionPreference = "SilentlyContinue"
     try { (Get-ItemProperty -Path $PythonRegKey -Name "ExecutablePath").ExecutablePath }
     catch { "" }
@@ -30,32 +36,30 @@ function PromptForInputAndExit() {
 function DownloadPythonInstaller() {
     $ProgressPreference = "SilentlyContinue"  # workaround to faster download speeds using IWR
     LogWrite "Downloading Python executable from the internet."
-    Invoke-WebRequest -Uri https://www.python.org/ftp/python/3.11.3/python-3.11.3.exe -OutFile python-3.11.3.exe
+    Invoke-WebRequest -Uri $PythonUrl -OutFile $PythonInstaller
 
-    $PythonMD5 = Get-FileHash .\python-3.11.3.exe -Algorithm MD5
-    if ($PythonMD5.Hash -ne "691232496E346CE0860AEF052DD6844F") {  # pragma: allowlist secret
+    $FileHash = Get-FileHash .\$PythonInstaller -Algorithm MD5
+    if ($FileHash.Hash -ne $PythonMD5Hash) {
         LogWrite "File download did not complete successfully. Please re-run this script and try again. $HelpMessage"
-        RemoveFile "python-3.11.3.exe"
-        Read-Host "Press ENTER to close."
-        Exit
+        RemoveFile $PythonInstaller
+        PromptForInputAndExit
     }
 }
 
 function InstallPython() {
     LogWrite "Launching Python 3.11 installer and installing Python for you. Please wait."
-    .\python-3.11.3.exe /passive InstallAllUsers=1 PrependPath=1 Include_doc=0 Include_tcltk=1 Include_test=0 Shortcuts=0 SimpleInstallDescription="Installing necessary components for dqxclarity." | Out-Null
+    .\$PythonInstaller /passive InstallAllUsers=1 PrependPath=1 Include_doc=0 Include_tcltk=1 Include_test=0 Shortcuts=0 SimpleInstallDescription="Installing necessary components for dqxclarity." | Out-Null
     $PythonInstallPath = PythonExePath
 
     if (!$PythonInstallPath) {
         LogWrite "Failed to install Python. Please try again. $HelpMessage"
-        Read-Host "Press ENTER to close."
-        Exit
+        PromptForInputAndExit
     }
 }
 
 function UninstallPython() {
     LogWrite "Uninstalling Python."
-    .\python-3.11.3.exe /uninstall | Out-Null
+    .\$PythonInstaller /uninstall | Out-Null
 }
 
 function CheckForRunningInstallers() {
