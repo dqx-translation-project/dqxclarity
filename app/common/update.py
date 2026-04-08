@@ -4,9 +4,9 @@ import os
 import re
 import requests
 import sys
+import tempfile
 import time
 import urllib3
-import winreg
 from common.config import UserConfig
 from common.constants import (
     GITHUB_CLARITY_CUTSCENE_JSON_URL,
@@ -134,42 +134,58 @@ def check_for_updates(update: bool) -> None:
     with open("version.update") as file:
         cur_ver = file.read().strip()
 
-    url = GITHUB_CLARITY_VERSION_UPDATE_URL
-    github_request = download_file(url)
+    github_request = download_file(GITHUB_CLARITY_VERSION_UPDATE_URL)
 
     try:
-        tag = github_request.json()["tag_name"]
+        release = github_request.json()
+        tag = release["tag_name"]
         new_ver = tag[1:]
 
         if new_ver == cur_ver:
             log.success(f"Up to date. Version: {cur_ver}")
-        else:
-            log.warning(f"Out of date! {cur_ver} -> {new_ver}")
+            return
 
-            if update:
-                install_path = winreg.OpenKey(
-                    winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Python\PythonCore\3.11-32\InstallPath"
-                )
-                python_exe = winreg.QueryValueEx(install_path, "ExecutablePath")
+        log.warning(f"Out of date! {cur_ver} -> {new_ver}")
 
-                if not python_exe:
-                    log.warning("Did not find Python exe! Clarity is unable to update and will continue without updating.")
-                    return False
+        if not update:
+            return
 
-                # if we make updates to the updater, we want to grab this first.
-                log.info("Grabbing latest updater.")
-                update_url = (
-                    f"https://raw.githubusercontent.com/dqx-translation-project/dqxclarity/refs/tags/{tag}/app/updater.py"
-                )
-                response = download_file(update_url)
+        # Download the latest updater.py from the new release tag before running it,
+        # so changes to the updater itself are always picked up regardless of what
+        # version the user is upgrading from.
+        log.info("Grabbing latest updater.")
+        updater_url = f"https://raw.githubusercontent.com/dqx-translation-project/dqxclarity/refs/tags/{tag}/app/updater.py"
+        response = download_file(updater_url)
+        with open("updater.py", "w+b") as f:
+            f.write(response.content)
 
-                with open("updater.py", "w+b") as f:
-                    f.write(response.content)
+        # Write release notes to a temp file for the updater to display
+        notes_file = None
+        release_notes = release.get("body", "")
+        if release_notes:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
+                f.write(release_notes)
+                notes_file = f.name
 
-                log.info("Launching updater.")
-                Popen([python_exe[0], "./updater.py"])
-                sys.exit()
-        return
+        zip_url = f"https://github.com/dqx-translation-project/dqxclarity/releases/download/{tag}/dqxclarity.zip"
+
+        cmd = [
+            sys.executable,
+            "./updater.py",
+            "--zip-url",
+            zip_url,
+            "--cur-version",
+            cur_ver,
+            "--new-version",
+            new_ver,
+        ]
+        if notes_file:
+            cmd += ["--release-notes-file", notes_file]
+
+        log.info("Launching updater.")
+        Popen(cmd)
+        sys.exit()
+
     except Exception as e:
         log.warning(f"There was a problem trying to update. Clarity will continue without updating.\n{e}")
         return
