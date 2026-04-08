@@ -20,7 +20,7 @@ class TestTranslate(unittest.TestCase):
 
         name = "ファンシー"
         result = transliterate_player_name(name)
-        self.assertTrue(result == "Fuanshii")
+        self.assertTrue(result == "Fanshii")
 
     def test_clean_up_and_return_items(self):
         pass  # tbd
