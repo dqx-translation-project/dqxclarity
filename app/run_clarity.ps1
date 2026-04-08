@@ -89,6 +89,7 @@ New-Item -ItemType Directory -Force -Path logs/ | Out-Null
 Start-Transcript -path logs/startup.log
 
 $HelpMessage = "If you need help, please join the DQX Discord and post your question in the #clarity-questions channel. https://discord.gg/dragonquestx"
+$Shell = New-Object -comobject "WScript.Shell"
 
 $PythonInstallPath = PythonExePath
 
@@ -96,7 +97,6 @@ $PythonInstallPath = PythonExePath
 if (!$PythonInstallPath) {
     LogWrite "Could not find Python installation for Python 3.11-32."
 
-    $Shell = New-Object -comobject "WScript.Shell"
     $Result = $Shell.popup("Could not find Python 3.11 installation. Do you want to install it?", 0, "Question", 4 + 32)
 
     if ($Result -eq 6) {
