@@ -20,7 +20,7 @@ jobs:
           architecture: 'x64'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install .
 
       - name: Run unit tests
         run: |

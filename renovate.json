@@ -8,7 +8,7 @@
   ],
   "prConcurrentLimit": 0,
   "enabledManagers": [
-    "pip_requirements",
+    "pep621",
     "github-actions"
   ],
   "rebaseWhen": "conflicted",

@@ -12,7 +12,7 @@ app/user_settings*
 app/launcher/user_settings*
 app/launcher/*.exe
 app/dqxclarity.exe
-app/requirements.txt
+app/pyproject.toml
 app/dqxclarity.lock
 
 # building dqxcrypt

@@ -7,8 +7,6 @@ repos:
   - id: no-commit-to-branch
     name: Ensure we don't push to main
     args: [--branch, main]
-  - id: requirements-txt-fixer
-    name: Sort requirements.txt
   - id: fix-byte-order-marker
     name: Remove UTF-8 byte order marker (BOM)
   - id: mixed-line-ending
