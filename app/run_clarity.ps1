@@ -233,6 +233,7 @@ if ($RequirementsHash -ne $StoredHash) {
     }
 
     Set-Content $HashFile $RequirementsHash
+    LogWrite "Dependencies ready."
 }
 
 LogWrite "Python install location: $PythonInstallPath"
