@@ -11,11 +11,13 @@ $PythonRegKey    = "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Python\Pyt
 $HelpMessage     = "If you need help, please join the DQX Discord and post your question in the #clarity-questions channel. https://discord.gg/dragonquestx"
 
 function LogWrite($string) {
-    Write-Host $string -ForegroundColor "White"
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss.fff"
+    Write-Host "$timestamp | $("{0,-8}" -f "INFO") | $string" -ForegroundColor "White"
 }
 
 function LogWarning($string) {
-    Write-Host $string -ForegroundColor "Yellow"
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss.fff"
+    Write-Host "$timestamp | $("{0,-8}" -f "WARNING") | $string" -ForegroundColor "Yellow"
 }
 
 function PythonExePath() {
@@ -126,6 +128,22 @@ function CheckNotInOneDrive() {
     }
 }
 
+# spins a braille animation until the given background job finishes.
+function ShowSpinner($job) {
+    $spinner = @([char]0x28FE, [char]0x28FD, [char]0x28FB, [char]0x28BF, [char]0x287F, [char]0x28DF, [char]0x28EF, [char]0x28F7)
+    $i = 0
+    while ($job.State -eq 'Running') {
+        # write directly to the console to keep spinner frames out of the transcript.
+        $prev = [Console]::ForegroundColor
+        [Console]::ForegroundColor = [ConsoleColor]::Green
+        [Console]::Write("`r$($spinner[$i % 8])")
+        [Console]::ForegroundColor = $prev
+        $i++
+        Start-Sleep -Milliseconds 100
+    }
+    [Console]::Write("`r   `r")
+}
+
 function CheckForRunningInstallers() {
     $MsiExecRunning = Get-Process -Name msiexec.exe -ErrorAction SilentlyContinue
     if ($MsiExecRunning) {
@@ -163,6 +181,7 @@ $ErrorActionPreference = "Continue"
 New-Item -ItemType Directory -Force -Path logs/ | Out-Null
 Start-Transcript -path logs/startup.log
 DisableQuickEdit
+[Console]::CursorVisible = $false
 
 $Shell = New-Object -comobject "WScript.Shell"
 CheckNotInOneDrive
@@ -197,10 +216,21 @@ if (!$PythonInstallPath) {
 # check if the user already has a virtual environment folder
 if (-not (Test-Path -Path "venv")) {
     LogWrite "Creating virtual environment."
-    $CreateVenvOutput = & $PythonInstallPath -m venv venv 2>&1
-    if ($? -eq $False) {
-        LogWarning $CreateVenvOutput
-        if ($CreateVenvOutput -match "'--default-pip']' returned non-zero exit status 1.") {
+    $venvJob = Start-Job -ScriptBlock {
+        param($pythonPath, $dir)
+        Set-Location $dir
+        $output = & $pythonPath -m venv venv 2>&1 | Out-String
+        [PSCustomObject]@{ Output = $output; ExitCode = $LASTEXITCODE }
+    } -ArgumentList $PythonInstallPath, (Get-Location).Path
+
+    ShowSpinner $venvJob
+
+    $venvResult = Receive-Job $venvJob
+    Remove-Job $venvJob
+
+    if ($venvResult.ExitCode -ne 0) {
+        LogWarning $venvResult.Output
+        if ($venvResult.Output -match "'--default-pip']' returned non-zero exit status 1.") {
             LogWarning "It's highly likely that your antivirus is blocking Python from executing. You will need to add a folder exclusion to your anti-virus to exclude 'C:\Program Files (x86)\Python311-32' and '$PSScriptRoot'. Restart dqxclarity once these exclusions have been added."
         }
         else {
@@ -217,8 +247,23 @@ $StoredHash = if (Test-Path $HashFile) { Get-Content $HashFile } else { "" }
 
 if ($PyprojectHash -ne $StoredHash) {
     LogWrite "Installing dqxclarity dependencies. This may take a few minutes on first run or after an update."
-    & .\venv\Scripts\pip.exe install --disable-pip-version-check . --quiet
-    if ($? -eq $False) {
+
+    # run pip in a background job so we can animate a spinner while it installs.
+    # the job returns $LASTEXITCODE so we can check whether pip succeeded.
+    $workingDir = (Get-Location).Path
+    $pipJob = Start-Job -ScriptBlock {
+        param($dir)
+        Set-Location $dir
+        & .\venv\Scripts\pip.exe install --disable-pip-version-check . --quiet 2>&1 | Out-Null
+        return $LASTEXITCODE
+    } -ArgumentList $workingDir
+
+    ShowSpinner $pipJob
+
+    $pipExitCode = Receive-Job $pipJob
+    Remove-Job $pipJob
+
+    if ($pipExitCode -ne 0) {
         LogWarning "An error occurred during dependency installation. Please try again. $HelpMessage"
         RemoveFile "venv"
         PromptForInputAndExit
