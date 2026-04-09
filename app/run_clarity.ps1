@@ -8,6 +8,7 @@ $PythonInstaller = "python-$PythonVersion.exe"
 $PythonUrl       = "https://www.python.org/ftp/python/$PythonVersion/$PythonInstaller"
 $PythonMD5Hash   = "691232496E346CE0860AEF052DD6844F"  # pragma: allowlist secret
 $PythonRegKey    = "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Python\PythonCore\3.11-$PythonArch\InstallPath"
+$HelpMessage     = "If you need help, please join the DQX Discord and post your question in the #clarity-questions channel. https://discord.gg/dragonquestx"
 
 function LogWrite($string) {
     Write-Host $string -ForegroundColor "Yellow"
@@ -159,7 +160,6 @@ New-Item -ItemType Directory -Force -Path logs/ | Out-Null
 Start-Transcript -path logs/startup.log
 DisableQuickEdit
 
-$HelpMessage = "If you need help, please join the DQX Discord and post your question in the #clarity-questions channel. https://discord.gg/dragonquestx"
 $Shell = New-Object -comobject "WScript.Shell"
 CheckNotInOneDrive
 
