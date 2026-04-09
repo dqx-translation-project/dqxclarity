@@ -108,6 +108,22 @@ function FindOrphanedPythonInstall() {
     return $false
 }
 
+function CheckNotInOneDrive() {
+    # OneDrive syncs files in the background and can interfere with dqxclarity's database
+    # and venv. check all three env vars OneDrive sets so both personal and business
+    # installations are caught. StartsWith with a trailing slash prevents false positives
+    # where e.g. "C:\Users\joey\OneDrive" would match "C:\Users\joey\OneDrive - Work".
+    $OneDrivePaths = @($env:OneDrive, $env:OneDriveConsumer, $env:OneDriveCommercial) | Where-Object { $_ }
+    foreach ($path in $OneDrivePaths) {
+        if ($PSScriptRoot.StartsWith($path + "\")) {
+            $Message = "dqxclarity is installed inside a OneDrive folder ($PSScriptRoot). This is known to cause issues. Please move dqxclarity to a non-OneDrive location and relaunch."
+            LogWrite $Message
+            $Shell.popup($Message, 0, "Action Required", 0 + 48) | Out-Null
+            PromptForInputAndExit
+        }
+    }
+}
+
 function CheckForRunningInstallers() {
     $MsiExecRunning = Get-Process -Name msiexec.exe -ErrorAction SilentlyContinue
     if ($MsiExecRunning) {
@@ -148,6 +164,7 @@ DisableQuickEdit
 
 $HelpMessage = "If you need help, please join the DQX Discord and post your question in the #clarity-questions channel. https://discord.gg/dragonquestx"
 $Shell = New-Object -comobject "WScript.Shell"
+CheckNotInOneDrive
 
 $PythonInstallPath = PythonExePath
 
