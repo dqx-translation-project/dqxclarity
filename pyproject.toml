@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "dqxclarity"
 dynamic = ["version"]
-requires-python = "==3.11.*"
+requires-python = ">=3.11"
 dependencies = [
     "configparser==7.2.0",
     "deepl==1.29.0",
