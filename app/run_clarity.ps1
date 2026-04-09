@@ -236,5 +236,5 @@ LogWrite "Clarity installation path: $PSScriptRoot"
 LogWrite "Clarity args: $args"
 
 LogWrite "Running dqxclarity."
-& .\venv\Scripts\python.exe -m main @args
+& .\venv\Scripts\python.exe -W "ignore:You are using cryptography on a 32-bit Python:UserWarning" -m main @args
 RemoveFile $LockFile
