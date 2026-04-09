@@ -128,6 +128,24 @@ function CheckNotInOneDrive() {
     }
 }
 
+# spins a braille animation until the given background job finishes.
+function ShowSpinner($job) {
+    $spinner = @([char]0x28FE, [char]0x28FD, [char]0x28FB, [char]0x28BF, [char]0x287F, [char]0x28DF, [char]0x28EF, [char]0x28F7)
+    $i = 0
+    [Console]::CursorVisible = $false
+    while ($job.State -eq 'Running') {
+        # write directly to the console to keep spinner frames out of the transcript.
+        $prev = [Console]::ForegroundColor
+        [Console]::ForegroundColor = [ConsoleColor]::Green
+        [Console]::Write("`r$($spinner[$i % 8])")
+        [Console]::ForegroundColor = $prev
+        $i++
+        Start-Sleep -Milliseconds 100
+    }
+    [Console]::Write("`r   `r")
+    [Console]::CursorVisible = $true
+}
+
 function CheckForRunningInstallers() {
     $MsiExecRunning = Get-Process -Name msiexec.exe -ErrorAction SilentlyContinue
     if ($MsiExecRunning) {
