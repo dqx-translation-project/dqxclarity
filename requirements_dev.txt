@@ -1,2 +1,0 @@
-frida-tools
-pre-commit

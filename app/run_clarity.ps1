@@ -211,13 +211,13 @@ if (-not (Test-Path -Path "venv")) {
     }
 }
 
-$RequirementsHash = (Get-FileHash .\requirements.txt -Algorithm MD5).Hash
+$PyprojectHash = (Get-FileHash .\pyproject.toml -Algorithm MD5).Hash
 $HashFile = ".\venv\.requirements_hash"
 $StoredHash = if (Test-Path $HashFile) { Get-Content $HashFile } else { "" }
 
-if ($RequirementsHash -ne $StoredHash) {
+if ($PyprojectHash -ne $StoredHash) {
     LogWrite "Installing dqxclarity dependencies. This may take a few minutes on first run or after an update."
-    & .\venv\Scripts\pip.exe install --disable-pip-version-check -r requirements.txt --quiet --use-pep517
+    & .\venv\Scripts\pip.exe install --disable-pip-version-check . --quiet
     if ($? -eq $False) {
         LogWarning "An error occurred during dependency installation. Please try again. $HelpMessage"
         RemoveFile "venv"
@@ -232,7 +232,7 @@ if ($RequirementsHash -ne $StoredHash) {
         PromptForInputAndExit
     }
 
-    Set-Content $HashFile $RequirementsHash
+    Set-Content $HashFile $PyprojectHash
     LogWrite "Dependencies ready."
 }
 
