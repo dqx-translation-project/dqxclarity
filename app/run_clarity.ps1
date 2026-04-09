@@ -132,7 +132,6 @@ function CheckNotInOneDrive() {
 function ShowSpinner($job) {
     $spinner = @([char]0x28FE, [char]0x28FD, [char]0x28FB, [char]0x28BF, [char]0x287F, [char]0x28DF, [char]0x28EF, [char]0x28F7)
     $i = 0
-    [Console]::CursorVisible = $false
     while ($job.State -eq 'Running') {
         # write directly to the console to keep spinner frames out of the transcript.
         $prev = [Console]::ForegroundColor
@@ -143,7 +142,6 @@ function ShowSpinner($job) {
         Start-Sleep -Milliseconds 100
     }
     [Console]::Write("`r   `r")
-    [Console]::CursorVisible = $true
 }
 
 function CheckForRunningInstallers() {
@@ -183,6 +181,7 @@ $ErrorActionPreference = "Continue"
 New-Item -ItemType Directory -Force -Path logs/ | Out-Null
 Start-Transcript -path logs/startup.log
 DisableQuickEdit
+[Console]::CursorVisible = $false
 
 $Shell = New-Object -comobject "WScript.Shell"
 CheckNotInOneDrive
