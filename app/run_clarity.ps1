@@ -116,10 +116,7 @@ function CheckNotInOneDrive() {
     $OneDrivePaths = @($env:OneDrive, $env:OneDriveConsumer, $env:OneDriveCommercial) | Where-Object { $_ }
     foreach ($path in $OneDrivePaths) {
         if ($PSScriptRoot.StartsWith($path + "\")) {
-            $Message = "dqxclarity is installed inside a OneDrive folder ($PSScriptRoot). This is known to cause issues. Please move dqxclarity to a non-OneDrive location and relaunch."
-            LogWrite $Message
-            $Shell.popup($Message, 0, "Action Required", 0 + 48) | Out-Null
-            PromptForInputAndExit
+            LogWrite "WARNING: dqxclarity is installed inside a OneDrive folder ($PSScriptRoot). This is known to cause issues. Consider moving dqxclarity to a non-OneDrive location."
         }
     }
 }
