@@ -11,11 +11,13 @@ $PythonRegKey    = "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Python\Pyt
 $HelpMessage     = "If you need help, please join the DQX Discord and post your question in the #clarity-questions channel. https://discord.gg/dragonquestx"
 
 function LogWrite($string) {
-    Write-Host $string -ForegroundColor "White"
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss.fff"
+    Write-Host "$timestamp | $("{0,-8}" -f "INFO") | $string" -ForegroundColor "White"
 }
 
 function LogWarning($string) {
-    Write-Host $string -ForegroundColor "Yellow"
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss.fff"
+    Write-Host "$timestamp | $("{0,-8}" -f "WARNING") | $string" -ForegroundColor "Yellow"
 }
 
 function PythonExePath() {
