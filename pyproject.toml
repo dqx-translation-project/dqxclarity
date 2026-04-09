@@ -25,6 +25,9 @@ dev = [
     "pre-commit",
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
 [tool.hatch.version]
 path = "version.update"
 pattern = "^(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
