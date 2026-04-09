@@ -217,10 +217,21 @@ if (!$PythonInstallPath) {
 # check if the user already has a virtual environment folder
 if (-not (Test-Path -Path "venv")) {
     LogWrite "Creating virtual environment."
-    $CreateVenvOutput = & $PythonInstallPath -m venv venv 2>&1
-    if ($? -eq $False) {
-        LogWarning $CreateVenvOutput
-        if ($CreateVenvOutput -match "'--default-pip']' returned non-zero exit status 1.") {
+    $venvJob = Start-Job -ScriptBlock {
+        param($pythonPath, $dir)
+        Set-Location $dir
+        $output = & $pythonPath -m venv venv 2>&1 | Out-String
+        [PSCustomObject]@{ Output = $output; ExitCode = $LASTEXITCODE }
+    } -ArgumentList $PythonInstallPath, (Get-Location).Path
+
+    ShowSpinner $venvJob
+
+    $venvResult = Receive-Job $venvJob
+    Remove-Job $venvJob
+
+    if ($venvResult.ExitCode -ne 0) {
+        LogWarning $venvResult.Output
+        if ($venvResult.Output -match "'--default-pip']' returned non-zero exit status 1.") {
             LogWarning "It's highly likely that your antivirus is blocking Python from executing. You will need to add a folder exclusion to your anti-virus to exclude 'C:\Program Files (x86)\Python311-32' and '$PSScriptRoot'. Restart dqxclarity once these exclusions have been added."
         }
         else {
@@ -237,8 +248,23 @@ $StoredHash = if (Test-Path $HashFile) { Get-Content $HashFile } else { "" }
 
 if ($PyprojectHash -ne $StoredHash) {
     LogWrite "Installing dqxclarity dependencies. This may take a few minutes on first run or after an update."
-    & .\venv\Scripts\pip.exe install --disable-pip-version-check . --quiet
-    if ($? -eq $False) {
+
+    # run pip in a background job so we can animate a spinner while it installs.
+    # the job returns $LASTEXITCODE so we can check whether pip succeeded.
+    $workingDir = (Get-Location).Path
+    $pipJob = Start-Job -ScriptBlock {
+        param($dir)
+        Set-Location $dir
+        & .\venv\Scripts\pip.exe install --disable-pip-version-check . --quiet 2>&1 | Out-Null
+        return $LASTEXITCODE
+    } -ArgumentList $workingDir
+
+    ShowSpinner $pipJob
+
+    $pipExitCode = Receive-Job $pipJob
+    Remove-Job $pipJob
+
+    if ($pipExitCode -ne 0) {
         LogWarning "An error occurred during dependency installation. Please try again. $HelpMessage"
         RemoveFile "venv"
         PromptForInputAndExit
