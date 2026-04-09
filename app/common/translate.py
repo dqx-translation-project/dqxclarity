@@ -379,8 +379,7 @@ class Translator:
             return ""
 
         # update our str_attrs dict with the new, translated string
-        count = 0
-        for i in translated_list:
+        for count, i in enumerate(translated_list):
             if not str_attrs[count]["is_list"]:
                 str_attrs[count]["text"] = i
             else:
@@ -389,13 +388,11 @@ class Translator:
                 # lists are the last strings in dialogue, so we don't need to
                 # parse anymore once we've found one.
                 break
-            count += 1
 
-        count = 0
         # search for any weird space usage and remove it.
         # this comes from deepl and are all scenarios that have been seen with
         # translations coming back from machine translation.
-        for _ in str_attrs:
+        for count, _ in enumerate(str_attrs):
             str_text = str_attrs[count]["text"]
             str_text = str_text.replace("　 ", " ")
             str_text = str_text.replace(" 　", " ")
