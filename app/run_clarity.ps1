@@ -11,6 +11,10 @@ $PythonRegKey    = "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Python\Pyt
 $HelpMessage     = "If you need help, please join the DQX Discord and post your question in the #clarity-questions channel. https://discord.gg/dragonquestx"
 
 function LogWrite($string) {
+    Write-Host $string -ForegroundColor "White"
+}
+
+function LogWarning($string) {
     Write-Host $string -ForegroundColor "Yellow"
 }
 
@@ -59,7 +63,7 @@ function DownloadPythonInstaller() {
 
     $FileHash = Get-FileHash .\$PythonInstaller -Algorithm MD5
     if ($FileHash.Hash -ne $PythonMD5Hash) {
-        LogWrite "File download did not complete successfully. Please re-run this script and try again. $HelpMessage"
+        LogWarning "File download did not complete successfully. Please re-run this script and try again. $HelpMessage"
         RemoveFile $PythonInstaller
         PromptForInputAndExit
     }
@@ -71,7 +75,7 @@ function InstallPython() {
     $PythonInstallPath = PythonExePath
 
     if (!$PythonInstallPath) {
-        LogWrite "Failed to install Python. Please try again. $HelpMessage"
+        LogWarning "Failed to install Python. Please try again. $HelpMessage"
         PromptForInputAndExit
     }
 
@@ -117,7 +121,7 @@ function CheckNotInOneDrive() {
     $OneDrivePaths = @($env:OneDrive, $env:OneDriveConsumer, $env:OneDriveCommercial) | Where-Object { $_ }
     foreach ($path in $OneDrivePaths) {
         if ($PSScriptRoot.StartsWith($path + "\")) {
-            LogWrite "WARNING: dqxclarity is installed inside a OneDrive folder ($PSScriptRoot). This is known to cause issues. Consider moving dqxclarity to a non-OneDrive location."
+            LogWarning "WARNING: dqxclarity is installed inside a OneDrive folder ($PSScriptRoot). This is known to cause issues. Consider moving dqxclarity to a non-OneDrive location."
         }
     }
 }
@@ -195,12 +199,12 @@ if (-not (Test-Path -Path "venv")) {
     LogWrite "Creating virtual environment."
     $CreateVenvOutput = & $PythonInstallPath -m venv venv 2>&1
     if ($? -eq $False) {
-        LogWrite $CreateVenvOutput
+        LogWarning $CreateVenvOutput
         if ($CreateVenvOutput -match "'--default-pip']' returned non-zero exit status 1.") {
-            LogWrite "It's highly likely that your antivirus is blocking Python from executing. You will need to add a folder exclusion to your anti-virus to exclude 'C:\Program Files (x86)\Python311-32' and '$PSScriptRoot'. Restart dqxclarity once these exclusions have been added."
+            LogWarning "It's highly likely that your antivirus is blocking Python from executing. You will need to add a folder exclusion to your anti-virus to exclude 'C:\Program Files (x86)\Python311-32' and '$PSScriptRoot'. Restart dqxclarity once these exclusions have been added."
         }
         else {
-            LogWrite "An error occurred during virtual environment initialization. Please try again. $HelpMessage"
+            LogWarning "An error occurred during virtual environment initialization. Please try again. $HelpMessage"
         }
         RemoveFile "venv"
         PromptForInputAndExit
@@ -215,7 +219,7 @@ if ($RequirementsHash -ne $StoredHash) {
     LogWrite "Installing dqxclarity dependencies. This may take a few minutes on first run or after an update."
     & .\venv\Scripts\pip.exe install --disable-pip-version-check -r requirements.txt --quiet --use-pep517
     if ($? -eq $False) {
-        LogWrite "An error occurred during dependency installation. Please try again. $HelpMessage"
+        LogWarning "An error occurred during dependency installation. Please try again. $HelpMessage"
         RemoveFile "venv"
         PromptForInputAndExit
     }
@@ -223,7 +227,7 @@ if ($RequirementsHash -ne $StoredHash) {
     # verify dependencies installed correctly by attempting to import something that was installed.
     & .\venv\Scripts\python.exe -c "import pykakasi" 2> $null
     if ($? -eq $False) {
-        LogWrite "An error occurred while verifying dependency installation. Please try again. $HelpMessage"
+        LogWarning "An error occurred while verifying dependency installation. Please try again. $HelpMessage"
         RemoveFile "venv"
         PromptForInputAndExit
     }
