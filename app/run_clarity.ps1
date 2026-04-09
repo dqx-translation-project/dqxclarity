@@ -236,5 +236,7 @@ LogWrite "Clarity installation path: $PSScriptRoot"
 LogWrite "Clarity args: $args"
 
 LogWrite "Running dqxclarity."
+# the cryptography package warns when running on 32-bit python, but dqxclarity requires
+# 32-bit python due to its dependency on pymem. the warning is expected and not actionable.
 & .\venv\Scripts\python.exe -W "ignore:You are using cryptography on a 32-bit Python:UserWarning" -m main @args
 RemoveFile $LockFile
