@@ -213,8 +213,11 @@ if (!$PythonInstallPath) {
     }
 }
 
-# check if the user already has a virtual environment folder
-if (-not (Test-Path -Path "venv")) {
+# check if the user already has a usable virtual environment.
+# checking for the executables (not just the directory) guards against a partial
+# delete left behind by the updater when files were locked during rmtree.
+if (-not (Test-Path -Path "venv\Scripts\python.exe") -or -not (Test-Path -Path "venv\Scripts\activate")) {
+    RemoveFile "venv"
     LogWrite "Creating virtual environment."
     $venvJob = Start-Job -ScriptBlock {
         param($pythonPath, $dir)
