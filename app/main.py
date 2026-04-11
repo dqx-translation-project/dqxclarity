@@ -48,6 +48,12 @@ def parse_arguments():
         help="Purges all rows from the sqlite dialog table, which is used for caching translations.",
     )
     parser.add_argument("-v", "--debug", action="store_true", help="Enable debug level logging.")
+    parser.add_argument(
+        "-t",
+        "--test-release",
+        metavar="TAG",
+        help="Force-install a specific release version for testing (e.g. v1.2.3). Bypasses the version check.",
+    )
 
     return parser.parse_args()
 
@@ -81,7 +87,9 @@ def main():
     if args.update_dat:
         log.info("Updating DAT mod.")
         download_dat_files()
-    if not args.disable_update_check:
+    if args.test_release:
+        check_for_updates(update=True, test_release=args.test_release)
+    elif not args.disable_update_check:
         log.info("Updating custom text in db.")
         check_for_updates(update=True)
         download_custom_files()

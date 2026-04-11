@@ -2,6 +2,7 @@ import argparse
 import contextlib
 import ctypes
 import ctypes.wintypes
+import json
 import os
 import re
 import shutil
@@ -72,6 +73,28 @@ def kill_exe(name: str) -> None:
     os.system(f"taskkill /f /im {name} >nul 2>&1")
 
 
+def fetch_release_info(tag: str = None) -> dict:
+    """Fetch release metadata from GitHub.
+
+    If tag is provided, fetches that specific release; otherwise fetches the
+    latest published release.
+    """
+    if tag:
+        tag = tag if tag.startswith("v") else f"v{tag}"
+        url = f"https://api.github.com/repos/dqx-translation-project/dqxclarity/releases/tags/{tag}"
+    else:
+        url = "https://api.github.com/repos/dqx-translation-project/dqxclarity/releases/latest"
+
+    req = Request(url)
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    data = urlopen(req, timeout=30, context=ctx)
+    if data.status != 200:
+        raise RuntimeError(f"HTTP {data.status} fetching release info")
+    return json.loads(data.read())
+
+
 def download_zip(url: str) -> ZipFile:
     print("Downloading update...")
     req = Request(url)
@@ -102,19 +125,19 @@ def strip_markdown(text: str) -> str:
 
 def main():
     parser = argparse.ArgumentParser(description="dqxclarity updater")
-    parser.add_argument("--zip-url", help="URL to download the release zip from")
-    parser.add_argument("--local-zip", help="Path to a local zip file (for testing)")
+    parser.add_argument(
+        "--release", metavar="TAG", help="Install a specific release version (e.g. v1.2.3) instead of the latest."
+    )
     parser.add_argument("--work-dir", help="Directory to update (defaults to directory of this script)")
-    parser.add_argument("--cur-version", help="Current installed version")
-    parser.add_argument("--new-version", help="New version being installed")
-    parser.add_argument("--release-notes-file", help="Path to a temp file containing release notes")
     args = parser.parse_args()
 
-    if not args.zip_url and not args.local_zip:
-        print("Error: must provide --zip-url or --local-zip.")
-        sys.exit(1)
-
     work_dir = os.path.abspath(args.work_dir or os.path.split(os.path.abspath(__file__))[0])
+
+    version_file = os.path.join(work_dir, "version.update")
+    cur_ver = None
+    if os.path.exists(version_file):
+        with open(version_file) as f:
+            cur_ver = f.read().strip()
 
     if is_dqx_process_running():
         input(
@@ -132,11 +155,12 @@ def main():
     kill_exe("DQXClarity.exe")
 
     try:
-        if args.local_zip:
-            print(f"Using local zip: {args.local_zip}")
-            z_data = ZipFile(args.local_zip)
-        else:
-            z_data = download_zip(args.zip_url)
+        release = fetch_release_info(args.release)
+        tag = release["tag_name"]
+        new_ver = tag[1:]
+        zip_url = f"https://github.com/dqx-translation-project/dqxclarity/releases/download/{tag}/dqxclarity.zip"
+        z_data = download_zip(zip_url)
+        release_notes = strip_markdown(release.get("body", "") or "")
     except Exception as e:
         input(
             "Failed to download the latest update. Your existing install is unchanged.\n"
@@ -213,28 +237,16 @@ def main():
     if os.path.exists(venv_path):
         shutil.rmtree(venv_path, ignore_errors=True)
 
-    # Read and display release notes, then clean up the temp file
-    release_notes = ""
-    if args.release_notes_file and os.path.exists(args.release_notes_file):
-        try:
-            with open(args.release_notes_file, encoding="utf-8") as f:
-                release_notes = strip_markdown(f.read())
-        except Exception:
-            pass
-        finally:
-            with contextlib.suppress(OSError):
-                os.remove(args.release_notes_file)
-
-    if args.cur_version and args.new_version:
-        version_str = f"({args.cur_version} -> {args.new_version})"
-    elif args.new_version:
-        version_str = f"(v{args.new_version})"
+    if cur_ver and new_ver:
+        version_str = f"({cur_ver} -> {new_ver})"
+    elif new_ver:
+        version_str = f"(v{new_ver})"
     else:
         version_str = ""
 
     print()
-    if release_notes and args.new_version:
-        header = f"=== What's new in v{args.new_version} ==="
+    if release_notes and new_ver:
+        header = f"=== What's new in v{new_ver} ==="
         print(header)
         print()
         print(release_notes)

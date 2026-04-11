@@ -4,7 +4,7 @@ import sys
 import tempfile
 import unittest
 import zipfile
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -66,48 +66,65 @@ class TestStripMarkdown(unittest.TestCase):
 
 
 class TestUpdaterMain(unittest.TestCase):
-    # Each test calls _run_main(), which patches out everything that would block
-    # or touch the live system: DQX process check, exe kills, and the input()
-    # prompt at the end. Tests use a real temp work_dir and a real local zip so
-    # the actual file extraction and copy logic runs unpatched.
+    # Each test calls _run_main(), which patches out everything that touches the
+    # network or blocks: fetch_release_info, download_zip, process checks, exe
+    # kills, and the input() prompt at the end. Tests use a real temp work_dir
+    # and a real local zip so the actual file extraction and copy logic runs
+    # unpatched.
 
     def setUp(self):
         # Fresh temp work dir and zip file for each test
         self.work_dir = tempfile.mkdtemp(prefix="dqxclarity_test_work_")
         self.zip_fd, self.zip_path = tempfile.mkstemp(suffix=".zip")
         os.close(self.zip_fd)
+        # Write version.update so cur_ver can be read
+        with open(os.path.join(self.work_dir, "version.update"), "w") as f:
+            f.write("1.0.0")
 
     def tearDown(self):
         shutil.rmtree(self.work_dir, ignore_errors=True)
         if os.path.exists(self.zip_path):
             os.remove(self.zip_path)
 
-    def _run_main(self, extra_args=None):
-        """Invoke main() with --local-zip and --work-dir pointing at test fixtures.
-        Patches sys.argv so argparse reads our test args, and patches everything
-        that would block (input) or touch the live OS (process checks, kill_exe)."""
-        argv = [
-            "updater.py",
-            "--local-zip",
-            self.zip_path,
-            "--work-dir",
-            self.work_dir,
-            "--cur-version",
-            "1.0.0",
-            "--new-version",
-            "1.1.0",
-        ]
+    def _run_main(self, extra_args=None, release_notes="", fetch_side_effect=None, download_side_effect=None):
+        """Invoke main() with all network I/O patched and work-dir pointed at
+        the test fixture. Returns the mock_input so callers can inspect the
+        final prompt if needed."""
+        fake_release = {"tag_name": "v1.1.0", "body": release_notes}
+        mock_input = MagicMock()
+
+        argv = ["updater.py", "--work-dir", self.work_dir]
         if extra_args:
             argv += extra_args
 
-        with (
-            patch("sys.argv", argv),
-            patch("updater.is_dqx_process_running", return_value=False),
-            patch("updater.is_steam_deck", return_value=False),
-            patch("updater.kill_exe"),
-            patch("builtins.input"),
-        ):
-            main()
+        if fetch_side_effect:
+            fetch_patch = patch("updater.fetch_release_info", side_effect=fetch_side_effect)
+        else:
+            fetch_patch = patch("updater.fetch_release_info", return_value=fake_release)
+
+        zip_obj = None
+        if download_side_effect:
+            download_patch = patch("updater.download_zip", side_effect=download_side_effect)
+        else:
+            zip_obj = zipfile.ZipFile(self.zip_path)
+            download_patch = patch("updater.download_zip", return_value=zip_obj)
+
+        try:
+            with (
+                patch("sys.argv", argv),
+                patch("updater.is_dqx_process_running", return_value=False),
+                patch("updater.is_steam_deck", return_value=False),
+                patch("updater.kill_exe"),
+                fetch_patch,
+                download_patch,
+                patch("builtins.input", mock_input),
+            ):
+                main()
+        finally:
+            if zip_obj is not None:
+                zip_obj.close()
+
+        return mock_input
 
     def test_files_copied_to_work_dir(self):
         # Verify new files from the zip land in work_dir at the right paths
@@ -178,88 +195,60 @@ class TestUpdaterMain(unittest.TestCase):
         self.assertFalse(os.path.exists(venv_path))
 
     def test_release_notes_displayed(self):
-        # Release notes are written to a temp file by check_for_updates and passed
-        # via --release-notes-file. Verify the stripped content appears in output.
-        fd, notes_file = tempfile.mkstemp(suffix=".txt")
-        os.close(fd)
-        with open(notes_file, "w") as f:
-            f.write("## What's new\n\n- Fixed a bug")
-
+        # Release notes come from the fetch_release_info response body.
+        # Verify the stripped content appears in output.
         make_zip(self.zip_path, {"app/main.py": "x"})
 
         with patch("builtins.print") as mock_print:
-            self._run_main(extra_args=["--release-notes-file", notes_file])
+            self._run_main(release_notes="## What's new\n\n- Fixed a bug")
 
         printed = " ".join(str(c) for call in mock_print.call_args_list for c in call[0])
         self.assertIn("What's new", printed)
         self.assertIn("Fixed a bug", printed)
 
-    def test_release_notes_file_cleaned_up(self):
-        # The temp notes file should be deleted after being read
-        fd, notes_file = tempfile.mkstemp(suffix=".txt")
-        os.close(fd)
-        with open(notes_file, "w") as f:
-            f.write("some notes")
-
-        make_zip(self.zip_path, {"app/main.py": "x"})
-        self._run_main(extra_args=["--release-notes-file", notes_file])
-
-        self.assertFalse(os.path.exists(notes_file))
-
     def test_version_string_in_success_message(self):
-        # Both old and new versions should appear in the final input() prompt
+        # cur_ver comes from version.update (written in setUp as "1.0.0").
+        # new_ver comes from the fake release tag "v1.1.0".
         make_zip(self.zip_path, {"app/main.py": "x"})
 
-        with (
-            patch("builtins.input") as mock_input,
-            patch(
-                "sys.argv",
-                [
-                    "updater.py",
-                    "--local-zip",
-                    self.zip_path,
-                    "--work-dir",
-                    self.work_dir,
-                    "--cur-version",
-                    "1.0.0",
-                    "--new-version",
-                    "1.1.0",
-                ],
-            ),
-            patch("updater.is_dqx_process_running", return_value=False),
-            patch("updater.is_steam_deck", return_value=False),
-            patch("updater.kill_exe"),
-        ):
-            main()
+        mock_input = self._run_main()
 
         call_arg = mock_input.call_args[0][0]
         self.assertIn("1.0.0", call_arg)
         self.assertIn("1.1.0", call_arg)
 
-    def test_invalid_zip_exits(self):
-        # A corrupt zip should fail gracefully and call sys.exit(1)
-        with open(self.zip_path, "w") as f:
-            f.write("not a zip")
+    def test_specific_release_arg_passed_to_fetch(self):
+        # When --release is supplied, fetch_release_info should receive that tag.
+        make_zip(self.zip_path, {"app/main.py": "x"})
+        zip_obj = zipfile.ZipFile(self.zip_path)
 
+        try:
+            with (
+                patch("updater.fetch_release_info", return_value={"tag_name": "v1.0.5", "body": ""}) as mock_fetch,
+                patch("updater.download_zip", return_value=zip_obj),
+                patch("updater.is_dqx_process_running", return_value=False),
+                patch("updater.is_steam_deck", return_value=False),
+                patch("updater.kill_exe"),
+                patch("builtins.input"),
+                patch("sys.argv", ["updater.py", "--work-dir", self.work_dir, "--release", "v1.0.5"]),
+            ):
+                main()
+        finally:
+            zip_obj.close()
+
+        mock_fetch.assert_called_once_with("v1.0.5")
+
+    def test_fetch_failure_exits(self):
+        # A failure fetching release info should exit gracefully
+        make_zip(self.zip_path, {"app/main.py": "x"})
         with self.assertRaises(SystemExit):
-            self._run_main()
+            self._run_main(fetch_side_effect=RuntimeError("HTTP 404"))
 
-    def test_missing_zip_exits(self):
-        # A path that doesn't exist should fail gracefully and call sys.exit(1)
-        with (
-            self.assertRaises(SystemExit),
-            patch("sys.argv", ["updater.py", "--local-zip", "/nonexistent.zip", "--work-dir", self.work_dir]),
-            patch("updater.is_dqx_process_running", return_value=False),
-            patch("updater.is_steam_deck", return_value=False),
-            patch("updater.kill_exe"),
-            patch("builtins.input"),
-        ):
-            main()
-
-    def test_no_source_arg_exits(self):
-        # Calling the updater without --zip-url or --local-zip should exit immediately
-        with self.assertRaises(SystemExit), patch("sys.argv", ["updater.py", "--work-dir", self.work_dir]):
-            main()
+    def test_zip_download_failure_exits(self):
+        # A failure downloading the zip should exit gracefully
+        make_zip(self.zip_path, {"app/main.py": "x"})
+        with self.assertRaises(SystemExit):
+            self._run_main(download_side_effect=RuntimeError("connection error"))
 
 
 if __name__ == "__main__":
