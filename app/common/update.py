@@ -4,7 +4,6 @@ import os
 import re
 import requests
 import sys
-import tempfile
 import time
 import urllib3
 from common.config import UserConfig
@@ -120,13 +119,14 @@ def read_custom_json_and_import(name: str, data: str) -> None:
     db_query(query)
 
 
-def check_for_updates(update: bool) -> None:
+def check_for_updates(update: bool, test_release: str = None) -> None:
     """Checks to see if Clarity is running the latest version of itself. If
     not, will launch updater.py and exit.
 
     :param update: Whether or not to update after checking for updates.
+    :param test_release: If set, skip version comparison and force-install this
+        specific release tag (e.g. 'v1.2.3'). For pre-release testing only.
     """
-    log.info("Checking dqxclarity repo for updates...")
     if not os.path.exists("version.update"):
         log.warning("Couldn't determine current version of dqxclarity. Running as is.")
         return
@@ -134,18 +134,26 @@ def check_for_updates(update: bool) -> None:
     with open("version.update") as file:
         cur_ver = file.read().strip()
 
-    github_request = download_file(GITHUB_CLARITY_VERSION_UPDATE_URL)
+    if test_release is not None:
+        tag_arg = test_release if test_release.startswith("v") else f"v{test_release}"
+        log.warning(f"Test mode: force-installing release {tag_arg}.")
+        release_url = f"https://api.github.com/repos/dqx-translation-project/dqxclarity/releases/tags/{tag_arg}"
+    else:
+        log.info("Checking dqxclarity repo for updates...")
+        release_url = GITHUB_CLARITY_VERSION_UPDATE_URL
+
+    github_request = download_file(release_url)
 
     try:
         release = github_request.json()
         tag = release["tag_name"]
         new_ver = tag[1:]
 
-        if new_ver == cur_ver:
-            log.success(f"Up to date. Version: {cur_ver}")
-            return
-
-        log.warning(f"Out of date! {cur_ver} -> {new_ver}")
+        if test_release is None:
+            if new_ver == cur_ver:
+                log.success(f"Up to date. Version: {cur_ver}")
+                return
+            log.warning(f"Out of date! {cur_ver} -> {new_ver}")
 
         if not update:
             return
@@ -159,28 +167,9 @@ def check_for_updates(update: bool) -> None:
         with open("updater.py", "w+b") as f:
             f.write(response.content)
 
-        # Write release notes to a temp file for the updater to display
-        notes_file = None
-        release_notes = release.get("body", "")
-        if release_notes:
-            with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
-                f.write(release_notes)
-                notes_file = f.name
-
-        zip_url = f"https://github.com/dqx-translation-project/dqxclarity/releases/download/{tag}/dqxclarity.zip"
-
-        cmd = [
-            sys.executable,
-            "./updater.py",
-            "--zip-url",
-            zip_url,
-            "--cur-version",
-            cur_ver,
-            "--new-version",
-            new_ver,
-        ]
-        if notes_file:
-            cmd += ["--release-notes-file", notes_file]
+        cmd = [sys.executable, "./updater.py"]
+        if test_release is not None:
+            cmd += ["--release", tag]
 
         log.info("Launching updater.")
         Popen(cmd)
