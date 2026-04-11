@@ -73,7 +73,7 @@ function DownloadPythonInstaller() {
 
 function InstallPython() {
     LogWrite "Launching Python 3.11 installer and installing Python for you. Please wait."
-    .\$PythonInstaller /passive InstallAllUsers=1 PrependPath=1 Include_doc=0 Include_tcltk=1 Include_test=0 Shortcuts=0 SimpleInstallDescription="Installing necessary components for dqxclarity." | Out-Null
+    & .\$PythonInstaller /passive InstallAllUsers=1 PrependPath=1 Include_doc=0 Include_tcltk=1 Include_test=0 Shortcuts=0 SimpleInstallDescription="Installing necessary components for dqxclarity." | Out-Null
     $PythonInstallPath = PythonExePath
 
     if (!$PythonInstallPath) {
