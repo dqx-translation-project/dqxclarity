@@ -6,6 +6,7 @@ import requests
 import sys
 import time
 import urllib3
+import winreg
 from common.config import UserConfig
 from common.constants import (
     GITHUB_CLARITY_CUTSCENE_JSON_URL,
@@ -119,6 +120,20 @@ def read_custom_json_and_import(name: str, data: str) -> None:
     db_query(query)
 
 
+def _get_system_python() -> str:
+    """Return the system Python executable path from the registry.
+
+    updater.py deletes the venv as part of the update process. launching it
+    with sys.executable (the venv Python) causes Windows to lock the
+    executable, making shutil.rmtree silently fail to remove it. using the
+    system Python avoids this — updater.py only uses stdlib so it runs fine
+    without the venv.
+    """
+    key = r"SOFTWARE\WOW6432Node\Python\PythonCore\3.11-32\InstallPath"
+    with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key) as k:
+        return winreg.QueryValueEx(k, "ExecutablePath")[0]
+
+
 def check_for_updates(update: bool, test_release: str = None) -> None:
     """Checks to see if Clarity is running the latest version of itself. If
     not, will launch updater.py and exit.
@@ -167,7 +182,7 @@ def check_for_updates(update: bool, test_release: str = None) -> None:
         with open("updater.py", "w+b") as f:
             f.write(response.content)
 
-        cmd = [sys.executable, "./updater.py"]
+        cmd = [_get_system_python(), "./updater.py"]
         if test_release is not None:
             cmd += ["--release", tag]
 
