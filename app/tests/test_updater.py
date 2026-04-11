@@ -102,21 +102,27 @@ class TestUpdaterMain(unittest.TestCase):
         else:
             fetch_patch = patch("updater.fetch_release_info", return_value=fake_release)
 
+        zip_obj = None
         if download_side_effect:
             download_patch = patch("updater.download_zip", side_effect=download_side_effect)
         else:
-            download_patch = patch("updater.download_zip", return_value=zipfile.ZipFile(self.zip_path))
+            zip_obj = zipfile.ZipFile(self.zip_path)
+            download_patch = patch("updater.download_zip", return_value=zip_obj)
 
-        with (
-            patch("sys.argv", argv),
-            patch("updater.is_dqx_process_running", return_value=False),
-            patch("updater.is_steam_deck", return_value=False),
-            patch("updater.kill_exe"),
-            fetch_patch,
-            download_patch,
-            patch("builtins.input", mock_input),
-        ):
-            main()
+        try:
+            with (
+                patch("sys.argv", argv),
+                patch("updater.is_dqx_process_running", return_value=False),
+                patch("updater.is_steam_deck", return_value=False),
+                patch("updater.kill_exe"),
+                fetch_patch,
+                download_patch,
+                patch("builtins.input", mock_input),
+            ):
+                main()
+        finally:
+            if zip_obj is not None:
+                zip_obj.close()
 
         return mock_input
 
@@ -214,17 +220,21 @@ class TestUpdaterMain(unittest.TestCase):
     def test_specific_release_arg_passed_to_fetch(self):
         # When --release is supplied, fetch_release_info should receive that tag.
         make_zip(self.zip_path, {"app/main.py": "x"})
+        zip_obj = zipfile.ZipFile(self.zip_path)
 
-        with (
-            patch("updater.fetch_release_info", return_value={"tag_name": "v1.0.5", "body": ""}) as mock_fetch,
-            patch("updater.download_zip", return_value=zipfile.ZipFile(self.zip_path)),
-            patch("updater.is_dqx_process_running", return_value=False),
-            patch("updater.is_steam_deck", return_value=False),
-            patch("updater.kill_exe"),
-            patch("builtins.input"),
-            patch("sys.argv", ["updater.py", "--work-dir", self.work_dir, "--release", "v1.0.5"]),
-        ):
-            main()
+        try:
+            with (
+                patch("updater.fetch_release_info", return_value={"tag_name": "v1.0.5", "body": ""}) as mock_fetch,
+                patch("updater.download_zip", return_value=zip_obj),
+                patch("updater.is_dqx_process_running", return_value=False),
+                patch("updater.is_steam_deck", return_value=False),
+                patch("updater.kill_exe"),
+                patch("builtins.input"),
+                patch("sys.argv", ["updater.py", "--work-dir", self.work_dir, "--release", "v1.0.5"]),
+            ):
+                main()
+        finally:
+            zip_obj.close()
 
         mock_fetch.assert_called_once_with("v1.0.5")
 
