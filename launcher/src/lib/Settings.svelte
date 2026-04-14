@@ -307,9 +307,8 @@
     width: 130px;
     background: var(--surface2);
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
-    padding-top: 1.2rem;
     flex-shrink: 0;
   }
 

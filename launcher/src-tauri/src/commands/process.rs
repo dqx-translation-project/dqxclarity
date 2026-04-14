@@ -44,6 +44,19 @@ fn exe_dir() -> Result<PathBuf, String> {
         .ok_or_else(|| "Could not determine executable directory".to_string())
 }
 
+/// Read the version string from version.update in the app directory.
+/// Returns "???" if the file cannot be found, read, or parsed.
+#[tauri::command]
+pub fn get_version() -> String {
+    let Ok(dir) = exe_dir() else { return "???".into() };
+    let app_dir = find_app_dir(&dir);
+    std::fs::read_to_string(app_dir.join("version.update"))
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "???".into())
+}
+
 /// Spawn the Python process and stream its output back as log-line events.
 #[tauri::command]
 pub async fn launch_clarity(

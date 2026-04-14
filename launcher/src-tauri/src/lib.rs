@@ -8,9 +8,9 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            // When a second instance is launched, focus the existing window
             use tauri::Manager;
             if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
                 let _ = window.set_focus();
             }
         }))
@@ -25,6 +25,7 @@ pub fn run() {
             commands::environment::run_setup,
             commands::validate::validate_deepl_key,
             commands::validate::validate_google_key,
+            commands::process::get_version,
             commands::process::launch_clarity,
             commands::process::stop_clarity,
         ])
