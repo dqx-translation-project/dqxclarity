@@ -1,5 +1,6 @@
 <script>
   import { invoke } from "@tauri-apps/api/core";
+  import { applyTheme } from "$lib/themes.js";
   import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
   import { LogicalSize } from "@tauri-apps/api/window";
   import { onMount } from "svelte";
@@ -40,6 +41,7 @@
     await invoke("migrate_ini").catch(() => {});
     config = await invoke("load_config").catch(() => ({ launcher: {}, translation: {} }));
     version = await invoke("get_version").catch(() => "???");
+    applyTheme(config?.launcher?.theme ?? "rosie");
     await setWindowSize("setup");
   });
 
@@ -75,9 +77,10 @@
 {/if}
 
 {#if showSupport}
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="overlay" onclick={() => showSupport = false}>
-    <div class="popup" onclick={(e) => e.stopPropagation()}>
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="overlay" role="presentation" onclick={() => showSupport = false}>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div class="popup" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
       <p class="popup-title">Support</p>
       <div class="field-row">
         <label for="discord-link">Discord:</label>
@@ -146,7 +149,7 @@
     background: none;
     border: none;
     padding: 0;
-    font-size: 0.7rem;
+    font-size: 0.8rem;
     color: var(--muted);
     cursor: pointer;
     text-decoration: underline;
@@ -157,7 +160,7 @@
   }
 
   .version {
-    font-size: 0.7rem;
+    font-size: 0.8rem;
     color: var(--muted);
     user-select: none;
   }

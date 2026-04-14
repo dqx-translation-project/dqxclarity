@@ -67,7 +67,7 @@
 
 <div class="setup">
   <div class="header">
-    <img src="/rosie.png" alt="Rosie" class="mascot" />
+    <img src="/characters/Rosie.png" alt="Rosie" class="mascot" />
     <div class="title-block">
       <h1>dqxclarity</h1>
       <p class="subtitle">Setting up environment…</p>

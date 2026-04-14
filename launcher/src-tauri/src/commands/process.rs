@@ -13,7 +13,7 @@ fn no_window(cmd: &mut tokio::process::Command) {
 fn no_window(_cmd: &mut tokio::process::Command) {}
 
 /// Walk up from exe_dir until we find a directory containing main.py.
-fn find_app_dir(exe_dir: &PathBuf) -> PathBuf {
+pub fn find_app_dir(exe_dir: &PathBuf) -> PathBuf {
     let mut dir = exe_dir.clone();
     for _ in 0..4 {
         if dir.join("main.py").exists() {
@@ -37,7 +37,7 @@ pub struct ProcessState {
     pub user_stopped: Mutex<bool>,
 }
 
-fn exe_dir() -> Result<PathBuf, String> {
+pub fn exe_dir() -> Result<PathBuf, String> {
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
     exe.parent()
         .map(|p| p.to_path_buf())
