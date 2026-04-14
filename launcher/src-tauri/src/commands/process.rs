@@ -44,6 +44,31 @@ fn exe_dir() -> Result<PathBuf, String> {
         .ok_or_else(|| "Could not determine executable directory".to_string())
 }
 
+/// Read misc_files/name_overrides.json from the app directory.
+/// Returns the file contents, or a "not found" message string on any failure.
+#[tauri::command]
+pub fn read_name_overrides() -> String {
+    let Ok(dir) = exe_dir() else {
+        return "misc_files/name_overrides.json not found".into();
+    };
+    let path = find_app_dir(&dir).join("misc_files").join("name_overrides.json");
+    std::fs::read_to_string(path)
+        .unwrap_or_else(|_| "misc_files/name_overrides.json not found".into())
+}
+
+/// Write content to misc_files/name_overrides.json, creating the directory if needed.
+#[tauri::command]
+pub fn save_name_overrides(content: String) -> Result<(), String> {
+    let Ok(dir) = exe_dir() else {
+        return Err("Cannot determine executable directory".into());
+    };
+    let path = find_app_dir(&dir).join("misc_files").join("name_overrides.json");
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    std::fs::write(path, content).map_err(|e| e.to_string())
+}
+
 /// Read the version string from version.update in the app directory.
 /// Returns "???" if the file cannot be found, read, or parsed.
 #[tauri::command]

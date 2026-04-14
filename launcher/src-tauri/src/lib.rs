@@ -26,6 +26,8 @@ pub fn run() {
             commands::validate::validate_deepl_key,
             commands::validate::validate_google_key,
             commands::process::get_version,
+            commands::process::read_name_overrides,
+            commands::process::save_name_overrides,
             commands::process::launch_clarity,
             commands::process::stop_clarity,
         ])

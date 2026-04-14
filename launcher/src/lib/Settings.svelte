@@ -21,34 +21,151 @@
   let useCommunityApi   = $state(config?.translation?.enablecommunityapi       ?? false);
   let communityApiKey   = $state(config?.translation?.communityapikey          ?? "");
 
+  // --- UI state ---
   let activeTab = $state("general");
   let statusMsg = $state("");
   let validating = $state(false);
   let hintText = $state("");
 
-  // Mutual exclusion: only one translation provider active at a time
-  function selectDeepL() {
-    useDeepL = true; useGoogle = false; useGoogleFree = false;
+  // --- Name overrides state ---
+  const OVERRIDES_EXAMPLE =
+`{
+  "player_names": {
+    "セラニー": "Serany"
+  },
+  "mytown_names": {
+    "マイタウン": "My Town"
   }
-  function selectGoogle() {
-    useDeepL = false; useGoogle = true; useGoogleFree = false;
-  }
-  function selectGoogleFree() {
-    useDeepL = false; useGoogle = false; useGoogleFree = true;
-  }
-  function clearTranslation() {
-    useDeepL = false; useGoogle = false; useGoogleFree = false;
+}`;
+
+  let nameOverridesContent = $state("");
+  let nameOverridesLoaded  = false;
+  let overridesSaveError   = $state("");
+  let overridesSaveSuccess = $state(false);
+  let errorRanges          = $state([]);
+  let backdropContentEl    = $state(null);
+
+  let highlightedContent = $derived(buildHighlightedContent(nameOverridesContent, errorRanges));
+
+  // ── Helpers for error highlighting ───────────────────────────────────────
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
-  function toggleDeepL() {
-    if (useDeepL) clearTranslation(); else selectDeepL();
+  function buildHighlightedContent(text, ranges) {
+    if (!ranges.length) return escapeHtml(text) + "\n";
+    const sorted = [...ranges].sort((a, b) => a.start - b.start);
+    let html = "";
+    let pos = 0;
+    for (const { start, end } of sorted) {
+      const s = Math.max(pos, 0);
+      const e = Math.min(end, text.length);
+      if (start > s) html += escapeHtml(text.slice(s, start));
+      html += `<mark class="err-mark">${escapeHtml(text.slice(start, e))}</mark>`;
+      pos = e;
+    }
+    if (pos < text.length) html += escapeHtml(text.slice(pos));
+    return html + "\n";
   }
-  function toggleGoogle() {
-    if (useGoogle) clearTranslation(); else selectGoogle();
+
+  function getJsonSyntaxRanges(text, error) {
+    const m = (error.message || "").match(/at position (\d+)/i);
+    if (!m) return [];
+    const pos = Math.min(parseInt(m[1]), text.length);
+    const lineEnd = text.indexOf("\n", pos);
+    return [{ start: pos, end: lineEnd === -1 ? text.length : lineEnd }];
   }
-  function toggleGoogleFree() {
-    if (useGoogleFree) clearTranslation(); else selectGoogleFree();
+
+  function findKeyRanges(text, key) {
+    const idx = text.indexOf(`"${key}"`);
+    if (idx === -1) return [];
+    const lineEnd = text.indexOf("\n", idx);
+    return [{ start: idx, end: lineEnd === -1 ? text.length : lineEnd }];
   }
+
+  function validateOverridesSchema(obj, text) {
+    const errors = [];
+    if (typeof obj !== "object" || Array.isArray(obj) || obj === null) {
+      errors.push({ message: 'Root value must be an object', ranges: [] });
+      return errors;
+    }
+    for (const key of ["player_names", "mytown_names"]) {
+      if (!(key in obj)) {
+        errors.push({ message: `Missing required key: "${key}"`, ranges: [] });
+      } else if (typeof obj[key] !== "object" || Array.isArray(obj[key]) || obj[key] === null) {
+        errors.push({ message: `"${key}" must be an object`, ranges: findKeyRanges(text, key) });
+      }
+    }
+    return errors;
+  }
+
+  // ── Name overrides actions ────────────────────────────────────────────────
+
+  async function openNameOverridesTab() {
+    activeTab = "nameoverrides";
+    if (!nameOverridesLoaded) {
+      nameOverridesLoaded = true;
+      nameOverridesContent = await invoke("read_name_overrides").catch(
+        () => "misc_files/name_overrides.json not found"
+      );
+    }
+  }
+
+  function clearOverridesErrors() {
+    errorRanges = [];
+    overridesSaveError = "";
+  }
+
+  function syncScroll(e) {
+    if (backdropContentEl) {
+      backdropContentEl.style.transform =
+        `translate(${-e.target.scrollLeft}px, ${-e.target.scrollTop}px)`;
+    }
+  }
+
+  async function saveNameOverrides() {
+    overridesSaveError = "";
+    overridesSaveSuccess = false;
+    errorRanges = [];
+
+    let parsed;
+    try {
+      parsed = JSON.parse(nameOverridesContent);
+    } catch (e) {
+      overridesSaveError = `Save failed: invalid JSON — ${e.message}`;
+      errorRanges = getJsonSyntaxRanges(nameOverridesContent, e);
+      return;
+    }
+
+    const schemaErrors = validateOverridesSchema(parsed, nameOverridesContent);
+    if (schemaErrors.length > 0) {
+      overridesSaveError = `Save failed: ${schemaErrors.map(e => e.message).join("; ")}`;
+      errorRanges = schemaErrors.flatMap(e => e.ranges);
+      return;
+    }
+
+    try {
+      const pretty = JSON.stringify(parsed, null, 2);
+      await invoke("save_name_overrides", { content: pretty });
+      nameOverridesContent = pretty;
+      overridesSaveSuccess = true;
+      setTimeout(() => { overridesSaveSuccess = false; }, 2000);
+    } catch (e) {
+      overridesSaveError = `Save failed: ${e}`;
+    }
+  }
+
+  // ── General/Advanced tab logic ────────────────────────────────────────────
+
+  function selectDeepL()      { useDeepL = true;  useGoogle = false; useGoogleFree = false; }
+  function selectGoogle()     { useDeepL = false; useGoogle = true;  useGoogleFree = false; }
+  function selectGoogleFree() { useDeepL = false; useGoogle = false; useGoogleFree = true;  }
+  function clearTranslation() { useDeepL = false; useGoogle = false; useGoogleFree = false; }
+
+  function toggleDeepL()       { if (useDeepL)      clearTranslation(); else selectDeepL();      }
+  function toggleGoogle()      { if (useGoogle)     clearTranslation(); else selectGoogle();     }
+  function toggleGoogleFree()  { if (useGoogleFree) clearTranslation(); else selectGoogleFree(); }
 
   function communityLoggingChanged() {
     if (communityLogging) {
@@ -90,7 +207,6 @@
   }
 
   async function run() {
-    // Save config first
     await invoke("save_config", {
       launcher: {
         nameplates,
@@ -100,24 +216,23 @@
         community_logging: communityLogging,
       },
       translation: {
-        enabledeepltranslate:     useDeepL,
-        deepltranslatekey:        deepLKey,
-        enablegoogletranslate:    useGoogle,
-        googletranslatekey:       googleKey,
+        enabledeepltranslate:      useDeepL,
+        deepltranslatekey:         deepLKey,
+        enablegoogletranslate:     useGoogle,
+        googletranslatekey:        googleKey,
         enablegoogletranslatefree: useGoogleFree,
-        enablecommunityapi:       useCommunityApi,
-        communityapikey:          communityApiKey,
+        enablecommunityapi:        useCommunityApi,
+        communityapikey:           communityApiKey,
       },
     });
 
-    // Build CLI args
     const args = [];
-    if (nameplates)      args.push("--nameplates");
-    if (updateGameFiles) args.push("--update-dat");
-    if (disableUpdates)  args.push("--disable-update-check");
-    if (debugLogging)    args.push("--debug");
-    if (communityLogging)args.push("--community-logging");
-    if (purgeCache)      args.push("--purge-cache");
+    if (nameplates)       args.push("--nameplates");
+    if (updateGameFiles)  args.push("--update-dat");
+    if (disableUpdates)   args.push("--disable-update-check");
+    if (debugLogging)     args.push("--debug");
+    if (communityLogging) args.push("--community-logging");
+    if (purgeCache)       args.push("--purge-cache");
     if (useDeepL || useGoogle || useGoogleFree) args.push("--communication-window");
 
     onrun(args);
@@ -136,8 +251,9 @@
   <div class="content">
     <!-- Tabs -->
     <div class="tabs">
-      <button class:active={activeTab === "general"} onclick={() => activeTab = "general"}>General</button>
-      <button class:active={activeTab === "advanced"} onclick={() => activeTab = "advanced"}>Advanced</button>
+      <button class:active={activeTab === "general"}       onclick={() => activeTab = "general"}>General</button>
+      <button class:active={activeTab === "advanced"}      onclick={() => activeTab = "advanced"}>Advanced</button>
+      <button class:active={activeTab === "nameoverrides"} onclick={openNameOverridesTab}>Name Overrides</button>
     </div>
 
     <!-- General tab -->
@@ -276,6 +392,54 @@
       </div>
     {/if}
 
+    <!-- Name Overrides tab -->
+    {#if activeTab === "nameoverrides"}
+      <div class="tab-content overrides-content">
+        {#if overridesSaveError}
+          <div class="overrides-msg overrides-msg--error">{overridesSaveError}</div>
+        {:else if overridesSaveSuccess}
+          <div class="overrides-msg overrides-msg--success">Saved!</div>
+        {/if}
+
+        <div class="editor-split">
+          <!-- Left: editable -->
+          <div class="editor-pane">
+            <div class="editor-wrapper">
+              <div class="backdrop">
+                <div class="backdrop-content" bind:this={backdropContentEl}>{@html highlightedContent}</div>
+              </div>
+              <textarea
+                class="editor-textarea"
+                bind:value={nameOverridesContent}
+                oninput={clearOverridesErrors}
+                onscroll={syncScroll}
+                spellcheck={false}
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- Right: read-only example -->
+          <div class="example-pane">
+            <div class="example-label">Example</div>
+            <pre class="example-content">{OVERRIDES_EXAMPLE}</pre>
+          </div>
+        </div>
+
+        <div class="overrides-actions">
+          <span class="overrides-desc">Override Japanese player and MyTown names with your own, custom names.</span>
+          <button
+            class="btn-save"
+            onclick={saveNameOverrides}
+            onmouseenter={() => hintText = "Save changes to name_overrides.json."}
+            onmouseleave={() => hintText = ""}
+          >Save</button>
+        </div>
+      </div>
+    {/if}
+
     <!-- Hint bar -->
     <div class="hint-bar">{hintText || "\u00a0"}</div>
 
@@ -325,13 +489,17 @@
     padding: 1rem 1.2rem;
     gap: 0.6rem;
     overflow-y: auto;
+    min-height: 0;
   }
+
+  /* ── Tabs ───────────────────────────────────────────────────────────────── */
 
   .tabs {
     display: flex;
     gap: 2px;
     border-bottom: 1px solid var(--border);
     margin-bottom: 0.4rem;
+    flex-shrink: 0;
   }
 
   .tabs button {
@@ -350,11 +518,14 @@
     border-bottom-color: var(--accent);
   }
 
+  /* ── General / Advanced tab content ─────────────────────────────────────── */
+
   .tab-content {
     display: flex;
     flex-direction: column;
     gap: 0.7rem;
     flex: 1;
+    min-height: 0;
   }
 
   fieldset {
@@ -444,6 +615,166 @@
     color: var(--muted);
   }
 
+  /* ── Name Overrides tab ──────────────────────────────────────────────────── */
+
+  .overrides-content {
+    gap: 0.5rem;
+  }
+
+  .overrides-msg {
+    font-size: 0.78rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  .overrides-msg--error {
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  }
+
+  .overrides-msg--success {
+    color: var(--success);
+    background: color-mix(in srgb, var(--success) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
+  }
+
+  .editor-split {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    gap: 0.6rem;
+  }
+
+  .editor-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .example-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  .example-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    padding: 0.25rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+  }
+
+  .example-content {
+    flex: 1;
+    overflow: auto;
+    margin: 0;
+    padding: 0.4rem 0.5rem;
+    font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--muted);
+    white-space: pre;
+    user-select: none;
+  }
+
+  /* Editor: wrapper holds background + border; textarea is transparent so
+     the backdrop's error underlines show through. */
+  .editor-wrapper {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+
+  .editor-wrapper:focus-within {
+    border-color: var(--muted);
+  }
+
+  /* Backdrop clips to the wrapper bounds; its inner div shifts via transform
+     in sync with the textarea's scroll position. */
+  .backdrop {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    border-radius: 4px;
+  }
+
+  .backdrop-content {
+    font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    padding: 0.4rem 0.5rem;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    word-break: break-all;
+    color: transparent; /* Text is invisible; only err-mark decorations show */
+  }
+
+  :global(.err-mark) {
+    background: transparent;
+    color: transparent;
+    text-decoration: underline wavy var(--danger);
+  }
+
+  .editor-textarea {
+    display: block;
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    resize: none;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    outline: none;
+    padding: 0.4rem 0.5rem;
+    font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--text);
+    caret-color: var(--text);
+  }
+
+  .overrides-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .overrides-desc {
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .btn-save {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.3rem 1rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  .btn-save:hover { filter: brightness(1.1); }
+
+  /* ── Hint bar + actions ──────────────────────────────────────────────────── */
+
   .hint-bar {
     min-height: 1.6rem;
     display: flex;
@@ -453,6 +784,7 @@
     padding: 0 0.2rem;
     border-top: 1px solid var(--border);
     margin-top: auto;
+    flex-shrink: 0;
   }
 
   .actions {
@@ -461,6 +793,7 @@
     gap: 0.6rem;
     padding-top: 0.4rem;
     border-top: 1px solid var(--border);
+    flex-shrink: 0;
   }
 
   .btn-primary {
