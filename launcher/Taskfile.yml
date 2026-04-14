@@ -1,0 +1,29 @@
+version: "3"
+
+tasks:
+  dev:
+    desc: run the launcher in dev mode (hot reload)
+    cmds:
+      - npm run tauri dev
+
+  build:
+    desc: build the launcher executable (no installer bundle)
+    cmds:
+      - npm run tauri build -- --no-bundle
+
+  install:
+    desc: install frontend dependencies
+    cmds:
+      - npm install
+
+  check:
+    desc: run svelte type-checking
+    cmds:
+      - npm run check
+
+  clean:
+    desc: remove build artifacts for a fresh build (keeps all source code)
+    cmds:
+      - rm -rf build
+      - rm -rf src-tauri/target
+      - rm -rf src-tauri/gen/schemas
