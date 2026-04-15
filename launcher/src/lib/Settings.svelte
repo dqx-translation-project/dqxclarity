@@ -45,6 +45,8 @@
   let showUpdateModal = $state(false);
   let updaterRunning = $state(false);
   let showDbHelp = $state(false);
+  let showCommunityApiInfo = $state(false);
+  let missingKeys = $state([]);
 
   // --- Name overrides state ---
   const OVERRIDES_EXAMPLE =
@@ -340,6 +342,15 @@
   }
 
   async function run() {
+    const missing = [];
+    if (useDeepL  && !deepLKey.trim())       missing.push("DeepL");
+    if (useGoogle && !googleKey.trim())       missing.push("Google Translate");
+    if (useCommunityApi && !communityApiKey.trim()) missing.push("Community API");
+    if (missing.length > 0) {
+      missingKeys = missing;
+      return;
+    }
+
     await invoke("save_config", {
       launcher: {
         nameplates,
@@ -605,7 +616,7 @@
               onmouseenter={() => hintText = "Enable Community Api for submitting game strings to devs."}
               onmouseleave={() => hintText = ""}
             >
-              <input type="checkbox" bind:checked={useCommunityApi} />
+              <input type="checkbox" bind:checked={useCommunityApi} onchange={() => { if (useCommunityApi) showCommunityApiInfo = true; }} />
               Community API
             </label>
             <input
@@ -944,6 +955,47 @@
         <button class="btn-primary" onclick={runUpdater} disabled={updaterRunning}>
           {updaterRunning ? "Updating…" : "OK"}
         </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Missing API key warning -->
+{#if missingKeys.length > 0}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="confirm-overlay" role="presentation" onclick={() => missingKeys = []}>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div class="confirm-box db-help-box" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
+      <p class="db-help-title">Missing API key{missingKeys.length > 1 ? "s" : ""}</p>
+      <p class="db-help-body">The following {missingKeys.length > 1 ? "services are" : "service is"} enabled but missing an API key:</p>
+      <ul class="db-help-steps">
+        {#each missingKeys as name}
+          <li><strong>{name}</strong></li>
+        {/each}
+      </ul>
+      <p class="db-help-body">Please enter a key or uncheck the {missingKeys.length > 1 ? "boxes" : "box"} before running.</p>
+      <div class="confirm-actions">
+        <button onclick={() => missingKeys = []}>OK</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Community API info dialog -->
+{#if showCommunityApiInfo}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="confirm-overlay" role="presentation" onclick={() => showCommunityApiInfo = false}>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div class="confirm-box db-help-box" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
+      <p class="db-help-title">Community API</p>
+      <p class="db-help-body">The Community API submits your translation strings to a shared remote database. These strings are pooled across all contributors and help improve translations for the entire project.</p>
+      <p class="db-help-body">To participate, you must meet the following requirement:</p>
+      <ul class="db-help-steps">
+        <li>Both your <strong>player name</strong> and <strong>sibling name</strong> must be unique — not a common Japanese word, name, or in-game name.</li>
+      </ul>
+      <p class="db-help-body">If you meet this requirement and want to contribute, reach out to <strong>mebo</strong> on Discord. They'll verify your names and provide you with an API key to paste here.</p>
+      <div class="confirm-actions">
+        <button onclick={() => showCommunityApiInfo = false}>OK</button>
       </div>
     </div>
   </div>
