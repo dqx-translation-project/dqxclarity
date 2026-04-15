@@ -7,11 +7,8 @@ import sys
 import time
 import urllib3
 import winreg
-from common.config import UserConfig
 from common.constants import (
     GITHUB_CLARITY_CUTSCENE_JSON_URL,
-    GITHUB_CLARITY_DAT1_URL,
-    GITHUB_CLARITY_IDX_URL,
     GITHUB_CLARITY_ITEMS_JSON_URL,
     GITHUB_CLARITY_KEY_ITEMS_JSON_URL,
     GITHUB_CLARITY_MONSTERS_JSON_URL,
@@ -22,12 +19,10 @@ from common.constants import (
 )
 from common.db_ops import db_query
 from common.lib import get_project_root
-from common.process import check_if_running_as_admin, is_dqx_process_running
 from io import BytesIO
 from loguru import logger as log
 from openpyxl import load_workbook
 from subprocess import Popen
-from tkinter.filedialog import askdirectory
 from zipfile import ZipFile
 
 
@@ -310,74 +305,6 @@ def read_glossary_and_import(data: str) -> None:
     insert_values = ",".join(query_list)
     insert_query = f"INSERT OR REPLACE INTO glossary (ja, en) VALUES {insert_values};"
     db_query(insert_query)
-
-
-def download_dat_files() -> None:
-    """Downloads and applies the dat translation mod to the user's DQX
-    directory."""
-    if is_dqx_process_running():
-        log.warning(
-            "Please close DQX before attempting to update the translated DAT/IDX file. Waiting for you to close DQX..."
-        )
-        while True:
-            if is_dqx_process_running():
-                time.sleep(1)
-            else:
-                break
-
-    if not check_if_running_as_admin():
-        log.error(
-            "dqxclarity must be running as an administrator in order to apply the dat translation mod. "
-            "Please re-launch dqxclarity as an administrator and try again."
-        )
-        time.sleep(5)
-        sys.exit(1)
-
-    config = UserConfig()
-    dqx_data_file = "/".join([config.game_directory, "Game/Content/Data", "data00000000.win32.dat0"])
-
-    if not os.path.isfile(dqx_data_file):
-        log.warning(
-            "Could not verify DRAGON QUEST X directory. "
-            'Browse to the path where you installed the game and select the "DRAGON QUEST X" folder. '
-            "Make sure you didn't move the data00000000.dat0 file outside of the game directory or rename it. "
-            "If the file is missing, make sure you patch the game first before running dqxclarity."
-        )
-        time.sleep(1)
-
-        while True:
-            dqx_path = askdirectory(title='Browse to the "DRAGON QUEST X" directory...')
-
-            if not dqx_path:
-                log.error("You did not select a directory or closed the window. Program will exit.")
-                time.sleep(3)
-                sys.exit(1)
-
-            dqx_data_file = "/".join([dqx_path, "Game/Content/Data", "data00000000.win32.dat0"])
-
-            if os.path.isfile(dqx_data_file):
-                config.update(section="config", key="installdirectory", value=dqx_path)
-                log.success("DRAGON QUEST X path verified.")
-                break
-            else:
-                log.warning(
-                    "The path you provided is not a valid path. "
-                    'Browse to the path where you installed the game and select the "DRAGON QUEST X" folder.'
-                )
-
-    dqx_data_path = os.path.dirname(dqx_data_file)
-
-    log.info("Downloading DAT1 and IDX files.")
-    dat_request = download_file(GITHUB_CLARITY_DAT1_URL)
-    idx_request = download_file(GITHUB_CLARITY_IDX_URL)
-
-    with open(dqx_data_path + "/data00000000.win32.dat1", "w+b") as f:
-        f.write(dat_request.content)
-
-    with open(dqx_data_path + "/data00000000.win32.idx", "w+b") as f:
-        f.write(idx_request.content)
-
-    log.success("Game dat translation mod applied.")
 
 
 def download_file(url: str) -> requests.models.Response:

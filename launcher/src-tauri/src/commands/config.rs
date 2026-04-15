@@ -119,7 +119,6 @@ pub fn load_config() -> Result<Value, String> {
     let l = sections.get("launcher").unwrap_or(&empty);
     let launcher = json!({
         "nameplates":          to_bool(l.get("nameplates").map(|s| s.as_str())),
-        "update_game_files":   to_bool(l.get("updategamefiles").map(|s| s.as_str())),
         "disable_updates":     to_bool(l.get("disableupdates").map(|s| s.as_str())),
         "debug_logging":       to_bool(l.get("debuglogging").map(|s| s.as_str())),
         "community_logging":   to_bool(l.get("communitylogging").map(|s| s.as_str())),
@@ -220,7 +219,6 @@ pub fn save_config(launcher: Value, translation: Value) -> Result<(), String> {
     let launcher_keys: &[(&str, &str)] = &[
         ("communitylogging",   "community_logging"),
         ("nameplates",         "nameplates"),
-        ("updategamefiles",    "update_game_files"),
         ("disableupdates",     "disable_updates"),
         ("debuglogging",       "debug_logging"),
         ("simultaneouslaunch", "simultaneous_launch"),

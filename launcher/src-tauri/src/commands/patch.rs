@@ -4,6 +4,37 @@ use std::fs;
 use std::path::Path;
 use tauri::Emitter;
 
+/// Returns true if DQXGame.exe is currently running.
+fn is_dqx_running() -> bool {
+    let mut cmd = std::process::Command::new("tasklist");
+    cmd.args(["/FI", "IMAGENAME eq DQXGame.exe", "/NH", "/FO", "CSV"]);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    match cmd.output() {
+        Ok(out) => {
+            let target = b"DQXGame.exe";
+            out.stdout.windows(target.len()).any(|w| w.eq_ignore_ascii_case(target))
+        }
+        Err(_) => false,
+    }
+}
+
+/// Returns true if the process is running with administrator privileges.
+#[cfg(windows)]
+fn is_admin() -> bool {
+    #[link(name = "Shell32")]
+    extern "system" {
+        fn IsUserAnAdmin() -> i32;
+    }
+    unsafe { IsUserAnAdmin() != 0 }
+}
+
+#[cfg(not(windows))]
+fn is_admin() -> bool { true }
+
 fn http_client() -> Result<Client, String> {
     Client::builder()
         .user_agent("dqxclarity-launcher")
@@ -119,4 +150,45 @@ pub async fn restore_config(install_dir: String, app: tauri::AppHandle) -> Resul
         &app,
     ).await?;
     write_exe(&Path::new(&install_dir).join("Game").join("DQXConfig.exe"), &bytes)
+}
+
+/// Download the latest dat1 and idx translation mod files and write them to
+/// the game's Content/Data directory. Requires admin privileges and DQX to
+/// not be running.
+#[tauri::command]
+pub async fn patch_game_files(install_dir: String, app: tauri::AppHandle) -> Result<(), String> {
+    if !is_admin() {
+        return Err(
+            "dqxclarity must be running as an administrator to apply game files. \
+             Please re-launch as an administrator and try again."
+                .into(),
+        );
+    }
+    if is_dqx_running() {
+        return Err("Please close DQX before patching game files.".into());
+    }
+
+    let data_dir = Path::new(&install_dir)
+        .join("Game")
+        .join("Content")
+        .join("Data");
+    let client = http_client()?;
+
+    let dat1 = fetch_with_progress(
+        &client,
+        "https://github.com/dqx-translation-project/dqxclarity/releases/latest/download/data00000000.win32.dat1",
+        &app,
+    ).await?;
+    fs::write(data_dir.join("data00000000.win32.dat1"), &dat1)
+        .map_err(|e| format!("Failed to write dat1: {e}"))?;
+
+    let idx = fetch_with_progress(
+        &client,
+        "https://github.com/dqx-translation-project/dqxclarity/releases/latest/download/data00000000.win32.idx",
+        &app,
+    ).await?;
+    fs::write(data_dir.join("data00000000.win32.idx"), &idx)
+        .map_err(|e| format!("Failed to write idx: {e}"))?;
+
+    Ok(())
 }

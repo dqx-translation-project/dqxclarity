@@ -5,7 +5,7 @@ from common.config import UserConfig
 from common.db_ops import create_db_schema, delete_translation_cache
 from common.lib import get_project_root, is_wine_environment, setup_logging
 from common.process import is_dqx_process_running, start_process, wait_for_dqx_to_launch
-from common.update import check_for_updates, download_custom_files, download_dat_files, import_name_overrides
+from common.update import check_for_updates, download_custom_files, import_name_overrides
 from hooking.activate import activate_hooks, cleanup_hooks
 from pathlib import Path
 from scans.manager import run_scans
@@ -34,12 +34,6 @@ def parse_arguments():
         "--community-logging",
         action="store_true",
         help="Enables dumping important game information that the dqxclarity devs need to continue this project.",
-    )
-    parser.add_argument(
-        "-d",
-        "--update-dat",
-        action="store_true",
-        help="Update the translated idx and dat file with the latest from Github. Requires the game to be closed.",
     )
     parser.add_argument(
         "-f",
@@ -84,9 +78,6 @@ def main():
     log.debug("Checking user_settings.ini.")
     UserConfig()
 
-    if args.update_dat:
-        log.info("Updating DAT mod.")
-        download_dat_files()
     if args.test_release:
         check_for_updates(update=True, test_release=args.test_release)
     elif not args.disable_update_check:

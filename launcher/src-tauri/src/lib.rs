@@ -43,6 +43,7 @@ pub fn run() {
             commands::patch::patch_config,
             commands::patch::restore_launcher,
             commands::patch::restore_config,
+            commands::patch::patch_game_files,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

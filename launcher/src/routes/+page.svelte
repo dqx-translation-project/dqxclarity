@@ -19,8 +19,8 @@
 
   const WIN_SIZES = {
     setup:    { w: 500, h: 360 },
-    settings: { w: 680, h: 480 },
-    log:      { w: 680, h: 550 },
+    settings: { w: 680, h: 580 },
+    log:      { w: 680, h: 580 },
   };
 
   async function setWindowSize(v) {
@@ -80,7 +80,7 @@
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="overlay" role="presentation" onclick={() => showSupport = false}>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="popup" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
+    <div class="popup" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
       <p class="popup-title">Support</p>
       <div class="field-row">
         <label for="discord-link">Discord:</label>

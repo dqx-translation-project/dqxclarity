@@ -10,7 +10,6 @@
 
   // --- Launcher settings (Tauri owns these) ---
   let nameplates       = $state(untrack(() => config?.launcher?.nameplates       ?? false));
-  let updateGameFiles  = $state(untrack(() => config?.launcher?.update_game_files ?? false));
   let disableUpdates   = $state(untrack(() => config?.launcher?.disable_updates   ?? false));
   let debugLogging     = $state(untrack(() => config?.launcher?.debug_logging     ?? false));
   let communityLogging = $state(untrack(() => config?.launcher?.community_logging ?? false));
@@ -350,7 +349,6 @@
     await invoke("save_config", {
       launcher: {
         nameplates,
-        update_game_files: updateGameFiles,
         disable_updates: disableUpdates,
         debug_logging: debugLogging,
         community_logging: communityLogging,
@@ -370,7 +368,6 @@
 
     const args = [];
     if (nameplates)       args.push("--nameplates");
-    if (updateGameFiles)  args.push("--update-dat");
     if (disableUpdates)   args.push("--disable-update-check");
     if (debugLogging)     args.push("--debug");
     if (communityLogging) args.push("--community-logging");
@@ -455,6 +452,7 @@
   function restoreLauncher() { runPatch("restore_launcher"); }
   function patchConfig()     { runPatch("patch_config");     }
   function restoreConfig()   { runPatch("restore_config");   }
+  function patchGameFiles()  { runPatch("patch_game_files"); }
 
   function openGitHub() {
     openUrl("https://github.com/dqx-translation-project/dqxclarity");
@@ -501,10 +499,6 @@
             onmouseenter={() => hintText = "Transliterates Japanese nameplates to English."}
             onmouseleave={() => hintText = ""}
           ><input type="checkbox" bind:checked={nameplates} />Nameplates</label>
-          <label
-            onmouseenter={() => hintText = "Downloads/updates the modded DAT/IDX files."}
-            onmouseleave={() => hintText = ""}
-          ><input type="checkbox" bind:checked={updateGameFiles} />Update Game Files</label>
           <label
             onmouseenter={() => hintText = "Don't check for dqxclarity updates on launch."}
             onmouseleave={() => hintText = ""}
@@ -870,6 +864,13 @@
                 onmouseenter={() => hintText = "Restore the original Japanese Config executable."}
                 onmouseleave={() => hintText = ""}
               >Restore Config</button>
+              <button
+                class="db-btn patch-game-btn"
+                onclick={patchGameFiles}
+                disabled={patching || !dqxDirValid}
+                onmouseenter={() => hintText = "Download and apply the latest DAT/IDX translation mod. Requires admin. DQX must be closed."}
+                onmouseleave={() => hintText = ""}
+              >Patch Game Files</button>
             </div>
             {#if patching}
               <div class="patch-bar-track">
@@ -914,7 +915,7 @@
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="confirm-overlay" role="presentation" onclick={() => dbDeleteConfirm = false}>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="confirm-box" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
+    <div class="confirm-box" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
       <p>Are you sure you want to delete {dbSelectedCount} row{dbSelectedCount !== 1 ? "s" : ""}?</p>
       <div class="confirm-actions">
         <button onclick={() => dbDeleteConfirm = false}>No</button>
@@ -1420,6 +1421,10 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0.4rem;
+  }
+
+  .patch-game-btn {
+    grid-column: 1 / -1;
   }
 
   .patch-bar-track {
