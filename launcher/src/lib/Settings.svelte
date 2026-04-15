@@ -45,6 +45,7 @@
   let hintText = $state("");
   let showUpdateModal = $state(false);
   let updaterRunning = $state(false);
+  let showDbHelp = $state(false);
 
   // --- Name overrides state ---
   const OVERRIDES_EXAMPLE =
@@ -681,6 +682,7 @@
           <button class="db-btn" onclick={readDatabase} disabled={dbLoading}>
             {dbLoading ? "Loading…" : "Read Database"}
           </button>
+          <button class="db-btn" onclick={() => showDbHelp = true}>Help</button>
 
           {#if dbTables.length > 0}
             <select
@@ -945,6 +947,29 @@
         <button class="btn-primary" onclick={runUpdater} disabled={updaterRunning}>
           {updaterRunning ? "Updating…" : "OK"}
         </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Database help dialog -->
+{#if showDbHelp}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="confirm-overlay" role="presentation" onclick={() => showDbHelp = false}>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div class="confirm-box db-help-box" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
+      <p class="db-help-title">About the Database tab</p>
+      <p class="db-help-body">dqxclarity caches every translation it produces into a local database so it doesn't have to re-translate the same text repeatedly.</p>
+      <p class="db-help-body">If you encounter a bad translation or a string that breaks game functionality, you can remove it here instead of wiping your entire cache:</p>
+      <ol class="db-help-steps">
+        <li>Click <strong>Read Database</strong> and select a table from the dropdown.</li>
+        <li>Use the filter box to search for the offending text.</li>
+        <li>Check the box next to each row you want to remove.</li>
+        <li>Click <strong>Delete Selected</strong> — the rows are removed and the database is saved immediately.</li>
+      </ol>
+      <p class="db-help-body">This lets you fix specific problem strings without losing the rest of your translation cache.</p>
+      <div class="confirm-actions">
+        <button onclick={() => showDbHelp = false}>OK</button>
       </div>
     </div>
   </div>
@@ -1725,5 +1750,36 @@
     background: var(--danger);
     color: #fff;
     border-color: var(--danger);
+  }
+
+  .db-help-box {
+    max-width: 420px;
+    gap: 0.75rem;
+  }
+
+  .db-help-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0;
+  }
+
+  .db-help-body {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .db-help-steps {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin: 0;
+    padding-left: 1.4rem;
+    line-height: 1.8;
+  }
+
+  .db-help-steps strong {
+    color: var(--text);
   }
 </style>

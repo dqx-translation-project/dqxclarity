@@ -103,9 +103,9 @@
 
 <style>
   :global(:root) {
-    --bg:       #1a1a1f;
-    --surface:  #1e1e24;
-    --surface2: #26262e;
+    --bg:       #22222a;
+    --surface:  #27272f;
+    --surface2: #2e2e38;
     --border:   #35353f;
     --text:     #e2e2e8;
     --muted:    #7a7a8c;
