@@ -5,7 +5,7 @@ from common.config import UserConfig
 from common.db_ops import create_db_schema, delete_translation_cache
 from common.lib import get_project_root, is_wine_environment, setup_logging
 from common.process import is_dqx_process_running, start_process, wait_for_dqx_to_launch
-from common.update import check_for_updates, download_custom_files, import_name_overrides
+from common.update import download_custom_files, import_name_overrides
 from hooking.activate import activate_hooks, cleanup_hooks
 from pathlib import Path
 from scans.manager import run_scans
@@ -14,9 +14,6 @@ from scans.manager import run_scans
 def parse_arguments():
     parser = argparse.ArgumentParser(description="dqxclarity: A Japanese to English translation tool for Dragon Quest X.")
 
-    parser.add_argument(
-        "-u", "--disable-update-check", action="store_true", help="Disables checking for updates on each launch."
-    )
     parser.add_argument(
         "-c",
         "--communication-window",
@@ -42,12 +39,6 @@ def parse_arguments():
         help="Purges all rows from the sqlite dialog table, which is used for caching translations.",
     )
     parser.add_argument("-v", "--debug", action="store_true", help="Enable debug level logging.")
-    parser.add_argument(
-        "-t",
-        "--test-release",
-        metavar="TAG",
-        help="Force-install a specific release version for testing (e.g. v1.2.3). Bypasses the version check.",
-    )
 
     return parser.parse_args()
 
@@ -78,12 +69,8 @@ def main():
     log.debug("Checking user_settings.ini.")
     UserConfig()
 
-    if args.test_release:
-        check_for_updates(update=True, test_release=args.test_release)
-    elif not args.disable_update_check:
-        log.info("Updating custom text in db.")
-        check_for_updates(update=True)
-        download_custom_files()
+    log.info("Updating custom text in db.")
+    download_custom_files()
 
     import_name_overrides()
 

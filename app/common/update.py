@@ -6,7 +6,6 @@ import requests
 import sys
 import time
 import urllib3
-import winreg
 from common.constants import (
     GITHUB_CLARITY_CUTSCENE_JSON_URL,
     GITHUB_CLARITY_ITEMS_JSON_URL,
@@ -14,7 +13,6 @@ from common.constants import (
     GITHUB_CLARITY_MONSTERS_JSON_URL,
     GITHUB_CLARITY_NPC_JSON_URL,
     GITHUB_CLARITY_QUESTS_REQUESTS_JSON_URL,
-    GITHUB_CLARITY_VERSION_UPDATE_URL,
     GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL,
 )
 from common.db_ops import db_query
@@ -22,7 +20,6 @@ from common.lib import get_project_root
 from io import BytesIO
 from loguru import logger as log
 from openpyxl import load_workbook
-from subprocess import Popen
 from zipfile import ZipFile
 
 
@@ -113,81 +110,6 @@ def read_custom_json_and_import(name: str, data: str) -> None:
     insert_values = ",".join(query_list)
     query = f"INSERT INTO m00_strings (ja, en, file) VALUES {insert_values};"
     db_query(query)
-
-
-def _get_system_python() -> str:
-    """Return the system Python executable path from the registry.
-
-    updater.py deletes the venv as part of the update process. launching it
-    with sys.executable (the venv Python) causes Windows to lock the
-    executable, making shutil.rmtree silently fail to remove it. using the
-    system Python avoids this — updater.py only uses stdlib so it runs fine
-    without the venv.
-    """
-    key = r"SOFTWARE\WOW6432Node\Python\PythonCore\3.11-32\InstallPath"
-    with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key) as k:
-        return winreg.QueryValueEx(k, "ExecutablePath")[0]
-
-
-def check_for_updates(update: bool, test_release: str = None) -> None:
-    """Checks to see if Clarity is running the latest version of itself. If
-    not, will launch updater.py and exit.
-
-    :param update: Whether or not to update after checking for updates.
-    :param test_release: If set, skip version comparison and force-install this
-        specific release tag (e.g. 'v1.2.3'). For pre-release testing only.
-    """
-    if not os.path.exists("version.update"):
-        log.warning("Couldn't determine current version of dqxclarity. Running as is.")
-        return
-
-    with open("version.update") as file:
-        cur_ver = file.read().strip()
-
-    if test_release is not None:
-        tag_arg = test_release if test_release.startswith("v") else f"v{test_release}"
-        log.warning(f"Test mode: force-installing release {tag_arg}.")
-        release_url = f"https://api.github.com/repos/dqx-translation-project/dqxclarity/releases/tags/{tag_arg}"
-    else:
-        log.info("Checking dqxclarity repo for updates...")
-        release_url = GITHUB_CLARITY_VERSION_UPDATE_URL
-
-    github_request = download_file(release_url)
-
-    try:
-        release = github_request.json()
-        tag = release["tag_name"]
-        new_ver = tag[1:]
-
-        if test_release is None:
-            if new_ver == cur_ver:
-                log.success(f"Up to date. Version: {cur_ver}")
-                return
-            log.warning(f"Out of date! {cur_ver} -> {new_ver}")
-
-        if not update:
-            return
-
-        # Download the latest updater.py from the new release tag before running it,
-        # so changes to the updater itself are always picked up regardless of what
-        # version the user is upgrading from.
-        log.info("Grabbing latest updater.")
-        updater_url = f"https://raw.githubusercontent.com/dqx-translation-project/dqxclarity/refs/tags/{tag}/app/updater.py"
-        response = download_file(updater_url)
-        with open("updater.py", "w+b") as f:
-            f.write(response.content)
-
-        cmd = [_get_system_python(), "./updater.py"]
-        if test_release is not None:
-            cmd += ["--release", tag]
-
-        log.info("Launching updater.")
-        Popen(cmd)
-        sys.exit()
-
-    except Exception as e:
-        log.warning(f"There was a problem trying to update. Clarity will continue without updating.\n{e}")
-        return
 
 
 def read_xlsx_and_import(data: str) -> None:
@@ -342,10 +264,7 @@ def download_file(url: str) -> requests.models.Response:
                 log.error(f"Error: {e}")
                 log.error(f"(Retry: {retries}/{max_retries}) Max retries reached. Unable to download file {filename}.")
                 log.info(
-                    "\nIf connectivity issues persist, you can temporarily disable updates and try again later:\n"
-                    '1) Check the "Disable Updates" checkbox in the launcher (or remove the -d flag)\n'
-                    '2) Uncheck the "Update Game Files" checkbox in the launcher (or add the -u flag)\n\n'
-                    "This is not a dqxclarity issue and should not be reported as such. You can check:\n"
+                    "\nIf connectivity issues persist, try again later. This is not a dqxclarity issue and should not be reported as such. You can check:\n"
                     "1) GitHub status page (https://www.githubstatus.com/)\n"
                     "2) Check your DNS settings (especially if the error says it failed to resolve)\n"
                     "3) Check that your VPN isn't blocking GitHub requests or is responding too slowly\n"
