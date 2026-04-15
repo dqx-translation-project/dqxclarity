@@ -10,8 +10,10 @@
   let unlisten1, unlisten2;
 
   onMount(async () => {
+    const MAX_LINES = 1000;
     unlisten1 = await listen("log-line", (event) => {
-      lines = [...lines, event.payload];
+      const next = [...lines, event.payload];
+      lines = next.length > MAX_LINES ? next.slice(next.length - MAX_LINES) : next;
       tick().then(() => {
         if (logEl) logEl.scrollTop = logEl.scrollHeight;
       });
