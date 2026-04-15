@@ -143,7 +143,7 @@ pub async fn launch_clarity(
     // Wait for process to exit and emit a final event (unless stop_clarity already did)
     let app_clone = app.clone();
     tokio::spawn(async move {
-        let _ = child.wait().await;
+        let exit_status = child.wait().await;
         let process_state = app_clone.state::<ProcessState>();
         *process_state.child_id.lock().unwrap() = None;
         let was_user_stopped = {
@@ -153,6 +153,7 @@ pub async fn launch_clarity(
             val
         };
         if !was_user_stopped {
+            let is_error = exit_status.map(|s| !s.success()).unwrap_or(true);
             let _ = app_clone.emit(
                 "log-line",
                 LogLine {
@@ -160,7 +161,7 @@ pub async fn launch_clarity(
                     line: "--- process exited ---".into(),
                 },
             );
-            let _ = app_clone.emit("process-exited", ());
+            let _ = app_clone.emit("process-exited", serde_json::json!({ "error": is_error }));
         }
     });
 
