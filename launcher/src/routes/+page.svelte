@@ -3,7 +3,7 @@
   import { applyTheme } from "$lib/themes.js";
   import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
   import { LogicalSize } from "@tauri-apps/api/window";
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import Setup from "$lib/Setup.svelte";
   import Settings from "$lib/Settings.svelte";
@@ -13,6 +13,7 @@
   let config = $state(null);
   let version = $state("???");
   let updateInfo = $state(null);
+  let autoRun = $state(false);
   let showSupport = $state(false);
   let copied = $state(false);
 
@@ -45,10 +46,39 @@
     applyTheme(config?.launcher?.theme ?? "rosie");
     await setWindowSize("setup");
     updateInfo = await invoke("check_for_updates").catch(() => null);
+    autoRun = await invoke("has_autorun_flag").catch(() => false);
   });
 
+  function buildArgs(cfg) {
+    const args = [];
+    if (cfg?.launcher?.nameplates)        args.push("--nameplates");
+    if (cfg?.launcher?.debug_logging)     args.push("--debug");
+    if (cfg?.launcher?.community_logging) args.push("--community-logging");
+    const t = cfg?.translation ?? {};
+    if (t.enabledeepltranslate || t.enablegoogletranslate || t.enablegoogletranslatefree) {
+      args.push("--communication-window");
+    }
+    return args;
+  }
+
   async function onSetupDone() {
-    await switchTo("settings");
+    if (autoRun) {
+      if (config?.launcher?.simultaneous_launch && config?.config?.installdirectory) {
+        invoke("launch_dqx", { installDir: config.config.installdirectory }).catch(() => {});
+      }
+      await switchTo("log");
+      // Fire and forget — launch_clarity returns immediately and streams via events.
+      // Don't await it so minimize() isn't blocked behind a Tauri round-trip.
+      invoke("launch_clarity", { args: buildArgs(config) }).catch((e) => {
+        console.error("launch failed", e);
+      });
+      // Minimize via Rust — more reliable than JS window.minimize() on Windows
+      // since it runs on the main thread after all pending window operations settle.
+      await tick();
+      await invoke("minimize_window").catch(() => {});
+    } else {
+      await switchTo("settings");
+    }
   }
 
   async function onRun(args) {

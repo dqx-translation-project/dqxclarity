@@ -69,6 +69,21 @@ pub fn save_name_overrides(content: String) -> Result<(), String> {
     std::fs::write(path, content).map_err(|e| e.to_string())
 }
 
+/// Returns true if the executable was launched with the /r flag.
+#[tauri::command]
+pub fn has_autorun_flag() -> bool {
+    std::env::args().any(|a| a == "/r")
+}
+
+/// Minimize the main window from the Rust side (more reliable than JS minimize on Windows).
+#[tauri::command]
+pub fn minimize_window(app: tauri::AppHandle) -> Result<(), String> {
+    app.get_webview_window("main")
+        .ok_or_else(|| "window not found".to_string())?
+        .minimize()
+        .map_err(|e| e.to_string())
+}
+
 /// Read the version string from version.update in the app directory.
 /// Returns "???" if the file cannot be found, read, or parsed.
 #[tauri::command]
