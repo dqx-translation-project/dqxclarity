@@ -4,7 +4,6 @@ import ctypes
 import ctypes.wintypes
 import json
 import os
-import re
 import shutil
 import ssl
 import sys
@@ -107,22 +106,6 @@ def download_zip(url: str) -> ZipFile:
     return ZipFile(BytesIO(data.read()))
 
 
-def strip_markdown(text: str) -> str:
-    # Remove heading markers, keep text
-    text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
-    # Remove bold/italic markers
-    text = re.sub(r"\*{1,3}(.+?)\*{1,3}", r"\1", text)
-    # Remove inline code markers
-    text = re.sub(r"`(.+?)`", r"\1", text)
-    # Remove links, keep display text
-    text = re.sub(r"\[(.+?)\]\(.+?\)", r"\1", text)
-    # Remove horizontal rules
-    text = re.sub(r"^[-*]{3,}\s*$", "", text, flags=re.MULTILINE)
-    # Collapse excessive blank lines
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    return text.strip()
-
-
 def main():
     parser = argparse.ArgumentParser(description="dqxclarity updater")
     parser.add_argument(
@@ -160,7 +143,6 @@ def main():
         new_ver = tag[1:]
         zip_url = f"https://github.com/dqx-translation-project/dqxclarity/releases/download/{tag}/dqxclarity.zip"
         z_data = download_zip(zip_url)
-        release_notes = strip_markdown(release.get("body", "") or "")
     except Exception as e:
         input(
             "Failed to download the latest update. Your existing install is unchanged.\n"
@@ -243,16 +225,6 @@ def main():
         version_str = f"(v{new_ver})"
     else:
         version_str = ""
-
-    print()
-    if release_notes and new_ver:
-        header = f"=== What's new in v{new_ver} ==="
-        print(header)
-        print()
-        print(release_notes)
-        print()
-        print("=" * len(header))
-        print()
 
     input(f"Update complete! {version_str} Please re-launch dqxclarity.\nPress ENTER to close this window.")
 
