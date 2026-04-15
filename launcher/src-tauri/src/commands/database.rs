@@ -102,6 +102,18 @@ pub fn read_db_table(table: String) -> Result<DbTableData, String> {
     Ok(DbTableData { columns, rows })
 }
 
+/// Delete all rows from the dialog table (translation cache purge).
+#[tauri::command]
+pub fn purge_dialog_cache() -> Result<(), String> {
+    let path = db_path()?;
+    if !path.exists() {
+        return Err("misc_files/clarity_dialog.db not found".into());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM dialog", []).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// Delete rows by rowid from the given table and persist to disk.
 #[tauri::command]
 pub fn delete_db_rows(table: String, rowids: Vec<i64>) -> Result<(), String> {

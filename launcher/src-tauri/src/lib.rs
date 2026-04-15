@@ -29,6 +29,7 @@ pub fn run() {
             commands::database::read_db_tables,
             commands::database::read_db_table,
             commands::database::delete_db_rows,
+            commands::database::purge_dialog_cache,
             commands::process::get_version,
             commands::process::read_name_overrides,
             commands::process::save_name_overrides,

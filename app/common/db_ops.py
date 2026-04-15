@@ -43,21 +43,6 @@ def db_query(query: str):
         conn.close()
 
 
-def delete_translation_cache():
-    """Deletes all rows from the dialog table. This exists in case an API service wrote a bad
-    string to the user's database and they want to self-service to fix."""
-    try:
-        conn, cursor = init_db()
-        delete_query = "DELETE FROM dialog;"
-        cursor.execute(delete_query)
-        conn.commit()
-    except sqlite3.Error as e:
-        log.exception(e)
-    finally:
-        if conn:
-            conn.close()
-
-
 def generate_m00_dict(files: str = "") -> dict:
     """Queries the m00_strings table. Returns a dictionary of all results.
 

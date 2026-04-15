@@ -13,7 +13,6 @@
   let nameplates       = $state(untrack(() => config?.launcher?.nameplates       ?? false));
   let debugLogging     = $state(untrack(() => config?.launcher?.debug_logging     ?? false));
   let communityLogging = $state(untrack(() => config?.launcher?.community_logging ?? false));
-  let purgeCache       = $state(false); // session-only, never persisted
 
   // --- Translation settings (Python owns these, we just display/edit) ---
   let useDeepL          = $state(untrack(() => config?.translation?.enabledeepltranslate    ?? false));
@@ -80,7 +79,8 @@
   let dbRowCount      = $state(0);
   let dbFilterRaw     = $state("");  // bound to input
   let dbFilter        = $state("");  // debounced
-  let dbDeleteConfirm = $state(false);
+  let dbDeleteConfirm  = $state(false);
+  let dbPurgeConfirm   = $state(false);
   let dbScrollTop     = $state(0);
   let dbContainerH    = $state(300);
   let dbContainerEl   = $state(null);
@@ -321,15 +321,6 @@
     }
   }
 
-  function purgeCacheChanged() {
-    if (purgeCache) {
-      const ok = confirm(
-        "Purge Database Cache will delete all cached translations from your local database.\n\n" +
-        "This cannot be undone. Continue?"
-      );
-      if (!ok) purgeCache = false;
-    }
-  }
 
   async function validateKey() {
     validating = true;
@@ -372,7 +363,6 @@
     if (nameplates)       args.push("--nameplates");
     if (debugLogging)     args.push("--debug");
     if (communityLogging) args.push("--community-logging");
-    if (purgeCache)       args.push("--purge-cache");
     if (useDeepL || useGoogle || useGoogleFree) args.push("--communication-window");
 
     if (simultaneousLaunch && dqxDir) {
@@ -454,6 +444,18 @@
   function patchConfig()     { runPatch("patch_config");     }
   function restoreConfig()   { runPatch("restore_config");   }
   function patchGameFiles()  { runPatch("patch_game_files"); }
+
+  async function purgeDialogCache() {
+    await invoke("purge_dialog_cache");
+    dbPurgeConfirm = false;
+    // Clear displayed data if the dialog table was loaded
+    if (dbSelectedTable === "dialog") {
+      dbColumns = [];
+      dbRows = [];
+      dbRowCount = 0;
+      dbSelectedTable = "";
+    }
+  }
 
   function openGitHub() {
     openUrl("https://github.com/dqx-translation-project/dqxclarity");
@@ -594,13 +596,6 @@
             <input type="checkbox" bind:checked={communityLogging} onchange={communityLoggingChanged} />
             Community Logging
           </label>
-          <label
-            onmouseenter={() => hintText = "Deletes all cached translations from your local database."}
-            onmouseleave={() => hintText = ""}
-          >
-            <input type="checkbox" bind:checked={purgeCache} onchange={purgeCacheChanged} />
-            Purge Database Cache
-          </label>
         </fieldset>
 
         <fieldset>
@@ -679,23 +674,25 @@
 
         <!-- Toolbar row 1: load controls -->
         <div class="db-toolbar">
-          <button class="db-btn" onclick={readDatabase} disabled={dbLoading}>
-            {dbLoading ? "Loading…" : "Read Database"}
-          </button>
-          <button class="db-btn" onclick={() => showDbHelp = true}>Help</button>
-
-          {#if dbTables.length > 0}
-            <select
-              class="db-select"
-              value={dbSelectedTable}
-              onchange={(e) => loadDbTable(e.currentTarget.value)}
-            >
-              <option value="" disabled>Select table…</option>
-              {#each dbTables as t}
-                <option value={t}>{t}</option>
-              {/each}
-            </select>
-          {/if}
+          <div class="db-toolbar-left">
+            <button class="db-btn" onclick={readDatabase} disabled={dbLoading}>
+              {dbLoading ? "Loading…" : "Read Database"}
+            </button>
+            <button class="db-btn" onclick={() => showDbHelp = true}>Help</button>
+            {#if dbTables.length > 0}
+              <select
+                class="db-select"
+                value={dbSelectedTable}
+                onchange={(e) => loadDbTable(e.currentTarget.value)}
+              >
+                <option value="" disabled>Select table…</option>
+                {#each dbTables as t}
+                  <option value={t}>{t}</option>
+                {/each}
+              </select>
+            {/if}
+          </div>
+          <button class="db-btn db-btn--danger" onclick={() => dbPurgeConfirm = true} disabled={dbTables.length === 0}>Purge Database</button>
         </div>
 
         <!-- Toolbar row 2: filter + delete (always reserved so they're never pushed off-screen) -->
@@ -970,6 +967,22 @@
       <p class="db-help-body">This lets you fix specific problem strings without losing the rest of your translation cache.</p>
       <div class="confirm-actions">
         <button onclick={() => showDbHelp = false}>OK</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Purge dialog cache confirmation -->
+{#if dbPurgeConfirm}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="confirm-overlay" role="presentation" onclick={() => dbPurgeConfirm = false}>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div class="confirm-box" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
+      <p>This will permanently delete all cached translations from the <strong>dialog</strong> table. dqxclarity will re-translate text as it encounters it again.</p>
+      <p>This cannot be undone. Continue?</p>
+      <div class="confirm-actions">
+        <button onclick={() => dbPurgeConfirm = false}>Cancel</button>
+        <button class="db-btn--danger-solid" onclick={purgeDialogCache}>OK</button>
       </div>
     </div>
   </div>
@@ -1310,6 +1323,16 @@
     align-items: center;
     gap: 0.5rem;
     flex-shrink: 0;
+  }
+
+  .db-toolbar {
+    justify-content: space-between;
+  }
+
+  .db-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .db-btn {
