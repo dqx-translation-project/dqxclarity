@@ -75,7 +75,7 @@
 {:else if view === "settings" && config}
   <Settings {config} {updateInfo} onrun={onRun} />
 {:else if view === "log"}
-  <Log onstop={() => switchTo("settings")} />
+  <Log {version} onstop={() => switchTo("settings")} />
 {/if}
 
 {#if showSupport}
@@ -95,11 +95,13 @@
   </div>
 {/if}
 
+{#if view !== "log"}
 <div class="bottom-left">
   <button class="support-link" onclick={() => openUrl("https://dqx-translation-project.github.io/")}>Wiki</button>
   <button class="support-link" onclick={openSupport}>Support</button>
   <span class="version">v{version}</span>
 </div>
+{/if}
 
 <style>
   :global(:root) {

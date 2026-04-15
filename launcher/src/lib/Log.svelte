@@ -3,7 +3,7 @@
   import { listen } from "@tauri-apps/api/event";
   import { onMount, onDestroy, tick } from "svelte";
 
-  let { onstop } = $props();
+  let { onstop, version } = $props();
 
   let lines = $state([]);
   let logEl;
@@ -79,7 +79,7 @@
 
 <div class="log-view">
   <div class="toolbar">
-    <span class="title">dqxclarity — running</span>
+    <span class="title">dqxclarity — running (v{version})</span>
     <div class="actions">
       <button class="btn-danger" onclick={stop}>Stop</button>
     </div>
