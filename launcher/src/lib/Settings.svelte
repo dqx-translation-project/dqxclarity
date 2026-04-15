@@ -52,7 +52,8 @@
   const OVERRIDES_EXAMPLE =
 `{
   "player_names": {
-    "セラニー": "Serany"
+    "セラニー": "Serany",
+    "ショウブ": "Shobu"
   },
   "mytown_names": {
     "マイタウン": "My Town"
