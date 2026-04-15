@@ -103,6 +103,8 @@ pub async fn launch_clarity(
         .arg("-m")
         .arg("main")
         .args(&args)
+        // Force UTF-8 I/O regardless of the user's system locale
+        .env("PYTHONUTF8", "1")
         // Suppress cryptography warning expected on 32-bit Python
         .env("PYTHONWARNINGS", "ignore::UserWarning")
         .current_dir(&app_dir)
