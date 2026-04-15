@@ -19,6 +19,7 @@
   let pipLines = $state([]);
   let errorMessage = $state("");
   let done = $state(false);
+  let showUacModal = $state(false);
 
   let unlisten;
 
@@ -29,8 +30,15 @@
         if (message.trim()) pipLines = [...pipLines, message];
         return;
       }
+      if (step === "uac_prompt") {
+        showUacModal = true;
+        return;
+      }
       stepStatus[step] = status;
       stepMessage[step] = message;
+      if (step === "python_install" && (status === "done" || status === "error")) {
+        showUacModal = false;
+      }
     });
 
     try {
@@ -60,7 +68,6 @@
   function iconFor(status) {
     if (status === "done") return "✓";
     if (status === "error") return "✗";
-    if (status === "running") return "…";
     return "·";
   }
 </script>
@@ -79,7 +86,13 @@
       {@const status = stepStatus[step.id]}
       {#if status !== "pending" || STEPS.findIndex(s => s.id === step.id) === 0}
         <div class="step" class:done={status === "done"} class:error={status === "error"} class:running={status === "running"}>
-          <span class="icon">{iconFor(status)}</span>
+          <span class="icon">
+            {#if status === "running"}
+              <span class="spinner"></span>
+            {:else}
+              {iconFor(status)}
+            {/if}
+          </span>
           <span class="label">{step.label}</span>
           {#if stepMessage[step.id] && status !== "done"}
             <span class="msg">{stepMessage[step.id]}</span>
@@ -103,6 +116,18 @@
     </div>
   {/if}
 </div>
+
+{#if showUacModal}
+  <div class="uac-overlay">
+    <div class="uac-box">
+      <p class="uac-title">Administrator permission required</p>
+      <p class="uac-body">Windows is asking for permission to install Python. Click <strong>Yes</strong> on the prompt to continue, then click OK.</p>
+      <div class="uac-actions">
+        <button onclick={() => showUacModal = false}>OK</button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .setup {
@@ -165,6 +190,23 @@
     width: 1rem;
     text-align: center;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 0.75rem;
+    height: 0.75rem;
+    border: 1.5px solid var(--border);
+    border-top-color: var(--muted);
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 
   .label { flex: 1; }
@@ -219,4 +261,57 @@
     cursor: pointer;
     font-size: 0.85rem;
   }
+
+  .uac-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+
+  .uac-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.2rem 1.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    max-width: 340px;
+  }
+
+  .uac-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0;
+  }
+
+  .uac-body {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .uac-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .uac-actions button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 0.3rem 1rem;
+    font-size: 0.82rem;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .uac-actions button:hover { filter: brightness(1.1); }
 </style>

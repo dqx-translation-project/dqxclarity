@@ -113,31 +113,42 @@ async fn download_and_install_python(app: &tauri::AppHandle, dir: &PathBuf) -> R
 
     std::fs::write(&installer_path, &bytes).map_err(|e| e.to_string())?;
 
-    emit(
-        app,
-        "python_install",
-        "running",
-        "Installing Python 3.11.3 (32-bit). This may take a minute...",
-    );
+    emit(app, "python_install", "running", "Running installer silently, please wait...");
+    emit(app, "uac_prompt", "show", "");
 
     // Run installer silently for all users
+    let log_path = dir.join("python-install.log");
     let mut installer_cmd = tokio::process::Command::new(&installer_path);
     installer_cmd.args(["/quiet", "InstallAllUsers=1", "PrependPath=0", "Include_test=0"]);
+    installer_cmd.arg("/log");
+    installer_cmd.arg(&log_path);
     no_window(&mut installer_cmd);
     let status = installer_cmd
         .status()
         .await
         .map_err(|e| format!("Failed to run installer: {e}"))?;
 
-    // Clean up installer
+    // Clean up the installer exe regardless of outcome
     let _ = std::fs::remove_file(&installer_path);
 
     if !status.success() {
-        return Err(
+        return Err(format!(
             "Python installer exited with an error. If your antivirus blocked it, \
-             add an exclusion for this folder and try again."
-                .to_string(),
-        );
+             add an exclusion for this folder and try again. \
+             Installer log: {}",
+            log_path.display()
+        ));
+    }
+
+    // Install succeeded — remove all python-install* files
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if name.starts_with("python-install") {
+                let _ = std::fs::remove_file(entry.path());
+            }
+        }
     }
 
     Ok(())
@@ -302,7 +313,7 @@ pub async fn run_setup(app: tauri::AppHandle) -> Result<(), String> {
             p
         }
         None => {
-            emit(&app, "python_check", "running", "Python 3.11 (32-bit) not found. Downloading...");
+            emit(&app, "python_check", "done", "Python 3.11 (32-bit) not found — will install.");
             if let Err(e) = download_and_install_python(&app, &dir).await {
                 emit(&app, "python_install", "error", &e);
                 return Err(e);
@@ -312,7 +323,7 @@ pub async fn run_setup(app: tauri::AppHandle) -> Result<(), String> {
                 Some(p) => p,
                 None => {
                     let msg = "Python was installed but could not be located. Please restart the launcher.";
-                    emit(&app, "python_check", "error", msg);
+                    emit(&app, "python_install", "error", msg);
                     return Err(msg.to_string());
                 }
             }

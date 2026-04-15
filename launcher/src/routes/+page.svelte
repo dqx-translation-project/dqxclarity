@@ -12,6 +12,7 @@
   let view = $state("setup");  // "setup" | "settings" | "log"
   let config = $state(null);
   let version = $state("???");
+  let updateInfo = $state(null);
   let showSupport = $state(false);
   let copied = $state(false);
 
@@ -43,6 +44,7 @@
     version = await invoke("get_version").catch(() => "???");
     applyTheme(config?.launcher?.theme ?? "rosie");
     await setWindowSize("setup");
+    updateInfo = await invoke("check_for_updates").catch(() => null);
   });
 
   async function onSetupDone() {
@@ -71,7 +73,7 @@
 {#if view === "setup"}
   <Setup ondone={onSetupDone} />
 {:else if view === "settings" && config}
-  <Settings {config} onrun={onRun} />
+  <Settings {config} {updateInfo} onrun={onRun} />
 {:else if view === "log"}
   <Log onstop={() => switchTo("settings")} />
 {/if}

@@ -5,12 +5,12 @@
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { untrack } from "svelte";
   import { THEME_GROUPS, applyTheme } from "$lib/themes.js";
+  import { marked } from "marked";
 
-  let { config, onrun } = $props();
+  let { config, updateInfo, onrun } = $props();
 
   // --- Launcher settings (Tauri owns these) ---
   let nameplates       = $state(untrack(() => config?.launcher?.nameplates       ?? false));
-  let disableUpdates   = $state(untrack(() => config?.launcher?.disable_updates   ?? false));
   let debugLogging     = $state(untrack(() => config?.launcher?.debug_logging     ?? false));
   let communityLogging = $state(untrack(() => config?.launcher?.community_logging ?? false));
   let purgeCache       = $state(false); // session-only, never persisted
@@ -43,6 +43,8 @@
   let statusMsg = $state("");
   let validating = $state(false);
   let hintText = $state("");
+  let showUpdateModal = $state(false);
+  let updaterRunning = $state(false);
 
   // --- Name overrides state ---
   const OVERRIDES_EXAMPLE =
@@ -349,7 +351,6 @@
     await invoke("save_config", {
       launcher: {
         nameplates,
-        disable_updates: disableUpdates,
         debug_logging: debugLogging,
         community_logging: communityLogging,
         simultaneous_launch: simultaneousLaunch,
@@ -368,7 +369,6 @@
 
     const args = [];
     if (nameplates)       args.push("--nameplates");
-    if (disableUpdates)   args.push("--disable-update-check");
     if (debugLogging)     args.push("--debug");
     if (communityLogging) args.push("--community-logging");
     if (purgeCache)       args.push("--purge-cache");
@@ -457,6 +457,14 @@
   function openGitHub() {
     openUrl("https://github.com/dqx-translation-project/dqxclarity");
   }
+
+  async function runUpdater() {
+    if (!updateInfo || updaterRunning) return;
+    updaterRunning = true;
+    await invoke("run_updater", { tag: updateInfo.version }).catch(() => {
+      updaterRunning = false;
+    });
+  }
 </script>
 
 <div class="settings">
@@ -499,10 +507,6 @@
             onmouseenter={() => hintText = "Transliterates Japanese nameplates to English."}
             onmouseleave={() => hintText = ""}
           ><input type="checkbox" bind:checked={nameplates} />Nameplates</label>
-          <label
-            onmouseenter={() => hintText = "Don't check for dqxclarity updates on launch."}
-            onmouseleave={() => hintText = ""}
-          ><input type="checkbox" bind:checked={disableUpdates} />Disable Updates</label>
           <label
             onmouseenter={() => hintText = "Enables more verbose logging."}
             onmouseleave={() => hintText = ""}
@@ -894,21 +898,57 @@
 
     <!-- Action buttons -->
     <div class="actions">
-      <button
-        class="btn-secondary"
-        onclick={openGitHub}
-        onmouseenter={() => hintText = "View the source code in your default browser."}
-        onmouseleave={() => hintText = ""}
-      >GitHub</button>
-      <button
-        class="btn-primary"
-        onclick={run}
-        onmouseenter={() => hintText = "Run the program."}
-        onmouseleave={() => hintText = ""}
-      >Run</button>
+      {#if updateInfo}
+        <div class="update-area">
+          <button
+            class="btn-update"
+            onclick={() => showUpdateModal = true}
+            disabled={updaterRunning}
+          >{updaterRunning ? "Updating…" : "Update Now"}</button>
+          <span class="update-notice">A new update is available ({updateInfo.version})</span>
+        </div>
+      {/if}
+      <div class="actions-right">
+        <button
+          class="btn-secondary"
+          onclick={openGitHub}
+          onmouseenter={() => hintText = "View the source code in your default browser."}
+          onmouseleave={() => hintText = ""}
+        >GitHub</button>
+        <button
+          class="btn-primary"
+          onclick={run}
+          onmouseenter={() => hintText = "Run the program."}
+          onmouseleave={() => hintText = ""}
+        >Run</button>
+      </div>
     </div>
   </div>
 </div>
+
+<!-- Update modal -->
+{#if showUpdateModal && updateInfo}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="confirm-overlay" role="presentation" onclick={() => showUpdateModal = false}>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div class="update-modal" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
+      <p class="update-modal-title">Update available: {updateInfo.version}</p>
+      <div
+        class="update-notes"
+        onclick={(e) => {
+          const a = e.target.closest("a");
+          if (a?.href) { e.preventDefault(); openUrl(a.href); }
+        }}
+      >{@html marked(updateInfo.body)}</div>
+      <div class="confirm-actions">
+        <button onclick={() => showUpdateModal = false} disabled={updaterRunning}>Cancel</button>
+        <button class="btn-primary" onclick={runUpdater} disabled={updaterRunning}>
+          {updaterRunning ? "Updating…" : "OK"}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <!-- Delete confirmation dialog -->
 {#if dbDeleteConfirm}
@@ -1481,11 +1521,136 @@
 
   .actions {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
     gap: 0.6rem;
     padding-top: 0.4rem;
     border-top: 1px solid var(--border);
     flex-shrink: 0;
+  }
+
+  .update-area {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+  }
+
+  .update-notice {
+    font-size: 0.75rem;
+    color: var(--success);
+  }
+
+  .btn-update {
+    background: var(--success);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 0.4rem 1rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .btn-update:hover:not(:disabled) { filter: brightness(1.1); }
+  .btn-update:disabled { opacity: 0.6; cursor: default; }
+
+  .actions-right {
+    display: flex;
+    gap: 0.6rem;
+    margin-left: auto;
+  }
+
+  .update-modal {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.2rem 1.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 620px;
+    max-width: 90vw;
+  }
+
+  .update-modal-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .update-notes {
+    font-size: 0.82rem;
+    color: var(--text);
+    overflow-y: auto;
+    max-height: 380px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.8rem 1rem;
+    line-height: 1.6;
+  }
+
+  .update-notes :global(h1),
+  .update-notes :global(h2),
+  .update-notes :global(h3) {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0.8rem 0 0.3rem;
+  }
+
+  .update-notes :global(h1):first-child,
+  .update-notes :global(h2):first-child,
+  .update-notes :global(h3):first-child {
+    margin-top: 0;
+  }
+
+  .update-notes :global(p) {
+    margin: 0.3rem 0;
+  }
+
+  .update-notes :global(ul),
+  .update-notes :global(ol) {
+    margin: 0.3rem 0;
+    padding-left: 1.4rem;
+  }
+
+  .update-notes :global(li) {
+    margin: 0.15rem 0;
+  }
+
+  .update-notes :global(code) {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0.1rem 0.3rem;
+    font-size: 0.78rem;
+    font-family: "Consolas", monospace;
+  }
+
+  .update-notes :global(pre) {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.6rem 0.8rem;
+    overflow-x: auto;
+  }
+
+  .update-notes :global(pre code) {
+    background: none;
+    border: none;
+    padding: 0;
+  }
+
+  .update-notes :global(a) {
+    color: var(--accent);
+  }
+
+  .update-notes :global(hr) {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0.6rem 0;
   }
 
   .btn-primary {

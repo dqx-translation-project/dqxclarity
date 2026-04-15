@@ -39,6 +39,8 @@ pub fn run() {
             commands::config::save_game_dir,
             commands::config::launch_dqx,
             commands::config::launch_dqx_config,
+            commands::update::check_for_updates,
+            commands::update::run_updater,
             commands::patch::patch_launcher,
             commands::patch::patch_config,
             commands::patch::restore_launcher,
