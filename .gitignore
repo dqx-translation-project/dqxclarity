@@ -17,3 +17,5 @@ app/dqxclarity.lock
 
 # building dqxcrypt
 **/node_modules/**
+
+.claude
