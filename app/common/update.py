@@ -264,7 +264,8 @@ def download_file(url: str) -> requests.models.Response:
                 log.error(f"Error: {e}")
                 log.error(f"(Retry: {retries}/{max_retries}) Max retries reached. Unable to download file {filename}.")
                 log.info(
-                    "\nIf connectivity issues persist, try again later. This is not a dqxclarity issue and should not be reported as such. You can check:\n"
+                    "\nIf connectivity issues persist, try again later. "
+                    "This is not a dqxclarity issue and should not be reported as such. You can check:\n"
                     "1) GitHub status page (https://www.githubstatus.com/)\n"
                     "2) Check your DNS settings (especially if the error says it failed to resolve)\n"
                     "3) Check that your VPN isn't blocking GitHub requests or is responding too slowly\n"
