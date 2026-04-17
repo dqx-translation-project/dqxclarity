@@ -48,6 +48,14 @@ public partial class LogViewModel : ObservableObject
     private void OnProcessExited(bool isError) =>
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
+            var userStop = _userInitiatedStop;
+            _userInitiatedStop = false;
+
+            if (userStop)
+            {
+                NavigateBack?.Invoke();
+                return;
+            }
             if (!isError)
             {
                 CloseApp?.Invoke();
@@ -58,8 +66,14 @@ public partial class LogViewModel : ObservableObject
             StatusTitle = "dqxclarity — exited with error";
         });
 
+    private bool _userInitiatedStop;
+
     [RelayCommand]
-    private void Stop() => _processSvc.Stop();
+    private void Stop()
+    {
+        _userInitiatedStop = true;
+        _processSvc.Stop();
+    }
 
     [RelayCommand]
     private void Back() => NavigateBack?.Invoke();

@@ -1,0 +1,45 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="DqxClarity.Launcher.Views.ErrorDetailDialog"
+             Width="580">
+    <Border Background="{DynamicResource AppBg}"
+            CornerRadius="8"
+            Padding="20,18,20,20">
+        <StackPanel Spacing="12">
+            <TextBlock Text="Error Details"
+                       FontSize="14"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource AppDanger}"/>
+            <TextBlock Text="Full output from the failing process. Copy this and share it when reporting issues."
+                       FontSize="11"
+                       Foreground="{DynamicResource AppMuted}"
+                       TextWrapping="Wrap"/>
+            <Border Background="{DynamicResource AppSurface2}"
+                    CornerRadius="4"
+                    Padding="8">
+                <ScrollViewer MaxHeight="320">
+                    <TextBox x:Name="DetailBox"
+                             IsReadOnly="True"
+                             TextWrapping="Wrap"
+                             AcceptsReturn="True"
+                             FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                             FontSize="11"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Foreground="{DynamicResource AppText}"
+                             CaretBrush="{DynamicResource AppText}"/>
+                </ScrollViewer>
+            </Border>
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="6">
+                <Button Classes="ghost"
+                        Padding="14,5"
+                        Click="OnCopyAll">Copy All</Button>
+                <Button Classes="accent"
+                        Padding="14,5"
+                        Click="OnClose">Close</Button>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

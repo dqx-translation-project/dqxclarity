@@ -85,16 +85,25 @@ public partial class SettingsView : UserControl
         "DQX Folder\n" +
         "The path to your DQX installation directory. dqxclarity needs this to find game executables " +
         "and DAT/IDX files for patching. Use the Browse button to select the folder — " +
-        "it should be the directory that contains DQXBoot.exe.";
+        "it should be the directory that contains DQXBoot.exe.\n\n" +
+        "Install SendToChat\n" +
+        "Downloads send_to_chat.exe from the latest GitHub release and saves it into the misc_files folder " +
+        "inside your dqxclarity directory. SendToChat lets you send clipboard text into the DQX chat box. " +
+        "You only need to do this once — the button will show a confirmation when the download finishes.";
 
     private const string LaunchHelpText =
         "Open DQX\n" +
         "Launches DQXBoot.exe — the standard DQX game client.\n\n" +
         "Open DQXConfig\n" +
         "Launches DQXConfig.exe, which lets you adjust in-game graphics and audio settings without opening the game itself.\n\n" +
-        "Launch both DQX and dqxclarity together\n" +
+        "Open SendToChat\n" +
+        "Launches send_to_chat.exe directly. Only available after SendToChat has been installed via the Installation section.\n\n" +
+        "Launch DQX with dqxclarity\n" +
         "When enabled, clicking Run will start DQX automatically alongside dqxclarity. " +
-        "Useful if you want your full session to start with a single click.";
+        "Useful if you want your full session to start with a single click.\n\n" +
+        "Launch SendToChat with dqxclarity\n" +
+        "When enabled, clicking Run will also start send_to_chat.exe alongside dqxclarity. " +
+        "Requires SendToChat to be installed first.";
 
     private const string PatchHelpText =
         "Patch Launcher / Restore Launcher\n" +
@@ -467,13 +476,13 @@ public partial class SettingsView : UserControl
         for (int i = 0; i < _tableColCount; i++)
             grid.ColumnDefinitions.Add(new ColumnDefinition(_tableColWidth, GridUnitType.Pixel));
 
-        // Checkbox — align to top for multi-line rows
+        // Checkbox — top-aligned for multi-line dialog rows, centered for single-line rows
         var cb = new CheckBox
         {
             IsChecked           = row.Selected,
             HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment   = VerticalAlignment.Top,
-            Margin              = new Thickness(0, 5, 0, 0),
+            VerticalAlignment   = _dialogMode ? VerticalAlignment.Top : VerticalAlignment.Center,
+            Margin              = _dialogMode ? new Thickness(0, 5, 0, 0) : new Thickness(0),
             Padding             = new Thickness(0),
         };
         cb.IsCheckedChanged += (_, _) =>
@@ -657,6 +666,17 @@ public partial class SettingsView : UserControl
         if (win == null) return;
         await win.ShowInfoAsync("Patch", PatchHelpText);
     }
+
+    // ── Sidebar footer ───────────────────────────────────────────────────
+
+    private void OnAboutClick(object? sender, RoutedEventArgs e) =>
+        (TopLevel.GetTopLevel(this) as MainWindow)?.OpenAbout();
+
+    private void OnWikiClick(object? sender, RoutedEventArgs e) =>
+        (TopLevel.GetTopLevel(this) as MainWindow)?.OpenWiki();
+
+    private void OnSupportClick(object? sender, RoutedEventArgs e) =>
+        (TopLevel.GetTopLevel(this) as MainWindow)?.OpenSupport();
 
     private async void OnUpdateClick(object? sender, RoutedEventArgs e)
     {

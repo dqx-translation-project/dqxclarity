@@ -83,7 +83,7 @@ public partial class MainWindow : Window
         _vm = vm;
         _vm.Window = this;
 
-        VersionText.Text = $"v{vm.Version}";
+        // version is displayed inside SettingsView's sidebar
 
         // Create views once
         _setupView    = new SetupView    { DataContext = vm.Setup    };
@@ -135,10 +135,11 @@ public partial class MainWindow : Window
             _          => _setupView,
         };
 
-        Footer.IsVisible = view != "log";
+        // footer lives inside SettingsView sidebar — no MainWindow-level visibility toggle needed
     }
 
-    private void OnAboutClick(object? sender, RoutedEventArgs e)
+    private void OnAboutClick(object? sender, RoutedEventArgs e) => OpenAbout();
+    internal void OpenAbout()
     {
         if (_aboutOpen) return;
         _aboutOpen = true;
@@ -150,10 +151,12 @@ public partial class MainWindow : Window
         ShowOverlay(dlg);
     }
 
-    private void OnWikiClick(object? sender, RoutedEventArgs e) =>
+    private void OnWikiClick(object? sender, RoutedEventArgs e) => OpenWiki();
+    internal void OpenWiki() =>
         _vm?.OpenBrowser("https://dqx-translation-project.github.io/");
 
-    private void OnSupportClick(object? sender, RoutedEventArgs e)
+    private void OnSupportClick(object? sender, RoutedEventArgs e) => OpenSupport();
+    internal void OpenSupport()
     {
         if (_supportOpen) return;
         _supportOpen = true;
@@ -194,6 +197,16 @@ public partial class MainWindow : Window
         _overlayDismissAction = () => { HideOverlay(); tcs.TrySetResult(false); };
         ShowOverlay(dlg);
         return await tcs.Task;
+    }
+
+    internal async Task ShowErrorDetailAsync(string detail)
+    {
+        var dlg = new ErrorDetailDialog(detail);
+        var tcs = new TaskCompletionSource();
+        dlg.RequestClose += () => { HideOverlay(); tcs.TrySetResult(); };
+        _overlayDismissAction = () => { HideOverlay(); tcs.TrySetResult(); };
+        ShowOverlay(dlg);
+        await tcs.Task;
     }
 
     internal async Task ShowUacAsync(Action onClose)

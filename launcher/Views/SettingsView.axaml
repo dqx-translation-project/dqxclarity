@@ -20,7 +20,7 @@
                 BorderBrush="{DynamicResource AppBorder}"
                 BorderThickness="0,0,1,0"
                 Padding="10,12">
-            <Grid RowDefinitions="Auto,*">
+            <Grid RowDefinitions="Auto,*,Auto">
 
                 <!-- Theme selector -->
                 <ComboBox Grid.Row="0"
@@ -35,6 +35,16 @@
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center"
                        Margin="6,8"/>
+
+                <!-- Footer links -->
+                <StackPanel Grid.Row="2" Spacing="1">
+                    <Button Classes="ghost" FontSize="15" Click="OnAboutClick">About</Button>
+                    <Button Classes="ghost" FontSize="15" Click="OnWikiClick">Wiki</Button>
+                    <Button Classes="ghost" FontSize="15" Click="OnSupportClick">Support</Button>
+                    <TextBlock Text="{Binding Version, StringFormat='v{0}'}"
+                               FontSize="15"
+                               Foreground="{DynamicResource AppMuted}"/>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -186,7 +196,7 @@
                         <!-- ══ GAME TAB ══════════════════════════════════ -->
                         <StackPanel x:Name="PanelGame" Spacing="14" IsVisible="False">
 
-                            <Border Classes="fieldset" MaxHeight="114" ClipToBounds="True">
+                            <Border Classes="fieldset">
                                 <StackPanel Spacing="8">
                                     <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,0">
                                         <TextBlock Classes="legend" Text="Installation" Margin="0" VerticalAlignment="Center"/>
@@ -210,83 +220,102 @@
                                                TextWrapping="Wrap"
                                                IsVisible="{Binding DqxDirError,
                                                            Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Command="{Binding InstallSendToChatCommand}"
+                                                IsEnabled="{Binding !SendToChatBusy}"
+                                                ToolTip.Tip="Download send_to_chat.exe from the latest GitHub release into misc_files.">Install SendToChat</Button>
+                                        <TextBlock Text="{Binding SendToChatStatus}"
+                                                   FontSize="11"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource AppMuted}"
+                                                   IsVisible="{Binding SendToChatStatus,
+                                                               Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
 
-                            <Border Classes="fieldset" MaxHeight="116" ClipToBounds="True"
+                            <Border Classes="fieldset"
                                     IsVisible="{Binding DqxDirValid}">
                                 <StackPanel Spacing="8">
                                     <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,0">
                                         <TextBlock Classes="legend" Text="Launch" Margin="0" VerticalAlignment="Center"/>
                                         <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnLaunchHelpClick">?</Button>
                                     </StackPanel>
-                                    <Grid ColumnDefinitions="*,*">
-                                        <Button Grid.Column="0" Margin="0,0,3,0"
+                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
+                                        <Button Grid.Column="0" Grid.Row="0" Margin="0,0,3,0"
                                                 HorizontalAlignment="Stretch"
                                                 HorizontalContentAlignment="Center"
                                                 Command="{Binding OpenDqxCommand}"
                                                 ToolTip.Tip="Launch DQXBoot.exe.">Open DQX</Button>
-                                        <Button Grid.Column="1" Margin="3,0,0,0"
+                                        <Button Grid.Column="1" Grid.Row="0" Margin="3,0,0,0"
                                                 HorizontalAlignment="Stretch"
                                                 HorizontalContentAlignment="Center"
                                                 Command="{Binding OpenDqxConfigCommand}"
                                                 ToolTip.Tip="Launch DQXConfig.exe.">Open DQXConfig</Button>
+                                        <Button Grid.Column="0" Grid.Row="1" Margin="0,4,3,0"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Center"
+                                                Command="{Binding OpenSendToChatCommand}"
+                                                IsEnabled="{Binding SendToChatInstalled}"
+                                                ToolTip.Tip="Launch send_to_chat.exe.">Open SendToChat</Button>
                                     </Grid>
-                                    <CheckBox Content="Launch both DQX and dqxclarity together"
-                                              IsChecked="{Binding SimultaneousLaunch}"
-                                              ToolTip.Tip="When Run is clicked, launch DQX and dqxclarity at the same time."/>
+                                    <StackPanel Spacing="4">
+                                        <CheckBox Content="Launch DQX with dqxclarity"
+                                                  IsChecked="{Binding SimultaneousLaunch}"
+                                                  ToolTip.Tip="When Run is clicked, launch DQX and dqxclarity at the same time."/>
+                                        <CheckBox Content="Launch SendToChat with dqxclarity"
+                                                  IsChecked="{Binding LaunchSendToChat}"
+                                                  IsEnabled="{Binding SendToChatInstalled}"
+                                                  ToolTip.Tip="When Run is clicked, also launch send_to_chat.exe."/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
 
-                            <Border Classes="fieldset" MaxHeight="200" ClipToBounds="True"
+                            <Border Classes="fieldset"
                                     IsVisible="{Binding DqxDirValid}">
-                                <StackPanel Spacing="10">
+                                <StackPanel Spacing="8">
                                     <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,0">
                                         <TextBlock Classes="legend" Text="Patch" Margin="0" VerticalAlignment="Center"/>
                                         <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnPatchHelpClick">?</Button>
                                     </StackPanel>
 
-                                    <!-- Launcher patch row -->
-                                    <Grid ColumnDefinitions="*,*">
-                                        <Button Grid.Column="0" Margin="0,0,3,0"
+                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto">
+                                        <!-- Launcher patch row -->
+                                        <Button Grid.Column="0" Grid.Row="0" Margin="0,0,3,0"
                                                 HorizontalAlignment="Stretch"
                                                 HorizontalContentAlignment="Center"
                                                 Command="{Binding PatchLauncherCommand}"
                                                 IsEnabled="{Binding !Patching}"
                                                 ToolTip.Tip="Patch the Japanese launcher with an English version.">Patch Launcher</Button>
-                                        <Button Grid.Column="1" Margin="3,0,0,0"
+                                        <Button Grid.Column="1" Grid.Row="0" Margin="3,0,0,0"
                                                 HorizontalAlignment="Stretch"
                                                 HorizontalContentAlignment="Center"
                                                 Command="{Binding RestoreLauncherCommand}"
                                                 IsEnabled="{Binding !Patching}"
                                                 ToolTip.Tip="Restore the original Japanese launcher executable.">Restore Launcher</Button>
-                                    </Grid>
 
-                                    <!-- Config patch row -->
-                                    <Grid ColumnDefinitions="*,*">
-                                        <Button Grid.Column="0" Margin="0,0,3,0"
+                                        <!-- Config patch row -->
+                                        <Button Grid.Column="0" Grid.Row="1" Margin="0,4,3,0"
                                                 HorizontalAlignment="Stretch"
                                                 HorizontalContentAlignment="Center"
                                                 Command="{Binding PatchConfigCommand}"
                                                 IsEnabled="{Binding !Patching}"
                                                 ToolTip.Tip="Patch the Japanese Config with an English version.">Patch Config</Button>
-                                        <Button Grid.Column="1" Margin="3,0,0,0"
+                                        <Button Grid.Column="1" Grid.Row="1" Margin="3,4,0,0"
                                                 HorizontalAlignment="Stretch"
                                                 HorizontalContentAlignment="Center"
                                                 Command="{Binding RestoreConfigCommand}"
                                                 IsEnabled="{Binding !Patching}"
                                                 ToolTip.Tip="Restore the original Japanese Config executable.">Restore Config</Button>
-                                    </Grid>
 
-                                    <!-- Game files -->
-                                    <Grid ColumnDefinitions="*,*">
-                                        <Button Grid.Column="0" Margin="0,0,3,0"
+                                        <!-- Game files row -->
+                                        <Button Grid.Column="0" Grid.Row="2" Margin="0,4,3,0"
                                                 HorizontalAlignment="Stretch"
                                                 HorizontalContentAlignment="Center"
                                                 Command="{Binding PatchGameFilesCommand}"
                                                 IsEnabled="{Binding !Patching}"
                                                 ToolTip.Tip="Download and apply the latest DAT/IDX translation mod. Requires admin. DQX must be closed.">Patch Game Files</Button>
-                                        <Button Grid.Column="1" Margin="3,0,0,0"
+                                        <Button Grid.Column="1" Grid.Row="2" Margin="3,4,0,0"
                                                 HorizontalAlignment="Stretch"
                                                 HorizontalContentAlignment="Center"
                                                 IsEnabled="{Binding !Patching}"

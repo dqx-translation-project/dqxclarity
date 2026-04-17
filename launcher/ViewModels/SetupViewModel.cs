@@ -27,13 +27,20 @@ public partial class SetupViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasError))]
     private string _errorMessage = "";
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDetail))]
+    private string _errorDetail = "";
+
     [ObservableProperty] private bool _showUacModal;
     [ObservableProperty] private bool _showLogs;
     [ObservableProperty] private bool _done;
 
+    public event Action<string>? ShowDetailRequested;
+
     public ObservableCollection<string> PipLines { get; } = [];
 
     public bool HasError     => !string.IsNullOrEmpty(ErrorMessage);
+    public bool HasDetail    => !string.IsNullOrEmpty(ErrorDetail);
     public bool HasPipOutput => PipLines.Count > 0;
 
     public SetupViewModel(SetupService svc)
@@ -85,7 +92,8 @@ public partial class SetupViewModel : ObservableObject
     private void Reset()
     {
         ErrorMessage = "";
-        ShowLogs = false;
+        ErrorDetail  = "";
+        ShowLogs     = false;
         PipLines.Clear();
         Done = false;
         foreach (var s in Steps) { s.Status = StepStatus.Pending; s.Message = ""; }
@@ -101,6 +109,11 @@ public partial class SetupViewModel : ObservableObject
             Done = true;
             await Task.Delay(600);
             SetupDone?.Invoke();
+        }
+        catch (SetupException ex)
+        {
+            ErrorMessage = ex.Message;
+            ErrorDetail  = ex.Detail;
         }
         catch (Exception ex)
         {
@@ -127,6 +140,9 @@ public partial class SetupViewModel : ObservableObject
         }
         catch { }
     }
+
+    [RelayCommand]
+    private void ShowDetail() => ShowDetailRequested?.Invoke(ErrorDetail);
 
     [RelayCommand]
     private void CloseUac() => ShowUacModal = false;

@@ -25,6 +25,13 @@ public partial class SetupView : UserControl
                         await win.ShowUacAsync(() => vm.CloseUacCommand.Execute(null));
                 }
             };
+
+            vm.ShowDetailRequested += async detail =>
+            {
+                var win = TopLevel.GetTopLevel(this) as MainWindow;
+                if (win != null)
+                    await win.ShowErrorDetailAsync(detail);
+            };
         }
     }
 }

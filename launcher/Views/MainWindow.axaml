@@ -14,28 +14,6 @@
     <Grid>
         <ContentControl x:Name="MainContent"/>
 
-        <!-- Bottom-left footer — hidden during log view -->
-        <StackPanel x:Name="Footer"
-                    VerticalAlignment="Bottom"
-                    HorizontalAlignment="Left"
-                    Margin="8,0,0,6"
-                    Spacing="1"
-                    IsVisible="True">
-            <Button Classes="ghost"
-                    FontSize="15"
-                    Click="OnAboutClick">About</Button>
-            <Button Classes="ghost"
-                    FontSize="15"
-                    Click="OnWikiClick"
-                    ToolTip.Tip="Open the dqxclarity wiki">Wiki</Button>
-            <Button Classes="ghost"
-                    FontSize="15"
-                    Click="OnSupportClick">Support</Button>
-            <TextBlock x:Name="VersionText"
-                       FontSize="15"
-                       Foreground="{DynamicResource AppMuted}"/>
-        </StackPanel>
-
         <!-- Full-window overlay for in-app dialogs -->
         <Grid x:Name="OverlayPanel"
               IsVisible="False"
