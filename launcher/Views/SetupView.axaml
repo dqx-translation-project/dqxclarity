@@ -149,7 +149,7 @@
                 BorderBrush="{DynamicResource AppDanger}"
                 Background="{DynamicResource AppSurface2}"
                 IsVisible="{Binding HasError}">
-            <Grid ColumnDefinitions="*,Auto">
+            <Grid ColumnDefinitions="*,Auto,Auto">
                 <TextBlock Grid.Column="0"
                            Text="{Binding ErrorMessage}"
                            FontSize="12"
@@ -157,8 +157,12 @@
                            TextWrapping="Wrap"
                            VerticalAlignment="Center"/>
                 <Button Grid.Column="1"
-                        Classes="danger"
                         Margin="12,0,0,0"
+                        IsVisible="{Binding ShowLogs}"
+                        Command="{Binding OpenLogFolderCommand}">Show Logs</Button>
+                <Button Grid.Column="2"
+                        Classes="danger"
+                        Margin="6,0,0,0"
                         Command="{Binding RetryCommand}">Retry</Button>
             </Grid>
         </Border>

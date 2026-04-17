@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DqxClarity.Launcher.Models;
@@ -27,6 +28,7 @@ public partial class SetupViewModel : ObservableObject
     private string _errorMessage = "";
 
     [ObservableProperty] private bool _showUacModal;
+    [ObservableProperty] private bool _showLogs;
     [ObservableProperty] private bool _done;
 
     public ObservableCollection<string> PipLines { get; } = [];
@@ -73,13 +75,17 @@ public partial class SetupViewModel : ObservableObject
             }
 
             if (e.Step == "python_install" && e.Status is "done" or "error")
+            {
                 ShowUacModal = false;
+                if (e.Status == "error") ShowLogs = true;
+            }
         });
     }
 
     private void Reset()
     {
         ErrorMessage = "";
+        ShowLogs = false;
         PipLines.Clear();
         Done = false;
         foreach (var s in Steps) { s.Status = StepStatus.Pending; s.Message = ""; }
@@ -100,6 +106,26 @@ public partial class SetupViewModel : ObservableObject
         {
             ErrorMessage = ex.Message;
         }
+    }
+
+    [RelayCommand]
+    private void OpenLogFolder()
+    {
+        try
+        {
+            var exeDir = Path.GetDirectoryName(Environment.ProcessPath ?? "") ?? "";
+            var appDir = exeDir;
+            for (int i = 0; i < 4; i++)
+            {
+                if (File.Exists(Path.Combine(appDir, "main.py")))
+                { appDir = Path.GetFullPath(appDir); break; }
+                appDir = Path.GetFullPath(Path.Combine(appDir, ".."));
+            }
+            var logsDir = Path.Combine(appDir, "logs");
+            if (!Directory.Exists(logsDir)) Directory.CreateDirectory(logsDir);
+            Process.Start(new ProcessStartInfo(logsDir) { UseShellExecute = true });
+        }
+        catch { }
     }
 
     [RelayCommand]
