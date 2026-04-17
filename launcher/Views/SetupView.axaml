@@ -1,0 +1,171 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DqxClarity.Launcher.ViewModels"
+             xmlns:m="using:DqxClarity.Launcher.Models"
+             xmlns:v="using:DqxClarity.Launcher.Views"
+             x:Class="DqxClarity.Launcher.Views.SetupView"
+             x:DataType="vm:SetupViewModel"
+             Background="{DynamicResource AppBg}">
+
+    <UserControl.Resources>
+        <v:StepStatusToBrushConverter x:Key="StatusToBrush"/>
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="Auto,*,Auto,Auto">
+
+        <!-- Header -->
+        <Border Grid.Row="0"
+                BorderBrush="{DynamicResource AppBorder}"
+                BorderThickness="0,0,0,1"
+                Padding="18,14">
+            <StackPanel Orientation="Horizontal" Spacing="14">
+                <Image Source="avares://dqxclarity/Assets/Rosie.png"
+                       Width="68" Height="68"
+                       Stretch="Uniform"
+                       VerticalAlignment="Center"/>
+                <StackPanel VerticalAlignment="Center" Spacing="4">
+                    <TextBlock Text="dqxclarity"
+                               FontSize="20"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource AppAccent}"/>
+                    <TextBlock Text="Setting up environment…"
+                               FontSize="12"
+                               Foreground="{DynamicResource AppMuted}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Steps list -->
+        <ScrollViewer Grid.Row="1" Padding="18,12">
+            <StackPanel Spacing="10">
+                <ItemsControl ItemsSource="{Binding Steps}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="m:SetupStep">
+                            <Grid ColumnDefinitions="18,*,Auto"
+                                  Margin="0,0,0,4"
+                                  IsVisible="{Binding IsVisible}">
+
+                                <!-- Icon -->
+                                <Panel Grid.Column="0" Width="18" Height="18">
+                                    <!-- Spinner (running) -->
+                                    <Border Width="12" Height="12"
+                                            BorderThickness="1.5"
+                                            CornerRadius="6"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            IsVisible="{Binding IsRunning}"
+                                            BorderBrush="{DynamicResource AppMuted}">
+                                        <Border.RenderTransform>
+                                            <RotateTransform/>
+                                        </Border.RenderTransform>
+                                        <Border.Styles>
+                                            <Style Selector="Border">
+                                                <Style.Animations>
+                                                    <Animation Duration="0:0:0.75" IterationCount="INFINITE">
+                                                        <KeyFrame Cue="0%">
+                                                            <Setter Property="RotateTransform.Angle" Value="0"/>
+                                                        </KeyFrame>
+                                                        <KeyFrame Cue="100%">
+                                                            <Setter Property="RotateTransform.Angle" Value="360"/>
+                                                        </KeyFrame>
+                                                    </Animation>
+                                                </Style.Animations>
+                                            </Style>
+                                        </Border.Styles>
+                                    </Border>
+                                    <TextBlock Text="✓" FontSize="13"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource AppSuccess}"
+                                               IsVisible="{Binding IsDone}"/>
+                                    <TextBlock Text="✗" FontSize="13"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource AppDanger}"
+                                               IsVisible="{Binding IsError}"/>
+                                    <TextBlock Text="·" FontSize="14"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource AppMuted}"
+                                               IsVisible="{Binding IsPending}"/>
+                                </Panel>
+
+                                <!-- Label -->
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding Label}"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="6,0,0,0"
+                                           Foreground="{Binding Status, Converter={StaticResource StatusToBrush}}"/>
+
+                                <!-- Message -->
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding Message}"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,0,0"
+                                           Foreground="{DynamicResource AppMuted}"
+                                           MaxWidth="220"
+                                           TextTrimming="CharacterEllipsis"
+                                           IsVisible="{Binding HasMessage}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- pip output collapsible -->
+                <Expander IsVisible="{Binding HasPipOutput}"
+                          Foreground="{DynamicResource AppMuted}"
+                          FontSize="11">
+                    <Expander.Header>
+                        <TextBlock FontSize="11"
+                                   Foreground="{DynamicResource AppMuted}"
+                                   Text="{Binding PipLines.Count, StringFormat='pip output ({0} lines)'}"/>
+                    </Expander.Header>
+                    <Border Background="{DynamicResource AppSurface2}"
+                            CornerRadius="4"
+                            Padding="8">
+                        <ScrollViewer MaxHeight="100">
+                            <ItemsControl ItemsSource="{Binding PipLines}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}"
+                                                   FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                                                   FontSize="10"
+                                                   Foreground="{DynamicResource AppMuted}"
+                                                   TextWrapping="Wrap"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                </Expander>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Error box -->
+        <Border Grid.Row="2"
+                Margin="18,0,18,8"
+                Padding="12,10"
+                CornerRadius="6"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource AppDanger}"
+                Background="{DynamicResource AppSurface2}"
+                IsVisible="{Binding HasError}">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding ErrorMessage}"
+                           FontSize="12"
+                           Foreground="{DynamicResource AppDanger}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center"/>
+                <Button Grid.Column="1"
+                        Classes="danger"
+                        Margin="12,0,0,0"
+                        Command="{Binding RetryCommand}">Retry</Button>
+            </Grid>
+        </Border>
+
+        <!-- Spacer for bottom footer -->
+        <Border Grid.Row="3" Height="30"/>
+
+    </Grid>
+
+</UserControl>

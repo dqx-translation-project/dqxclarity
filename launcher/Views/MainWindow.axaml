@@ -1,0 +1,50 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:DqxClarity.Launcher.ViewModels"
+        x:Class="DqxClarity.Launcher.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="dqxclarity"
+        Width="500" Height="360"
+        MinWidth="400" MinHeight="300"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource AppBg}">
+
+    <!-- The active view is swapped by MainWindow.axaml.cs -->
+    <Grid>
+        <ContentControl x:Name="MainContent"/>
+
+        <!-- Bottom-left footer — hidden during log view -->
+        <StackPanel x:Name="Footer"
+                    VerticalAlignment="Bottom"
+                    HorizontalAlignment="Left"
+                    Margin="8,0,0,6"
+                    Spacing="1"
+                    IsVisible="True">
+            <Button Classes="ghost"
+                    FontSize="15"
+                    Click="OnAboutClick">About</Button>
+            <Button Classes="ghost"
+                    FontSize="15"
+                    Click="OnWikiClick"
+                    ToolTip.Tip="Open the dqxclarity wiki">Wiki</Button>
+            <Button Classes="ghost"
+                    FontSize="15"
+                    Click="OnSupportClick">Support</Button>
+            <TextBlock x:Name="VersionText"
+                       FontSize="15"
+                       Foreground="{DynamicResource AppMuted}"/>
+        </StackPanel>
+
+        <!-- Full-window overlay for in-app dialogs -->
+        <Grid x:Name="OverlayPanel"
+              IsVisible="False"
+              Background="#B2000000"
+              PointerPressed="OnOverlayBackdropPressed">
+            <ContentControl x:Name="OverlayContent"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"/>
+        </Grid>
+    </Grid>
+
+</Window>

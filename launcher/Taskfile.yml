@@ -1,29 +1,17 @@
 version: "3"
 
 tasks:
-  dev:
-    desc: run the launcher in dev mode (hot reload)
-    cmds:
-      - npm run tauri dev
-
   build:
-    desc: build the launcher executable (no installer bundle)
+    desc: build the launcher (debug)
     cmds:
-      - npm run tauri build -- --no-bundle
+      - dotnet build
 
-  install:
-    desc: install frontend dependencies
+  publish:
+    desc: publish a self-contained single-file exe for win-x64
     cmds:
-      - npm install
-
-  check:
-    desc: run svelte type-checking
-    cmds:
-      - npm run check
+      - dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
 
   clean:
-    desc: remove build artifacts for a fresh build (keeps all source code)
+    desc: remove build artifacts
     cmds:
-      - rm -rf build
-      - rm -rf src-tauri/target
-      - rm -rf src-tauri/gen/schemas
+      - rm -rf bin obj

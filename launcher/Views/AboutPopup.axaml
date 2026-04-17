@@ -1,0 +1,57 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="DqxClarity.Launcher.Views.AboutPopup"
+             Width="320">
+    <Border Background="{DynamicResource AppSurface2}"
+            CornerRadius="8"
+            Padding="18,14">
+        <StackPanel Spacing="10">
+            <TextBlock Text="dqxclarity"
+                       FontWeight="SemiBold"
+                       FontSize="13"
+                       Foreground="{DynamicResource AppText}"/>
+
+            <StackPanel Spacing="4">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Made by:"
+                               FontSize="12"
+                               Foreground="{DynamicResource AppMuted}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="Serany"
+                               FontSize="12"
+                               Foreground="{DynamicResource AppText}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Discord:"
+                               FontSize="12"
+                               Foreground="{DynamicResource AppMuted}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="mebo"
+                               FontSize="12"
+                               Foreground="{DynamicResource AppText}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Ko-fi:"
+                               FontSize="12"
+                               Foreground="{DynamicResource AppMuted}"
+                               VerticalAlignment="Center"/>
+                    <Button Classes="ghost"
+                            FontSize="12"
+                            Foreground="{DynamicResource AppAccent}"
+                            x:Name="KofiBtn"
+                            Click="OnKofiClick">https://ko-fi.com/serany</Button>
+                </StackPanel>
+            </StackPanel>
+
+            <TextBlock Text="Thanks for stopping by."
+                       FontSize="12"
+                       Foreground="{DynamicResource AppMuted}"/>
+
+            <Button HorizontalAlignment="Right"
+                    Padding="16,5"
+                    Click="OnClose">Close</Button>
+        </StackPanel>
+    </Border>
+</UserControl>

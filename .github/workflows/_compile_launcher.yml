@@ -18,40 +18,25 @@ jobs:
         with:
           ref: ${{ steps.fetch-branch-name.outputs.head_ref || 'main' }}
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: launcher/package-lock.json
+          dotnet-version: '9.0.x'
 
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust build artifacts
-        uses: Swatinem/rust-cache@v2
-        with:
-          workdir: launcher/src-tauri
-
-      - name: Install frontend dependencies
-        run: npm install
-        working-directory: launcher
-
-      - name: Build Tauri app
-        run: npx tauri build --no-bundle
+      - name: Publish launcher
+        run: >
+          dotnet publish
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
         working-directory: launcher
 
       - name: Upload exe artifact
         uses: actions/upload-artifact@v7
         with:
           name: dqxclarity.exe
-          path: launcher/src-tauri/target/release/dqxclarity.exe
+          path: launcher/bin/Release/net9.0-windows/win-x64/publish/dqxclarity.exe
           if-no-files-found: error
           retention-days: 1
           overwrite: true
-
-      # when we upload the exe artifact, it can take a few moments for github to realize it's been uploaded.
-      # if subsequent jobs try to download this artifact too quickly, the step will fail. this is just an
-      # arbitrary amount of time to wait before letting any other steps continue.
-      - name: Sleep for 3 seconds
-        run: Start-Sleep -Seconds 3
