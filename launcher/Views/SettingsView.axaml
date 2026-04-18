@@ -421,7 +421,7 @@
 
                 <!-- ══ NAME OVERRIDES (full height) ══════════════════════ -->
                 <Grid x:Name="PanelOverrides" IsVisible="False" Margin="14,12"
-                      RowDefinitions="Auto,*">
+                      RowDefinitions="Auto,Auto,*">
 
                     <!-- Header row: save-error / success banners on left, buttons on right -->
                     <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
@@ -453,8 +453,15 @@
                         </StackPanel>
                     </Grid>
 
+                    <TextBlock Grid.Row="1"
+                               Text="Preferred names are limited to 12 characters due to in-game limitations."
+                               FontSize="11"
+                               Foreground="{DynamicResource AppMuted}"
+                               Margin="0,0,0,8"
+                               TextWrapping="Wrap"/>
+
                     <!-- Two-column name pair editor -->
-                    <Grid Grid.Row="1" ColumnDefinitions="*,1,*">
+                    <Grid Grid.Row="2" ColumnDefinitions="*,1,*">
 
                         <!-- Left: Player Names -->
                         <DockPanel Grid.Column="0">
