@@ -84,7 +84,7 @@ public class UpdateService
         {
             WorkingDirectory = appDir,
             UseShellExecute = false,
-            CreateNoWindow = true,
+            CreateNoWindow = false,
         };
         Process.Start(psi);
 
