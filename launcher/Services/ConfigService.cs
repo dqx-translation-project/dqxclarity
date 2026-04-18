@@ -155,7 +155,8 @@ public class ConfigService
             },
             Game = new GameConfig
             {
-                InstallDirectory = c.GetValueOrDefault("installdirectory") ?? "",
+                InstallDirectory        = c.GetValueOrDefault("installdirectory") ?? "",
+                LocaleEmulatorDirectory = l.GetValueOrDefault("localeemulatordirectory") ?? "",
             },
         };
     }
@@ -212,6 +213,20 @@ public class ConfigService
         UpdateIniValue(path, "config", "installdirectory", dir.Replace('\\', '/'));
     }
 
+    public void SaveLocaleEmulatorDir(string dir)
+    {
+        var path = ConfigPath();
+        UpdateIniValue(path, "launcher", "localeemulatordirectory", dir.Replace('\\', '/'));
+    }
+
+    public bool ValidateLocaleEmulatorDir(string dir, out string error)
+    {
+        var exe = Path.Combine(dir, "LEProc.exe");
+        if (File.Exists(exe)) { error = ""; return true; }
+        error = "Could not find LEProc.exe in the selected folder. Make sure you selected the Locale Emulator installation folder.";
+        return false;
+    }
+
     public string GetVersion()
     {
         try
@@ -232,17 +247,33 @@ public class ConfigService
         return false;
     }
 
-    public void LaunchDqx(string installDir)
+    public void LaunchDqx(string installDir, string? leDir = null)
     {
-        var exe = Path.Combine(installDir, "Boot", "DQXBoot.exe");
-        if (!File.Exists(exe)) throw new FileNotFoundException($"DQXBoot.exe not found at {exe}");
-        var psi = new System.Diagnostics.ProcessStartInfo(exe)
+        var dqxExe = Path.Combine(installDir, "Boot", "DQXBoot.exe");
+        if (!File.Exists(dqxExe)) throw new FileNotFoundException($"DQXBoot.exe not found at {dqxExe}");
+
+        if (!string.IsNullOrEmpty(leDir))
         {
-            WorkingDirectory = Path.Combine(installDir, "Boot"),
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        System.Diagnostics.Process.Start(psi);
+            var leExe = Path.Combine(leDir, "LEProc.exe");
+            if (!File.Exists(leExe)) throw new FileNotFoundException($"LEProc.exe not found at {leExe}");
+            var psi = new System.Diagnostics.ProcessStartInfo(leExe)
+            {
+                WorkingDirectory = leDir,
+                UseShellExecute  = false,
+                Arguments        = $"\"{dqxExe}\"",
+            };
+            System.Diagnostics.Process.Start(psi);
+        }
+        else
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo(dqxExe)
+            {
+                WorkingDirectory = Path.Combine(installDir, "Boot"),
+                UseShellExecute  = false,
+                CreateNoWindow   = true,
+            };
+            System.Diagnostics.Process.Start(psi);
+        }
     }
 
     public void LaunchDqxConfig(string installDir)
