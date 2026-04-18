@@ -421,85 +421,160 @@
 
                 <!-- ══ NAME OVERRIDES (full height) ══════════════════════ -->
                 <Grid x:Name="PanelOverrides" IsVisible="False" Margin="14,12"
-                      RowDefinitions="Auto,*">
+                      RowDefinitions="Auto,Auto,*">
 
                     <!-- Header row: save-error / success banners on left, buttons on right -->
                     <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-                        <StackPanel Grid.Column="0" Spacing="4">
-                            <Border BorderBrush="{DynamicResource AppDanger}"
-                                    BorderThickness="1" CornerRadius="4" Padding="8,6"
-                                    Background="{DynamicResource AppSurface2}"
-                                    IsVisible="{Binding OverridesSaveError,
-                                                Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                <TextBlock Text="{Binding OverridesSaveError}"
-                                           FontSize="11"
-                                           Foreground="{DynamicResource AppDanger}"
-                                           TextWrapping="Wrap"/>
-                            </Border>
-                            <Border BorderBrush="{DynamicResource AppSuccess}"
-                                    BorderThickness="1" CornerRadius="4" Padding="8,6"
-                                    Background="{DynamicResource AppSurface2}"
-                                    IsVisible="{Binding OverridesSaveSuccess}">
-                                <TextBlock Text="Saved!"
-                                           FontSize="11"
-                                           Foreground="{DynamicResource AppSuccess}"/>
-                            </Border>
-                        </StackPanel>
+                        <Border Grid.Column="0"
+                                BorderBrush="{DynamicResource AppDanger}"
+                                BorderThickness="1" CornerRadius="4" Padding="8,6"
+                                Background="{DynamicResource AppSurface2}"
+                                VerticalAlignment="Center"
+                                Margin="0,0,8,0"
+                                IsVisible="{Binding OverridesSaveError,
+                                            Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <TextBlock Text="{Binding OverridesSaveError}"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource AppDanger}"
+                                       TextWrapping="Wrap"/>
+                        </Border>
                         <StackPanel Grid.Column="1"
                                     Orientation="Horizontal"
                                     Spacing="8"
                                     VerticalAlignment="Top">
+                            <TextBlock Text="Saved!"
+                                       FontSize="11"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource AppSuccess}"
+                                       IsVisible="{Binding OverridesSaveSuccess}"/>
                             <Button Click="OnNameOverridesHelpClick">Help</Button>
                             <Button Classes="accent"
                                     Command="{Binding SaveNameOverridesCommand}">Save</Button>
                         </StackPanel>
                     </Grid>
 
-                    <!-- Editor + Example (fill remaining height) -->
-                    <Grid Grid.Row="1" ColumnDefinitions="*,*">
+                    <TextBlock Grid.Row="1"
+                               Text="Preferred names are limited to 12 characters due to in-game limitations."
+                               FontSize="11"
+                               Foreground="{DynamicResource AppMuted}"
+                               Margin="0,0,0,8"
+                               TextWrapping="Wrap"/>
 
-                        <!-- JSON editor -->
-                        <TextBox Grid.Column="0"
-                                 x:Name="OverridesEditor"
-                                 AcceptsReturn="True"
-                                 TextWrapping="NoWrap"
-                                 FontFamily="Cascadia Code,Consolas,Courier New,monospace"
-                                 FontSize="13"
-                                 Text="{Binding NameOverridesContent}"
-                                 Margin="0,0,6,0"/>
+                    <!-- Two-column name pair editor -->
+                    <Grid Grid.Row="2" ColumnDefinitions="*,1,*">
 
-                        <!-- Example pane -->
-                        <Border Grid.Column="1"
-                                Background="{DynamicResource AppSurface2}"
-                                BorderBrush="{DynamicResource AppBorder}"
-                                BorderThickness="1"
-                                CornerRadius="4"
-                                Padding="8">
-                            <StackPanel Spacing="0">
-                                <Border BorderBrush="{DynamicResource AppBorder}"
-                                        BorderThickness="0,0,0,1"
-                                        Padding="0,0,0,4"
-                                        Margin="0,0,0,8">
-                                    <TextBlock Text="Example"
-                                               FontSize="12"
-                                               FontWeight="SemiBold"
-                                               Foreground="{DynamicResource AppMuted}"/>
-                                </Border>
-                                <TextBlock xml:space="preserve"
-                                           FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                        <!-- Left: Player Names -->
+                        <DockPanel Grid.Column="0">
+                            <StackPanel DockPanel.Dock="Top"
+                                        Orientation="Horizontal"
+                                        Spacing="6"
+                                        Margin="0,0,0,6">
+                                <TextBlock Text="Player Names"
                                            FontSize="12"
-                                           Foreground="{DynamicResource AppMuted}"
-                                           TextWrapping="Wrap">{
-  "player_names": {
-    "セラニー": "Serany",
-    "ショウブ": "Shobu"
-  },
-  "mytown_names": {
-    "マイタウン": "My Town"
-  }
-}</TextBlock>
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center"/>
+                                <Button Command="{Binding AddPlayerNameCommand}"
+                                        Padding="6,2">+</Button>
                             </StackPanel>
-                        </Border>
+                            <Grid DockPanel.Dock="Top"
+                                  ColumnDefinitions="*,*,Auto"
+                                  Margin="0,0,0,4">
+                                <TextBlock Grid.Column="0"
+                                           Text="Japanese"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource AppMuted}"
+                                           Padding="6,0"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="Preferred"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource AppMuted}"
+                                           Padding="6,0"/>
+                            </Grid>
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                                <ItemsControl ItemsSource="{Binding PlayerNames}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:NamePair">
+                                            <Grid ColumnDefinitions="*,*,Auto" Margin="0,0,0,4">
+                                                <TextBox Grid.Column="0"
+                                                         Text="{Binding Japanese}"
+                                                         MaxLength="12"
+                                                         FontSize="12"
+                                                         Watermark="Japanese"
+                                                         Margin="0,0,4,0"/>
+                                                <TextBox Grid.Column="1"
+                                                         Text="{Binding Preferred}"
+                                                         MaxLength="12"
+                                                         FontSize="12"
+                                                         Watermark="Preferred"
+                                                         Margin="0,0,4,0"/>
+                                                <Button Grid.Column="2"
+                                                        Command="{Binding RemoveCommand}"
+                                                        Padding="4,2">x</Button>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </DockPanel>
+
+                        <!-- Divider -->
+                        <Border Grid.Column="1"
+                                Background="{DynamicResource AppBorder}"
+                                Margin="8,0"/>
+
+                        <!-- Right: Mytown Names -->
+                        <DockPanel Grid.Column="2" Margin="8,0,0,0">
+                            <StackPanel DockPanel.Dock="Top"
+                                        Orientation="Horizontal"
+                                        Spacing="6"
+                                        Margin="0,0,0,6">
+                                <TextBlock Text="Mytown Names"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center"/>
+                                <Button Command="{Binding AddMytownNameCommand}"
+                                        Padding="6,2">+</Button>
+                            </StackPanel>
+                            <Grid DockPanel.Dock="Top"
+                                  ColumnDefinitions="*,*,Auto"
+                                  Margin="0,0,0,4">
+                                <TextBlock Grid.Column="0"
+                                           Text="Japanese"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource AppMuted}"
+                                           Padding="6,0"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="Preferred"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource AppMuted}"
+                                           Padding="6,0"/>
+                            </Grid>
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                                <ItemsControl ItemsSource="{Binding MytownNames}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:NamePair">
+                                            <Grid ColumnDefinitions="*,*,Auto" Margin="0,0,0,4">
+                                                <TextBox Grid.Column="0"
+                                                         Text="{Binding Japanese}"
+                                                         MaxLength="12"
+                                                         FontSize="12"
+                                                         Watermark="Japanese"
+                                                         Margin="0,0,4,0"/>
+                                                <TextBox Grid.Column="1"
+                                                         Text="{Binding Preferred}"
+                                                         MaxLength="12"
+                                                         FontSize="12"
+                                                         Watermark="Preferred"
+                                                         Margin="0,0,4,0"/>
+                                                <Button Grid.Column="2"
+                                                        Command="{Binding RemoveCommand}"
+                                                        Padding="4,2">x</Button>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </DockPanel>
                     </Grid>
                 </Grid>
 
