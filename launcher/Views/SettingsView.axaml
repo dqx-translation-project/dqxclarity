@@ -1,0 +1,575 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DqxClarity.Launcher.ViewModels"
+             xmlns:m="using:DqxClarity.Launcher.Models"
+             xmlns:v="using:DqxClarity.Launcher.Views"
+             xmlns:svc="using:DqxClarity.Launcher.Services"
+             x:Class="DqxClarity.Launcher.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel"
+             Background="{DynamicResource AppBg}">
+
+    <UserControl.Resources>
+        <v:PatchProgressConverter x:Key="PatchProgress"/>
+    </UserControl.Resources>
+
+    <Grid ColumnDefinitions="148,*" RowDefinitions="*,54">
+
+        <!-- ── Sidebar ───────────────────────────────────────────────── -->
+        <Border Grid.Column="0" Grid.RowSpan="2"
+                Background="{DynamicResource AppSurface}"
+                BorderBrush="{DynamicResource AppBorder}"
+                BorderThickness="0,0,1,0"
+                Padding="10,12">
+            <Grid RowDefinitions="Auto,*,Auto">
+
+                <!-- Theme selector -->
+                <ComboBox Grid.Row="0"
+                          x:Name="ThemeCombo"
+                          HorizontalAlignment="Stretch"
+                          SelectionChanged="OnThemeSelectionChanged"/>
+
+                <!-- Rosie mascot -->
+                <Image Grid.Row="1"
+                       Source="avares://dqxclarity/Assets/Rosie.png"
+                       Stretch="Uniform"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Margin="6,8"/>
+
+                <!-- Footer links -->
+                <StackPanel Grid.Row="2" Spacing="1">
+                    <Button Classes="ghost" FontSize="15" Click="OnAboutClick">About</Button>
+                    <Button Classes="ghost" FontSize="15" Click="OnWikiClick">Wiki</Button>
+                    <Button Classes="ghost" FontSize="15" Click="OnSupportClick">Support</Button>
+                    <TextBlock Text="{Binding Version, StringFormat='v{0}'}"
+                               FontSize="15"
+                               Foreground="{DynamicResource AppMuted}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ── Main content area ─────────────────────────────────────── -->
+        <Grid Grid.Column="1" Grid.Row="0" RowDefinitions="Auto,*">
+
+            <!-- Tab strip -->
+            <Border Grid.Row="0"
+                    BorderBrush="{DynamicResource AppBorder}"
+                    BorderThickness="0,0,0,1"
+                    Background="{DynamicResource AppSurface}">
+                <StackPanel Orientation="Horizontal" Spacing="0">
+                    <Button x:Name="TabGeneral"    Classes="tab" Click="OnTabClick" Tag="general">General</Button>
+                    <Button x:Name="TabAdvanced"   Classes="tab" Click="OnTabClick" Tag="advanced">Advanced</Button>
+                    <Button x:Name="TabOverrides"  Classes="tab" Click="OnTabClick" Tag="nameoverrides">Name Overrides</Button>
+                    <Button x:Name="TabDatabase"   Classes="tab" Click="OnTabClick" Tag="database">Database</Button>
+                    <Button x:Name="TabGame"       Classes="tab" Click="OnTabClick" Tag="game">Game</Button>
+                </StackPanel>
+            </Border>
+
+            <!-- Tab content area — all panels overlap; SwitchTab controls visibility -->
+            <Grid Grid.Row="1">
+
+                <!-- ── Scrollable panels (General / Advanced / Game) ──── -->
+                <ScrollViewer x:Name="TabScroll"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Padding="14,12">
+                    <StackPanel>
+
+                        <!-- ══ GENERAL TAB ══════════════════════════════ -->
+                        <StackPanel x:Name="PanelGeneral" Spacing="14">
+                            <Border Classes="fieldset">
+                                <StackPanel Spacing="0">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,8">
+                                        <TextBlock Classes="legend" Text="Configuration" Margin="0" VerticalAlignment="Center"/>
+                                        <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnGeneralConfigHelpClick">?</Button>
+                                    </StackPanel>
+                                    <CheckBox Content="Nameplates"
+                                              IsChecked="{Binding Nameplates}"
+                                              ToolTip.Tip="Transliterates Japanese nameplates to English."/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Classes="fieldset">
+                                <StackPanel Spacing="8">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,0">
+                                        <TextBlock Classes="legend" Text="API Settings" Margin="0" VerticalAlignment="Center"/>
+                                        <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnGeneralApiHelpClick">?</Button>
+                                    </StackPanel>
+
+                                    <!-- DeepL row -->
+                                    <Grid ColumnDefinitions="130,*">
+                                        <CheckBox Grid.Column="0"
+                                                  Content="DeepL"
+                                                  IsChecked="{Binding UseDeepL}"
+                                                  ToolTip.Tip="Enable DeepL as your choice of external translation."/>
+                                        <TextBox Grid.Column="1"
+                                                 PasswordChar="•"
+                                                 Watermark="DeepL auth key"
+                                                 Text="{Binding DeepLKey}"
+                                                 IsEnabled="{Binding UseDeepL}"
+                                                 ToolTip.Tip="Paste your DeepL API Key here."/>
+                                    </Grid>
+
+                                    <!-- Google row -->
+                                    <Grid ColumnDefinitions="130,*">
+                                        <CheckBox Grid.Column="0"
+                                                  Content="Google Translate"
+                                                  IsChecked="{Binding UseGoogle}"
+                                                  ToolTip.Tip="Enable Google Translate as your choice of external translation."/>
+                                        <TextBox Grid.Column="1"
+                                                 PasswordChar="•"
+                                                 Watermark="Google API key"
+                                                 Text="{Binding GoogleKey}"
+                                                 IsEnabled="{Binding UseGoogle}"
+                                                 ToolTip.Tip="Paste your Google Translate API Key here."/>
+                                    </Grid>
+
+                                    <!-- Free Google row -->
+                                    <CheckBox Content="Free Google Translate"
+                                              IsChecked="{Binding UseGoogleFree}"
+                                              ToolTip.Tip="Uses the 'free' version of Google Translate. Rate limiting may ensue under use."/>
+
+                                    <!-- Validate row -->
+                                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
+                                        <Button Command="{Binding ValidateKeyCommand}"
+                                                IsEnabled="{Binding CanValidate}"
+                                                ToolTip.Tip="Validate that the selected API key works."
+                                                x:Name="ValidateBtn">Validate Enabled Key</Button>
+                                        <TextBlock Text="{Binding StatusMsg}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppMuted}"
+                                                   VerticalAlignment="Center"
+                                                   IsVisible="{Binding StatusMsg, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- ══ ADVANCED TAB ══════════════════════════════ -->
+                        <StackPanel x:Name="PanelAdvanced" Spacing="14" IsVisible="False">
+                            <Border Classes="fieldset">
+                                <StackPanel Spacing="0">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,8">
+                                        <TextBlock Classes="legend" Text="Configuration" Margin="0" VerticalAlignment="Center"/>
+                                        <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnAdvancedConfigHelpClick">?</Button>
+                                    </StackPanel>
+                                    <CheckBox Content="Community Logging"
+                                              IsChecked="{Binding CommunityLogging}"
+                                              ToolTip.Tip="Enables logging of internal game files to a text file."/>
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="fieldset">
+                                <StackPanel Spacing="8">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,0">
+                                        <TextBlock Classes="legend" Text="Logging" Margin="0" VerticalAlignment="Center"/>
+                                        <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnLoggingHelpClick">?</Button>
+                                    </StackPanel>
+                                    <CheckBox Content="Enable Debug Logging"
+                                              IsChecked="{Binding DebugLogging}"
+                                              ToolTip.Tip="Enables more verbose logging."/>
+                                    <Button Command="{Binding OpenLogFolderCommand}"
+                                            ToolTip.Tip="Open the logs folder in file explorer.">Open Log Folder</Button>
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="fieldset">
+                                <StackPanel Spacing="8">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,0">
+                                        <TextBlock Classes="legend" Text="API Settings" Margin="0" VerticalAlignment="Center"/>
+                                        <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnAdvancedApiHelpClick">?</Button>
+                                    </StackPanel>
+                                    <Grid ColumnDefinitions="130,*">
+                                        <CheckBox Grid.Column="0"
+                                                  Content="Community API"
+                                                  IsChecked="{Binding UseCommunityApi}"
+                                                  IsCheckedChanged="OnCommunityApiChanged"
+                                                  ToolTip.Tip="Enable Community API for submitting game strings to devs."/>
+                                        <TextBox Grid.Column="1"
+                                                 PasswordChar="•"
+                                                 Watermark="Community API key"
+                                                 Text="{Binding CommunityApiKey}"
+                                                 IsEnabled="{Binding UseCommunityApi}"
+                                                 ToolTip.Tip="Paste your Community API Key here."/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- ══ GAME TAB ══════════════════════════════════ -->
+                        <StackPanel x:Name="PanelGame" Spacing="14" IsVisible="False">
+
+                            <Border Classes="fieldset">
+                                <StackPanel Spacing="8">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,0">
+                                        <TextBlock Classes="legend" Text="Installation" Margin="0" VerticalAlignment="Center"/>
+                                        <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnInstallationHelpClick">?</Button>
+                                    </StackPanel>
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBox Grid.Column="0"
+                                                 IsReadOnly="True"
+                                                 Text="{Binding DqxDir}"
+                                                 Watermark="No folder selected"
+                                                 ToolTip.Tip="Path to your DQX installation folder."
+                                                 Margin="0,0,6,0"/>
+                                        <Button Grid.Column="1"
+                                                x:Name="BrowseBtn"
+                                                Click="OnBrowseClick"
+                                                ToolTip.Tip="Browse for your DQX installation folder.">Browse...</Button>
+                                    </Grid>
+                                    <TextBlock Text="{Binding DqxDirError}"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource AppDanger}"
+                                               TextWrapping="Wrap"
+                                               IsVisible="{Binding DqxDirError,
+                                                           Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Command="{Binding InstallSendToChatCommand}"
+                                                IsEnabled="{Binding !SendToChatBusy}"
+                                                ToolTip.Tip="Download send_to_chat.exe from the latest GitHub release into misc_files.">Install SendToChat</Button>
+                                        <TextBlock Text="{Binding SendToChatStatus}"
+                                                   FontSize="11"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource AppMuted}"
+                                                   IsVisible="{Binding SendToChatStatus,
+                                                               Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Classes="fieldset"
+                                    IsVisible="{Binding DqxDirValid}">
+                                <StackPanel Spacing="8">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,0">
+                                        <TextBlock Classes="legend" Text="Launch" Margin="0" VerticalAlignment="Center"/>
+                                        <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnLaunchHelpClick">?</Button>
+                                    </StackPanel>
+                                    <Grid ColumnDefinitions="*,*,*">
+                                        <Button Grid.Column="0" Margin="0,0,3,0"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Center"
+                                                Command="{Binding OpenDqxCommand}"
+                                                ToolTip.Tip="Launch DQXBoot.exe.">Open DQX</Button>
+                                        <Button Grid.Column="1" Margin="3,0,3,0"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Center"
+                                                Command="{Binding OpenDqxConfigCommand}"
+                                                ToolTip.Tip="Launch DQXConfig.exe.">Open DQXConfig</Button>
+                                        <Button Grid.Column="2" Margin="3,0,0,0"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Center"
+                                                Command="{Binding OpenSendToChatCommand}"
+                                                IsEnabled="{Binding SendToChatInstalled}"
+                                                ToolTip.Tip="Launch send_to_chat.exe.">Open SendToChat</Button>
+                                    </Grid>
+                                    <StackPanel Orientation="Horizontal" Spacing="16">
+                                        <CheckBox Content="Launch DQX with dqxclarity"
+                                                  IsChecked="{Binding SimultaneousLaunch}"
+                                                  ToolTip.Tip="When Run is clicked, launch DQX and dqxclarity at the same time."/>
+                                        <CheckBox Content="Launch SendToChat with dqxclarity"
+                                                  IsChecked="{Binding LaunchSendToChat}"
+                                                  IsEnabled="{Binding SendToChatInstalled}"
+                                                  ToolTip.Tip="When Run is clicked, also launch send_to_chat.exe."/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Classes="fieldset"
+                                    IsVisible="{Binding DqxDirValid}">
+                                <StackPanel Spacing="8">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,0">
+                                        <TextBlock Classes="legend" Text="Patch" Margin="0" VerticalAlignment="Center"/>
+                                        <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnPatchHelpClick">?</Button>
+                                    </StackPanel>
+
+                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto">
+                                        <!-- Launcher patch row -->
+                                        <Button Grid.Column="0" Grid.Row="0" Margin="0,0,3,0"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Center"
+                                                Command="{Binding PatchLauncherCommand}"
+                                                IsEnabled="{Binding !Patching}"
+                                                ToolTip.Tip="Patch the Japanese launcher with an English version.">Patch Launcher</Button>
+                                        <Button Grid.Column="1" Grid.Row="0" Margin="3,0,0,0"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Center"
+                                                Command="{Binding RestoreLauncherCommand}"
+                                                IsEnabled="{Binding !Patching}"
+                                                ToolTip.Tip="Restore the original Japanese launcher executable.">Restore Launcher</Button>
+
+                                        <!-- Config patch row -->
+                                        <Button Grid.Column="0" Grid.Row="1" Margin="0,4,3,0"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Center"
+                                                Command="{Binding PatchConfigCommand}"
+                                                IsEnabled="{Binding !Patching}"
+                                                ToolTip.Tip="Patch the Japanese Config with an English version.">Patch Config</Button>
+                                        <Button Grid.Column="1" Grid.Row="1" Margin="3,4,0,0"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Center"
+                                                Command="{Binding RestoreConfigCommand}"
+                                                IsEnabled="{Binding !Patching}"
+                                                ToolTip.Tip="Restore the original Japanese Config executable.">Restore Config</Button>
+
+                                        <!-- Game files row -->
+                                        <Button Grid.Column="0" Grid.Row="2" Margin="0,4,3,0"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Center"
+                                                Command="{Binding PatchGameFilesCommand}"
+                                                IsEnabled="{Binding !Patching}"
+                                                ToolTip.Tip="Download and apply the latest DAT/IDX translation mod. Requires admin. DQX must be closed.">Patch Game Files</Button>
+                                        <Button Grid.Column="1" Grid.Row="2" Margin="3,4,0,0"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Center"
+                                                IsEnabled="{Binding !Patching}"
+                                                Click="OnRestoreGameFilesClick"
+                                                ToolTip.Tip="Restore the original game files.">Restore Game Files</Button>
+                                    </Grid>
+
+                                    <!-- Progress bar -->
+                                    <ProgressBar IsVisible="{Binding Patching}"
+                                                 Minimum="0" Maximum="100">
+                                        <ProgressBar.Value>
+                                            <MultiBinding Converter="{StaticResource PatchProgress}">
+                                                <Binding Path="PatchDownloaded"/>
+                                                <Binding Path="PatchTotal"/>
+                                            </MultiBinding>
+                                        </ProgressBar.Value>
+                                    </ProgressBar>
+
+                                    <!-- Patch status message -->
+                                    <TextBlock Text="{Binding PatchStatus}"
+                                               FontSize="11"
+                                               TextWrapping="Wrap"
+                                               IsVisible="{Binding PatchStatus,
+                                                           Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                               Foreground="{Binding PatchIsError,
+                                                            Converter={x:Static v:BoolToBrushConverter.ErrorOrMuted}}"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- ══ NAME OVERRIDES (full height) ══════════════════════ -->
+                <Grid x:Name="PanelOverrides" IsVisible="False" Margin="14,12"
+                      RowDefinitions="Auto,*">
+
+                    <!-- Header row: save-error / success banners on left, buttons on right -->
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                        <StackPanel Grid.Column="0" Spacing="4">
+                            <Border BorderBrush="{DynamicResource AppDanger}"
+                                    BorderThickness="1" CornerRadius="4" Padding="8,6"
+                                    Background="{DynamicResource AppSurface2}"
+                                    IsVisible="{Binding OverridesSaveError,
+                                                Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <TextBlock Text="{Binding OverridesSaveError}"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource AppDanger}"
+                                           TextWrapping="Wrap"/>
+                            </Border>
+                            <Border BorderBrush="{DynamicResource AppSuccess}"
+                                    BorderThickness="1" CornerRadius="4" Padding="8,6"
+                                    Background="{DynamicResource AppSurface2}"
+                                    IsVisible="{Binding OverridesSaveSuccess}">
+                                <TextBlock Text="Saved!"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource AppSuccess}"/>
+                            </Border>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    Spacing="8"
+                                    VerticalAlignment="Top">
+                            <Button Click="OnNameOverridesHelpClick">Help</Button>
+                            <Button Classes="accent"
+                                    Command="{Binding SaveNameOverridesCommand}">Save</Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Editor + Example (fill remaining height) -->
+                    <Grid Grid.Row="1" ColumnDefinitions="*,*">
+
+                        <!-- JSON editor -->
+                        <TextBox Grid.Column="0"
+                                 x:Name="OverridesEditor"
+                                 AcceptsReturn="True"
+                                 TextWrapping="NoWrap"
+                                 FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                                 FontSize="13"
+                                 Text="{Binding NameOverridesContent}"
+                                 Margin="0,0,6,0"/>
+
+                        <!-- Example pane -->
+                        <Border Grid.Column="1"
+                                Background="{DynamicResource AppSurface2}"
+                                BorderBrush="{DynamicResource AppBorder}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8">
+                            <StackPanel Spacing="0">
+                                <Border BorderBrush="{DynamicResource AppBorder}"
+                                        BorderThickness="0,0,0,1"
+                                        Padding="0,0,0,4"
+                                        Margin="0,0,0,8">
+                                    <TextBlock Text="Example"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource AppMuted}"/>
+                                </Border>
+                                <TextBlock xml:space="preserve"
+                                           FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource AppMuted}"
+                                           TextWrapping="Wrap">{
+  "player_names": {
+    "セラニー": "Serany",
+    "ショウブ": "Shobu"
+  },
+  "mytown_names": {
+    "マイタウン": "My Town"
+  }
+}</TextBlock>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+
+                <!-- ══ DATABASE (full height) ════════════════════════════ -->
+                <Grid x:Name="PanelDatabase" IsVisible="False" Margin="14,8"
+                      RowDefinitions="Auto,Auto,Auto,*,Auto">
+
+                    <!-- Toolbar row 1 -->
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,0,0,6">
+                        <Button Grid.Column="0"
+                                Command="{Binding ReadDatabaseCommand}"
+                                IsEnabled="{Binding !DbLoading}"
+                                x:Name="ReadDbBtn"
+                                Margin="0,0,4,0">Read Database</Button>
+                        <Button Grid.Column="1"
+                                Margin="0,0,4,0"
+                                Click="OnDbHelpClick">Help</Button>
+                        <ComboBox Grid.Column="2"
+                                  x:Name="DbTableCombo"
+                                  Margin="0,0,4,0"
+                                  IsEnabled="{Binding DbTables.Count,
+                                              Converter={x:Static v:CountToBoolConverter.Instance}}"
+                                  PlaceholderText="Select table…"
+                                  ItemsSource="{Binding DbTables}"
+                                  SelectionChanged="OnDbTableSelectionChanged"/>
+                        <Button Grid.Column="3"
+                                Classes="danger"
+                                IsEnabled="{Binding DbTables.Count,
+                                            Converter={x:Static v:CountToBoolConverter.Instance}}"
+                                Click="OnPurgeClick">Purge Database</Button>
+                    </Grid>
+
+                    <!-- Toolbar row 2: filter + delete -->
+                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,4">
+                        <TextBox Grid.Column="0"
+                                 Watermark="Filter rows…"
+                                 Text="{Binding DbFilter}"
+                                 IsEnabled="{Binding DbColumns.Count,
+                                             Converter={x:Static v:CountToBoolConverter.Instance}}"
+                                 Margin="0,0,6,0"/>
+                        <Button Grid.Column="1"
+                                Classes="danger"
+                                x:Name="DeleteBtn"
+                                IsEnabled="False"
+                                IsVisible="{Binding DbSelectedTable,
+                                            Converter={x:Static v:StringEqualConverter.Instance},
+                                            ConverterParameter='dialog'}"
+                                Click="OnDeleteClick">Delete</Button>
+                    </Grid>
+
+                    <!-- Error text -->
+                    <TextBlock Grid.Row="2"
+                               Text="{Binding DbError}"
+                               FontSize="11"
+                               Foreground="{DynamicResource AppDanger}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,4"
+                               IsVisible="{Binding DbError,
+                                           Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+                    <!-- Custom table: virtual scrolling + synced header -->
+                    <Border Grid.Row="3"
+                            BorderBrush="{DynamicResource AppBorder}"
+                            BorderThickness="1"
+                            ClipToBounds="True">
+                        <Grid RowDefinitions="Auto,*">
+                            <!-- Header scrolls horizontally in sync with content; bar is hidden -->
+                            <Border Grid.Row="0"
+                                    Background="{DynamicResource AppSurface2}"
+                                    BorderBrush="{DynamicResource AppBorder}"
+                                    BorderThickness="0,0,0,1">
+                                <ScrollViewer x:Name="DbHeaderScroll"
+                                              HorizontalScrollBarVisibility="Hidden"
+                                              VerticalScrollBarVisibility="Disabled">
+                                    <Grid x:Name="DbHeaderRow" Height="26"/>
+                                </ScrollViewer>
+                            </Border>
+                            <!-- Content: virtual canvas inside a full-scroll viewer -->
+                            <ScrollViewer Grid.Row="1"
+                                          x:Name="DbScroll"
+                                          HorizontalScrollBarVisibility="Auto"
+                                          VerticalScrollBarVisibility="Auto"
+                                          AllowAutoHide="False"
+                                          Background="{DynamicResource AppSurface}"
+                                          ScrollChanged="OnDbScrollChanged">
+                                <Canvas x:Name="DbCanvas"
+                                        VerticalAlignment="Top"
+                                        HorizontalAlignment="Left"/>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
+
+                    <!-- Row count -->
+                    <TextBlock Grid.Row="4"
+                               Text="{Binding DbRowCount}"
+                               FontSize="11"
+                               Foreground="{DynamicResource AppMuted}"
+                               Margin="0,4,0,0"
+                               IsVisible="{Binding DbRowCount,
+                                           Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                </Grid>
+
+            </Grid>
+        </Grid>
+
+        <!-- ── Bottom bar ─────────────────────────────────────────────── -->
+        <Border Grid.Column="1" Grid.Row="1"
+                Background="{DynamicResource AppSurface}"
+                BorderBrush="{DynamicResource AppBorder}"
+                BorderThickness="0,1,0,0"
+                Padding="14,8">
+            <Grid ColumnDefinitions="*,Auto">
+
+                <Grid Grid.Column="0"
+                      ColumnDefinitions="Auto,*"
+                      VerticalAlignment="Center">
+                    <Button Grid.Column="0"
+                            Classes="accent"
+                            Padding="12,5"
+                            Click="OnUpdateClick"
+                            Content="{Binding UpdateButtonText}"
+                            IsVisible="{Binding UpdateInfo, Converter={x:Static ObjectConverters.IsNotNull}}"
+                            Margin="0,0,10,0"/>
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding UpdateBarText}"
+                               FontSize="13"
+                               Foreground="{DynamicResource AppMuted}"
+                               VerticalAlignment="Center"
+                               TextWrapping="Wrap"/>
+                </Grid>
+
+                <Button Grid.Column="1"
+                        Classes="accent"
+                        Padding="16,5"
+                        FontWeight="SemiBold"
+                        Command="{Binding RunCommand}"
+                        ToolTip.Tip="Save settings and launch dqxclarity.">Run</Button>
+            </Grid>
+        </Border>
+
+    </Grid>
+
+</UserControl>

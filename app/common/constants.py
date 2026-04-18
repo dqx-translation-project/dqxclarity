@@ -6,7 +6,4 @@ GITHUB_CLARITY_ITEMS_JSON_URL = "https://raw.githubusercontent.com/dqx-translati
 GITHUB_CLARITY_KEY_ITEMS_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx_translations/main/json/_lang/en/subPackage41Client.win32.json"
 GITHUB_CLARITY_QUESTS_REQUESTS_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx_translations/main/json/_lang/en/eventTextSysQuestaClient.json"
 GITHUB_CLARITY_CUTSCENE_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx_translations/main/json/_lang/en/eventTextSysEventaClient.win32.json"
-GITHUB_CLARITY_VERSION_UPDATE_URL = "https://api.github.com/repos/dqx-translation-project/dqxclarity/releases/latest"
-GITHUB_CLARITY_DAT1_URL = "https://github.com/dqx-translation-project/dqxclarity/releases/latest/download/data00000000.win32.dat1"
-GITHUB_CLARITY_IDX_URL = "https://github.com/dqx-translation-project/dqxclarity/releases/latest/download/data00000000.win32.idx"
 COMMUNITY_STRING_API_URL = "https://community-string-api.ethene.wiki"

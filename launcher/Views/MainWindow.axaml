@@ -1,0 +1,34 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:DqxClarity.Launcher.ViewModels"
+        x:Class="DqxClarity.Launcher.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="dqxclarity"
+        Width="680" Height="580"
+        MaxWidth="680" MaxHeight="580"
+        MinWidth="400" MinHeight="300"
+        SizeToContent="Manual"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource AppBg}">
+
+    <!-- The active view is swapped by MainWindow.axaml.cs -->
+    <Grid>
+        <TransitioningContentControl x:Name="MainContent">
+            <TransitioningContentControl.PageTransition>
+                <CrossFade Duration="0:0:0.25"/>
+            </TransitioningContentControl.PageTransition>
+        </TransitioningContentControl>
+
+        <!-- Full-window overlay for in-app dialogs -->
+        <Grid x:Name="OverlayPanel"
+              IsVisible="False"
+              Background="#B2000000"
+              PointerPressed="OnOverlayBackdropPressed">
+            <ContentControl x:Name="OverlayContent"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"/>
+        </Grid>
+    </Grid>
+
+</Window>

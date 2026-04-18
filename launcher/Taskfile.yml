@@ -1,0 +1,17 @@
+version: "3"
+
+tasks:
+  build:
+    desc: build the launcher (debug)
+    cmds:
+      - dotnet build
+
+  publish:
+    desc: publish a self-contained single-file exe for win-x64
+    cmds:
+      - dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+
+  clean:
+    desc: remove build artifacts
+    cmds:
+      - rm -rf bin obj

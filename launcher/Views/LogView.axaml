@@ -1,0 +1,56 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DqxClarity.Launcher.ViewModels"
+             x:Class="DqxClarity.Launcher.Views.LogView"
+             x:DataType="vm:LogViewModel"
+             Background="{DynamicResource AppBg}">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Toolbar -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource AppSurface2}"
+                BorderBrush="{DynamicResource AppBorder}"
+                BorderThickness="0,0,0,1"
+                Padding="10,6">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding StatusTitle}"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource AppMuted}"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                    <Button Classes="danger"
+                            Padding="8,3"
+                            FontSize="11"
+                            Command="{Binding StopCommand}"
+                            IsVisible="{Binding !HasExited}">Stop</Button>
+                    <Button Padding="8,3"
+                            FontSize="11"
+                            Command="{Binding BackCommand}"
+                            IsVisible="{Binding HasExited}">Back</Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Log area -->
+        <ScrollViewer Grid.Row="1"
+                      x:Name="LogScroll"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto"
+                      AllowAutoHide="False"
+                      Background="{DynamicResource AppSurface}">
+            <Panel Margin="10,8,26,8">
+                <TextBlock Text="Waiting for output…"
+                           FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                           FontSize="11"
+                           Foreground="{DynamicResource AppMuted}"
+                           FontStyle="Italic"
+                           IsVisible="{Binding HasNoLines}"/>
+                <StackPanel x:Name="LogStack" Margin="0,0,0,8"/>
+            </Panel>
+        </ScrollViewer>
+
+    </Grid>
+
+</UserControl>

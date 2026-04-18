@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from updater import main, strip_markdown
+from updater import main
 
 
 def make_zip(zip_path: str, files: dict) -> None:
@@ -17,52 +17,6 @@ def make_zip(zip_path: str, files: dict) -> None:
     with zipfile.ZipFile(zip_path, "w") as zf:
         for path, content in files.items():
             zf.writestr(f"dqxclarity/{path}", content)
-
-
-class TestStripMarkdown(unittest.TestCase):
-    # strip_markdown is a pure function — no setup needed, called directly.
-
-    def test_removes_headers(self):
-        self.assertEqual(strip_markdown("## What's Changed"), "What's Changed")
-
-    def test_removes_all_header_levels(self):
-        for level in range(1, 7):
-            self.assertEqual(strip_markdown(f"{'#' * level} Title"), "Title")
-
-    def test_removes_bold(self):
-        self.assertEqual(strip_markdown("**bold**"), "bold")
-
-    def test_removes_italic(self):
-        self.assertEqual(strip_markdown("*italic*"), "italic")
-
-    def test_removes_inline_code(self):
-        self.assertEqual(strip_markdown("`code`"), "code")
-
-    def test_removes_link_keeps_text(self):
-        self.assertEqual(strip_markdown("[display](https://example.com)"), "display")
-
-    def test_removes_horizontal_rules(self):
-        result = strip_markdown("above\n---\nbelow")
-        self.assertNotIn("---", result)
-
-    def test_collapses_excessive_blank_lines(self):
-        result = strip_markdown("a\n\n\n\nb")
-        self.assertNotIn("\n\n\n", result)
-
-    def test_preserves_bullet_points(self):
-        text = "- item one\n- item two"
-        self.assertEqual(strip_markdown(text), text)
-
-    def test_mixed_content(self):
-        # Verify a realistic GitHub release notes block strips cleanly
-        text = "## Changes\n\n- Fix **bug** in `module`\n- Update [dep](https://example.com)"
-        result = strip_markdown(text)
-        self.assertIn("Changes", result)
-        self.assertIn("Fix bug in module", result)
-        self.assertIn("Update dep", result)
-        self.assertNotIn("##", result)
-        self.assertNotIn("**", result)
-        self.assertNotIn("`", result)
 
 
 class TestUpdaterMain(unittest.TestCase):
@@ -86,11 +40,11 @@ class TestUpdaterMain(unittest.TestCase):
         if os.path.exists(self.zip_path):
             os.remove(self.zip_path)
 
-    def _run_main(self, extra_args=None, release_notes="", fetch_side_effect=None, download_side_effect=None):
+    def _run_main(self, extra_args=None, fetch_side_effect=None, download_side_effect=None):
         """Invoke main() with all network I/O patched and work-dir pointed at
         the test fixture. Returns the mock_input so callers can inspect the
         final prompt if needed."""
-        fake_release = {"tag_name": "v1.1.0", "body": release_notes}
+        fake_release = {"tag_name": "v1.1.0", "body": ""}
         mock_input = MagicMock()
 
         argv = ["updater.py", "--work-dir", self.work_dir]
@@ -193,18 +147,6 @@ class TestUpdaterMain(unittest.TestCase):
         self._run_main()
 
         self.assertFalse(os.path.exists(venv_path))
-
-    def test_release_notes_displayed(self):
-        # Release notes come from the fetch_release_info response body.
-        # Verify the stripped content appears in output.
-        make_zip(self.zip_path, {"app/main.py": "x"})
-
-        with patch("builtins.print") as mock_print:
-            self._run_main(release_notes="## What's new\n\n- Fixed a bug")
-
-        printed = " ".join(str(c) for call in mock_print.call_args_list for c in call[0])
-        self.assertIn("What's new", printed)
-        self.assertIn("Fixed a bug", printed)
 
     def test_version_string_in_success_message(self):
         # cur_ver comes from version.update (written in setUp as "1.0.0").
