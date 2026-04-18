@@ -16,6 +16,7 @@ public partial class SettingsView : UserControl
     private SettingsViewModel? _vm;
 
     public event Func<Task>? BrowseFolderRequested;
+    public event Func<Task>? BrowseLeFolderRequested;
 
     private const string CommunityApiInfoText =
         "The Community API submits your translation strings to a shared remote database. " +
@@ -82,10 +83,15 @@ public partial class SettingsView : UserControl
         "Reach out to Serany (mebo) on Discord if you would like one.";
 
     private const string InstallationHelpText =
-        "DQX Folder\n" +
+        "DQX Folder Path\n" +
         "The path to your DQX installation directory. dqxclarity needs this to find game executables " +
         "and DAT/IDX files for patching. Use the Browse button to select the folder — " +
         "it should be the DRAGON QUEST X folder inside your SquareEnix directory.\n\n" +
+        "Locale Emulator Folder Path\n" +
+        "The path to the folder where LEProc.exe is located. Locale Emulator emulates a Japanese locale, " +
+        "which allows you to use the Japanese IME keyboard within DQX. " +
+        "If this path is set, dqxclarity will launch DQX through LEProc.exe instead of directly. " +
+        "This field is optional — leave it empty if you do not use Locale Emulator.\n\n" +
         "Install SendToChat\n" +
         "Downloads send_to_chat.exe from the latest GitHub release and saves it into the misc_files folder " +
         "inside your dqxclarity directory. SendToChat lets you send clipboard text into the DQX chat box. " +
@@ -262,6 +268,12 @@ public partial class SettingsView : UserControl
     {
         if (BrowseFolderRequested != null)
             await BrowseFolderRequested.Invoke();
+    }
+
+    private async void OnBrowseLeClick(object? sender, RoutedEventArgs e)
+    {
+        if (BrowseLeFolderRequested != null)
+            await BrowseLeFolderRequested.Invoke();
     }
 
     private async void OnCommunityApiChanged(object? sender, RoutedEventArgs e)

@@ -48,6 +48,8 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _dqxDir = "";
     [ObservableProperty] private bool   _dqxDirValid;
     [ObservableProperty] private string _dqxDirError = "";
+    [ObservableProperty] private string _leDir = "";
+    [ObservableProperty] private string _leDirError = "";
     [ObservableProperty] private bool   _simultaneousLaunch;
     [ObservableProperty] private bool   _launchSendToChat;
 
@@ -155,6 +157,7 @@ public partial class SettingsViewModel : ObservableObject
         _communityApiKey   = config.Translation.CommunityApiKey;
 
         _dqxDir = config.Game.InstallDirectory;
+        _leDir  = config.Game.LocaleEmulatorDirectory;
 
         _patch.Progress += (downloaded, total) =>
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
@@ -281,7 +284,7 @@ public partial class SettingsViewModel : ObservableObject
         try { _cfg.Save(launcher, translation); } catch { }
 
         if (SimultaneousLaunch && !string.IsNullOrEmpty(DqxDir))
-            try { _cfg.LaunchDqx(DqxDir); } catch { }
+            try { _cfg.LaunchDqx(DqxDir, string.IsNullOrEmpty(LeDir) ? null : LeDir); } catch { }
 
         if (LaunchSendToChat && SendToChatInstalled)
             try { _cfg.LaunchSendToChat(); } catch { }
@@ -490,10 +493,43 @@ public partial class SettingsViewModel : ObservableObject
         await Task.CompletedTask;
     }
 
+    public async Task SetLeDir(string dir)
+    {
+        LeDirError = "";
+        if (_cfg.ValidateLocaleEmulatorDir(dir, out var err))
+        {
+            LeDir = dir;
+            try { _cfg.SaveLocaleEmulatorDir(dir); } catch { }
+        }
+        else
+        {
+            LeDir = dir;
+            LeDirError = err;
+        }
+        await Task.CompletedTask;
+    }
+
+    [RelayCommand]
+    private void ClearDqxDir()
+    {
+        DqxDir      = "";
+        DqxDirValid = false;
+        DqxDirError = "";
+        try { _cfg.SaveGameDir(""); } catch { }
+    }
+
+    [RelayCommand]
+    private void ClearLeDir()
+    {
+        LeDir      = "";
+        LeDirError = "";
+        try { _cfg.SaveLocaleEmulatorDir(""); } catch { }
+    }
+
     [RelayCommand]
     private async Task OpenDqx()
     {
-        try { _cfg.LaunchDqx(DqxDir); }
+        try { _cfg.LaunchDqx(DqxDir, string.IsNullOrEmpty(LeDir) ? null : LeDir); }
         catch (Exception ex)
         {
             if (ShowInfoRequested != null)

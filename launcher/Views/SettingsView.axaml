@@ -72,7 +72,7 @@
                 <ScrollViewer x:Name="TabScroll"
                               HorizontalScrollBarVisibility="Disabled"
                               Padding="14,12">
-                    <StackPanel>
+                    <StackPanel MaxWidth="504">
 
                         <!-- ══ GENERAL TAB ══════════════════════════════ -->
                         <StackPanel x:Name="PanelGeneral" Spacing="14">
@@ -202,14 +202,40 @@
                                         <TextBlock Classes="legend" Text="Installation" Margin="0" VerticalAlignment="Center"/>
                                         <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnInstallationHelpClick">?</Button>
                                     </StackPanel>
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <TextBox Grid.Column="0"
-                                                 IsReadOnly="True"
-                                                 Text="{Binding DqxDir}"
-                                                 Watermark="No folder selected"
-                                                 ToolTip.Tip="Path to your DQX installation folder."
-                                                 Margin="0,0,6,0"/>
-                                        <Button Grid.Column="1"
+                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="DQX Folder Path:"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"/>
+                                        <Border Grid.Column="1"
+                                                Background="{DynamicResource AppSurface}"
+                                                BorderBrush="{DynamicResource AppBorder}"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="6,3"
+                                                ClipToBounds="True"
+                                                Margin="0,0,6,0"
+                                                ToolTip.Tip="Path to your DQX installation folder.">
+                                            <Panel>
+                                                <TextBlock Text="{Binding DqxDir}"
+                                                           FontSize="12"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Foreground="{DynamicResource AppText}"
+                                                           IsVisible="{Binding DqxDir, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                                <TextBlock Text="No folder selected"
+                                                           FontSize="12"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource AppMuted}"
+                                                           IsVisible="{Binding DqxDir, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                                            </Panel>
+                                        </Border>
+                                        <Button Grid.Column="2"
+                                                Command="{Binding ClearDqxDirCommand}"
+                                                IsVisible="{Binding DqxDir, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                ToolTip.Tip="Clear the DQX folder path."
+                                                Margin="0,0,6,0">C</Button>
+                                        <Button Grid.Column="3"
                                                 x:Name="BrowseBtn"
                                                 Click="OnBrowseClick"
                                                 ToolTip.Tip="Browse for your DQX installation folder.">Browse...</Button>
@@ -219,6 +245,50 @@
                                                Foreground="{DynamicResource AppDanger}"
                                                TextWrapping="Wrap"
                                                IsVisible="{Binding DqxDirError,
+                                                           Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="Locale Emulator Folder Path:"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"/>
+                                        <Border Grid.Column="1"
+                                                Background="{DynamicResource AppSurface}"
+                                                BorderBrush="{DynamicResource AppBorder}"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="6,3"
+                                                ClipToBounds="True"
+                                                Margin="0,0,6,0"
+                                                ToolTip.Tip="Path to your Locale Emulator installation folder, where LEProc.exe is located.">
+                                            <Panel>
+                                                <TextBlock Text="{Binding LeDir}"
+                                                           FontSize="12"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Foreground="{DynamicResource AppText}"
+                                                           IsVisible="{Binding LeDir, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                                <TextBlock Text="No folder selected (optional)"
+                                                           FontSize="12"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource AppMuted}"
+                                                           IsVisible="{Binding LeDir, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                                            </Panel>
+                                        </Border>
+                                        <Button Grid.Column="2"
+                                                Command="{Binding ClearLeDirCommand}"
+                                                IsVisible="{Binding LeDir, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                ToolTip.Tip="Clear the Locale Emulator folder path."
+                                                Margin="0,0,6,0">C</Button>
+                                        <Button Grid.Column="3"
+                                                x:Name="BrowseLeBtn"
+                                                Click="OnBrowseLeClick"
+                                                ToolTip.Tip="Browse for your Locale Emulator installation folder.">Browse...</Button>
+                                    </Grid>
+                                    <TextBlock Text="{Binding LeDirError}"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource AppDanger}"
+                                               TextWrapping="Wrap"
+                                               IsVisible="{Binding LeDirError,
                                                            Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <Button Command="{Binding InstallSendToChatCommand}"
