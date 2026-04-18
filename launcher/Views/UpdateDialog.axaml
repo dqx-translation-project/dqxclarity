@@ -17,12 +17,12 @@
                           Background="{DynamicResource AppSurface}"
                           Padding="8"
                           CornerRadius="4"
-                          Margin="0,0,0,12">
+                          Margin="0,0,0,12"
+                          HorizontalScrollBarVisibility="Disabled">
                 <SelectableTextBlock x:Name="BodyText"
                                      FontSize="11"
                                      Foreground="{DynamicResource AppText}"
-                                     TextWrapping="Wrap"
-                                     LineHeight="17"/>
+                                     TextWrapping="Wrap"/>
             </ScrollViewer>
 
             <StackPanel Grid.Row="2"
