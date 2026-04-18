@@ -478,7 +478,7 @@
                                            Foreground="{DynamicResource AppMuted}"
                                            Padding="6,0"/>
                                 <TextBlock Grid.Column="1"
-                                           Text="English"
+                                           Text="Preferred"
                                            FontSize="11"
                                            Foreground="{DynamicResource AppMuted}"
                                            Padding="6,0"/>
@@ -495,10 +495,10 @@
                                                          Watermark="Japanese"
                                                          Margin="0,0,4,0"/>
                                                 <TextBox Grid.Column="1"
-                                                         Text="{Binding English}"
+                                                         Text="{Binding Preferred}"
                                                          MaxLength="12"
                                                          FontSize="12"
-                                                         Watermark="English"
+                                                         Watermark="Preferred"
                                                          Margin="0,0,4,0"/>
                                                 <Button Grid.Column="2"
                                                         Command="{Binding RemoveCommand}"
@@ -537,7 +537,7 @@
                                            Foreground="{DynamicResource AppMuted}"
                                            Padding="6,0"/>
                                 <TextBlock Grid.Column="1"
-                                           Text="English"
+                                           Text="Preferred"
                                            FontSize="11"
                                            Foreground="{DynamicResource AppMuted}"
                                            Padding="6,0"/>
@@ -554,10 +554,10 @@
                                                          Watermark="Japanese"
                                                          Margin="0,0,4,0"/>
                                                 <TextBox Grid.Column="1"
-                                                         Text="{Binding English}"
+                                                         Text="{Binding Preferred}"
                                                          MaxLength="12"
                                                          FontSize="12"
-                                                         Watermark="English"
+                                                         Watermark="Preferred"
                                                          Margin="0,0,4,0"/>
                                                 <Button Grid.Column="2"
                                                         Command="{Binding RemoveCommand}"

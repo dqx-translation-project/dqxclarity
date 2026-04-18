@@ -391,11 +391,11 @@ public partial class SettingsViewModel : ObservableObject
         {
             var playerDict = new Dictionary<string, string>();
             foreach (var p in PlayerNames.Where(p => !string.IsNullOrWhiteSpace(p.Japanese)))
-                playerDict[p.Japanese] = p.English;
+                playerDict[p.Japanese] = p.Preferred;
 
             var mytownDict = new Dictionary<string, string>();
             foreach (var p in MytownNames.Where(p => !string.IsNullOrWhiteSpace(p.Japanese)))
-                mytownDict[p.Japanese] = p.English;
+                mytownDict[p.Japanese] = p.Preferred;
 
             var json = JsonSerializer.Serialize(
                 new { player_names = playerDict, mytown_names = mytownDict },
