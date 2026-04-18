@@ -286,15 +286,16 @@ class Translator:
         # remove the full width space that starts on a new line
         output = output.replace("\n　", "\n")
 
-        # replace any <color*> tags with & as they are part of the string
-        output = output.replace("<color_", "<&color_")
-
         # removes all of the honorifics added at the end of the tags
         name_tags = ["<pc>", "<cs_pchero>", "<kyodai>"]
         honorifics = ["さま", "君", "どの", "ちゃん", "くん", "様", "さーん", "殿", "さん"]
         for tag in name_tags:
             for honorific in honorifics:
                 output = output.replace(f"{tag}{honorific}", tag)
+
+        # protect color tags from translator mangling by adding & prefix.
+        # the defensive restore below handles the case where the translator strips the leading <.
+        output = re.sub(r"<color_(\w+)>", r"<&color_\1>", output)
 
         # replace all variable name tags that expand to other text
         output = self.__swap_placeholder_tags(output)
@@ -411,12 +412,12 @@ class Translator:
             # game doesn't render em-dash. we use the Japanese "ー" instead to simulate one.
             updated_str = str_text.replace("—", "--")
             updated_str = self.__normalize_text(updated_str)
-            updated_str = updated_str.replace("<&color_", "<color_")  # put our color tag back.
-
             if str_attrs[count]["is_list"]:
                 # select lists will always have more than 1 entry..
                 # leave selection lists alone. please don't fuck this up, deepl
                 updated_str = self.__swap_placeholder_tags(updated_str, swap_back=True)
+                updated_str = re.sub(r"<&color_(\w+)>", r"<color_\1>", updated_str)
+                updated_str = re.sub(r"(?<![<])&color_(\w+)>", r"<color_\1>", updated_str)
 
                 # deepl occasionally indents our list lines.. even though they weren't originally indented
                 updated_str = updated_str.replace("\n ", "\n")
@@ -427,6 +428,8 @@ class Translator:
                 # wrap the text and inject <br>'s to break the text up
                 updated_str = self.__wrap_text(updated_str, width=wrap_width, max_lines=max_lines)
                 updated_str = self.__swap_placeholder_tags(updated_str, swap_back=True)
+                updated_str = re.sub(r"<&color_(\w+)>", r"<color_\1>", updated_str)
+                updated_str = re.sub(r"(?<![<])&color_(\w+)>", r"<color_\1>", updated_str)
 
                 if add_brs:
                     updated_str = self.__add_line_endings(updated_str)
