@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using DqxClarity.Launcher.ViewModels;
 
@@ -16,6 +17,13 @@ public partial class SetupView : UserControl
 
         if (DataContext is SetupViewModel vm)
         {
+            vm.PipLines.CollectionChanged += (_, _) =>
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(
+                    () => PipScroll.Offset = PipScroll.Offset.WithY(double.MaxValue),
+                    Avalonia.Threading.DispatcherPriority.Background);
+            };
+
             vm.PropertyChanged += async (_, args) =>
             {
                 if (args.PropertyName == nameof(SetupViewModel.ShowUacModal) && vm.ShowUacModal)

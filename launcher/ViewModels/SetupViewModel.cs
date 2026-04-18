@@ -39,16 +39,21 @@ public partial class SetupViewModel : ObservableObject
 
     public ObservableCollection<string> PipLines { get; } = [];
 
-    public bool HasError     => !string.IsNullOrEmpty(ErrorMessage);
-    public bool HasDetail    => !string.IsNullOrEmpty(ErrorDetail);
-    public bool HasPipOutput => PipLines.Count > 0;
+    public bool   HasError     => !string.IsNullOrEmpty(ErrorMessage);
+    public bool   HasDetail    => !string.IsNullOrEmpty(ErrorDetail);
+    public bool   HasPipOutput => PipLines.Count > 0;
+    public string PipText      => string.Join("\n", PipLines);
 
     public SetupViewModel(SetupService svc)
     {
         _svc = svc;
         _svc.Progress  += OnProgress;
         _svc.UacPrompt += () => Avalonia.Threading.Dispatcher.UIThread.Post(() => ShowUacModal = true);
-        PipLines.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasPipOutput));
+        PipLines.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(HasPipOutput));
+            OnPropertyChanged(nameof(PipText));
+        };
     }
 
     private void OnProgress(SetupEvent e)

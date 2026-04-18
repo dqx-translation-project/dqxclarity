@@ -241,25 +241,25 @@
                                         <TextBlock Classes="legend" Text="Launch" Margin="0" VerticalAlignment="Center"/>
                                         <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnLaunchHelpClick">?</Button>
                                     </StackPanel>
-                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
-                                        <Button Grid.Column="0" Grid.Row="0" Margin="0,0,3,0"
+                                    <Grid ColumnDefinitions="*,*,*">
+                                        <Button Grid.Column="0" Margin="0,0,3,0"
                                                 HorizontalAlignment="Stretch"
                                                 HorizontalContentAlignment="Center"
                                                 Command="{Binding OpenDqxCommand}"
                                                 ToolTip.Tip="Launch DQXBoot.exe.">Open DQX</Button>
-                                        <Button Grid.Column="1" Grid.Row="0" Margin="3,0,0,0"
+                                        <Button Grid.Column="1" Margin="3,0,3,0"
                                                 HorizontalAlignment="Stretch"
                                                 HorizontalContentAlignment="Center"
                                                 Command="{Binding OpenDqxConfigCommand}"
                                                 ToolTip.Tip="Launch DQXConfig.exe.">Open DQXConfig</Button>
-                                        <Button Grid.Column="0" Grid.Row="1" Margin="0,4,3,0"
+                                        <Button Grid.Column="2" Margin="3,0,0,0"
                                                 HorizontalAlignment="Stretch"
                                                 HorizontalContentAlignment="Center"
                                                 Command="{Binding OpenSendToChatCommand}"
                                                 IsEnabled="{Binding SendToChatInstalled}"
                                                 ToolTip.Tip="Launch send_to_chat.exe.">Open SendToChat</Button>
                                     </Grid>
-                                    <StackPanel Spacing="4">
+                                    <StackPanel Orientation="Horizontal" Spacing="16">
                                         <CheckBox Content="Launch DQX with dqxclarity"
                                                   IsChecked="{Binding SimultaneousLaunch}"
                                                   ToolTip.Tip="When Run is clicked, launch DQX and dqxclarity at the same time."/>

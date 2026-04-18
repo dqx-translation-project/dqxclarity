@@ -491,24 +491,36 @@ public partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void OpenDqx()
+    private async Task OpenDqx()
     {
         try { _cfg.LaunchDqx(DqxDir); }
-        catch (Exception ex) { DqxDirError = ex.Message; }
+        catch (Exception ex)
+        {
+            if (ShowInfoRequested != null)
+                await ShowInfoRequested("Executable not found", ex.Message);
+        }
     }
 
     [RelayCommand]
-    private void OpenDqxConfig()
+    private async Task OpenDqxConfig()
     {
         try { _cfg.LaunchDqxConfig(DqxDir); }
-        catch (Exception ex) { DqxDirError = ex.Message; }
+        catch (Exception ex)
+        {
+            if (ShowInfoRequested != null)
+                await ShowInfoRequested("Executable not found", ex.Message);
+        }
     }
 
     [RelayCommand]
-    private void OpenSendToChat()
+    private async Task OpenSendToChat()
     {
         try { _cfg.LaunchSendToChat(); }
-        catch { }
+        catch (Exception ex)
+        {
+            if (ShowInfoRequested != null)
+                await ShowInfoRequested("Executable not found", ex.Message);
+        }
     }
 
     [RelayCommand]

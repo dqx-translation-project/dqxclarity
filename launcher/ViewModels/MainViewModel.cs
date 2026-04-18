@@ -24,7 +24,7 @@ public partial class MainViewModel : ObservableObject
 
     private static readonly Dictionary<string, (double W, double H)> WinSizes = new()
     {
-        ["setup"]    = (500, 360),
+        ["setup"]    = (680, 580),
         ["settings"] = (680, 580),
         ["log"]      = (680, 580),
     };

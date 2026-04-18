@@ -4,15 +4,21 @@
         x:Class="DqxClarity.Launcher.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="dqxclarity"
-        Width="500" Height="360"
+        Width="680" Height="580"
+        MaxWidth="680" MaxHeight="580"
         MinWidth="400" MinHeight="300"
+        SizeToContent="Manual"
         CanResize="False"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource AppBg}">
 
     <!-- The active view is swapped by MainWindow.axaml.cs -->
     <Grid>
-        <ContentControl x:Name="MainContent"/>
+        <TransitioningContentControl x:Name="MainContent">
+            <TransitioningContentControl.PageTransition>
+                <CrossFade Duration="0:0:0.25"/>
+            </TransitioningContentControl.PageTransition>
+        </TransitioningContentControl>
 
         <!-- Full-window overlay for in-app dialogs -->
         <Grid x:Name="OverlayPanel"

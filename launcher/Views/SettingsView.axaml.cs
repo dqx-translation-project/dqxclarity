@@ -85,7 +85,7 @@ public partial class SettingsView : UserControl
         "DQX Folder\n" +
         "The path to your DQX installation directory. dqxclarity needs this to find game executables " +
         "and DAT/IDX files for patching. Use the Browse button to select the folder — " +
-        "it should be the directory that contains DQXBoot.exe.\n\n" +
+        "it should be the DRAGON QUEST X folder inside your SquareEnix directory.\n\n" +
         "Install SendToChat\n" +
         "Downloads send_to_chat.exe from the latest GitHub release and saves it into the misc_files folder " +
         "inside your dqxclarity directory. SendToChat lets you send clipboard text into the DQX chat box. " +
