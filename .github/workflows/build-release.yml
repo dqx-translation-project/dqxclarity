@@ -110,6 +110,7 @@ jobs:
             dqxclarity.zip
             data00000000.win32.dat1
             data00000000.win32.idx
+            data00000000.win32.idx.orig
           prerelease: false
           draft: false
           tag_name: ${{ github.ref }}
