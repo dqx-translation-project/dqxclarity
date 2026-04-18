@@ -30,9 +30,11 @@ public partial class SettingsView : UserControl
         "This tab lets you override how Japanese player and MyTown names are displayed.\n\n" +
         "If you encounter a player or MyTown name that dqxclarity mistranslates or renders incorrectly, " +
         "you can map the original Japanese name to a custom display name here.\n\n" +
-        "Edit the JSON in the text box on the left. Use the example on the right as a guide.\n\n" +
-        "• player_names — overrides player name display strings.\n" +
-        "• mytown_names — overrides MyTown name display strings.\n\n" +
+        "Player Names — overrides how player name strings appear.\n" +
+        "Mytown Names — overrides how MyTown name strings appear.\n\n" +
+        "Use the + button to add a row. Enter the original Japanese name in the first column " +
+        "and the replacement name in the second column. Names are limited to 12 characters each. " +
+        "Use the x button to remove a row.\n\n" +
         "Click Save when done. Changes take effect on the next launch.";
 
     private const string DbHelpText =
@@ -223,6 +225,12 @@ public partial class SettingsView : UserControl
         {
             var win = TopLevel.GetTopLevel(this) as MainWindow;
             if (win != null) await win.ShowInfoAsync(title, body);
+        };
+
+        vm.ShowConfirmRequested += async (title, body) =>
+        {
+            var win = TopLevel.GetTopLevel(this) as MainWindow;
+            return win != null && await win.ShowConfirmAsync(title, body);
         };
     }
 

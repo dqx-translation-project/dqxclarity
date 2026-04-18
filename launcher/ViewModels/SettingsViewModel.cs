@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -20,6 +21,7 @@ public partial class SettingsViewModel : ObservableObject
     public event Action? ShowSupportPopup;
     public event Action<string>? OpenUrl;
     public event Func<string, string, Task>? ShowInfoRequested;
+    public event Func<string, string, Task<bool>>? ShowConfirmRequested;
 
     // ── Launcher settings ────────────────────────────────────────────────────
     [ObservableProperty] private bool _nameplates;
@@ -72,10 +74,12 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool   _showDbHelp;
     [ObservableProperty] private bool   _showCommunityApiInfo;
     // ── Name overrides ────────────────────────────────────────────────────
-    [ObservableProperty] private string _nameOverridesContent = "";
+    public ObservableCollection<NamePair> PlayerNames { get; } = [];
+    public ObservableCollection<NamePair> MytownNames { get; } = [];
     [ObservableProperty] private string _overridesSaveError = "";
     [ObservableProperty] private bool   _overridesSaveSuccess;
     private bool _nameOverridesLoaded;
+    private bool _nameOverridesDirty;
 
     // ── Database ──────────────────────────────────────────────────────────
     [ObservableProperty] private bool   _dbLoading;
@@ -165,18 +169,38 @@ public partial class SettingsViewModel : ObservableObject
                 PatchDownloaded = downloaded;
                 PatchTotal = total;
             });
+
+        static void WirePair(NamePair p, Action setDirty) =>
+            p.PropertyChanged += (_, _) => setDirty();
+
+        PlayerNames.CollectionChanged += (_, e) =>
+        {
+            _nameOverridesDirty = true;
+            if (e.NewItems != null)
+                foreach (NamePair p in e.NewItems) WirePair(p, () => _nameOverridesDirty = true);
+        };
+        MytownNames.CollectionChanged += (_, e) =>
+        {
+            _nameOverridesDirty = true;
+            if (e.NewItems != null)
+                foreach (NamePair p in e.NewItems) WirePair(p, () => _nameOverridesDirty = true);
+        };
     }
 
     // ── Tab activation ───────────────────────────────────────────────────
 
     [RelayCommand]
-    private void ActivateTab(string tab)
+    private async Task ActivateTab(string tab)
     {
+        if (ActiveTab == "nameoverrides" && tab != "nameoverrides" && _nameOverridesDirty)
+            await PromptSaveNameOverrides();
+
         ActiveTab = tab;
+
         if (tab == "nameoverrides" && !_nameOverridesLoaded)
         {
             _nameOverridesLoaded = true;
-            NameOverridesContent = _cfg.ReadNameOverrides();
+            _ = LoadNamePairsAsync();
         }
         if (tab == "game" && !_gameTabInitialized)
         {
@@ -184,6 +208,15 @@ public partial class SettingsViewModel : ObservableObject
             if (!string.IsNullOrEmpty(DqxDir))
                 DqxDirValid = _cfg.ValidateDqxDir(DqxDir, out _);
         }
+    }
+
+    private async Task PromptSaveNameOverrides()
+    {
+        if (ShowConfirmRequested == null) return;
+        var save = await ShowConfirmRequested(
+            "Unsaved Changes",
+            "You have unsaved name override changes. Save them now?");
+        if (save) SaveNameOverrides();
     }
 
     // ── Translation toggles (radio-style: checking one unchecks the others) ─
@@ -249,6 +282,9 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task Run()
     {
+        if (_nameOverridesDirty)
+            await PromptSaveNameOverrides();
+
         var missing = new List<string>();
         if (UseDeepL        && string.IsNullOrWhiteSpace(DeepLKey))        missing.Add("DeepL");
         if (UseGoogle       && string.IsNullOrWhiteSpace(GoogleKey))       missing.Add("Google Translate");
@@ -301,45 +337,76 @@ public partial class SettingsViewModel : ObservableObject
 
     // ── Name overrides ────────────────────────────────────────────────────
 
+    private NamePair MakePlayerPair(string ja, string en) =>
+        new(ja, en, p => PlayerNames.Remove(p));
+
+    private NamePair MakeMytownPair(string ja, string en) =>
+        new(ja, en, p => MytownNames.Remove(p));
+
+    private async Task LoadNamePairsAsync()
+    {
+        var raw = _cfg.ReadNameOverrides();
+
+        JsonDocument? doc = null;
+        try { doc = JsonDocument.Parse(raw); }
+        catch { }
+
+        if (doc == null)
+        {
+            if (raw.StartsWith("misc_files/"))
+                return; // file doesn't exist yet — empty collections is the right state
+
+            if (ShowConfirmRequested != null)
+                await ShowConfirmRequested(
+                    "Invalid JSON",
+                    "name_overrides.json contains invalid JSON and cannot be loaded.\n\nStart over with a clean, empty format?");
+            // Either answer: leave collections empty. User can save to overwrite the broken file.
+            return;
+        }
+
+        if (doc.RootElement.TryGetProperty("player_names", out var pn))
+            foreach (var kv in pn.EnumerateObject())
+                PlayerNames.Add(MakePlayerPair(kv.Name, kv.Value.GetString() ?? ""));
+
+        if (doc.RootElement.TryGetProperty("mytown_names", out var mn))
+            foreach (var kv in mn.EnumerateObject())
+                MytownNames.Add(MakeMytownPair(kv.Name, kv.Value.GetString() ?? ""));
+
+        _nameOverridesDirty = false;
+    }
+
+    [RelayCommand]
+    private void AddPlayerName() => PlayerNames.Add(MakePlayerPair("", ""));
+
+    [RelayCommand]
+    private void AddMytownName() => MytownNames.Add(MakeMytownPair("", ""));
+
     [RelayCommand]
     private void SaveNameOverrides()
     {
         OverridesSaveError   = "";
         OverridesSaveSuccess = false;
 
-        JsonDocument? doc = null;
         try
         {
-            doc = JsonDocument.Parse(NameOverridesContent);
-        }
-        catch (Exception ex)
-        {
-            OverridesSaveError = $"Save failed: invalid JSON — {ex.Message}";
-            return;
-        }
+            var playerDict = new Dictionary<string, string>();
+            foreach (var p in PlayerNames.Where(p => !string.IsNullOrWhiteSpace(p.Japanese)))
+                playerDict[p.Japanese] = p.English;
 
-        var root = doc.RootElement;
-        if (root.ValueKind != JsonValueKind.Object)
-        {
-            OverridesSaveError = "Save failed: root value must be an object.";
-            return;
-        }
-        foreach (var required in new[] { "player_names", "mytown_names" })
-        {
-            if (!root.TryGetProperty(required, out var prop))
-                { OverridesSaveError = $"Save failed: missing required key \"{required}\"."; return; }
-            if (prop.ValueKind != JsonValueKind.Object)
-                { OverridesSaveError = $"Save failed: \"{required}\" must be an object."; return; }
-        }
+            var mytownDict = new Dictionary<string, string>();
+            foreach (var p in MytownNames.Where(p => !string.IsNullOrWhiteSpace(p.Japanese)))
+                mytownDict[p.Japanese] = p.English;
 
-        var pretty = JsonSerializer.Serialize(
-            JsonSerializer.Deserialize<object>(NameOverridesContent),
-            new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(
+                new { player_names = playerDict, mytown_names = mytownDict },
+                new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                });
 
-        try
-        {
-            _cfg.SaveNameOverrides(pretty);
-            NameOverridesContent = pretty;
+            _cfg.SaveNameOverrides(json);
+            _nameOverridesDirty  = false;
             OverridesSaveSuccess = true;
             _ = Task.Delay(2000).ContinueWith(_ =>
                 Avalonia.Threading.Dispatcher.UIThread.Post(() => OverridesSaveSuccess = false));
