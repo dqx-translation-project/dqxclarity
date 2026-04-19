@@ -154,9 +154,12 @@ public class SetupService
         if (File.Exists(pythonInVenv) && File.Exists(pipInVenv))
             return;
 
-        // Wipe any partial/broken venv before recreating
+        // Wipe any partial/broken venv before recreating.
+        // Uses a junction-aware delete: venv's Include is a reparse point to the
+        // base Python install, so a naive recursive delete would fail (or worse,
+        // delete files in the real Python install folder).
         if (Directory.Exists(venvDir))
-            Directory.Delete(venvDir, recursive: true);
+            ForceDeleteDirectory(venvDir);
 
         var psi = new ProcessStartInfo(pythonExe, $"-m venv \"{venvDir}\"");
         var (exitCode, output) = await RunCaptured(psi, ct);
@@ -173,6 +176,48 @@ public class SetupService
                 "Virtual environment was created but pip.exe is missing. Your antivirus may have " +
                 "quarantined it. Add a folder exclusion for this directory and try again.",
                 $"Expected: {pipInVenv}");
+    }
+
+    private static void ForceDeleteDirectory(string path)
+    {
+        const int maxAttempts = 5;
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                DeleteRecursive(path);
+                return;
+            }
+            catch (Exception) when (attempt < maxAttempts)
+            {
+                Thread.Sleep(200 * attempt);
+            }
+        }
+    }
+
+    private static void DeleteRecursive(string path)
+    {
+        var info = new DirectoryInfo(path);
+        if (!info.Exists) return;
+
+        // Junctions / symlinks: unlink without recursing into the target.
+        if ((info.Attributes & FileAttributes.ReparsePoint) != 0)
+        {
+            info.Delete();
+            return;
+        }
+
+        foreach (var file in info.EnumerateFiles())
+        {
+            if ((file.Attributes & FileAttributes.ReadOnly) != 0)
+                file.Attributes &= ~FileAttributes.ReadOnly;
+            file.Delete();
+        }
+
+        foreach (var sub in info.EnumerateDirectories())
+            DeleteRecursive(sub.FullName);
+
+        info.Delete();
     }
 
     private static string? FindPyproject(string exeDir)
