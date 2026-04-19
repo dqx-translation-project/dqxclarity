@@ -388,9 +388,9 @@
                                         <Button Grid.Column="1" Grid.Row="2" Margin="3,4,0,0"
                                                 HorizontalAlignment="Stretch"
                                                 HorizontalContentAlignment="Center"
+                                                Command="{Binding RestoreGameFilesCommand}"
                                                 IsEnabled="{Binding !Patching}"
-                                                Click="OnRestoreGameFilesClick"
-                                                ToolTip.Tip="Restore the original game files.">Restore Game Files</Button>
+                                                ToolTip.Tip="Restore the original game files. Requires admin. DQX must be closed.">Restore Game Files</Button>
                                     </Grid>
 
                                     <!-- Progress bar -->

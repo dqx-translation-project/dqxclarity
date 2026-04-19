@@ -608,13 +608,6 @@ public partial class SettingsView : UserControl
             await _vm.PurgeDialogCacheCommand.ExecuteAsync(null);
     }
 
-    private async void OnRestoreGameFilesClick(object? sender, RoutedEventArgs e)
-    {
-        var win = TopLevel.GetTopLevel(this) as MainWindow;
-        if (win == null) return;
-        await win.ShowInfoAsync("Restore Game Files", "Coming soon.");
-    }
-
     private async void OnNameOverridesHelpClick(object? sender, RoutedEventArgs e)
     {
         var win = TopLevel.GetTopLevel(this) as MainWindow;
