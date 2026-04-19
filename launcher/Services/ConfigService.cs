@@ -167,6 +167,8 @@ public class ConfigService
         var existing = File.Exists(path) ? ParseIni(File.ReadAllText(path)) : [];
         var configSection = existing.GetValueOrDefault("config") ?? [];
         var configPairs = configSection.OrderBy(kv => kv.Key).ToList();
+        var existingLauncher = existing.GetValueOrDefault("launcher") ?? [];
+        var leDir = existingLauncher.GetValueOrDefault("localeemulatordirectory") ?? "";
 
         var sb = new System.Text.StringBuilder();
 
@@ -195,6 +197,7 @@ public class ConfigService
         WriteKv(sb, "simultaneouslaunch", BoolToIni(launcher.SimultaneousLaunch));
         WriteKv(sb, "launchsendtochat",   BoolToIni(launcher.LaunchSendToChat));
         WriteKv(sb, "theme",              launcher.Theme);
+        WriteKv(sb, "localeemulatordirectory", leDir);
 
         var dir = Path.GetDirectoryName(path)!;
         Directory.CreateDirectory(dir);
