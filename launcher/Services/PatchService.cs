@@ -126,4 +126,20 @@ public class PatchService
             "https://github.com/dqx-translation-project/dqxclarity/releases/latest/download/data00000000.win32.idx");
         await File.WriteAllBytesAsync(Path.Combine(dataDir, "data00000000.win32.idx"), idx);
     }
+
+    public async Task RestoreGameFiles(string installDir)
+    {
+        if (!IsAdmin())
+            throw new Exception(
+                "dqxclarity must be running as an administrator to restore game files.\nPlease re-launch as an administrator and try again.");
+        if (IsDqxRunning())
+            throw new Exception("Please close DQX before restoring game files.");
+
+        var dataDir = Path.Combine(installDir, "Game", "Content", "Data");
+        using var http = Http();
+
+        var idx = await FetchWithProgress(http,
+            "https://github.com/dqx-translation-project/dqxclarity/releases/latest/download/data00000000.win32.idx.orig");
+        await File.WriteAllBytesAsync(Path.Combine(dataDir, "data00000000.win32.idx"), idx);
+    }
 }
