@@ -65,6 +65,9 @@ public partial class MainViewModel : ObservableObject
                 if (config.Launcher.SimultaneousLaunch && !string.IsNullOrEmpty(config.Game.InstallDirectory))
                     try { _cfg.LaunchDqx(config.Game.InstallDirectory); } catch { }
 
+                if (config.Launcher.LaunchSendToChat && _cfg.SendToChatInstalled())
+                    try { _cfg.LaunchSendToChat(); } catch { }
+
                 Log.UpdateTitle(version);
                 _processSvc.Launch(BuildArgs(config));
 
