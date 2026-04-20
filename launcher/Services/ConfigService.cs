@@ -4,6 +4,8 @@ namespace DqxClarity.Launcher.Services;
 
 public class ConfigService
 {
+    public const string DefaultDqxDir = @"C:\Program Files (x86)\SquareEnix\DRAGON QUEST X";
+
     private static string ExeDir()
     {
         var exe = Environment.ProcessPath ?? throw new Exception("Cannot determine executable path");
