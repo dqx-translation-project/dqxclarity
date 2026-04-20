@@ -163,6 +163,28 @@ public partial class SettingsViewModel : ObservableObject
         _dqxDir = config.Game.InstallDirectory;
         _leDir  = config.Game.LocaleEmulatorDirectory;
 
+        // Resolve + validate the game directory on launch so the Game tab is usable
+        // immediately. If the saved path is empty, fall back to the default install
+        // location. If nothing resolves, surface an error instead of silently hiding
+        // the tab contents.
+        if (string.IsNullOrEmpty(_dqxDir) && cfg.ValidateDqxDir(ConfigService.DefaultDqxDir, out _))
+        {
+            _dqxDir = ConfigService.DefaultDqxDir;
+            try { cfg.SaveGameDir(_dqxDir); } catch { }
+        }
+
+        if (!string.IsNullOrEmpty(_dqxDir))
+        {
+            _dqxDirValid = cfg.ValidateDqxDir(_dqxDir, out var dqxErr);
+            if (!_dqxDirValid) _dqxDirError = dqxErr;
+        }
+        else
+        {
+            _dqxDirError = $"DQX installation not found at the default location ({ConfigService.DefaultDqxDir}). Browse to your DQX installation folder to continue.";
+        }
+
+        _gameTabInitialized = true;
+
         _patch.Progress += (downloaded, total) =>
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
