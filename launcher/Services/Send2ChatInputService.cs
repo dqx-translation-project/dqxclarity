@@ -24,7 +24,8 @@ public sealed class Send2ChatInputService
         var hwnd = FindBestTopLevelWindowForPid(pid);
         if (hwnd == IntPtr.Zero) return false;
 
-        ShowWindow(hwnd, SwRestore);
+        if (IsIconic(hwnd))
+            ShowWindow(hwnd, SwRestore);
         // Windows can legally refuse foreground changes; still return true if we have a plausible HWND.
         _ = TryForceForegroundWindow(hwnd);
         _ = SetForegroundWindow(hwnd);
@@ -205,6 +206,9 @@ public sealed class Send2ChatInputService
 
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(IntPtr hWnd);
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
