@@ -1,11 +1,12 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DqxClarity.Launcher.ViewModels"
+             xmlns:v="using:DqxClarity.Launcher.Views"
              x:Class="DqxClarity.Launcher.Views.LogView"
              x:DataType="vm:LogViewModel"
              Background="{DynamicResource AppBg}">
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*">
 
         <!-- Toolbar -->
         <Border Grid.Row="0"
@@ -33,23 +34,44 @@
             </Grid>
         </Border>
 
-        <!-- Log area -->
-        <ScrollViewer Grid.Row="1"
-                      x:Name="LogScroll"
-                      HorizontalScrollBarVisibility="Disabled"
-                      VerticalScrollBarVisibility="Auto"
-                      AllowAutoHide="False"
-                      Background="{DynamicResource AppSurface}">
-            <Panel Margin="10,8,26,8">
-                <TextBlock Text="Waiting for output…"
-                           FontFamily="Cascadia Code,Consolas,Courier New,monospace"
-                           FontSize="11"
-                           Foreground="{DynamicResource AppMuted}"
-                           FontStyle="Italic"
-                           IsVisible="{Binding HasNoLines}"/>
-                <StackPanel x:Name="LogStack" Margin="0,0,0,8"/>
-            </Panel>
-        </ScrollViewer>
+        <Border Grid.Row="1"
+                BorderBrush="{DynamicResource AppBorder}"
+                BorderThickness="0,0,0,1"
+                Background="{DynamicResource AppSurface}">
+            <StackPanel Orientation="Horizontal" Spacing="0">
+                <Button x:Name="TabClarity" Classes="tab" Click="OnLogTabClick" Tag="dqxclarity">dqxclarity</Button>
+                <Button x:Name="TabSend2Chat" Classes="tab" Click="OnLogTabClick" Tag="send2chat">SendChat</Button>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="2">
+            <ScrollViewer x:Name="LogPanel"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto"
+                          AllowAutoHide="False"
+                          Background="{DynamicResource AppSurface}">
+                <Panel Margin="10,8,26,8">
+                    <TextBlock Text="Waiting for output…"
+                               FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                               FontSize="11"
+                               Foreground="{DynamicResource AppMuted}"
+                               FontStyle="Italic"
+                               IsVisible="{Binding HasNoLines}"/>
+                    <StackPanel x:Name="LogStack" Margin="0,0,0,8"/>
+                </Panel>
+            </ScrollViewer>
+
+            <ContentControl x:Name="Send2ChatPanel"
+                            IsVisible="False"
+                            Margin="10,8"
+                            Content="{Binding Send2Chat}">
+                <ContentControl.ContentTemplate>
+                    <DataTemplate DataType="vm:Send2ChatViewModel">
+                        <v:Send2ChatView/>
+                    </DataTemplate>
+                </ContentControl.ContentTemplate>
+            </ContentControl>
+        </Grid>
 
     </Grid>
 

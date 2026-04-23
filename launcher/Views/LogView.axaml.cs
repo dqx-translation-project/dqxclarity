@@ -2,6 +2,7 @@ using System.Collections.Specialized;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using DqxClarity.Launcher.Models;
@@ -24,9 +25,23 @@ public partial class LogView : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
+        if (_vm != null)
+        {
+            _vm.Lines.CollectionChanged -= OnLinesChanged;
+            _vm.PropertyChanged -= OnVmPropertyChanged;
+        }
         if (DataContext is not LogViewModel vm) return;
         _vm = vm;
         vm.Lines.CollectionChanged += OnLinesChanged;
+        vm.PropertyChanged += OnVmPropertyChanged;
+        SwitchTab(vm.ActiveLogTab);
+    }
+
+    private void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (_vm == null) return;
+        if (e.PropertyName == nameof(LogViewModel.ActiveLogTab))
+            SwitchTab(_vm.ActiveLogTab);
     }
 
     private void OnLinesChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -49,8 +64,23 @@ public partial class LogView : UserControl
                     LogStack.Children.Clear();
                     break;
             }
-            LogScroll.ScrollToEnd();
+            LogPanel.ScrollToEnd();
         }, DispatcherPriority.Background);
+    }
+
+    private void OnLogTabClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string tag && _vm != null)
+            _vm.ActiveLogTab = tag;
+    }
+
+    private void SwitchTab(string active)
+    {
+        if (LogPanel == null || Send2ChatPanel == null) return;
+        LogPanel.IsVisible = active == "dqxclarity";
+        Send2ChatPanel.IsVisible = active == "send2chat";
+        TabClarity.Classes.Set("tab-active", active == "dqxclarity");
+        TabSend2Chat.Classes.Set("tab-active", active == "send2chat");
     }
 
     private TextBlock MakeLogBlock(LogLine line)

@@ -6,7 +6,6 @@ public class LauncherConfig
     public bool DebugLogging { get; set; }
     public bool CommunityLogging { get; set; }
     public bool SimultaneousLaunch { get; set; }
-    public bool LaunchSendToChat { get; set; }
     public string Theme { get; set; } = "rosie";
 }
 
