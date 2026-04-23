@@ -16,6 +16,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly DatabaseService _db;
     private readonly ValidateService _validate;
     private UpdateService?           _updateSvc;
+    public Send2ChatViewModel Send2Chat { get; }
 
     public event Action<List<string>>? RunRequested; // args list
     public event Action? ShowSupportPopup;
@@ -53,11 +54,6 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _leDir = "";
     [ObservableProperty] private string _leDirError = "";
     [ObservableProperty] private bool   _simultaneousLaunch;
-    [ObservableProperty] private bool   _launchSendToChat;
-
-    [ObservableProperty] private bool   _sendToChatInstalled;
-    [ObservableProperty] private bool   _sendToChatBusy;
-    [ObservableProperty] private string _sendToChatStatus = "";
 
     [ObservableProperty] private bool   _patching;
     [ObservableProperty] private string _patchStatus = "";
@@ -131,11 +127,13 @@ public partial class SettingsViewModel : ObservableObject
         AppConfig config,
         string version,
         UpdateInfo? updateInfo,
+        Send2ChatViewModel send2Chat,
         ConfigService cfg,
         PatchService patch,
         DatabaseService db,
         ValidateService validate)
     {
+        Send2Chat = send2Chat;
         _cfg      = cfg;
         _patch    = patch;
         _db       = db;
@@ -148,8 +146,6 @@ public partial class SettingsViewModel : ObservableObject
         _debugLogging      = config.Launcher.DebugLogging;
         _communityLogging  = config.Launcher.CommunityLogging;
         _simultaneousLaunch  = config.Launcher.SimultaneousLaunch;
-        _launchSendToChat    = config.Launcher.LaunchSendToChat;
-        _sendToChatInstalled = cfg.SendToChatInstalled();
         _selectedTheme     = config.Launcher.Theme;
 
         _useDeepL          = config.Translation.EnableDeepLTranslate;
@@ -326,7 +322,6 @@ public partial class SettingsViewModel : ObservableObject
             DebugLogging       = DebugLogging,
             CommunityLogging   = CommunityLogging,
             SimultaneousLaunch = SimultaneousLaunch,
-            LaunchSendToChat   = LaunchSendToChat,
             Theme              = SelectedTheme,
         };
         var translation = new TranslationConfig
@@ -343,9 +338,6 @@ public partial class SettingsViewModel : ObservableObject
 
         if (SimultaneousLaunch && !string.IsNullOrEmpty(DqxDir))
             try { _cfg.LaunchDqx(DqxDir, string.IsNullOrEmpty(LeDir) ? null : LeDir); } catch { }
-
-        if (LaunchSendToChat && SendToChatInstalled)
-            try { _cfg.LaunchSendToChat(); } catch { }
 
         var args = new List<string>();
         if (Nameplates)       args.Add("--nameplates");
@@ -634,66 +626,6 @@ public partial class SettingsViewModel : ObservableObject
         {
             if (ShowInfoRequested != null)
                 await ShowInfoRequested("Executable not found", ex.Message);
-        }
-    }
-
-    [RelayCommand]
-    private async Task OpenSendToChat()
-    {
-        try { _cfg.LaunchSendToChat(); }
-        catch (Exception ex)
-        {
-            if (ShowInfoRequested != null)
-                await ShowInfoRequested("Executable not found", ex.Message);
-        }
-    }
-
-    [RelayCommand]
-    private async Task InstallSendToChat()
-    {
-        if (SendToChatBusy) return;
-        SendToChatBusy   = true;
-        SendToChatStatus = "Downloading...";
-        try
-        {
-            var destPath = _cfg.SendToChatExePath();
-            Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
-
-            using var http = new HttpClient();
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("dqxclarity-launcher/1.0");
-
-            var json = await http.GetStringAsync(
-                "https://api.github.com/repos/dqx-translation-project/dqx-send-to-chat/releases/latest");
-            using var doc = System.Text.Json.JsonDocument.Parse(json);
-
-            string? downloadUrl = null;
-            foreach (var asset in doc.RootElement.GetProperty("assets").EnumerateArray())
-            {
-                if (asset.GetProperty("name").GetString() == "send_to_chat.exe")
-                {
-                    downloadUrl = asset.GetProperty("browser_download_url").GetString();
-                    break;
-                }
-            }
-
-            if (downloadUrl == null)
-                throw new Exception("send_to_chat.exe not found in latest release assets.");
-
-            var bytes = await http.GetByteArrayAsync(downloadUrl);
-            await File.WriteAllBytesAsync(destPath, bytes);
-
-            SendToChatInstalled = File.Exists(destPath);
-            SendToChatStatus = "Installed!";
-            _ = Task.Delay(3000).ContinueWith(_ =>
-                Avalonia.Threading.Dispatcher.UIThread.Post(() => SendToChatStatus = ""));
-        }
-        catch (Exception ex)
-        {
-            SendToChatStatus = $"Failed: {ex.Message}";
-        }
-        finally
-        {
-            SendToChatBusy = false;
         }
     }
 

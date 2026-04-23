@@ -62,6 +62,7 @@
                     <Button x:Name="TabOverrides"  Classes="tab" Click="OnTabClick" Tag="nameoverrides">Name Overrides</Button>
                     <Button x:Name="TabDatabase"   Classes="tab" Click="OnTabClick" Tag="database">Database</Button>
                     <Button x:Name="TabGame"       Classes="tab" Click="OnTabClick" Tag="game">Game</Button>
+                    <Button x:Name="TabSend2Chat"  Classes="tab" Click="OnTabClick" Tag="send2chat">SendChat</Button>
                 </StackPanel>
             </Border>
 
@@ -290,17 +291,6 @@
                                                TextWrapping="Wrap"
                                                IsVisible="{Binding LeDirError,
                                                            Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Button Command="{Binding InstallSendToChatCommand}"
-                                                IsEnabled="{Binding !SendToChatBusy}"
-                                                ToolTip.Tip="Download send_to_chat.exe from the latest GitHub release into misc_files.">Install SendToChat</Button>
-                                        <TextBlock Text="{Binding SendToChatStatus}"
-                                                   FontSize="11"
-                                                   VerticalAlignment="Center"
-                                                   Foreground="{DynamicResource AppMuted}"
-                                                   IsVisible="{Binding SendToChatStatus,
-                                                               Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                    </StackPanel>
                                 </StackPanel>
                             </Border>
 
@@ -311,32 +301,22 @@
                                         <TextBlock Classes="legend" Text="Launch" Margin="0" VerticalAlignment="Center"/>
                                         <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnLaunchHelpClick">?</Button>
                                     </StackPanel>
-                                    <Grid ColumnDefinitions="*,*,*">
+                                    <Grid ColumnDefinitions="*,*">
                                         <Button Grid.Column="0" Margin="0,0,3,0"
                                                 HorizontalAlignment="Stretch"
                                                 HorizontalContentAlignment="Center"
                                                 Command="{Binding OpenDqxCommand}"
                                                 ToolTip.Tip="Launch DQXBoot.exe.">Open DQX</Button>
-                                        <Button Grid.Column="1" Margin="3,0,3,0"
+                                        <Button Grid.Column="1" Margin="3,0,0,0"
                                                 HorizontalAlignment="Stretch"
                                                 HorizontalContentAlignment="Center"
                                                 Command="{Binding OpenDqxConfigCommand}"
                                                 ToolTip.Tip="Launch DQXConfig.exe.">Open DQXConfig</Button>
-                                        <Button Grid.Column="2" Margin="3,0,0,0"
-                                                HorizontalAlignment="Stretch"
-                                                HorizontalContentAlignment="Center"
-                                                Command="{Binding OpenSendToChatCommand}"
-                                                IsEnabled="{Binding SendToChatInstalled}"
-                                                ToolTip.Tip="Launch send_to_chat.exe.">Open SendToChat</Button>
                                     </Grid>
                                     <StackPanel Orientation="Horizontal" Spacing="16">
                                         <CheckBox Content="Launch DQX with dqxclarity"
                                                   IsChecked="{Binding SimultaneousLaunch}"
                                                   ToolTip.Tip="When Run is clicked, launch DQX and dqxclarity at the same time."/>
-                                        <CheckBox Content="Launch SendToChat with dqxclarity"
-                                                  IsChecked="{Binding LaunchSendToChat}"
-                                                  IsEnabled="{Binding SendToChatInstalled}"
-                                                  ToolTip.Tip="When Run is clicked, also launch send_to_chat.exe."/>
                                     </StackPanel>
                                 </StackPanel>
                             </Border>
@@ -676,6 +656,17 @@
                                IsVisible="{Binding DbRowCount,
                                            Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                 </Grid>
+
+                <ContentControl x:Name="PanelSend2Chat"
+                                IsVisible="False"
+                                Margin="14,12"
+                                Content="{Binding Send2Chat}">
+                    <ContentControl.ContentTemplate>
+                        <DataTemplate DataType="vm:Send2ChatViewModel">
+                            <v:Send2ChatView/>
+                        </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                </ContentControl>
 
             </Grid>
         </Grid>

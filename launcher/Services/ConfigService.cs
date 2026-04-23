@@ -142,7 +142,6 @@ public class ConfigService
                 DebugLogging       = ToBool(l.GetValueOrDefault("debuglogging")),
                 CommunityLogging   = ToBool(l.GetValueOrDefault("communitylogging")),
                 SimultaneousLaunch = ToBool(l.GetValueOrDefault("simultaneouslaunch")),
-                LaunchSendToChat   = ToBool(l.GetValueOrDefault("launchsendtochat")),
                 Theme              = l.GetValueOrDefault("theme") ?? "rosie",
             },
             Translation = new TranslationConfig
@@ -197,7 +196,6 @@ public class ConfigService
         WriteKv(sb, "nameplates",         BoolToIni(launcher.Nameplates));
         WriteKv(sb, "debuglogging",       BoolToIni(launcher.DebugLogging));
         WriteKv(sb, "simultaneouslaunch", BoolToIni(launcher.SimultaneousLaunch));
-        WriteKv(sb, "launchsendtochat",   BoolToIni(launcher.LaunchSendToChat));
         WriteKv(sb, "theme",              launcher.Theme);
         WriteKv(sb, "localeemulatordirectory", leDir);
 
@@ -309,19 +307,6 @@ public class ConfigService
         var path = Path.Combine(AppDir(), "misc_files", "name_overrides.json");
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, content);
-    }
-
-    public string SendToChatExePath() =>
-        Path.Combine(AppDir(), "misc_files", "send_to_chat.exe");
-
-    public bool SendToChatInstalled() => File.Exists(SendToChatExePath());
-
-    public void LaunchSendToChat()
-    {
-        var path = SendToChatExePath();
-        if (!File.Exists(path)) throw new FileNotFoundException($"send_to_chat.exe not found at {path}");
-        System.Diagnostics.Process.Start(
-            new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
     }
 
     public bool HasAutorunFlag() => Environment.GetCommandLineArgs().Any(a => a == "/r");

@@ -18,13 +18,17 @@ public partial class LogViewModel : ObservableObject
     [ObservableProperty] private bool _hasExited;
     [ObservableProperty] private bool _showStopWarning;
     [ObservableProperty] private string _statusTitle = "dqxclarity — running";
+    [ObservableProperty] private string _activeLogTab = "dqxclarity";
+
+    public Send2ChatViewModel Send2Chat { get; }
 
     public ObservableCollection<LogLine> Lines { get; } = [];
     public bool HasNoLines => Lines.Count == 0;
 
-    public LogViewModel(ProcessService processSvc)
+    public LogViewModel(ProcessService processSvc, Send2ChatViewModel send2Chat)
     {
         _processSvc = processSvc;
+        Send2Chat = send2Chat;
         _processSvc.LogLine       += OnLogLine;
         _processSvc.ProcessExited += OnProcessExited;
     }
@@ -87,6 +91,7 @@ public partial class LogViewModel : ObservableObject
         ExitedWithError = false;
         HasExited = false;
         StatusTitle = "dqxclarity — running";
+        ActiveLogTab = "dqxclarity";
         OnPropertyChanged(nameof(HasNoLines));
     }
 

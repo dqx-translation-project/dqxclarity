@@ -14,6 +14,7 @@ public partial class MainViewModel : ObservableObject
     public SetupViewModel    Setup    { get; }
     public SettingsViewModel Settings { get; }
     public LogViewModel      Log      { get; }
+    public Send2ChatViewModel Send2Chat { get; }
 
     public string Version { get; }
 
@@ -39,17 +40,19 @@ public partial class MainViewModel : ObservableObject
         UpdateService updateSvc,
         PatchService patchSvc,
         DatabaseService dbSvc,
-        ValidateService validateSvc)
+        ValidateService validateSvc,
+        Send2ChatViewModel send2Chat)
     {
         _cfg        = cfg;
         _updateSvc  = updateSvc;
         _processSvc = processSvc;
         Version     = version;
+        Send2Chat = send2Chat;
 
         Setup    = new SetupViewModel(setupSvc);
-        Log      = new LogViewModel(processSvc);
+        Log      = new LogViewModel(processSvc, send2Chat);
         Settings = new SettingsViewModel(
-            config, version, null, cfg, patchSvc, dbSvc, validateSvc);
+            config, version, null, send2Chat, cfg, patchSvc, dbSvc, validateSvc);
 
         Setup.SetupDone     += () => SwitchTo(autoRun ? "log" : "settings");
         Log.NavigateBack    += () => SwitchTo("settings");
@@ -64,9 +67,6 @@ public partial class MainViewModel : ObservableObject
             {
                 if (config.Launcher.SimultaneousLaunch && !string.IsNullOrEmpty(config.Game.InstallDirectory))
                     try { _cfg.LaunchDqx(config.Game.InstallDirectory); } catch { }
-
-                if (config.Launcher.LaunchSendToChat && _cfg.SendToChatInstalled())
-                    try { _cfg.LaunchSendToChat(); } catch { }
 
                 Log.UpdateTitle(version);
                 _processSvc.Launch(BuildArgs(config));

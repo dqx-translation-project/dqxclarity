@@ -93,25 +93,16 @@ public partial class SettingsView : UserControl
         "The path to the folder where LEProc.exe is located. Locale Emulator emulates a Japanese locale, " +
         "which allows you to use the Japanese IME keyboard within DQX. " +
         "If this path is set, dqxclarity will launch DQX through LEProc.exe instead of directly. " +
-        "This field is optional — leave it empty if you do not use Locale Emulator.\n\n" +
-        "Install SendToChat\n" +
-        "Downloads send_to_chat.exe from the latest GitHub release and saves it into the misc_files folder " +
-        "inside your dqxclarity directory. SendToChat lets you send clipboard text into the DQX chat box. " +
-        "You only need to do this once — the button will show a confirmation when the download finishes.";
+        "This field is optional — leave it empty if you do not use Locale Emulator.";
 
     private const string LaunchHelpText =
         "Open DQX\n" +
         "Launches DQXBoot.exe — the standard DQX game client.\n\n" +
         "Open DQXConfig\n" +
         "Launches DQXConfig.exe, which lets you adjust in-game graphics and audio settings without opening the game itself.\n\n" +
-        "Open SendToChat\n" +
-        "Launches send_to_chat.exe directly. Only available after SendToChat has been installed via the Installation section.\n\n" +
         "Launch DQX with dqxclarity\n" +
         "When enabled, clicking Run will start DQX automatically alongside dqxclarity. " +
-        "Useful if you want your full session to start with a single click.\n\n" +
-        "Launch SendToChat with dqxclarity\n" +
-        "When enabled, clicking Run will also start send_to_chat.exe alongside dqxclarity. " +
-        "Requires SendToChat to be installed first.";
+        "Useful if you want your full session to start with a single click.";
 
     private const string PatchHelpText =
         "Patch Launcher / Restore Launcher\n" +
@@ -245,12 +236,13 @@ public partial class SettingsView : UserControl
         PanelOverrides.IsVisible = tab == "nameoverrides";
         PanelDatabase.IsVisible  = tab == "database";
         PanelGame.IsVisible      = tab == "game";
+        PanelSend2Chat.IsVisible = tab == "send2chat";
         UpdateTabStyles(tab);
     }
 
     private void UpdateTabStyles(string active)
     {
-        foreach (var btn in new[] { TabGeneral, TabAdvanced, TabOverrides, TabDatabase, TabGame })
+        foreach (var btn in new[] { TabGeneral, TabAdvanced, TabOverrides, TabDatabase, TabGame, TabSend2Chat })
         {
             if (btn == null) continue;
             btn.Classes.Set("tab-active", btn.Tag as string == active);
