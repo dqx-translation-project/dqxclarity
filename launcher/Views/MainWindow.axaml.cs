@@ -120,6 +120,16 @@ public partial class MainWindow : Window
                 UpdateView();
         };
 
+        // Show first-launch welcome after setup completes and the main view is presented
+        vm.Setup.SetupDone += async () =>
+        {
+            if (vm.IsFirstLaunch)
+            {
+                await ShowWelcomeAsync();
+                vm.MarkWelcomeSeen();
+            }
+        };
+
         // Wire log view's close-intercept
         Closing += (_, args) =>
         {
@@ -226,6 +236,16 @@ public partial class MainWindow : Window
         var tcs = new TaskCompletionSource();
         dlg.RequestClose += () => { HideOverlay(); tcs.TrySetResult(); onClose(); };
         _overlayDismissAction = () => { HideOverlay(); tcs.TrySetResult(); onClose(); };
+        ShowOverlay(dlg);
+        await tcs.Task;
+    }
+
+    private async Task ShowWelcomeAsync()
+    {
+        var dlg = new WelcomeDialog();
+        var tcs = new TaskCompletionSource();
+        dlg.RequestClose += () => { HideOverlay(); tcs.TrySetResult(); };
+        // _overlayDismissAction intentionally not set — backdrop clicks do nothing
         ShowOverlay(dlg);
         await tcs.Task;
     }

@@ -7,6 +7,7 @@ namespace DqxClarity.Launcher.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
+    private readonly AppConfig      _config;
     private readonly ConfigService  _cfg;
     private readonly UpdateService  _updateSvc;
     private readonly ProcessService _processSvc;
@@ -43,6 +44,7 @@ public partial class MainViewModel : ObservableObject
         ValidateService validateSvc,
         Send2ChatViewModel send2Chat)
     {
+        _config     = config;
         _cfg        = cfg;
         _updateSvc  = updateSvc;
         _processSvc = processSvc;
@@ -159,4 +161,12 @@ public partial class MainViewModel : ObservableObject
     }
 
     public bool TryClose() => Log.TryClose();
+
+    public bool IsFirstLaunch => !_config.Launcher.SeenWelcomeMessage;
+
+    public void MarkWelcomeSeen()
+    {
+        _config.Launcher.SeenWelcomeMessage = true;
+        _cfg.SaveSeenWelcomeMessage();
+    }
 }
