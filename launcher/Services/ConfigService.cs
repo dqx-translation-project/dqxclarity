@@ -118,7 +118,7 @@ public class ConfigService
             WriteKv(sb, key, value);
         }
 
-        File.WriteAllText(path, sb.ToString());
+        File.WriteAllText(path, sb.ToString().TrimEnd('\r', '\n') + Environment.NewLine);
     }
 
     private static TranslationConfig LoadTranslationConfig(Dictionary<string, string> t)
@@ -178,11 +178,12 @@ public class ConfigService
         {
             Launcher = new LauncherConfig
             {
-                Nameplates         = ToBool(l.GetValueOrDefault("nameplates")),
-                DebugLogging       = ToBool(l.GetValueOrDefault("debuglogging")),
-                CommunityLogging   = ToBool(l.GetValueOrDefault("communitylogging")),
-                SimultaneousLaunch = ToBool(l.GetValueOrDefault("simultaneouslaunch")),
-                Theme              = l.GetValueOrDefault("theme") ?? "rosie",
+                Nameplates          = ToBool(l.GetValueOrDefault("nameplates")),
+                DebugLogging        = ToBool(l.GetValueOrDefault("debuglogging")),
+                CommunityLogging    = ToBool(l.GetValueOrDefault("communitylogging")),
+                SimultaneousLaunch  = ToBool(l.GetValueOrDefault("simultaneouslaunch")),
+                Theme               = l.GetValueOrDefault("theme") ?? "rosie",
+                SeenWelcomeMessage  = ToBool(l.GetValueOrDefault("seenwelcomemessage")),
             },
             Translation = LoadTranslationConfig(t),
             Game = new GameConfig
@@ -200,7 +201,8 @@ public class ConfigService
         var configSection = existing.GetValueOrDefault("config") ?? [];
         var configPairs = configSection.OrderBy(kv => kv.Key).ToList();
         var existingLauncher = existing.GetValueOrDefault("launcher") ?? [];
-        var leDir = existingLauncher.GetValueOrDefault("localeemulatordirectory") ?? "";
+        var leDir        = existingLauncher.GetValueOrDefault("localeemulatordirectory") ?? "";
+        var seenWelcome  = existingLauncher.GetValueOrDefault("seenwelcomemessage") ?? BoolToIni(launcher.SeenWelcomeMessage);
 
         var sb = new System.Text.StringBuilder();
 
@@ -230,10 +232,11 @@ public class ConfigService
         WriteKv(sb, "simultaneouslaunch", BoolToIni(launcher.SimultaneousLaunch));
         WriteKv(sb, "theme",              launcher.Theme);
         WriteKv(sb, "localeemulatordirectory", leDir);
+        WriteKv(sb, "seenwelcomemessage", seenWelcome);
 
         var dir = Path.GetDirectoryName(path)!;
         Directory.CreateDirectory(dir);
-        File.WriteAllText(path, sb.ToString());
+        File.WriteAllText(path, sb.ToString().TrimEnd('\r', '\n') + Environment.NewLine);
     }
 
     public void SaveTheme(string theme)
@@ -252,6 +255,12 @@ public class ConfigService
     {
         var path = ConfigPath();
         UpdateIniValue(path, "launcher", "localeemulatordirectory", dir.Replace('\\', '/'));
+    }
+
+    public void SaveSeenWelcomeMessage()
+    {
+        var path = ConfigPath();
+        UpdateIniValue(path, "launcher", "seenwelcomemessage", "True");
     }
 
     public bool ValidateLocaleEmulatorDir(string dir, out string error)

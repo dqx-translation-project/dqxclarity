@@ -7,6 +7,7 @@ public class LauncherConfig
     public bool CommunityLogging { get; set; }
     public bool SimultaneousLaunch { get; set; }
     public string Theme { get; set; } = "rosie";
+    public bool SeenWelcomeMessage { get; set; }
 }
 
 public class TranslationConfig
