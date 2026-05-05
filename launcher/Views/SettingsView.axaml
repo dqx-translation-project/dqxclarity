@@ -28,9 +28,9 @@
                           HorizontalAlignment="Stretch"
                           SelectionChanged="OnThemeSelectionChanged"/>
 
-                <!-- Rosie mascot -->
+                <!-- Character mascot -->
                 <Image Grid.Row="1"
-                       Source="avares://dqxclarity/Assets/Rosie.png"
+                       Source="{Binding CharacterImage}"
                        Stretch="Uniform"
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center"
