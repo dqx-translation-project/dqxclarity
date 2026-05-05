@@ -34,6 +34,15 @@ public static class ThemeService
         ("maille","Maille"),("mereade","Mereade"),("seraphi","Seraphi"),("yuliza","Yuliza"),
     ];
 
+    public static string GetCharacterImageUri(string name)
+    {
+        if (LightThemes.Any(t => t.Id == name))
+            return $"avares://dqxclarity/Assets/{name}.png";
+        if (DarkThemes.Any(t => t.Id == name && t.Id != "rosie"))
+            return $"avares://dqxclarity/Assets/{name}.png";
+        return "avares://dqxclarity/Assets/Rosie.png";
+    }
+
     public static void Apply(string name)
     {
         if (!Themes.TryGetValue(name, out var colors))

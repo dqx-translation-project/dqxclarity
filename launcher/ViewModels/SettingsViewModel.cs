@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DqxClarity.Launcher.Models;
@@ -39,12 +41,24 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _communityApiKey = "";
 
     // ── Theme ─────────────────────────────────────────────────────────────
-    [ObservableProperty] private string _selectedTheme = "rosie";
+    [ObservableProperty] private string  _selectedTheme = "rosie";
+    [ObservableProperty] private Bitmap? _characterImage;
 
     partial void OnSelectedThemeChanged(string value)
     {
         ThemeService.Apply(value);
+        CharacterImage = LoadCharacterImage(value);
         try { _cfg.SaveTheme(value); } catch { }
+    }
+
+    private static Bitmap? LoadCharacterImage(string theme)
+    {
+        try
+        {
+            var uri = new Uri(ThemeService.GetCharacterImageUri(theme));
+            return new Bitmap(AssetLoader.Open(uri));
+        }
+        catch { return null; }
     }
 
     // ── Game tab ──────────────────────────────────────────────────────────
@@ -147,6 +161,7 @@ public partial class SettingsViewModel : ObservableObject
         _communityLogging  = config.Launcher.CommunityLogging;
         _simultaneousLaunch  = config.Launcher.SimultaneousLaunch;
         _selectedTheme     = config.Launcher.Theme;
+        _characterImage    = LoadCharacterImage(_selectedTheme);
 
         _useDeepL          = config.Translation.EnableDeepLTranslate;
         _deepLKey          = config.Translation.DeepLTranslateKey;
