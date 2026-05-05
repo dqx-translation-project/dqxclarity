@@ -31,14 +31,60 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _debugLogging;
     [ObservableProperty] private bool _communityLogging;
 
-    // ── Translation (radio-style) ─────────────────────────────────────────
-    [ObservableProperty] private bool   _useDeepL;
-    [ObservableProperty] private string _deepLKey = "";
-    [ObservableProperty] private bool   _useGoogle;
-    [ObservableProperty] private string _googleKey = "";
-    [ObservableProperty] private bool   _useGoogleFree;
+    // ── Translation ───────────────────────────────────────────────────────
+    public record TranslateServiceOption(string Value, string Display);
+
+    public static IReadOnlyList<TranslateServiceOption> TranslateServiceOptions { get; } =
+    [
+        // key-based (alphabetical)
+        new("chatgpt",          "ChatGPT"),
+        new("deepl",            "DeepL"),
+        new("google",           "Google Translate"),
+        new("libretranslate",   "LibreTranslate"),
+        new("ollama",           "Ollama"),
+        // free (alphabetical)
+        new("googlefree",       "Google Translate Mobile (free)"),
+        new("googletranslatepa","Google Translate API (free)"),
+        new("yandex",           "Yandex (free)"),
+    ];
+
+    [ObservableProperty] private TranslateServiceOption? _selectedTranslateService;
+    [ObservableProperty] private string _translateKey      = "";
+    [ObservableProperty] private string _chatGptModel     = "gpt-4o-mini";
+    [ObservableProperty] private string _ollamaUrl         = "http://localhost:11434";
+    [ObservableProperty] private string _ollamaModel       = "llama3";
+    [ObservableProperty] private string _libreTranslateUrl = "https://libretranslate.com";
     [ObservableProperty] private bool   _useCommunityApi;
-    [ObservableProperty] private string _communityApiKey = "";
+    [ObservableProperty] private string _communityApiKey   = "";
+
+    public bool ShowKeyField =>
+        SelectedTranslateService?.Value is "deepl" or "google" or "chatgpt" or "libretranslate";
+
+    public bool ShowOllamaFields =>
+        SelectedTranslateService?.Value == "ollama";
+
+    public bool ShowChatGptModel =>
+        SelectedTranslateService?.Value == "chatgpt";
+
+    public bool ShowLibreTranslateUrl =>
+        SelectedTranslateService?.Value == "libretranslate";
+
+    public bool IsFreeService =>
+        SelectedTranslateService?.Value is "googlefree" or "googletranslatepa" or "yandex";
+
+    public bool ShowValidateButton =>
+        SelectedTranslateService?.Value is "deepl" or "google";
+
+    partial void OnSelectedTranslateServiceChanged(TranslateServiceOption? value)
+    {
+        OnPropertyChanged(nameof(ShowKeyField));
+        OnPropertyChanged(nameof(ShowOllamaFields));
+        OnPropertyChanged(nameof(ShowChatGptModel));
+        OnPropertyChanged(nameof(ShowLibreTranslateUrl));
+        OnPropertyChanged(nameof(IsFreeService));
+        OnPropertyChanged(nameof(ShowValidateButton));
+        OnPropertyChanged(nameof(CanValidate));
+    }
 
     // ── Theme ─────────────────────────────────────────────────────────────
     [ObservableProperty] private string  _selectedTheme = "rosie";
@@ -163,11 +209,14 @@ public partial class SettingsViewModel : ObservableObject
         _selectedTheme     = config.Launcher.Theme;
         _characterImage    = LoadCharacterImage(_selectedTheme);
 
-        _useDeepL          = config.Translation.EnableDeepLTranslate;
-        _deepLKey          = config.Translation.DeepLTranslateKey;
-        _useGoogle         = config.Translation.EnableGoogleTranslate;
-        _googleKey         = config.Translation.GoogleTranslateKey;
-        _useGoogleFree     = config.Translation.EnableGoogleTranslateFree;
+        var savedService = config.Translation.TranslateService;
+        _selectedTranslateService = TranslateServiceOptions.FirstOrDefault(o => o.Value == savedService)
+                                    ?? TranslateServiceOptions.First(o => o.Value == "googlefree");
+        _translateKey       = config.Translation.TranslateKey;
+        _chatGptModel      = config.Translation.ChatGptModel;
+        _ollamaUrl          = config.Translation.OllamaUrl;
+        _ollamaModel        = config.Translation.OllamaModel;
+        _libreTranslateUrl  = config.Translation.LibreTranslateUrl;
         _useCommunityApi   = config.Translation.EnableCommunityApi;
         _communityApiKey   = config.Translation.CommunityApiKey;
 
@@ -252,42 +301,12 @@ public partial class SettingsViewModel : ObservableObject
         if (save) SaveNameOverrides();
     }
 
-    // ── Translation toggles (radio-style: checking one unchecks the others) ─
-
-    private bool _translationUpdating;
-
-    partial void OnUseDeepLChanged(bool value)
-    {
-        if (_translationUpdating) return;
-        _translationUpdating = true;
-        if (value) { UseGoogle = false; UseGoogleFree = false; }
-        OnPropertyChanged(nameof(CanValidate));
-        _translationUpdating = false;
-    }
-
-    partial void OnUseGoogleChanged(bool value)
-    {
-        if (_translationUpdating) return;
-        _translationUpdating = true;
-        if (value) { UseDeepL = false; UseGoogleFree = false; }
-        OnPropertyChanged(nameof(CanValidate));
-        _translationUpdating = false;
-    }
-
-    partial void OnUseGoogleFreeChanged(bool value)
-    {
-        if (_translationUpdating) return;
-        _translationUpdating = true;
-        if (value) { UseDeepL = false; UseGoogle = false; }
-        OnPropertyChanged(nameof(CanValidate));
-        _translationUpdating = false;
-    }
+    // ── Validation ────────────────────────────────────────────────────────
 
     partial void OnValidatingChanged(bool value) => OnPropertyChanged(nameof(CanValidate));
 
-    // ── Validation ────────────────────────────────────────────────────────
-
-    public bool CanValidate => !Validating && (UseDeepL || UseGoogle);
+    public bool CanValidate =>
+        !Validating && (SelectedTranslateService?.Value is "deepl" or "google");
 
     [RelayCommand]
     private async Task ValidateKey()
@@ -296,12 +315,13 @@ public partial class SettingsViewModel : ObservableObject
         StatusMsg = "Validating…";
         try
         {
-            if (UseDeepL)
-                StatusMsg = await _validate.ValidateDeepLKey(DeepLKey);
-            else if (UseGoogle)
-                StatusMsg = await _validate.ValidateGoogleKey(GoogleKey);
+            var svc = SelectedTranslateService?.Value;
+            if (svc == "deepl")
+                StatusMsg = await _validate.ValidateDeepLKey(TranslateKey);
+            else if (svc == "google")
+                StatusMsg = await _validate.ValidateGoogleKey(TranslateKey);
             else
-                StatusMsg = "Enable an API service before validating.";
+                StatusMsg = "Select DeepL or Google Translate to validate.";
         }
         catch (Exception ex)
         {
@@ -318,10 +338,12 @@ public partial class SettingsViewModel : ObservableObject
         if (_nameOverridesDirty)
             await PromptSaveNameOverrides();
 
+        var svc = SelectedTranslateService?.Value;
         var missing = new List<string>();
-        if (UseDeepL        && string.IsNullOrWhiteSpace(DeepLKey))        missing.Add("DeepL");
-        if (UseGoogle       && string.IsNullOrWhiteSpace(GoogleKey))       missing.Add("Google Translate");
-        if (UseCommunityApi && string.IsNullOrWhiteSpace(CommunityApiKey)) missing.Add("Community API");
+        if (svc is "deepl" or "google" or "chatgpt" && string.IsNullOrWhiteSpace(TranslateKey))
+            missing.Add(SelectedTranslateService?.Display ?? "Translation service");
+        if (UseCommunityApi && string.IsNullOrWhiteSpace(CommunityApiKey))
+            missing.Add("Community API");
 
         if (missing.Count > 0)
         {
@@ -341,13 +363,14 @@ public partial class SettingsViewModel : ObservableObject
         };
         var translation = new TranslationConfig
         {
-            EnableDeepLTranslate      = UseDeepL,
-            DeepLTranslateKey         = DeepLKey,
-            EnableGoogleTranslate     = UseGoogle,
-            GoogleTranslateKey        = GoogleKey,
-            EnableGoogleTranslateFree = UseGoogleFree,
-            EnableCommunityApi        = UseCommunityApi,
-            CommunityApiKey           = CommunityApiKey,
+            TranslateService  = svc ?? "",
+            TranslateKey      = TranslateKey,
+            ChatGptModel      = ChatGptModel,
+            OllamaUrl         = OllamaUrl,
+            OllamaModel       = OllamaModel,
+            LibreTranslateUrl = LibreTranslateUrl,
+            EnableCommunityApi = UseCommunityApi,
+            CommunityApiKey   = CommunityApiKey,
         };
         try { _cfg.Save(launcher, translation); } catch { }
 
@@ -358,7 +381,7 @@ public partial class SettingsViewModel : ObservableObject
         if (Nameplates)       args.Add("--nameplates");
         if (DebugLogging)     args.Add("--debug");
         if (CommunityLogging) args.Add("--community-logging");
-        if (UseDeepL || UseGoogle || UseGoogleFree) args.Add("--communication-window");
+        if (!string.IsNullOrEmpty(svc)) args.Add("--communication-window");
 
         RunRequested?.Invoke(args);
         await Task.CompletedTask;

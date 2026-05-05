@@ -11,13 +11,14 @@ public class LauncherConfig
 
 public class TranslationConfig
 {
-    public bool EnableDeepLTranslate { get; set; }
-    public string DeepLTranslateKey { get; set; } = "";
-    public bool EnableGoogleTranslate { get; set; }
-    public string GoogleTranslateKey { get; set; } = "";
-    public bool EnableGoogleTranslateFree { get; set; }
-    public bool EnableCommunityApi { get; set; }
-    public string CommunityApiKey { get; set; } = "";
+    public string TranslateService   { get; set; } = "googlefree";
+    public string TranslateKey       { get; set; } = "";
+    public string ChatGptModel       { get; set; } = "gpt-4o-mini";
+    public string OllamaUrl          { get; set; } = "http://localhost:11434";
+    public string OllamaModel        { get; set; } = "llama3";
+    public string LibreTranslateUrl  { get; set; } = "https://libretranslate.com";
+    public bool   EnableCommunityApi { get; set; }
+    public string CommunityApiKey    { get; set; } = "";
 }
 
 public class GameConfig

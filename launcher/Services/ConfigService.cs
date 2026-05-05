@@ -121,6 +121,46 @@ public class ConfigService
         File.WriteAllText(path, sb.ToString());
     }
 
+    private static TranslationConfig LoadTranslationConfig(Dictionary<string, string> t)
+    {
+        // Migrate old per-service boolean flags to the new translate_service string.
+        var service = t.GetValueOrDefault("translate_service");
+        var key     = t.GetValueOrDefault("translate_key") ?? "";
+        if (string.IsNullOrEmpty(service))
+        {
+            if (ToBool(t.GetValueOrDefault("enabledeepltranslate")))
+            {
+                service = "deepl";
+                key     = t.GetValueOrDefault("deepltranslatekey") ?? "";
+            }
+            else if (ToBool(t.GetValueOrDefault("enablegoogletranslate")))
+            {
+                service = "google";
+                key     = t.GetValueOrDefault("googletranslatekey") ?? "";
+            }
+            else if (ToBool(t.GetValueOrDefault("enablegoogletranslatefree")))
+            {
+                service = "googlefree";
+            }
+            else
+            {
+                service = "googlefree";
+            }
+        }
+
+        return new TranslationConfig
+        {
+            TranslateService  = service,
+            TranslateKey      = key,
+            ChatGptModel      = t.GetValueOrDefault("chatgpt_model")      ?? "gpt-4o-mini",
+            OllamaUrl         = t.GetValueOrDefault("ollama_url")         ?? "http://localhost:11434",
+            OllamaModel       = t.GetValueOrDefault("ollama_model")       ?? "llama3",
+            LibreTranslateUrl = t.GetValueOrDefault("libretranslate_url") ?? "https://libretranslate.com",
+            EnableCommunityApi = ToBool(t.GetValueOrDefault("enablecommunityapi")),
+            CommunityApiKey   = t.GetValueOrDefault("communityapikey")    ?? "",
+        };
+    }
+
     public AppConfig Load()
     {
         var path = ConfigPath();
@@ -144,16 +184,7 @@ public class ConfigService
                 SimultaneousLaunch = ToBool(l.GetValueOrDefault("simultaneouslaunch")),
                 Theme              = l.GetValueOrDefault("theme") ?? "rosie",
             },
-            Translation = new TranslationConfig
-            {
-                EnableDeepLTranslate      = ToBool(t.GetValueOrDefault("enabledeepltranslate")),
-                DeepLTranslateKey         = t.GetValueOrDefault("deepltranslatekey") ?? "",
-                EnableGoogleTranslate     = ToBool(t.GetValueOrDefault("enablegoogletranslate")),
-                GoogleTranslateKey        = t.GetValueOrDefault("googletranslatekey") ?? "",
-                EnableGoogleTranslateFree = ToBool(t.GetValueOrDefault("enablegoogletranslatefree")),
-                EnableCommunityApi        = ToBool(t.GetValueOrDefault("enablecommunityapi")),
-                CommunityApiKey           = t.GetValueOrDefault("communityapikey") ?? "",
-            },
+            Translation = LoadTranslationConfig(t),
             Game = new GameConfig
             {
                 InstallDirectory        = c.GetValueOrDefault("installdirectory") ?? "",
@@ -174,13 +205,14 @@ public class ConfigService
         var sb = new System.Text.StringBuilder();
 
         sb.AppendLine("[translation]");
-        WriteKv(sb, "enabledeepltranslate",      BoolToIni(translation.EnableDeepLTranslate));
-        WriteKv(sb, "deepltranslatekey",          translation.DeepLTranslateKey);
-        WriteKv(sb, "enablegoogletranslate",      BoolToIni(translation.EnableGoogleTranslate));
-        WriteKv(sb, "googletranslatekey",         translation.GoogleTranslateKey);
-        WriteKv(sb, "enablegoogletranslatefree",  BoolToIni(translation.EnableGoogleTranslateFree));
-        WriteKv(sb, "enablecommunityapi",         BoolToIni(translation.EnableCommunityApi));
-        WriteKv(sb, "communityapikey",            translation.CommunityApiKey);
+        WriteKv(sb, "translate_service",   translation.TranslateService);
+        WriteKv(sb, "translate_key",       translation.TranslateKey);
+        WriteKv(sb, "chatgpt_model",       translation.ChatGptModel);
+        WriteKv(sb, "ollama_url",          translation.OllamaUrl);
+        WriteKv(sb, "ollama_model",        translation.OllamaModel);
+        WriteKv(sb, "libretranslate_url",  translation.LibreTranslateUrl);
+        WriteKv(sb, "enablecommunityapi",  BoolToIni(translation.EnableCommunityApi));
+        WriteKv(sb, "communityapikey",     translation.CommunityApiKey);
         sb.AppendLine();
 
         if (configPairs.Count > 0)

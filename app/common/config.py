@@ -16,11 +16,12 @@ class UserConfig:
     def _get_default_config(self) -> configparser.ConfigParser:
         config = configparser.ConfigParser()
         config["translation"] = {
-            "enabledeepltranslate": "False",
-            "deepltranslatekey": "",
-            "enablegoogletranslate": "False",
-            "googletranslatekey": "",
-            "enablegoogletranslatefree": "False",
+            "translate_service": "googlefree",
+            "translate_key": "",
+            "chatgpt_model": "gpt-4o-mini",
+            "ollama_url": "http://localhost:11434",
+            "ollama_model": "llama3",
+            "libretranslate_url": "https://libretranslate.com",
             "communityapikey": "",
             "enablecommunityapi": "False",
         }
@@ -32,6 +33,18 @@ class UserConfig:
 
         user_config = configparser.ConfigParser()
         user_config.read(self.file)
+
+        # migrate from old per-service boolean flags to a single translate_service string
+        if user_config.has_section("translation") and not user_config.has_option("translation", "translate_service"):
+            t = user_config["translation"]
+            if t.get("enabledeepltranslate", "False").lower() == "true":
+                user_config.set("translation", "translate_service", "deepl")
+                user_config.set("translation", "translate_key", t.get("deepltranslatekey", ""))
+            elif t.get("enablegoogletranslate", "False").lower() == "true":
+                user_config.set("translation", "translate_service", "google")
+                user_config.set("translation", "translate_key", t.get("googletranslatekey", ""))
+            elif t.get("enablegoogletranslatefree", "False").lower() == "true":
+                user_config.set("translation", "translate_service", "googlefree")
 
         needs_write = False
 
@@ -72,24 +85,28 @@ class UserConfig:
         return self.config["translation"]
 
     @property
-    def deepl_enabled(self) -> bool:
-        return self.translation_section.getboolean("enabledeepltranslate", False)
+    def translate_service(self) -> str:
+        return self.translation_section.get("translate_service", "")
 
     @property
-    def deepl_key(self) -> str:
-        return self.translation_section.get("deepltranslatekey", "")
+    def translate_key(self) -> str:
+        return self.translation_section.get("translate_key", "")
 
     @property
-    def google_enabled(self) -> bool:
-        return self.translation_section.getboolean("enablegoogletranslate", False)
+    def chatgpt_model(self) -> str:
+        return self.translation_section.get("chatgpt_model", "gpt-4o-mini")
 
     @property
-    def google_key(self) -> str:
-        return self.translation_section.get("googletranslatekey", "")
+    def ollama_url(self) -> str:
+        return self.translation_section.get("ollama_url", "http://localhost:11434")
 
     @property
-    def google_free_enabled(self) -> bool:
-        return self.translation_section.getboolean("enablegoogletranslatefree", False)
+    def ollama_model(self) -> str:
+        return self.translation_section.get("ollama_model", "llama3")
+
+    @property
+    def libretranslate_url(self) -> str:
+        return self.translation_section.get("libretranslate_url", "https://libretranslate.com")
 
     @property
     def community_enabled(self) -> bool:
@@ -107,23 +124,3 @@ class UserConfig:
     def game_directory(self):
         value = self.config_section.get("installdirectory", "")
         return value if value else "C:/Program Files (x86)/SquareEnix/DRAGON QUEST X"
-
-    @property
-    def translate_key(self) -> str:
-        if self.deepl_enabled:
-            return self.deepl_key
-        if self.google_enabled:
-            return self.google_key
-        if self.google_free_enabled:
-            return ""
-        return ""
-
-    @property
-    def translate_service(self) -> str:
-        if self.deepl_enabled:
-            return "deepl"
-        if self.google_enabled:
-            return "google"
-        if self.google_free_enabled:
-            return "googlefree"
-        return ""

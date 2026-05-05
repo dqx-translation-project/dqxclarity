@@ -96,45 +96,57 @@
                                         <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnGeneralApiHelpClick">?</Button>
                                     </StackPanel>
 
-                                    <!-- DeepL row -->
-                                    <Grid ColumnDefinitions="130,*">
-                                        <CheckBox Grid.Column="0"
-                                                  Content="DeepL"
-                                                  IsChecked="{Binding UseDeepL}"
-                                                  ToolTip.Tip="Enable DeepL as your choice of external translation."/>
-                                        <TextBox Grid.Column="1"
-                                                 PasswordChar="•"
-                                                 Watermark="DeepL auth key"
-                                                 Text="{Binding DeepLKey}"
-                                                 IsEnabled="{Binding UseDeepL}"
-                                                 ToolTip.Tip="Paste your DeepL API Key here."/>
-                                    </Grid>
+                                    <!-- Service selector -->
+                                    <ComboBox x:Name="TranslateServiceCombo"
+                                              HorizontalAlignment="Stretch"
+                                              SelectionChanged="OnTranslateServiceChanged"
+                                              ToolTip.Tip="Select the translation service to use for untranslated game text."/>
 
-                                    <!-- Google row -->
-                                    <Grid ColumnDefinitions="130,*">
-                                        <CheckBox Grid.Column="0"
-                                                  Content="Google Translate"
-                                                  IsChecked="{Binding UseGoogle}"
-                                                  ToolTip.Tip="Enable Google Translate as your choice of external translation."/>
-                                        <TextBox Grid.Column="1"
-                                                 PasswordChar="•"
-                                                 Watermark="Google API key"
-                                                 Text="{Binding GoogleKey}"
-                                                 IsEnabled="{Binding UseGoogle}"
-                                                 ToolTip.Tip="Paste your Google Translate API Key here."/>
-                                    </Grid>
+                                    <!-- Free service warning -->
+                                    <TextBlock IsVisible="{Binding IsFreeService}"
+                                               Text="Free APIs are unstable, unreliable and tend to have a poor translation quality."
+                                               FontSize="11"
+                                               Foreground="{DynamicResource AppMuted}"
+                                               TextWrapping="Wrap"/>
 
-                                    <!-- Free Google row -->
-                                    <CheckBox Content="Free Google Translate"
-                                              IsChecked="{Binding UseGoogleFree}"
-                                              ToolTip.Tip="Uses the 'free' version of Google Translate. Rate limiting may ensue under use."/>
+                                    <!-- API key (deepl, google, chatgpt, libretranslate) -->
+                                    <TextBox IsVisible="{Binding ShowKeyField}"
+                                             PasswordChar="•"
+                                             Watermark="API Key"
+                                             Text="{Binding TranslateKey}"
+                                             ToolTip.Tip="API key for the selected translation service."/>
 
-                                    <!-- Validate row -->
-                                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
+                                    <!-- ChatGPT model -->
+                                    <TextBox IsVisible="{Binding ShowChatGptModel}"
+                                             Watermark="Model (e.g. gpt-4o-mini)"
+                                             Text="{Binding ChatGptModel}"
+                                             ToolTip.Tip="The OpenAI model to use for translation."/>
+
+                                    <!-- Ollama URL -->
+                                    <TextBox IsVisible="{Binding ShowOllamaFields}"
+                                             Watermark="Ollama URL (e.g. http://localhost:11434)"
+                                             Text="{Binding OllamaUrl}"
+                                             ToolTip.Tip="The base URL of your Ollama instance."/>
+
+                                    <!-- Ollama model -->
+                                    <TextBox IsVisible="{Binding ShowOllamaFields}"
+                                             Watermark="Model name (e.g. llama3)"
+                                             Text="{Binding OllamaModel}"
+                                             ToolTip.Tip="The Ollama model to use for translation."/>
+
+                                    <!-- LibreTranslate instance URL -->
+                                    <TextBox IsVisible="{Binding ShowLibreTranslateUrl}"
+                                             Watermark="Instance URL (e.g. https://libretranslate.com)"
+                                             Text="{Binding LibreTranslateUrl}"
+                                             ToolTip.Tip="URL of the LibreTranslate instance to use. Can be a self-hosted instance."/>
+
+                                    <!-- Validate row (deepl and google only) -->
+                                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0"
+                                                IsVisible="{Binding ShowValidateButton}">
                                         <Button Command="{Binding ValidateKeyCommand}"
                                                 IsEnabled="{Binding CanValidate}"
                                                 ToolTip.Tip="Validate that the selected API key works."
-                                                x:Name="ValidateBtn">Validate Enabled Key</Button>
+                                                x:Name="ValidateBtn">Validate Key</Button>
                                         <TextBlock Text="{Binding StatusMsg}"
                                                    FontSize="11"
                                                    Foreground="{DynamicResource AppMuted}"

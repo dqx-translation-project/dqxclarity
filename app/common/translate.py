@@ -31,9 +31,9 @@ class Translator:
 
     def __init__(self):
         if Translator.service is None:
-            self.user_settings = UserConfig()
-            Translator.service = self.user_settings.translate_service
-            Translator.api_key = self.user_settings.translate_key
+            user_settings = UserConfig()
+            Translator.service = user_settings.translate_service
+            Translator.api_key = user_settings.translate_key
 
         if Translator.glossary is None:
             Translator.glossary = generate_glossary_dict()
@@ -231,6 +231,33 @@ class Translator:
         elif Translator.service == "googlefree":
             translator = GoogleTranslateFree()
             return translator.translate(text)
+
+        elif Translator.service == "googletranslatepa":
+            from common.translators.googletranslatepa import GoogleTranslatePa
+
+            return GoogleTranslatePa().translate(text)
+
+        elif Translator.service == "chatgpt":
+            from common.translators.chatgpt import ChatGPTTranslate
+
+            return ChatGPTTranslate(Translator.api_key).translate(text)
+
+        elif Translator.service == "ollama":
+            from common.translators.ollama import OllamaTranslate
+
+            return OllamaTranslate().translate(text)
+
+        elif Translator.service == "yandex":
+            from common.translators.yandex import YandexTranslate
+
+            return YandexTranslate().translate(text)
+
+        elif Translator.service == "libretranslate":
+            from common.translators.libretranslate import LibreTranslate
+
+            return LibreTranslate(Translator.api_key).translate(text)
+
+        return []
 
     def translate(self, text: str, wrap_width: int, max_lines=None, add_brs=True):
         """Sanitizes different tags and symbols, then translates the string.

@@ -53,15 +53,13 @@ public partial class SettingsView : UserControl
         "This only affects the in-world name display, not dialog boxes or menus.";
 
     private const string GeneralApiHelpText =
-        "DeepL\n" +
-        "Enables real-time machine translation of untranslated dialog and game text using your personal DeepL API key. " +
-        "Produces higher-quality translations than Google for most content. A free-tier DeepL account is enough to get started.\n\n" +
-        "Google Translate\n" +
-        "Same as DeepL but uses Google Cloud Translate. Only one paid API service should be active at a time.\n\n" +
-        "Free Google Translate\n" +
-        "Uses an unofficial Google Translate endpoint that requires no API key. Easier to get started with, but may be rate-limited or stop working if you translate a large amount of text at once.\n\n" +
-        "Validate Enabled Key\n" +
-        "Sends a quick test request using your active API key to confirm it is recognized and working. Run this after entering or changing a key.";
+        "Translation Service\n" +
+        "Choose the service used to machine-translate untranslated game dialog.\n\n" +
+        "Services marked (free) use unofficial or self-hosted endpoints rather than a supported API. They work well but may break or become rate-limited without notice. Services without this label use official APIs and are more stable.\n\n" +
+        "API Key\n" +
+        "Shown for services that require one. Paste your key here.\n\n" +
+        "Validate Key\n" +
+        "Sends a quick test request to confirm the key works. Available for DeepL and Google Translate.";
 
     private const string AdvancedConfigHelpText =
         "Community Logging\n" +
@@ -161,6 +159,26 @@ public partial class SettingsView : UserControl
         if (DataContext is not SettingsViewModel vm) return;
         _vm = vm;
 
+        // Populate translate service combo
+        if (TranslateServiceCombo != null)
+        {
+            TranslateServiceCombo.Items.Clear();
+            foreach (var opt in SettingsViewModel.TranslateServiceOptions.Where(o => !o.Display.Contains("(free)")))
+                TranslateServiceCombo.Items.Add(new ComboBoxItem { Content = opt.Display, Tag = opt.Value });
+            TranslateServiceCombo.Items.Add(new ComboBoxItem { Content = "─────────────", IsEnabled = false });
+            foreach (var opt in SettingsViewModel.TranslateServiceOptions.Where(o => o.Display.Contains("(free)")))
+                TranslateServiceCombo.Items.Add(new ComboBoxItem { Content = opt.Display, Tag = opt.Value });
+
+            foreach (ComboBoxItem? item in TranslateServiceCombo.Items)
+            {
+                if (item?.Tag as string == vm.SelectedTranslateService?.Value)
+                {
+                    TranslateServiceCombo.SelectedItem = item;
+                    break;
+                }
+            }
+        }
+
         // Populate theme combo
         if (ThemeCombo != null)
         {
@@ -253,6 +271,16 @@ public partial class SettingsView : UserControl
     {
         if (sender is Button btn && btn.Tag is string tag)
             _vm?.ActivateTabCommand.Execute(tag);
+    }
+
+    private void OnTranslateServiceChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (sender is ComboBox combo && combo.SelectedItem is ComboBoxItem item
+            && item.Tag is string value && _vm != null)
+        {
+            _vm.SelectedTranslateService = SettingsViewModel.TranslateServiceOptions
+                .FirstOrDefault(o => o.Value == value);
+        }
     }
 
     private void OnThemeSelectionChanged(object? sender, SelectionChangedEventArgs e)

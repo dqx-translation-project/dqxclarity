@@ -13,186 +13,167 @@ class TestConfig(unittest.TestCase):
         _ = UserConfig(".")
         self.assertTrue(os.path.exists("user_settings.ini"))
 
-    def test_update_user_config(self) -> None:
+    def test_default_translate_service(self) -> None:
         config = UserConfig(".")
-        config.update(section="translation", key="deepltranslatekey", value="abcd1234")
-        config.update(section="translation", key="enabledeepltranslate", value="True")
+        self.assertEqual(config.translate_service, "googlefree")
 
-        # Reinitialize to read updated values
+    def test_update_translate_service(self) -> None:
         config = UserConfig(".")
-
-        self.assertEqual(config.deepl_key, "abcd1234")
-        self.assertTrue(config.deepl_enabled)
-
-    def test_eval_translation_service(self) -> None:
+        config.update(section="translation", key="translate_service", value="deepl")
         config = UserConfig(".")
-        config.update(section="translation", key="enabledeepltranslate", value="True")
-
-        # Reinitialize to read updated values
-        config = UserConfig(".")
-
         self.assertEqual(config.translate_service, "deepl")
 
-    def test_eval_translation_key(self) -> None:
+    def test_update_translate_key(self) -> None:
         config = UserConfig(".")
-        config.update(section="translation", key="enabledeepltranslate", value="True")
-        config.update(section="translation", key="deepltranslatekey", value="abcd1234")
-
-        # Reinitialize to read updated values
+        config.update(section="translation", key="translate_service", value="deepl")
+        config.update(section="translation", key="translate_key", value="abcd1234")
         config = UserConfig(".")
-
+        self.assertEqual(config.translate_service, "deepl")
         self.assertEqual(config.translate_key, "abcd1234")
 
-    def test_deepl_properties(self) -> None:
+    def test_chatgpt_model_default(self) -> None:
         config = UserConfig(".")
-        config.update(section="translation", key="enabledeepltranslate", value="True")
-        config.update(section="translation", key="deepltranslatekey", value="test_key_123")
+        self.assertEqual(config.chatgpt_model, "gpt-4o-mini")
 
-        # Reinitialize to read updated values
+    def test_chatgpt_model_update(self) -> None:
         config = UserConfig(".")
-
-        self.assertTrue(config.deepl_enabled)
-        self.assertEqual(config.deepl_key, "test_key_123")
-
-    def test_google_properties(self) -> None:
+        config.update(section="translation", key="chatgpt_model", value="gpt-4o")
         config = UserConfig(".")
-        config.update(section="translation", key="enablegoogletranslate", value="True")
-        config.update(section="translation", key="googletranslatekey", value="google_key_456")
+        self.assertEqual(config.chatgpt_model, "gpt-4o")
 
-        # Reinitialize to read updated values
+    def test_ollama_defaults(self) -> None:
         config = UserConfig(".")
+        self.assertEqual(config.ollama_url, "http://localhost:11434")
+        self.assertEqual(config.ollama_model, "llama3")
 
-        self.assertTrue(config.google_enabled)
-        self.assertEqual(config.google_key, "google_key_456")
-
-    def test_google_free_properties(self) -> None:
+    def test_ollama_update(self) -> None:
         config = UserConfig(".")
-        config.update(section="translation", key="enablegoogletranslatefree", value="True")
-
-        # Reinitialize to read updated values
+        config.update(section="translation", key="ollama_url", value="http://192.168.1.10:11434")
+        config.update(section="translation", key="ollama_model", value="mistral")
         config = UserConfig(".")
+        self.assertEqual(config.ollama_url, "http://192.168.1.10:11434")
+        self.assertEqual(config.ollama_model, "mistral")
 
-        self.assertTrue(config.google_free_enabled)
+    def test_libretranslate_default(self) -> None:
+        config = UserConfig(".")
+        self.assertEqual(config.libretranslate_url, "https://libretranslate.com")
+
+    def test_libretranslate_update(self) -> None:
+        config = UserConfig(".")
+        config.update(section="translation", key="libretranslate_url", value="http://localhost:5000")
+        config = UserConfig(".")
+        self.assertEqual(config.libretranslate_url, "http://localhost:5000")
 
     def test_community_api_properties(self) -> None:
         config = UserConfig(".")
         config.update(section="translation", key="enablecommunityapi", value="True")
         config.update(section="translation", key="communityapikey", value="community_key_789")
-
-        # Reinitialize to read updated values
         config = UserConfig(".")
-
         self.assertTrue(config.community_enabled)
         self.assertEqual(config.community_key, "community_key_789")
 
     def test_game_directory_property(self) -> None:
         config = UserConfig(".")
         config.update(section="config", key="installdirectory", value="D:/Games/DQX")
-
-        # Reinitialize to read updated values
         config = UserConfig(".")
-
         self.assertEqual(config.game_directory, "D:/Games/DQX")
 
     def test_game_directory_default(self) -> None:
         config = UserConfig(".")
-
-        # Should return default if not set
         self.assertEqual(config.game_directory, "C:/Program Files (x86)/SquareEnix/DRAGON QUEST X")
 
-    def test_translate_service_priority(self) -> None:
-        """Test that translate_service returns services in priority order: deepl > google > googlefree"""
-        config = UserConfig(".")
+    def test_migration_from_old_deepl_flags(self) -> None:
+        """Old boolean flags in user_settings.ini should migrate to translate_service."""
+        import configparser
 
-        # Test deepl priority
-        config.update(section="translation", key="enabledeepltranslate", value="True")
-        config.update(section="translation", key="enablegoogletranslate", value="True")
-        config.update(section="translation", key="enablegoogletranslatefree", value="True")
+        # Write an old-format INI manually
+        cfg = configparser.ConfigParser()
+        cfg["translation"] = {
+            "enabledeepltranslate": "True",
+            "deepltranslatekey": "migrated_key",
+            "enablegoogletranslate": "False",
+            "googletranslatekey": "",
+            "enablegoogletranslatefree": "False",
+            "communityapikey": "",
+            "enablecommunityapi": "False",
+        }
+        cfg["config"] = {"installdirectory": "C:/Program Files (x86)/SquareEnix/DRAGON QUEST X"}
+        with open("user_settings.ini", "w") as f:
+            cfg.write(f)
+
         config = UserConfig(".")
         self.assertEqual(config.translate_service, "deepl")
+        self.assertEqual(config.translate_key, "migrated_key")
 
-        # Test google priority (deepl disabled)
-        config.update(section="translation", key="enabledeepltranslate", value="False")
+    def test_migration_from_old_google_flags(self) -> None:
+        import configparser
+
+        cfg = configparser.ConfigParser()
+        cfg["translation"] = {
+            "enabledeepltranslate": "False",
+            "deepltranslatekey": "",
+            "enablegoogletranslate": "True",
+            "googletranslatekey": "gkey",
+            "enablegoogletranslatefree": "False",
+            "communityapikey": "",
+            "enablecommunityapi": "False",
+        }
+        cfg["config"] = {"installdirectory": "C:/Program Files (x86)/SquareEnix/DRAGON QUEST X"}
+        with open("user_settings.ini", "w") as f:
+            cfg.write(f)
+
         config = UserConfig(".")
         self.assertEqual(config.translate_service, "google")
+        self.assertEqual(config.translate_key, "gkey")
 
-        # Test googlefree (deepl and google disabled)
-        config.update(section="translation", key="enablegoogletranslate", value="False")
+    def test_migration_from_old_googlefree_flag(self) -> None:
+        import configparser
+
+        cfg = configparser.ConfigParser()
+        cfg["translation"] = {
+            "enabledeepltranslate": "False",
+            "deepltranslatekey": "",
+            "enablegoogletranslate": "False",
+            "googletranslatekey": "",
+            "enablegoogletranslatefree": "True",
+            "communityapikey": "",
+            "enablecommunityapi": "False",
+        }
+        cfg["config"] = {"installdirectory": "C:/Program Files (x86)/SquareEnix/DRAGON QUEST X"}
+        with open("user_settings.ini", "w") as f:
+            cfg.write(f)
+
         config = UserConfig(".")
         self.assertEqual(config.translate_service, "googlefree")
 
-        # Test empty string when all disabled
-        config.update(section="translation", key="enablegoogletranslatefree", value="False")
-        config = UserConfig(".")
-        self.assertEqual(config.translate_service, "")
-
-    def test_translate_key_priority(self) -> None:
-        """Test that translate_key returns the correct key based on enabled service"""
-        config = UserConfig(".")
-
-        # Test deepl key
-        config.update(section="translation", key="enabledeepltranslate", value="True")
-        config.update(section="translation", key="deepltranslatekey", value="deepl_key")
-        config = UserConfig(".")
-        self.assertEqual(config.translate_key, "deepl_key")
-
-        # Test google key
-        config.update(section="translation", key="enabledeepltranslate", value="False")
-        config.update(section="translation", key="enablegoogletranslate", value="True")
-        config.update(section="translation", key="googletranslatekey", value="google_key")
-        config = UserConfig(".")
-        self.assertEqual(config.translate_key, "google_key")
-
-        # Test empty string for google free
-        config.update(section="translation", key="enablegoogletranslate", value="False")
-        config.update(section="translation", key="enablegoogletranslatefree", value="True")
-        config = UserConfig(".")
-        self.assertEqual(config.translate_key, "")
-
-    def test_translation_section_property(self) -> None:
-        config = UserConfig(".")
-
-        # Test that translation_section returns the correct section
-        section = config.translation_section
-        self.assertIsNotNone(section)
-        self.assertIn("enabledeepltranslate", section)
-        self.assertIn("deepltranslatekey", section)
-
-    def test_config_section_property(self) -> None:
-        config = UserConfig(".")
-
-        # Test that config_section returns the correct section
-        section = config.config_section
-        self.assertIsNotNone(section)
-        self.assertIn("installdirectory", section)
-
     def test_config_auto_cleanup(self) -> None:
-        """Test that unknown keys are automatically removed from managed sections"""
         config = UserConfig(".")
-
-        # Manually add an unknown key
         config.config.set("translation", "unknownkey", "value")
         with open(config.file, "w") as f:
             config.config.write(f)
-
-        # Reinitialize - should remove unknown key
         config = UserConfig(".")
-
         self.assertFalse(config.config.has_option("translation", "unknownkey"))
 
     def test_config_auto_add_missing_keys(self) -> None:
-        """Test that missing default keys are automatically added"""
         config = UserConfig(".")
-
-        # Remove a default key
         config.config.remove_option("translation", "enablecommunityapi")
         with open(config.file, "w") as f:
             config.config.write(f)
-
-        # Reinitialize - should add missing key
         config = UserConfig(".")
-
         self.assertTrue(config.config.has_option("translation", "enablecommunityapi"))
+
+    def test_translation_section_property(self) -> None:
+        config = UserConfig(".")
+        section = config.translation_section
+        self.assertIsNotNone(section)
+        self.assertIn("translate_service", section)
+        self.assertIn("translate_key", section)
+
+    def test_config_section_property(self) -> None:
+        config = UserConfig(".")
+        section = config.config_section
+        self.assertIsNotNone(section)
+        self.assertIn("installdirectory", section)
 
 
 if __name__ == "__main__":
