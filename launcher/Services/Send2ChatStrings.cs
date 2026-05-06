@@ -63,6 +63,7 @@ public static class Send2ChatStrings
         { "Version 4.4 (1)", "よろこびのそのであおう" },
         { "Version 4.4 (2)", "フォステイルが！" },
         { "Version 4.5", "ユマテルのカギ" },
+        { "Version 5.0: Jyadain Garden", "プチアーノン" },
         { "Version 5.2 (1)", "リドよめざめよ" },
         { "Version 5.2 (2)", "われじゆうをもとむ" },
         { "Version 5.5", "リドよわがともよ" },
