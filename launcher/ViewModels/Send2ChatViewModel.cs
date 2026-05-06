@@ -88,7 +88,7 @@ public partial class Send2ChatViewModel : ObservableObject
             // If resolution fails, the game must be left untouched.
             if (!_memory.TryResolveBufferAddress(out var cursor, out var resolveError))
             {
-                Status = resolveError;
+                Status = $"{resolveError} Open the chat window first (default: Shift+Enter).";
                 return;
             }
 
