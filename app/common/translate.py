@@ -38,7 +38,7 @@ class Translator:
         if Translator.glossary is None:
             Translator.glossary = generate_glossary_dict()
 
-    def __glossify(self, text):
+    def glossify(self, text):
         for ja in Translator.glossary:
             en = Translator.glossary[ja]
 
@@ -218,7 +218,7 @@ class Translator:
             were given.
         """
         for i, phrase in enumerate(text):
-            text[i] = self.__glossify(phrase)
+            text[i] = self.glossify(phrase)
 
         if Translator.service == "deepl":
             translator = DeepLTranslate(Translator.api_key)
@@ -328,7 +328,7 @@ class Translator:
         output = self.__swap_placeholder_tags(output)
 
         # pass string through our glossary to replace any common words
-        output = self.__glossify(output)
+        output = self.glossify(output)
 
         # re-assign this string. this is now our "pristine" string we'll be using later.
         pristine_str = output

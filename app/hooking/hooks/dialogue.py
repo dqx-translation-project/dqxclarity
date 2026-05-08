@@ -3,7 +3,7 @@ from common.config import UserConfig
 from common.constants import COMMUNITY_STRING_API_URL
 from common.db_ops import init_db, search_bad_strings, sql_read
 from common.measure import measure_duration
-from common.translate import Translator, get_player_name, is_text_japanese
+from common.translate import Translator, get_player_name, is_text_japanese, transliterate_player_name
 from loguru import logger as log
 
 
@@ -46,7 +46,26 @@ def dialogue_replacement(original_text: str, npc_name: str = "No_NPC") -> str:
     if db_result:
         return db_result
 
-    # translate the text
+    # in cutscenes or places where the player's name or sibling is expanded to japanese by in-game variable expansion,
+    # but everything else is non-Japanese, this will fail the JP check and force a translation. this causes us to translate
+    # text we didn't need to and tends to make the text worse.
+    # this first applies the glossary strings over the sentence as the user may have created overrides for their own names.
+    # in case they didn't, we also try to replace the player's Japanese name with a transliterated version. this should fix
+    # the inconsistencies where the string looks like it needs to be translated because there's Japanese within it. this
+    # should also handle issues where the player/sibling name is not translated in dialogue.
+    glossified = _translator.glossify(original_text)
+
+    player, sibling = get_player_name()
+    player_trl = transliterate_player_name(player)
+    sibling_trl = transliterate_player_name(sibling)
+
+    glossified = glossified.replace(player, player_trl)
+    glossified = glossified.replace(sibling, sibling_trl)
+
+    if not is_text_japanese(glossified):
+        return glossified
+
+    # all checks failed - this text should definitely be Japanese and eligible for translation.
     translated_text = _translator.translate(text=original_text, wrap_width=46)
 
     if translated_text:
