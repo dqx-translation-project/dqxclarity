@@ -1,0 +1,11 @@
+---
+name: Build launcher (PR)
+
+on:
+  pull_request:
+    paths:
+      - launcher/**
+
+jobs:
+  compile_launcher:
+    uses: ./.github/workflows/_compile_launcher.yml
