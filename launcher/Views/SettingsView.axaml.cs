@@ -200,8 +200,9 @@ public partial class SettingsView : UserControl
             }
         }
 
-        // Set active tab
+        // Set active tab and game sub-tab
         SwitchTab(vm.ActiveTab);
+        SwitchGameSubTab(vm.GameSubTab);
 
         // Track property changes
         vm.PropertyChanged += (_, args) =>
@@ -210,6 +211,9 @@ public partial class SettingsView : UserControl
             {
                 case nameof(SettingsViewModel.ActiveTab):
                     SwitchTab(vm.ActiveTab);
+                    break;
+                case nameof(SettingsViewModel.GameSubTab):
+                    SwitchGameSubTab(vm.GameSubTab);
                     break;
                 case nameof(SettingsViewModel.Validating) when ValidateBtn != null:
                     ValidateBtn.Content = vm.Validating ? "Validating…" : "Validate Enabled Key";
@@ -241,6 +245,15 @@ public partial class SettingsView : UserControl
             var win = TopLevel.GetTopLevel(this) as MainWindow;
             return win != null && await win.ShowConfirmAsync(title, body);
         };
+
+        vm.ShowOtpDialogRequested += async () =>
+        {
+            var win = TopLevel.GetTopLevel(this) as MainWindow;
+            return win == null ? null : await win.ShowInputAsync(
+                "One-Time Password",
+                "Your account has multi-factor authentication enabled. Enter your 6-digit OTP code.");
+        };
+
     }
 
     private void SwitchTab(string tab)
@@ -271,6 +284,29 @@ public partial class SettingsView : UserControl
     {
         if (sender is Button btn && btn.Tag is string tag)
             _vm?.ActivateTabCommand.Execute(tag);
+    }
+
+    private void OnGameSubTabClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string tag)
+            _vm?.ActivateGameSubTabCommand.Execute(tag);
+    }
+
+    private void SwitchGameSubTab(string subTab)
+    {
+        if (PanelGameInstall == null) return;
+        PanelGameInstall.IsVisible = subTab == "install";
+        PanelGameLaunch.IsVisible  = subTab == "launch";
+        UpdateGameSubTabStyles(subTab);
+    }
+
+    private void UpdateGameSubTabStyles(string active)
+    {
+        foreach (var btn in new[] { GameTabInstall, GameTabLaunch })
+        {
+            if (btn == null) continue;
+            btn.Classes.Set("tab-active", btn.Tag as string == active);
+        }
     }
 
     private void OnTranslateServiceChanged(object? sender, SelectionChangedEventArgs e)
@@ -699,6 +735,9 @@ public partial class SettingsView : UserControl
         if (win == null) return;
         await win.ShowInfoAsync("Patch", PatchHelpText);
     }
+
+    private void OnRefreshTapped(object? sender, TappedEventArgs e) =>
+        _vm?.CheckMaintenanceCommand.Execute(null);
 
     // ── Sidebar footer ───────────────────────────────────────────────────
 

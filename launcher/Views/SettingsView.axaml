@@ -20,7 +20,7 @@
                 BorderBrush="{DynamicResource AppBorder}"
                 BorderThickness="0,0,1,0"
                 Padding="10,12">
-            <Grid RowDefinitions="Auto,*,Auto">
+            <Grid RowDefinitions="Auto,Auto,*,Auto">
 
                 <!-- Theme selector -->
                 <ComboBox Grid.Row="0"
@@ -28,8 +28,57 @@
                           HorizontalAlignment="Stretch"
                           SelectionChanged="OnThemeSelectionChanged"/>
 
+                <!-- Server Status -->
+                <StackPanel Grid.Row="1" Spacing="3" Margin="0,8,0,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Text="Server Status"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppMuted}"
+                                   VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <TextBlock Text="Refresh"
+                                       FontSize="10"
+                                       Cursor="Hand"
+                                       IsVisible="{Binding !RefreshOnCooldown}"
+                                       Tapped="OnRefreshTapped"/>
+                            <StackPanel Orientation="Horizontal" Spacing="2"
+                                        IsVisible="{Binding RefreshOnCooldown}">
+                                <TextBlock Text="{Binding RefreshCountdownText}"
+                                           FontSize="10"
+                                           Foreground="{DynamicResource AppMuted}"/>
+                                <TextBlock Text="Refresh"
+                                           FontSize="10"
+                                           Foreground="{DynamicResource AppMuted}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock IsVisible="{Binding CheckingMaintenance}"
+                               Text="Checking..."
+                               FontSize="11"
+                               Foreground="{DynamicResource AppMuted}"/>
+                    <TextBlock IsVisible="{Binding ServerIsUp}"
+                               Text="● Game is online!"
+                               FontSize="11"
+                               Foreground="{DynamicResource AppSuccess}"/>
+                    <TextBlock IsVisible="{Binding ServerIsDown}"
+                               Text="● In maintenance"
+                               FontSize="11"
+                               Foreground="{DynamicResource AppDanger}"/>
+                    <TextBlock IsVisible="{Binding ServerIsUnknown}"
+                               Text="● Status unknown"
+                               FontSize="11"
+                               Foreground="{DynamicResource AppMuted}"/>
+                    <TextBlock IsVisible="{Binding ServerIsDown}"
+                               Text="{Binding ServerMessage}"
+                               FontSize="10"
+                               Foreground="{DynamicResource AppMuted}"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+
                 <!-- Character mascot -->
-                <Image Grid.Row="1"
+                <Image Grid.Row="2"
                        Source="{Binding CharacterImage}"
                        Stretch="Uniform"
                        HorizontalAlignment="Center"
@@ -37,7 +86,7 @@
                        Margin="6,8"/>
 
                 <!-- Footer links -->
-                <StackPanel Grid.Row="2" Spacing="1">
+                <StackPanel Grid.Row="3" Spacing="1">
                     <Button Classes="ghost" FontSize="15" Click="OnAboutClick">About</Button>
                     <Button Classes="ghost" FontSize="15" Click="OnWikiClick">Wiki</Button>
                     <Button Classes="ghost" FontSize="15" Click="OnSupportClick">Support</Button>
@@ -207,205 +256,322 @@
                         </StackPanel>
 
                         <!-- ══ GAME TAB ══════════════════════════════════ -->
-                        <StackPanel x:Name="PanelGame" Spacing="14" IsVisible="False">
+                        <StackPanel x:Name="PanelGame" Spacing="0" IsVisible="False">
 
-                            <Border Classes="fieldset">
-                                <StackPanel Spacing="8">
-                                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,0">
-                                        <TextBlock Classes="legend" Text="Installation" Margin="0" VerticalAlignment="Center"/>
-                                        <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnInstallationHelpClick">?</Button>
+                            <!-- Game sub-tab strip — negative margin breaks out of ScrollViewer padding
+                                 so it sits flush like the main tab strip above -->
+                            <Border BorderBrush="{DynamicResource AppBorder}"
+                                    BorderThickness="0,0,0,1"
+                                    Background="{DynamicResource AppSurface}"
+                                    Margin="-14,-12,-14,14">
+                                <StackPanel Orientation="Horizontal" Spacing="0">
+                                    <Button x:Name="GameTabInstall"
+                                            Classes="tab"
+                                            Tag="install"
+                                            Click="OnGameSubTabClick">Install Configuration</Button>
+                                    <Button x:Name="GameTabLaunch"
+                                            Classes="tab"
+                                            Tag="launch"
+                                            Click="OnGameSubTabClick"
+                                            IsEnabled="{Binding DqxDirValid}"
+                                            ToolTip.Tip="Set a valid DQX folder path to access Launch settings.">Launch</Button>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- ── Install Configuration sub-panel ──────── -->
+                            <StackPanel x:Name="PanelGameInstall" Spacing="14">
+
+                                <Border Classes="fieldset">
+                                    <StackPanel Spacing="8">
+                                        <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,0">
+                                            <TextBlock Classes="legend" Text="Installation" Margin="0" VerticalAlignment="Center"/>
+                                            <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnInstallationHelpClick">?</Button>
+                                        </StackPanel>
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="DQX Folder Path:"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,8,0"/>
+                                            <Border Grid.Column="1"
+                                                    Background="{DynamicResource AppSurface}"
+                                                    BorderBrush="{DynamicResource AppBorder}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4"
+                                                    Padding="6,3"
+                                                    ClipToBounds="True"
+                                                    Margin="0,0,6,0"
+                                                    ToolTip.Tip="Path to your DQX installation folder.">
+                                                <Panel>
+                                                    <TextBlock Text="{Binding DqxDir}"
+                                                               FontSize="12"
+                                                               VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Foreground="{DynamicResource AppText}"
+                                                               IsVisible="{Binding DqxDir, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                                    <TextBlock Text="No folder selected"
+                                                               FontSize="12"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{DynamicResource AppMuted}"
+                                                               IsVisible="{Binding DqxDir, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                                                </Panel>
+                                            </Border>
+                                            <Button Grid.Column="2"
+                                                    Command="{Binding ClearDqxDirCommand}"
+                                                    IsVisible="{Binding DqxDir, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                    ToolTip.Tip="Clear the DQX folder path."
+                                                    Margin="0,0,6,0">C</Button>
+                                            <Button Grid.Column="3"
+                                                    x:Name="BrowseBtn"
+                                                    Click="OnBrowseClick"
+                                                    ToolTip.Tip="Browse for your DQX installation folder.">Browse...</Button>
+                                        </Grid>
+                                        <TextBlock Text="{Binding DqxDirError}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppDanger}"
+                                                   TextWrapping="Wrap"
+                                                   IsVisible="{Binding DqxDirError,
+                                                               Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="Locale Emulator Folder Path:"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,8,0"/>
+                                            <Border Grid.Column="1"
+                                                    Background="{DynamicResource AppSurface}"
+                                                    BorderBrush="{DynamicResource AppBorder}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4"
+                                                    Padding="6,3"
+                                                    ClipToBounds="True"
+                                                    Margin="0,0,6,0"
+                                                    ToolTip.Tip="Path to your Locale Emulator installation folder, where LEProc.exe is located.">
+                                                <Panel>
+                                                    <TextBlock Text="{Binding LeDir}"
+                                                               FontSize="12"
+                                                               VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Foreground="{DynamicResource AppText}"
+                                                               IsVisible="{Binding LeDir, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                                    <TextBlock Text="No folder selected (optional)"
+                                                               FontSize="12"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{DynamicResource AppMuted}"
+                                                               IsVisible="{Binding LeDir, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                                                </Panel>
+                                            </Border>
+                                            <Button Grid.Column="2"
+                                                    Command="{Binding ClearLeDirCommand}"
+                                                    IsVisible="{Binding LeDir, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                    ToolTip.Tip="Clear the Locale Emulator folder path."
+                                                    Margin="0,0,6,0">C</Button>
+                                            <Button Grid.Column="3"
+                                                    x:Name="BrowseLeBtn"
+                                                    Click="OnBrowseLeClick"
+                                                    ToolTip.Tip="Browse for your Locale Emulator installation folder.">Browse...</Button>
+                                        </Grid>
+                                        <TextBlock Text="{Binding LeDirError}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppDanger}"
+                                                   TextWrapping="Wrap"
+                                                   IsVisible="{Binding LeDirError,
+                                                               Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                     </StackPanel>
-                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                                        <TextBlock Grid.Column="0"
-                                                   Text="DQX Folder Path:"
-                                                   VerticalAlignment="Center"
-                                                   Margin="0,0,8,0"/>
-                                        <Border Grid.Column="1"
+                                </Border>
+
+                                <Border Classes="fieldset"
+                                        IsVisible="{Binding DqxDirValid}">
+                                    <StackPanel Spacing="8">
+                                        <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,0">
+                                            <TextBlock Classes="legend" Text="Patch" Margin="0" VerticalAlignment="Center"/>
+                                            <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnPatchHelpClick">?</Button>
+                                        </StackPanel>
+
+                                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto">
+                                            <Button Grid.Column="0" Grid.Row="0" Margin="0,0,3,0"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                    Command="{Binding PatchLauncherCommand}" IsEnabled="{Binding !Patching}"
+                                                    ToolTip.Tip="Patch the Japanese launcher with an English version.">Patch Launcher</Button>
+                                            <Button Grid.Column="1" Grid.Row="0" Margin="3,0,0,0"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                    Command="{Binding RestoreLauncherCommand}" IsEnabled="{Binding !Patching}"
+                                                    ToolTip.Tip="Restore the original Japanese launcher executable.">Restore Launcher</Button>
+
+                                            <Button Grid.Column="0" Grid.Row="1" Margin="0,4,3,0"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                    Command="{Binding PatchConfigCommand}" IsEnabled="{Binding !Patching}"
+                                                    ToolTip.Tip="Patch the Japanese Config with an English version.">Patch Config</Button>
+                                            <Button Grid.Column="1" Grid.Row="1" Margin="3,4,0,0"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                    Command="{Binding RestoreConfigCommand}" IsEnabled="{Binding !Patching}"
+                                                    ToolTip.Tip="Restore the original Japanese Config executable.">Restore Config</Button>
+
+                                            <Button Grid.Column="0" Grid.Row="2" Margin="0,4,3,0"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                    Command="{Binding PatchGameFilesCommand}" IsEnabled="{Binding !Patching}"
+                                                    ToolTip.Tip="Download and apply the latest DAT/IDX translation mod. Requires admin. DQX must be closed.">Patch Game Files</Button>
+                                            <Button Grid.Column="1" Grid.Row="2" Margin="3,4,0,0"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                    Command="{Binding RestoreGameFilesCommand}" IsEnabled="{Binding !Patching}"
+                                                    ToolTip.Tip="Restore the original game files. Requires admin. DQX must be closed.">Restore Game Files</Button>
+                                        </Grid>
+
+                                        <ProgressBar IsVisible="{Binding Patching}" Minimum="0" Maximum="100">
+                                            <ProgressBar.Value>
+                                                <MultiBinding Converter="{StaticResource PatchProgress}">
+                                                    <Binding Path="PatchDownloaded"/>
+                                                    <Binding Path="PatchTotal"/>
+                                                </MultiBinding>
+                                            </ProgressBar.Value>
+                                        </ProgressBar>
+
+                                        <TextBlock Text="{Binding PatchStatus}"
+                                                   FontSize="11" TextWrapping="Wrap"
+                                                   IsVisible="{Binding PatchStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                   Foreground="{Binding PatchIsError, Converter={x:Static v:BoolToBrushConverter.ErrorOrMuted}}"/>
+                                    </StackPanel>
+                                </Border>
+
+                            </StackPanel>
+
+                            <!-- ── Launch sub-panel ─────────────────────── -->
+                            <StackPanel x:Name="PanelGameLaunch" Spacing="14" IsVisible="False">
+
+                                <!-- Launch -->
+                                <Border Classes="fieldset">
+                                    <StackPanel Spacing="8">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock Classes="legend" Text="Launch" Margin="0" VerticalAlignment="Center"/>
+                                            <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnLaunchHelpClick">?</Button>
+                                        </StackPanel>
+                                        <Grid ColumnDefinitions="*,*">
+                                            <Button Grid.Column="0" Margin="0,0,3,0"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                    Command="{Binding OpenDqxCommand}"
+                                                    ToolTip.Tip="Launch DQXBoot.exe.">Open DQX Launcher</Button>
+                                            <Button Grid.Column="1" Margin="3,0,0,0"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                    Command="{Binding OpenDqxConfigCommand}"
+                                                    ToolTip.Tip="Launch DQXConfig.exe.">Open DQXConfig</Button>
+                                        </Grid>
+                                        <StackPanel Orientation="Horizontal" Spacing="16">
+                                            <CheckBox Content="Launch DQX Launcher with dqxclarity"
+                                                      FontSize="11"
+                                                      IsChecked="{Binding SimultaneousLaunch}"
+                                                      ToolTip.Tip="Launch the official DQX launcher alongside dqxclarity."/>
+                                            <CheckBox Content="Log into DQX directly with dqxclarity"
+                                                      FontSize="11"
+                                                      IsChecked="{Binding DirectLogin}"
+                                                      ToolTip.Tip="Launch DQX with saved account information below and run dqxclarity."/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Accounts -->
+                                <Border Classes="fieldset">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Classes="legend" Text="Accounts" Margin="0"/>
+
+                                        <!-- Selector row -->
+                                        <Grid ColumnDefinitions="*,Auto,Auto" IsVisible="{Binding Accounts.Count,
+                                              Converter={x:Static v:CountToBoolConverter.Instance}}">
+                                            <ComboBox Grid.Column="0"
+                                                      HorizontalAlignment="Stretch"
+                                                      ItemsSource="{Binding Accounts}"
+                                                      SelectedItem="{Binding SelectedAccount}"
+                                                      ToolTip.Tip="The account to log into DQX with. Will prompt for MFA/OTP if present.">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate x:DataType="m:SavedPlayer">
+                                                        <TextBlock Text="{Binding DisplayName}"/>
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+                                            <Button Grid.Column="1" Margin="6,0,0,0"
+                                                    Command="{Binding ToggleAddAccountFormCommand}"
+                                                    IsEnabled="{Binding !AddingAccount}"
+                                                    ToolTip.Tip="Add a new account.">+</Button>
+                                            <Button Grid.Column="2" Margin="4,0,0,0"
+                                                    Classes="danger"
+                                                    Command="{Binding DeleteAccountCommand}"
+                                                    IsEnabled="{Binding CanDeleteSelectedAccount}"
+                                                    ToolTip.Tip="Remove the selected account.">−</Button>
+                                        </Grid>
+
+                                        <!-- Easy Play warning -->
+                                        <Border IsVisible="{Binding IsTrialAccountSelected}"
+                                                BorderBrush="{DynamicResource AppDanger}"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="8,6">
+                                            <TextBlock Text="Easy Play Accounts are not recommended to log in with. They're not tied to a Square Enix account and only exist on your local computer. In the event something happens to your computer, your save data will be unrecoverable!"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource AppDanger}"
+                                                       TextWrapping="Wrap"/>
+                                        </Border>
+
+                                        <!-- Empty state -->
+                                        <StackPanel Orientation="Horizontal" Spacing="8"
+                                                    IsVisible="{Binding Accounts.Count,
+                                                                Converter={x:Static v:CountToBoolConverter.IsZeroInstance}}">
+                                            <TextBlock Text="No accounts saved."
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource AppMuted}"
+                                                       VerticalAlignment="Center"/>
+                                            <Button Command="{Binding ToggleAddAccountFormCommand}"
+                                                    IsEnabled="{Binding !AddingAccount}">Add Account</Button>
+                                        </StackPanel>
+
+                                        <!-- Add account inline form -->
+                                        <Border IsVisible="{Binding ShowAddAccountForm}"
                                                 Background="{DynamicResource AppSurface}"
                                                 BorderBrush="{DynamicResource AppBorder}"
                                                 BorderThickness="1"
                                                 CornerRadius="4"
-                                                Padding="6,3"
-                                                ClipToBounds="True"
-                                                Margin="0,0,6,0"
-                                                ToolTip.Tip="Path to your DQX installation folder.">
-                                            <Panel>
-                                                <TextBlock Text="{Binding DqxDir}"
-                                                           FontSize="12"
-                                                           VerticalAlignment="Center"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           Foreground="{DynamicResource AppText}"
-                                                           IsVisible="{Binding DqxDir, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                                <TextBlock Text="No folder selected"
-                                                           FontSize="12"
-                                                           VerticalAlignment="Center"
-                                                           Foreground="{DynamicResource AppMuted}"
-                                                           IsVisible="{Binding DqxDir, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
-                                            </Panel>
+                                                Padding="10,8">
+                                            <StackPanel Spacing="6">
+                                                <TextBox Watermark="Username"
+                                                         Text="{Binding NewAccountUsername}"
+                                                         IsEnabled="{Binding !AddingAccount}"
+                                                         IsVisible="{Binding !NewAccountNeedsOtp}"/>
+                                                <TextBox Watermark="Password"
+                                                         PasswordChar="•"
+                                                         Text="{Binding NewAccountPassword}"
+                                                         IsEnabled="{Binding !AddingAccount}"
+                                                         IsVisible="{Binding !NewAccountNeedsOtp}"/>
+                                                <TextBox Watermark="One-time password (6 digits)"
+                                                         Text="{Binding NewAccountOtp}"
+                                                         IsEnabled="{Binding !AddingAccount}"
+                                                         IsVisible="{Binding NewAccountNeedsOtp}"/>
+                                                <TextBlock Text="{Binding AddAccountError}"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource AppDanger}"
+                                                           TextWrapping="Wrap"
+                                                           IsVisible="{Binding AddAccountError,
+                                                                       Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <Button Classes="accent"
+                                                            Command="{Binding SubmitNewAccountCommand}"
+                                                            IsEnabled="{Binding !AddingAccount}"
+                                                            IsVisible="{Binding !NewAccountNeedsOtp}">Add Account</Button>
+                                                    <Button Classes="accent"
+                                                            Command="{Binding SubmitNewAccountOtpCommand}"
+                                                            IsEnabled="{Binding !AddingAccount}"
+                                                            IsVisible="{Binding NewAccountNeedsOtp}">Submit OTP</Button>
+                                                    <Button Command="{Binding CancelAddAccountCommand}"
+                                                            IsEnabled="{Binding !AddingAccount}">Cancel</Button>
+                                                    <TextBlock Text="Verifying…"
+                                                               FontSize="11"
+                                                               Foreground="{DynamicResource AppMuted}"
+                                                               VerticalAlignment="Center"
+                                                               IsVisible="{Binding AddingAccount}"/>
+                                                </StackPanel>
+                                            </StackPanel>
                                         </Border>
-                                        <Button Grid.Column="2"
-                                                Command="{Binding ClearDqxDirCommand}"
-                                                IsVisible="{Binding DqxDir, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                ToolTip.Tip="Clear the DQX folder path."
-                                                Margin="0,0,6,0">C</Button>
-                                        <Button Grid.Column="3"
-                                                x:Name="BrowseBtn"
-                                                Click="OnBrowseClick"
-                                                ToolTip.Tip="Browse for your DQX installation folder.">Browse...</Button>
-                                    </Grid>
-                                    <TextBlock Text="{Binding DqxDirError}"
-                                               FontSize="11"
-                                               Foreground="{DynamicResource AppDanger}"
-                                               TextWrapping="Wrap"
-                                               IsVisible="{Binding DqxDirError,
-                                                           Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                                        <TextBlock Grid.Column="0"
-                                                   Text="Locale Emulator Folder Path:"
-                                                   VerticalAlignment="Center"
-                                                   Margin="0,0,8,0"/>
-                                        <Border Grid.Column="1"
-                                                Background="{DynamicResource AppSurface}"
-                                                BorderBrush="{DynamicResource AppBorder}"
-                                                BorderThickness="1"
-                                                CornerRadius="4"
-                                                Padding="6,3"
-                                                ClipToBounds="True"
-                                                Margin="0,0,6,0"
-                                                ToolTip.Tip="Path to your Locale Emulator installation folder, where LEProc.exe is located.">
-                                            <Panel>
-                                                <TextBlock Text="{Binding LeDir}"
-                                                           FontSize="12"
-                                                           VerticalAlignment="Center"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           Foreground="{DynamicResource AppText}"
-                                                           IsVisible="{Binding LeDir, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                                <TextBlock Text="No folder selected (optional)"
-                                                           FontSize="12"
-                                                           VerticalAlignment="Center"
-                                                           Foreground="{DynamicResource AppMuted}"
-                                                           IsVisible="{Binding LeDir, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
-                                            </Panel>
-                                        </Border>
-                                        <Button Grid.Column="2"
-                                                Command="{Binding ClearLeDirCommand}"
-                                                IsVisible="{Binding LeDir, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                ToolTip.Tip="Clear the Locale Emulator folder path."
-                                                Margin="0,0,6,0">C</Button>
-                                        <Button Grid.Column="3"
-                                                x:Name="BrowseLeBtn"
-                                                Click="OnBrowseLeClick"
-                                                ToolTip.Tip="Browse for your Locale Emulator installation folder.">Browse...</Button>
-                                    </Grid>
-                                    <TextBlock Text="{Binding LeDirError}"
-                                               FontSize="11"
-                                               Foreground="{DynamicResource AppDanger}"
-                                               TextWrapping="Wrap"
-                                               IsVisible="{Binding LeDirError,
-                                                           Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                </StackPanel>
-                            </Border>
 
-                            <Border Classes="fieldset"
-                                    IsVisible="{Binding DqxDirValid}">
-                                <StackPanel Spacing="8">
-                                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,0">
-                                        <TextBlock Classes="legend" Text="Launch" Margin="0" VerticalAlignment="Center"/>
-                                        <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnLaunchHelpClick">?</Button>
                                     </StackPanel>
-                                    <Grid ColumnDefinitions="*,*">
-                                        <Button Grid.Column="0" Margin="0,0,3,0"
-                                                HorizontalAlignment="Stretch"
-                                                HorizontalContentAlignment="Center"
-                                                Command="{Binding OpenDqxCommand}"
-                                                ToolTip.Tip="Launch DQXBoot.exe.">Open DQX</Button>
-                                        <Button Grid.Column="1" Margin="3,0,0,0"
-                                                HorizontalAlignment="Stretch"
-                                                HorizontalContentAlignment="Center"
-                                                Command="{Binding OpenDqxConfigCommand}"
-                                                ToolTip.Tip="Launch DQXConfig.exe.">Open DQXConfig</Button>
-                                    </Grid>
-                                    <StackPanel Orientation="Horizontal" Spacing="16">
-                                        <CheckBox Content="Launch DQX with dqxclarity"
-                                                  IsChecked="{Binding SimultaneousLaunch}"
-                                                  ToolTip.Tip="When Run is clicked, launch DQX and dqxclarity at the same time."/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
+                                </Border>
 
-                            <Border Classes="fieldset"
-                                    IsVisible="{Binding DqxDirValid}">
-                                <StackPanel Spacing="8">
-                                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,0">
-                                        <TextBlock Classes="legend" Text="Patch" Margin="0" VerticalAlignment="Center"/>
-                                        <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnPatchHelpClick">?</Button>
-                                    </StackPanel>
+                            </StackPanel>
 
-                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto">
-                                        <!-- Launcher patch row -->
-                                        <Button Grid.Column="0" Grid.Row="0" Margin="0,0,3,0"
-                                                HorizontalAlignment="Stretch"
-                                                HorizontalContentAlignment="Center"
-                                                Command="{Binding PatchLauncherCommand}"
-                                                IsEnabled="{Binding !Patching}"
-                                                ToolTip.Tip="Patch the Japanese launcher with an English version.">Patch Launcher</Button>
-                                        <Button Grid.Column="1" Grid.Row="0" Margin="3,0,0,0"
-                                                HorizontalAlignment="Stretch"
-                                                HorizontalContentAlignment="Center"
-                                                Command="{Binding RestoreLauncherCommand}"
-                                                IsEnabled="{Binding !Patching}"
-                                                ToolTip.Tip="Restore the original Japanese launcher executable.">Restore Launcher</Button>
-
-                                        <!-- Config patch row -->
-                                        <Button Grid.Column="0" Grid.Row="1" Margin="0,4,3,0"
-                                                HorizontalAlignment="Stretch"
-                                                HorizontalContentAlignment="Center"
-                                                Command="{Binding PatchConfigCommand}"
-                                                IsEnabled="{Binding !Patching}"
-                                                ToolTip.Tip="Patch the Japanese Config with an English version.">Patch Config</Button>
-                                        <Button Grid.Column="1" Grid.Row="1" Margin="3,4,0,0"
-                                                HorizontalAlignment="Stretch"
-                                                HorizontalContentAlignment="Center"
-                                                Command="{Binding RestoreConfigCommand}"
-                                                IsEnabled="{Binding !Patching}"
-                                                ToolTip.Tip="Restore the original Japanese Config executable.">Restore Config</Button>
-
-                                        <!-- Game files row -->
-                                        <Button Grid.Column="0" Grid.Row="2" Margin="0,4,3,0"
-                                                HorizontalAlignment="Stretch"
-                                                HorizontalContentAlignment="Center"
-                                                Command="{Binding PatchGameFilesCommand}"
-                                                IsEnabled="{Binding !Patching}"
-                                                ToolTip.Tip="Download and apply the latest DAT/IDX translation mod. Requires admin. DQX must be closed.">Patch Game Files</Button>
-                                        <Button Grid.Column="1" Grid.Row="2" Margin="3,4,0,0"
-                                                HorizontalAlignment="Stretch"
-                                                HorizontalContentAlignment="Center"
-                                                Command="{Binding RestoreGameFilesCommand}"
-                                                IsEnabled="{Binding !Patching}"
-                                                ToolTip.Tip="Restore the original game files. Requires admin. DQX must be closed.">Restore Game Files</Button>
-                                    </Grid>
-
-                                    <!-- Progress bar -->
-                                    <ProgressBar IsVisible="{Binding Patching}"
-                                                 Minimum="0" Maximum="100">
-                                        <ProgressBar.Value>
-                                            <MultiBinding Converter="{StaticResource PatchProgress}">
-                                                <Binding Path="PatchDownloaded"/>
-                                                <Binding Path="PatchTotal"/>
-                                            </MultiBinding>
-                                        </ProgressBar.Value>
-                                    </ProgressBar>
-
-                                    <!-- Patch status message -->
-                                    <TextBlock Text="{Binding PatchStatus}"
-                                               FontSize="11"
-                                               TextWrapping="Wrap"
-                                               IsVisible="{Binding PatchStatus,
-                                                           Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                               Foreground="{Binding PatchIsError,
-                                                            Converter={x:Static v:BoolToBrushConverter.ErrorOrMuted}}"/>
-                                </StackPanel>
-                            </Border>
                         </StackPanel>
 
                     </StackPanel>

@@ -230,6 +230,16 @@ public partial class MainWindow : Window
         await tcs.Task;
     }
 
+    internal async Task<string?> ShowInputAsync(string title, string prompt, bool isPassword = false)
+    {
+        var dlg = new InputDialog(title, prompt, isPassword);
+        var tcs = new TaskCompletionSource<string?>();
+        dlg.RequestClose += result => { HideOverlay(); tcs.TrySetResult(result); };
+        _overlayDismissAction = () => { HideOverlay(); tcs.TrySetResult(null); };
+        ShowOverlay(dlg);
+        return await tcs.Task;
+    }
+
     internal async Task ShowUacAsync(Action onClose)
     {
         var dlg = new UacDialog();

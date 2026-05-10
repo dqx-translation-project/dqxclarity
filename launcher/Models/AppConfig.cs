@@ -6,6 +6,8 @@ public class LauncherConfig
     public bool DebugLogging { get; set; }
     public bool CommunityLogging { get; set; }
     public bool SimultaneousLaunch { get; set; }
+    public bool DirectLogin { get; set; }
+    public int DirectLoginAccountNumber { get; set; }
     public string Theme { get; set; } = "rosie";
     public bool SeenWelcomeMessage { get; set; }
 }
@@ -26,6 +28,16 @@ public class GameConfig
 {
     public string InstallDirectory { get; set; } = "";
     public string LocaleEmulatorDirectory { get; set; } = "";
+    public string SaveFolderPath { get; set; } = "";
+}
+
+public class SavedPlayer
+{
+    public int Number { get; set; }
+    public string Username { get; set; } = "";
+    public string Password { get; set; } = "";
+    public bool IsTrialAccount { get; set; }
+    public string DisplayName => IsTrialAccount ? "Easy Play Account" : Username;
 }
 
 public class AppConfig
@@ -33,4 +45,5 @@ public class AppConfig
     public LauncherConfig Launcher { get; set; } = new();
     public TranslationConfig Translation { get; set; } = new();
     public GameConfig Game { get; set; } = new();
+    public List<SavedPlayer> Players { get; set; } = new();
 }

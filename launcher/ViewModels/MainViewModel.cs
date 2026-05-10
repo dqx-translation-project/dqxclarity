@@ -42,6 +42,7 @@ public partial class MainViewModel : ObservableObject
         PatchService patchSvc,
         DatabaseService dbSvc,
         ValidateService validateSvc,
+        MaintenanceService maintenanceSvc,
         Send2ChatViewModel send2Chat)
     {
         _config     = config;
@@ -54,7 +55,7 @@ public partial class MainViewModel : ObservableObject
         Setup    = new SetupViewModel(setupSvc);
         Log      = new LogViewModel(processSvc, send2Chat);
         Settings = new SettingsViewModel(
-            config, version, null, send2Chat, cfg, patchSvc, dbSvc, validateSvc);
+            config, version, null, send2Chat, cfg, patchSvc, dbSvc, validateSvc, maintenanceSvc);
 
         Setup.SetupDone     += () => SwitchTo(autoRun ? "log" : "settings");
         Log.NavigateBack    += () => SwitchTo("settings");
