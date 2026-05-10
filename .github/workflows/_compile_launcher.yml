@@ -23,6 +23,10 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
+      - name: Build native DLL
+        run: pwsh -ExecutionPolicy Bypass -File native/build.ps1
+        working-directory: launcher
+
       - name: Publish launcher
         run: >
           dotnet publish
