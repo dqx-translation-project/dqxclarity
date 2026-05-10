@@ -64,60 +64,61 @@ public class ConfigService
 
     private void UpdateIniValue(string path, string section, string key, string value)
     {
-        var content = File.Exists(path) ? File.ReadAllText(path) : "";
-        var sb = new System.Text.StringBuilder();
-        var inTarget = false;
-        var keyWritten = false;
-        var sectionFound = false;
+        // Parse the existing file into an ordered list of sections, each with an ordered list of key/value pairs.
+        var sectionOrder = new List<string>();
+        var sectionData  = new Dictionary<string, List<(string K, string V)>>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var rawLine in content.Split('\n'))
+        if (File.Exists(path))
         {
-            var line = rawLine.TrimEnd('\r');
-            var trimmed = line.Trim();
-            if (trimmed.StartsWith('[') && trimmed.EndsWith(']'))
+            string? current = null;
+            foreach (var rawLine in File.ReadAllText(path).Split('\n'))
             {
-                if (inTarget && !keyWritten)
+                var trimmed = rawLine.Trim();
+                if (trimmed.StartsWith('[') && trimmed.EndsWith(']'))
                 {
-                    WriteKv(sb, key, value);
-                    keyWritten = true;
-                }
-                var sec = trimmed[1..^1].ToLowerInvariant();
-                inTarget = sec == section.ToLowerInvariant();
-                if (inTarget) sectionFound = true;
-                sb.AppendLine(line);
-            }
-            else if (inTarget)
-            {
-                var eqIdx = trimmed.IndexOf('=');
-                if (eqIdx >= 0)
-                {
-                    var k = trimmed[..eqIdx].Trim().ToLowerInvariant();
-                    if (k == key.ToLowerInvariant())
+                    current = trimmed[1..^1];
+                    if (!sectionData.ContainsKey(current))
                     {
-                        WriteKv(sb, key, value);
-                        keyWritten = true;
-                        continue;
+                        sectionOrder.Add(current);
+                        sectionData[current] = new();
                     }
                 }
-                sb.AppendLine(line);
-            }
-            else
-            {
-                sb.AppendLine(line);
+                else if (current != null && trimmed.Contains('='))
+                {
+                    var eqIdx = trimmed.IndexOf('=');
+                    sectionData[current].Add((trimmed[..eqIdx].Trim(), trimmed[(eqIdx + 1)..].Trim()));
+                }
             }
         }
 
-        if (inTarget && !keyWritten)
-            WriteKv(sb, key, value);
-
-        if (!sectionFound)
+        // Ensure the target section exists.
+        if (!sectionData.ContainsKey(section))
         {
-            if (sb.Length > 0 && !sb.ToString().EndsWith("\n\n"))
-                sb.AppendLine();
-            sb.AppendLine($"[{section}]");
-            WriteKv(sb, key, value);
+            sectionOrder.Add(section);
+            sectionData[section] = new();
         }
 
+        // Update the key in the target section, or append it if missing.
+        var entries = sectionData[section];
+        var idx     = entries.FindIndex(e => e.K.Equals(key, StringComparison.OrdinalIgnoreCase));
+        if (idx >= 0)
+            entries[idx] = (key, value);
+        else
+            entries.Add((key, value));
+
+        // Rewrite the entire file with consistent formatting:
+        // blank line before every section except the first, no blank lines between keys.
+        var sb = new System.Text.StringBuilder();
+        for (var i = 0; i < sectionOrder.Count; i++)
+        {
+            if (i > 0) sb.AppendLine();
+            var name = sectionOrder[i];
+            sb.AppendLine($"[{name}]");
+            foreach (var (k, v) in sectionData[name])
+                WriteKv(sb, k, v);
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, sb.ToString().TrimEnd('\r', '\n') + Environment.NewLine);
     }
 
@@ -174,23 +175,29 @@ public class ConfigService
         var t = sections.GetValueOrDefault("translation") ?? [];
         var c = sections.GetValueOrDefault("config") ?? [];
 
+        var p = sections.GetValueOrDefault("players") ?? [];
+
         return new AppConfig
         {
             Launcher = new LauncherConfig
             {
-                Nameplates          = ToBool(l.GetValueOrDefault("nameplates")),
-                DebugLogging        = ToBool(l.GetValueOrDefault("debuglogging")),
-                CommunityLogging    = ToBool(l.GetValueOrDefault("communitylogging")),
-                SimultaneousLaunch  = ToBool(l.GetValueOrDefault("simultaneouslaunch")),
-                Theme               = l.GetValueOrDefault("theme") ?? "rosie",
-                SeenWelcomeMessage  = ToBool(l.GetValueOrDefault("seenwelcomemessage")),
+                Nameplates               = ToBool(l.GetValueOrDefault("nameplates")),
+                DebugLogging             = ToBool(l.GetValueOrDefault("debuglogging")),
+                CommunityLogging         = ToBool(l.GetValueOrDefault("communitylogging")),
+                SimultaneousLaunch       = ToBool(l.GetValueOrDefault("simultaneouslaunch")),
+                DirectLogin              = ToBool(l.GetValueOrDefault("directlogin")),
+                DirectLoginAccountNumber = int.TryParse(l.GetValueOrDefault("directloginaccountnumber"), out var dla) ? dla : 0,
+                Theme                    = l.GetValueOrDefault("theme") ?? "rosie",
+                SeenWelcomeMessage       = ToBool(l.GetValueOrDefault("seenwelcomemessage")),
             },
             Translation = LoadTranslationConfig(t),
             Game = new GameConfig
             {
                 InstallDirectory        = c.GetValueOrDefault("installdirectory") ?? "",
                 LocaleEmulatorDirectory = l.GetValueOrDefault("localeemulatordirectory") ?? "",
+                SaveFolderPath          = c.GetValueOrDefault("savefolderdirectory") ?? "",
             },
+            Players = LoadPlayers(p),
         };
     }
 
@@ -198,14 +205,16 @@ public class ConfigService
     {
         var path = ConfigPath();
         var existing = File.Exists(path) ? ParseIni(File.ReadAllText(path)) : [];
-        var configSection = existing.GetValueOrDefault("config") ?? [];
-        var configPairs = configSection.OrderBy(kv => kv.Key).ToList();
+        var configSection  = existing.GetValueOrDefault("config")  ?? [];
+        var playersSection = existing.GetValueOrDefault("players") ?? [];
+        var configPairs    = configSection.OrderBy(kv => kv.Key).ToList();
         var existingLauncher = existing.GetValueOrDefault("launcher") ?? [];
-        var leDir        = existingLauncher.GetValueOrDefault("localeemulatordirectory") ?? "";
-        var seenWelcome  = existingLauncher.GetValueOrDefault("seenwelcomemessage") ?? BoolToIni(launcher.SeenWelcomeMessage);
+        var leDir       = existingLauncher.GetValueOrDefault("localeemulatordirectory") ?? "";
+        var seenWelcome = existingLauncher.GetValueOrDefault("seenwelcomemessage") ?? BoolToIni(launcher.SeenWelcomeMessage);
 
         var sb = new System.Text.StringBuilder();
 
+        // translation section — always first, no leading blank line
         sb.AppendLine("[translation]");
         WriteKv(sb, "translate_service",   translation.TranslateService);
         WriteKv(sb, "translate_key",       translation.TranslateKey);
@@ -215,24 +224,34 @@ public class ConfigService
         WriteKv(sb, "libretranslate_url",  translation.LibreTranslateUrl);
         WriteKv(sb, "enablecommunityapi",  BoolToIni(translation.EnableCommunityApi));
         WriteKv(sb, "communityapikey",     translation.CommunityApiKey);
-        sb.AppendLine();
 
         if (configPairs.Count > 0)
         {
+            sb.AppendLine();
             sb.AppendLine("[config]");
             foreach (var (k, v) in configPairs)
                 WriteKv(sb, k, v);
-            sb.AppendLine();
         }
 
+        if (playersSection.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("[players]");
+            foreach (var (k, v) in playersSection.OrderBy(kv => kv.Key))
+                WriteKv(sb, k, v);
+        }
+
+        sb.AppendLine();
         sb.AppendLine("[launcher]");
-        WriteKv(sb, "communitylogging",   BoolToIni(launcher.CommunityLogging));
-        WriteKv(sb, "nameplates",         BoolToIni(launcher.Nameplates));
-        WriteKv(sb, "debuglogging",       BoolToIni(launcher.DebugLogging));
-        WriteKv(sb, "simultaneouslaunch", BoolToIni(launcher.SimultaneousLaunch));
-        WriteKv(sb, "theme",              launcher.Theme);
-        WriteKv(sb, "localeemulatordirectory", leDir);
-        WriteKv(sb, "seenwelcomemessage", seenWelcome);
+        WriteKv(sb, "communitylogging",         BoolToIni(launcher.CommunityLogging));
+        WriteKv(sb, "nameplates",               BoolToIni(launcher.Nameplates));
+        WriteKv(sb, "debuglogging",             BoolToIni(launcher.DebugLogging));
+        WriteKv(sb, "simultaneouslaunch",       BoolToIni(launcher.SimultaneousLaunch));
+        WriteKv(sb, "directlogin",              BoolToIni(launcher.DirectLogin));
+        WriteKv(sb, "directloginaccountnumber", launcher.DirectLoginAccountNumber.ToString());
+        WriteKv(sb, "theme",                    launcher.Theme);
+        WriteKv(sb, "localeemulatordirectory",  leDir);
+        WriteKv(sb, "seenwelcomemessage",       seenWelcome);
 
         var dir = Path.GetDirectoryName(path)!;
         Directory.CreateDirectory(dir);
@@ -250,6 +269,66 @@ public class ConfigService
         var path = ConfigPath();
         UpdateIniValue(path, "config", "installdirectory", dir.Replace('\\', '/'));
     }
+
+    public void SaveDirectLogin(bool value) =>
+        UpdateIniValue(ConfigPath(), "launcher", "directlogin", BoolToIni(value));
+
+    public void SaveDirectLoginAccountNumber(int number) =>
+        UpdateIniValue(ConfigPath(), "launcher", "directloginaccountnumber", number.ToString());
+
+    public void SaveSaveFolderPath(string dir)
+    {
+        var path = ConfigPath();
+        UpdateIniValue(path, "config", "savefolderdirectory", dir.Replace('\\', '/'));
+    }
+
+    public bool ValidateSaveFolder(string dir, out string error)
+    {
+        if (!Directory.Exists(dir))
+        {
+            error = "The selected folder does not exist.";
+            return false;
+        }
+        error = "";
+        return true;
+    }
+
+    private static List<Models.SavedPlayer> LoadPlayers(Dictionary<string, string> p)
+    {
+        var players = new List<Models.SavedPlayer>();
+        for (var n = 1; n <= 4; n++)
+        {
+            var username = p.GetValueOrDefault($"player{n}_username") ?? "";
+            var password = p.GetValueOrDefault($"player{n}_password") ?? "";
+            if (!string.IsNullOrEmpty(username))
+                players.Add(new Models.SavedPlayer { Number = n, Username = username, Password = password });
+        }
+        return players;
+    }
+
+    public void SavePlayer(Models.SavedPlayer player)
+    {
+        var path = ConfigPath();
+        UpdateIniValue(path, "players", $"player{player.Number}_username", player.Username);
+        UpdateIniValue(path, "players", $"player{player.Number}_password", player.Password);
+    }
+
+    public void RemovePlayer(int number)
+    {
+        var path = ConfigPath();
+        UpdateIniValue(path, "players", $"player{number}_username", "");
+        UpdateIniValue(path, "players", $"player{number}_password", "");
+    }
+
+    /// <summary>Returns the next unused player slot (1–4), or null if all are taken.</summary>
+    public int? NextPlayerNumber(List<Models.SavedPlayer> existing)
+    {
+        var taken = existing.Select(p => p.Number).ToHashSet();
+        for (var n = 1; n <= 4; n++)
+            if (!taken.Contains(n)) return n;
+        return null;
+    }
+
 
     public void SaveLocaleEmulatorDir(string dir)
     {

@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DqxClarity.Launcher.Models;
 using DqxClarity.Launcher.Services;
+using DqxClarity.Launcher.Services.Auth;
 
 namespace DqxClarity.Launcher.ViewModels;
 
@@ -114,12 +115,240 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _leDir = "";
     [ObservableProperty] private string _leDirError = "";
     [ObservableProperty] private bool   _simultaneousLaunch;
+    [ObservableProperty] private bool   _directLogin;
+    [ObservableProperty] private string _gameSubTab = "install";
+
+    partial void OnDqxDirValidChanged(bool value)
+    {
+        if (!value && GameSubTab == "launch")
+            GameSubTab = "install";
+    }
+
+    partial void OnSimultaneousLaunchChanged(bool value)
+    {
+        if (value && DirectLogin) DirectLogin = false;
+    }
+
+    partial void OnDirectLoginChanged(bool value)
+    {
+        if (value && SimultaneousLaunch) SimultaneousLaunch = false;
+        try { _cfg.SaveDirectLogin(value); } catch { }
+    }
+
+    [RelayCommand]
+    private void ActivateGameSubTab(string subTab) => GameSubTab = subTab;
+
+    // ── Accounts ──────────────────────────────────────────────────────────
+    private DqxAuthService? _addAccountAuth;
+
+    public ObservableCollection<Models.SavedPlayer> Accounts { get; } = [];
+    [ObservableProperty] private Models.SavedPlayer? _selectedAccount;
+    [ObservableProperty] private bool   _showAddAccountForm;
+    [ObservableProperty] private string _newAccountUsername  = "";
+    [ObservableProperty] private string _newAccountPassword  = "";
+    [ObservableProperty] private bool   _newAccountNeedsOtp;
+    [ObservableProperty] private string _newAccountOtp       = "";
+    [ObservableProperty] private bool   _addingAccount;
+    [ObservableProperty] private string _addAccountError     = "";
+
+    public event Func<Task<string?>>? ShowOtpDialogRequested;
+
+    public bool CanDeleteSelectedAccount => SelectedAccount != null;
+
+    partial void OnSelectedAccountChanged(Models.SavedPlayer? value)
+    {
+        try { _cfg.SaveDirectLoginAccountNumber(value?.Number ?? 0); } catch { }
+        OnPropertyChanged(nameof(CanDeleteSelectedAccount));
+    }
+
+    [RelayCommand]
+    private void ToggleAddAccountForm()
+    {
+        ShowAddAccountForm = !ShowAddAccountForm;
+        NewAccountUsername = "";
+        NewAccountPassword = "";
+        NewAccountNeedsOtp = false;
+        NewAccountOtp      = "";
+        AddAccountError    = "";
+        _addAccountAuth    = null;
+    }
+
+    [RelayCommand]
+    private void CancelAddAccount()
+    {
+        ShowAddAccountForm = false;
+        NewAccountUsername = "";
+        NewAccountPassword = "";
+        NewAccountNeedsOtp = false;
+        NewAccountOtp      = "";
+        AddAccountError    = "";
+        _addAccountAuth    = null;
+    }
+
+    [RelayCommand]
+    private async Task SubmitNewAccount()
+    {
+        if (string.IsNullOrWhiteSpace(NewAccountUsername) || string.IsNullOrWhiteSpace(NewAccountPassword))
+        {
+            AddAccountError = "Username and password are required.";
+            return;
+        }
+
+        AddAccountError = "";
+        AddingAccount   = true;
+
+        _addAccountAuth = new DqxAuthService();
+        var r1 = await _addAccountAuth.BeginNewLoginAsync();
+        if (r1.Status == AuthStatus.Error)
+        {
+            AddAccountError = r1.ErrorMessage ?? "Failed to connect to login server.";
+            AddingAccount   = false;
+            return;
+        }
+
+        var r2 = await _addAccountAuth.SubmitCredentialsAsync(NewAccountUsername, NewAccountPassword);
+
+        if (r2.Status == AuthStatus.NeedsOtp)
+        {
+            NewAccountNeedsOtp = true;
+            AddingAccount      = false;
+            return;
+        }
+
+        FinishAddAccount(r2);
+    }
+
+    [RelayCommand]
+    private async Task SubmitNewAccountOtp()
+    {
+        if (_addAccountAuth == null) return;
+        AddAccountError = "";
+        AddingAccount   = true;
+        var r = await _addAccountAuth.SubmitOtpAsync(NewAccountOtp);
+        FinishAddAccount(r);
+    }
+
+    private void FinishAddAccount(AuthResult result)
+    {
+        if (result.Status != AuthStatus.Success)
+        {
+            AddAccountError = result.ErrorMessage ?? "Login failed. Check your credentials.";
+            AddingAccount   = false;
+            return;
+        }
+
+        var nextNumber = _cfg.NextPlayerNumber(Accounts.ToList());
+        if (nextNumber == null)
+        {
+            AddAccountError = "All 4 character slots are already in use.";
+            AddingAccount   = false;
+            return;
+        }
+
+        var player = new Models.SavedPlayer
+        {
+            Number   = nextNumber.Value,
+            Username = NewAccountUsername,
+            Password = NewAccountPassword,
+        };
+
+        _cfg.SavePlayer(player);
+
+        Accounts.Add(player);
+        SelectedAccount    = player;
+        ShowAddAccountForm = false;
+        NewAccountUsername = "";
+        NewAccountPassword = "";
+        NewAccountNeedsOtp = false;
+        NewAccountOtp      = "";
+        AddAccountError    = "";
+        AddingAccount      = false;
+        _addAccountAuth    = null;
+    }
+
+    [RelayCommand]
+    private async Task DeleteAccount()
+    {
+        if (SelectedAccount == null) return;
+
+        if (ShowConfirmRequested != null)
+        {
+            var confirmed = await ShowConfirmRequested(
+                "Remove account",
+                $"Remove \"{SelectedAccount.Username}\" from the account list?");
+            if (!confirmed) return;
+        }
+
+        _cfg.RemovePlayer(SelectedAccount.Number);
+        Accounts.Remove(SelectedAccount);
+        SelectedAccount = Accounts.FirstOrDefault();
+    }
 
     [ObservableProperty] private bool   _patching;
     [ObservableProperty] private string _patchStatus = "";
     [ObservableProperty] private bool   _patchIsError;
     [ObservableProperty] private long   _patchDownloaded;
     [ObservableProperty] private long   _patchTotal;
+
+    // ── Maintenance ───────────────────────────────────────────────────────
+    private readonly MaintenanceService _maintenance;
+    [ObservableProperty] private bool             _checkingMaintenance    = true;
+    [ObservableProperty] private bool             _refreshOnCooldown;
+    [ObservableProperty] private string           _refreshCountdownText   = "";
+    [ObservableProperty] private MaintenanceState _serverState            = MaintenanceState.Unknown;
+    [ObservableProperty] private string           _serverMessage          = "";
+
+    public bool ServerIsUp      => !CheckingMaintenance && ServerState == MaintenanceState.Up;
+    public bool ServerIsDown    => !CheckingMaintenance && ServerState == MaintenanceState.Down;
+    public bool ServerIsUnknown => !CheckingMaintenance && ServerState == MaintenanceState.Unknown;
+
+    partial void OnCheckingMaintenanceChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ServerIsUp));
+        OnPropertyChanged(nameof(ServerIsDown));
+        OnPropertyChanged(nameof(ServerIsUnknown));
+        CheckMaintenanceCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnRefreshOnCooldownChanged(bool value) =>
+        CheckMaintenanceCommand.NotifyCanExecuteChanged();
+
+    partial void OnServerStateChanged(MaintenanceState value)
+    {
+        OnPropertyChanged(nameof(ServerIsUp));
+        OnPropertyChanged(nameof(ServerIsDown));
+        OnPropertyChanged(nameof(ServerIsUnknown));
+    }
+
+    private bool CanCheckMaintenance() => !CheckingMaintenance && !RefreshOnCooldown;
+
+    private async Task FetchMaintenanceStatus()
+    {
+        CheckingMaintenance = true;
+        var (state, message) = await _maintenance.CheckAsync();
+        ServerState         = state;
+        ServerMessage       = message ?? "";
+        CheckingMaintenance = false;
+    }
+
+    private async Task RunRefreshCooldown()
+    {
+        RefreshOnCooldown = true;
+        for (var i = 10; i > 0; i--)
+        {
+            RefreshCountdownText = $"({i})";
+            await Task.Delay(1000);
+        }
+        RefreshCountdownText = "";
+        RefreshOnCooldown    = false;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanCheckMaintenance))]
+    private async Task CheckMaintenance()
+    {
+        await FetchMaintenanceStatus();
+        _ = RunRefreshCooldown();
+    }
 
     // ── UI state ─────────────────────────────────────────────────────────
     [ObservableProperty] private string _activeTab = "general";
@@ -191,13 +420,15 @@ public partial class SettingsViewModel : ObservableObject
         ConfigService cfg,
         PatchService patch,
         DatabaseService db,
-        ValidateService validate)
+        ValidateService validate,
+        MaintenanceService maintenance)
     {
-        Send2Chat = send2Chat;
-        _cfg      = cfg;
-        _patch    = patch;
-        _db       = db;
-        _validate = validate;
+        Send2Chat    = send2Chat;
+        _cfg         = cfg;
+        _patch       = patch;
+        _db          = db;
+        _validate    = validate;
+        _maintenance = maintenance;
 
         Version    = version;
         _updateInfo = updateInfo;
@@ -205,7 +436,6 @@ public partial class SettingsViewModel : ObservableObject
         _nameplates        = config.Launcher.Nameplates;
         _debugLogging      = config.Launcher.DebugLogging;
         _communityLogging  = config.Launcher.CommunityLogging;
-        _simultaneousLaunch  = config.Launcher.SimultaneousLaunch;
         _selectedTheme     = config.Launcher.Theme;
         _characterImage    = LoadCharacterImage(_selectedTheme);
 
@@ -220,8 +450,15 @@ public partial class SettingsViewModel : ObservableObject
         _useCommunityApi   = config.Translation.EnableCommunityApi;
         _communityApiKey   = config.Translation.CommunityApiKey;
 
-        _dqxDir = config.Game.InstallDirectory;
-        _leDir  = config.Game.LocaleEmulatorDirectory;
+        _dqxDir           = config.Game.InstallDirectory;
+        _leDir            = config.Game.LocaleEmulatorDirectory;
+        _simultaneousLaunch = config.Launcher.SimultaneousLaunch;
+        _directLogin        = config.Launcher.DirectLogin;
+
+        foreach (var p in config.Players)
+            Accounts.Add(p);
+        _selectedAccount = Accounts.FirstOrDefault(a => a.Number == config.Launcher.DirectLoginAccountNumber)
+                           ?? Accounts.FirstOrDefault();
 
         // Resolve + validate the game directory on launch so the Game tab is usable
         // immediately. If the saved path is empty, fall back to the default install
@@ -244,6 +481,8 @@ public partial class SettingsViewModel : ObservableObject
         }
 
         _gameTabInitialized = true;
+
+        _ = FetchMaintenanceStatus();
 
         _patch.Progress += (downloaded, total) =>
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
@@ -353,29 +592,87 @@ public partial class SettingsViewModel : ObservableObject
             return;
         }
 
-        var launcher = new LauncherConfig
+        var launcherCfg = new LauncherConfig
         {
-            Nameplates         = Nameplates,
-            DebugLogging       = DebugLogging,
-            CommunityLogging   = CommunityLogging,
-            SimultaneousLaunch = SimultaneousLaunch,
-            Theme              = SelectedTheme,
+            Nameplates               = Nameplates,
+            DebugLogging             = DebugLogging,
+            CommunityLogging         = CommunityLogging,
+            SimultaneousLaunch       = SimultaneousLaunch,
+            DirectLogin              = DirectLogin,
+            DirectLoginAccountNumber = SelectedAccount?.Number ?? 0,
+            Theme                    = SelectedTheme,
         };
         var translation = new TranslationConfig
         {
-            TranslateService  = svc ?? "",
-            TranslateKey      = TranslateKey,
-            ChatGptModel      = ChatGptModel,
-            OllamaUrl         = OllamaUrl,
-            OllamaModel       = OllamaModel,
-            LibreTranslateUrl = LibreTranslateUrl,
+            TranslateService   = svc ?? "",
+            TranslateKey       = TranslateKey,
+            ChatGptModel       = ChatGptModel,
+            OllamaUrl          = OllamaUrl,
+            OllamaModel        = OllamaModel,
+            LibreTranslateUrl  = LibreTranslateUrl,
             EnableCommunityApi = UseCommunityApi,
-            CommunityApiKey   = CommunityApiKey,
+            CommunityApiKey    = CommunityApiKey,
         };
-        try { _cfg.Save(launcher, translation); } catch { }
+        try { _cfg.Save(launcherCfg, translation); } catch { }
 
-        if (SimultaneousLaunch && !string.IsNullOrEmpty(DqxDir))
+        if (DirectLogin)
+        {
+            if (SelectedAccount == null)
+            {
+                if (ShowInfoRequested != null)
+                    await ShowInfoRequested("No account selected",
+                        "Select an account from the Accounts list under Game → Launch before running.");
+                return;
+            }
+
+            StatusMsg = "Logging in…";
+            var auth = new DqxAuthService();
+            var r1 = await auth.BeginNewLoginAsync();
+            if (r1.Status == AuthStatus.Error)
+            {
+                StatusMsg = "";
+                if (ShowInfoRequested != null)
+                    await ShowInfoRequested("Login failed", r1.ErrorMessage ?? "Failed to connect to the login server.");
+                return;
+            }
+
+            var r2 = await auth.SubmitCredentialsAsync(SelectedAccount.Username, SelectedAccount.Password);
+
+            if (r2.Status == AuthStatus.NeedsOtp)
+            {
+                StatusMsg = "";
+                var otp = ShowOtpDialogRequested != null ? await ShowOtpDialogRequested() : null;
+                if (string.IsNullOrEmpty(otp)) return;
+                r2 = await auth.SubmitOtpAsync(otp);
+            }
+
+            StatusMsg = "";
+            AuthResult finalResult = r2;
+
+            if (finalResult.Status != AuthStatus.Success)
+            {
+                if (ShowInfoRequested != null)
+                    await ShowInfoRequested("Login failed",
+                        finalResult.ErrorMessage ?? "Login failed. Check your username and password.");
+                return;
+            }
+
+            try
+            {
+                var gameLauncher = new GameLaunchService();
+                gameLauncher.Launch(DqxDir, finalResult.SessionId!, SelectedAccount.Number);
+            }
+            catch (Exception ex)
+            {
+                if (ShowInfoRequested != null)
+                    await ShowInfoRequested("Launch failed", ex.Message);
+                return;
+            }
+        }
+        else if (SimultaneousLaunch && !string.IsNullOrEmpty(DqxDir))
+        {
             try { _cfg.LaunchDqx(DqxDir, string.IsNullOrEmpty(LeDir) ? null : LeDir); } catch { }
+        }
 
         var args = new List<string>();
         if (Nameplates)       args.Add("--nameplates");

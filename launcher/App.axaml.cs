@@ -15,16 +15,17 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var configSvc   = new ConfigService();
-            var setupSvc    = new SetupService();
-            var processSvc  = new ProcessService();
-            var updateSvc   = new UpdateService();
-            var patchSvc    = new PatchService();
-            var dbSvc       = new DatabaseService();
-            var validateSvc = new ValidateService();
-            var s2cMemory   = new Send2ChatMemoryService();
-            var s2cInput    = new Send2ChatInputService();
-            var s2cVm       = new Send2ChatViewModel(s2cMemory, s2cInput);
+            var configSvc      = new ConfigService();
+            var setupSvc       = new SetupService();
+            var processSvc     = new ProcessService();
+            var updateSvc      = new UpdateService();
+            var patchSvc       = new PatchService();
+            var dbSvc          = new DatabaseService();
+            var validateSvc    = new ValidateService();
+            var maintenanceSvc = new MaintenanceService();
+            var s2cMemory      = new Send2ChatMemoryService();
+            var s2cInput       = new Send2ChatInputService();
+            var s2cVm          = new Send2ChatViewModel(s2cMemory, s2cInput);
 
             var config  = configSvc.Load();
             var version = configSvc.GetVersion();
@@ -34,7 +35,7 @@ public partial class App : Application
 
             var mainVm = new MainViewModel(
                 config, version, autoRun,
-                configSvc, setupSvc, processSvc, updateSvc, patchSvc, dbSvc, validateSvc, s2cVm);
+                configSvc, setupSvc, processSvc, updateSvc, patchSvc, dbSvc, validateSvc, maintenanceSvc, s2cVm);
 
             var window = new MainWindow { DataContext = mainVm };
             mainVm.Window = window;

@@ -85,10 +85,21 @@ public class StringNotEqualConverter : IValueConverter
 /// <summary>Returns true when the collection count is > 0.</summary>
 public class CountToBoolConverter : IValueConverter
 {
-    public static readonly CountToBoolConverter Instance = new();
+    public static readonly CountToBoolConverter Instance     = new();
+    public static readonly CountIsZeroConverter IsZeroInstance = new();
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         => value is int n && n > 0;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
+/// <summary>Returns true when the collection count is 0 (inverse of CountToBoolConverter).</summary>
+public class CountIsZeroConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is int n && n == 0;
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();
