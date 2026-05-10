@@ -7,69 +7,47 @@
     <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto">
         <StackPanel Spacing="14" HorizontalAlignment="Stretch" MaxWidth="720">
-            <Grid ColumnDefinitions="*,12,*">
-                <Border Grid.Column="0" Classes="fieldset">
-                    <DockPanel LastChildFill="True">
-                        <Button DockPanel.Dock="Bottom"
-                                Classes="accent"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Center"
-                                Margin="0,8,0,0"
-                                Command="{Binding SendFreeTextCommand}">Send to DQX</Button>
-                        <StackPanel Spacing="8">
-                            <TextBlock Classes="legend" Text="Freeform"/>
-                            <TextBox Text="{Binding FreeText}"
-                                     AcceptsReturn="True"
-                                     TextWrapping="Wrap"
-                                     Height="72"
-                                     MaxLength="20"
-                                     Watermark="Type or paste text (max 20 chars)"/>
-                        </StackPanel>
-                    </DockPanel>
-                </Border>
-
-                <Border Grid.Column="2" Classes="fieldset">
-                    <DockPanel LastChildFill="True">
-                        <Button DockPanel.Dock="Bottom"
-                                Classes="accent"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Center"
-                                Margin="0,8,0,0"
-                                Command="{Binding SendSelectedQuestCommand}">Send to DQX</Button>
-                        <StackPanel Spacing="8">
-                            <TextBlock Classes="legend" Text="Quest"/>
-                            <ComboBox HorizontalAlignment="Stretch"
-                                      MaxWidth="300"
-                                      ItemsSource="{Binding QuestKeys}"
-                                      SelectedItem="{Binding SelectedQuestKey}"
-                                      PlaceholderText="Select quest...">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis"/>
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                            <TextBlock Text="Preview"
-                                       FontSize="11"
-                                       Foreground="{DynamicResource AppMuted}"/>
-                            <Border Background="{DynamicResource AppSurface2}"
-                                    BorderBrush="{DynamicResource AppBorder}"
-                                    BorderThickness="1"
-                                    CornerRadius="4"
-                                    Padding="8,6">
-                                <SelectableTextBlock Text="{Binding Preview}"
-                                                     TextWrapping="Wrap"
-                                                     FontSize="13"/>
-                            </Border>
-                        </StackPanel>
-                    </DockPanel>
-                </Border>
-            </Grid>
+            <Border Classes="fieldset">
+                <DockPanel LastChildFill="True">
+                    <Button DockPanel.Dock="Bottom"
+                            Classes="accent"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Margin="0,8,0,0"
+                            Command="{Binding CopySelectedQuestCommand}">Copy to clipboard</Button>
+                    <StackPanel Spacing="8">
+                        <TextBlock Classes="legend" Text="Quest"/>
+                        <ComboBox HorizontalAlignment="Stretch"
+                                  MaxWidth="300"
+                                  ItemsSource="{Binding QuestKeys}"
+                                  SelectedItem="{Binding SelectedQuestKey}"
+                                  PlaceholderText="Select quest...">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <TextBlock Text="Preview"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource AppMuted}"/>
+                        <Border Background="{DynamicResource AppSurface2}"
+                                BorderBrush="{DynamicResource AppBorder}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8,6">
+                            <SelectableTextBlock Text="{Binding Preview}"
+                                                 TextWrapping="Wrap"
+                                                 FontSize="13"/>
+                        </Border>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
 
             <Border Classes="fieldset">
                 <StackPanel Spacing="8">
                     <TextBlock Classes="legend" Text="Common phrases"/>
-                    <TextBlock Text="Tap a phrase to send it instantly."
+                    <TextBlock Text="Tap a phrase to copy it to clipboard."
                                FontSize="11"
                                Foreground="{DynamicResource AppMuted}"/>
                     <ItemsControl ItemsSource="{Binding CommonPhrases}">
@@ -82,7 +60,7 @@
                             <DataTemplate>
                                 <Button Margin="0,0,6,6"
                                         FontSize="12"
-                                        Command="{Binding DataContext.SendPhraseCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Command="{Binding DataContext.CopyPhraseCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                         CommandParameter="{Binding Key}"
                                         Content="{Binding Key}"/>
                             </DataTemplate>
@@ -91,18 +69,11 @@
                 </StackPanel>
             </Border>
 
-            <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
-                <TextBlock Grid.Column="0"
-                           Text="{Binding Status}"
-                           FontSize="11"
-                           Foreground="{DynamicResource AppMuted}"
-                           TextWrapping="Wrap"/>
-                <TextBlock Grid.Column="1"
-                           Text="Sending..."
-                           FontSize="11"
-                           Foreground="{DynamicResource AppMuted}"
-                           IsVisible="{Binding Sending}"/>
-            </Grid>
+            <TextBlock Text="{Binding Status}"
+                       FontSize="11"
+                       Foreground="{DynamicResource AppMuted}"
+                       TextWrapping="Wrap"
+                       Margin="0,4,0,0"/>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
