@@ -10,6 +10,13 @@ public class DqxPlayer
     public required int Number { get; init; }
 }
 
+public class DqxTrialInfo
+{
+    public required string Id    { get; init; }
+    public required string Token { get; init; }
+    public required string Code  { get; init; }
+}
+
 
 /// <summary>
 /// Reads and writes the obfuscated dqxPlayerList.xml from the DQX save folder.
@@ -33,6 +40,12 @@ public static class PlayerListReader
 
     public static Task RemovePlayerAsync(int number, string? saveFolderPath = null) =>
         Task.Run(() => RemovePlayer(number, Resolve(saveFolderPath)));
+
+    public static Task<DqxTrialInfo?> ReadTrialInfoAsync(string? saveFolderPath = null) =>
+        Task.Run(() => ReadTrialInfo(Resolve(saveFolderPath)));
+
+    public static Task UpdateTrialTokenAsync(string newToken, string? saveFolderPath = null) =>
+        Task.Run(() => UpdateTrialToken(newToken, Resolve(saveFolderPath)));
 
     private static List<DqxPlayer> Read(string folder)
     {
@@ -79,6 +92,37 @@ public static class PlayerListReader
             new XAttribute("Number", player.Number),
             new XAttribute("Token", player.Token)));
 
+        File.WriteAllBytes(path, Encrypt(SerializeXml(doc)));
+    }
+
+    private static DqxTrialInfo? ReadTrialInfo(string folder)
+    {
+        var path = GetObfuscatedPath(folder);
+        if (!File.Exists(path)) return null;
+
+        var el = XDocument.Parse(Decrypt(File.ReadAllBytes(path)))
+                          .XPathSelectElement("//TrialInfo");
+        if (el == null) return null;
+
+        var id    = el.Attribute("ID")?.Value;
+        var token = el.Attribute("Token")?.Value;
+        var code  = el.Attribute("Code")?.Value;
+
+        return (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(token) || string.IsNullOrEmpty(code))
+            ? null
+            : new DqxTrialInfo { Id = id, Token = token, Code = code };
+    }
+
+    private static void UpdateTrialToken(string newToken, string folder)
+    {
+        var path = GetObfuscatedPath(folder);
+        if (!File.Exists(path)) return;
+
+        var doc = XDocument.Parse(Decrypt(File.ReadAllBytes(path)));
+        var el  = doc.XPathSelectElement("//TrialInfo");
+        if (el == null) return;
+
+        el.SetAttributeValue("Token", newToken);
         File.WriteAllBytes(path, Encrypt(SerializeXml(doc)));
     }
 

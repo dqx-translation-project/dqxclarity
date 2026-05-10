@@ -18,6 +18,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly PatchService    _patch;
     private readonly DatabaseService _db;
     private readonly ValidateService _validate;
+    private readonly string          _saveFolderPath;
     private UpdateService?           _updateSvc;
     public Send2ChatViewModel Send2Chat { get; }
 
@@ -153,12 +154,29 @@ public partial class SettingsViewModel : ObservableObject
 
     public event Func<Task<string?>>? ShowOtpDialogRequested;
 
-    public bool CanDeleteSelectedAccount => SelectedAccount != null;
+    public bool CanDeleteSelectedAccount => SelectedAccount != null && !SelectedAccount.IsTrialAccount;
+
+    private async Task LoadTrialAccountAsync(int savedAccountNumber)
+    {
+        var info = await PlayerListReader.ReadTrialInfoAsync(_saveFolderPath);
+        if (info == null) return;
+
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var trial = new Models.SavedPlayer { Number = 0, IsTrialAccount = true };
+            Accounts.Add(trial);
+            if (savedAccountNumber == 0 || SelectedAccount == null)
+                SelectedAccount = trial;
+        });
+    }
+
+    public bool IsTrialAccountSelected => SelectedAccount?.IsTrialAccount == true;
 
     partial void OnSelectedAccountChanged(Models.SavedPlayer? value)
     {
         try { _cfg.SaveDirectLoginAccountNumber(value?.Number ?? 0); } catch { }
         OnPropertyChanged(nameof(CanDeleteSelectedAccount));
+        OnPropertyChanged(nameof(IsTrialAccountSelected));
     }
 
     [RelayCommand]
@@ -452,6 +470,7 @@ public partial class SettingsViewModel : ObservableObject
 
         _dqxDir           = config.Game.InstallDirectory;
         _leDir            = config.Game.LocaleEmulatorDirectory;
+        _saveFolderPath   = config.Game.SaveFolderPath;
         _simultaneousLaunch = config.Launcher.SimultaneousLaunch;
         _directLogin        = config.Launcher.DirectLogin;
 
@@ -459,6 +478,8 @@ public partial class SettingsViewModel : ObservableObject
             Accounts.Add(p);
         _selectedAccount = Accounts.FirstOrDefault(a => a.Number == config.Launcher.DirectLoginAccountNumber)
                            ?? Accounts.FirstOrDefault();
+
+        _ = LoadTrialAccountAsync(config.Launcher.DirectLoginAccountNumber);
 
         // Resolve + validate the game directory on launch so the Game tab is usable
         // immediately. If the saved path is empty, fall back to the default install
@@ -625,48 +646,88 @@ public partial class SettingsViewModel : ObservableObject
                 return;
             }
 
-            StatusMsg = "Logging in…";
-            var auth = new DqxAuthService();
-            var r1 = await auth.BeginNewLoginAsync();
-            if (r1.Status == AuthStatus.Error)
+            if (SelectedAccount.IsTrialAccount)
             {
+                StatusMsg = "Logging in…";
+                var trialInfo = await PlayerListReader.ReadTrialInfoAsync(_saveFolderPath);
+                if (trialInfo == null)
+                {
+                    StatusMsg = "";
+                    if (ShowInfoRequested != null)
+                        await ShowInfoRequested("Login failed", "Easy Play account data not found in player list.");
+                    return;
+                }
+
+                var trialAuth = new DqxTrialAuthService();
+                var tr = await trialAuth.AuthenticateAsync(trialInfo.Id, trialInfo.Token);
                 StatusMsg = "";
-                if (ShowInfoRequested != null)
-                    await ShowInfoRequested("Login failed", r1.ErrorMessage ?? "Failed to connect to the login server.");
-                return;
+
+                if (!tr.Success)
+                {
+                    if (ShowInfoRequested != null)
+                        await ShowInfoRequested("Login failed", tr.ErrorMessage ?? "Trial account login failed.");
+                    return;
+                }
+
+                if (tr.NewDeviceToken != null)
+                    await PlayerListReader.UpdateTrialTokenAsync(tr.NewDeviceToken, _saveFolderPath);
+
+                try
+                {
+                    new GameLaunchService().Launch(DqxDir, tr.SessionId!, 99);
+                }
+                catch (Exception ex)
+                {
+                    if (ShowInfoRequested != null)
+                        await ShowInfoRequested("Launch failed", ex.Message);
+                    return;
+                }
             }
-
-            var r2 = await auth.SubmitCredentialsAsync(SelectedAccount.Username, SelectedAccount.Password);
-
-            if (r2.Status == AuthStatus.NeedsOtp)
+            else
             {
+                StatusMsg = "Logging in…";
+                var auth = new DqxAuthService();
+                var r1 = await auth.BeginNewLoginAsync();
+                if (r1.Status == AuthStatus.Error)
+                {
+                    StatusMsg = "";
+                    if (ShowInfoRequested != null)
+                        await ShowInfoRequested("Login failed", r1.ErrorMessage ?? "Failed to connect to the login server.");
+                    return;
+                }
+
+                var r2 = await auth.SubmitCredentialsAsync(SelectedAccount.Username, SelectedAccount.Password);
+
+                if (r2.Status == AuthStatus.NeedsOtp)
+                {
+                    StatusMsg = "";
+                    var otp = ShowOtpDialogRequested != null ? await ShowOtpDialogRequested() : null;
+                    if (string.IsNullOrEmpty(otp)) return;
+                    r2 = await auth.SubmitOtpAsync(otp);
+                }
+
                 StatusMsg = "";
-                var otp = ShowOtpDialogRequested != null ? await ShowOtpDialogRequested() : null;
-                if (string.IsNullOrEmpty(otp)) return;
-                r2 = await auth.SubmitOtpAsync(otp);
-            }
+                AuthResult finalResult = r2;
 
-            StatusMsg = "";
-            AuthResult finalResult = r2;
+                if (finalResult.Status != AuthStatus.Success)
+                {
+                    if (ShowInfoRequested != null)
+                        await ShowInfoRequested("Login failed",
+                            finalResult.ErrorMessage ?? "Login failed. Check your username and password.");
+                    return;
+                }
 
-            if (finalResult.Status != AuthStatus.Success)
-            {
-                if (ShowInfoRequested != null)
-                    await ShowInfoRequested("Login failed",
-                        finalResult.ErrorMessage ?? "Login failed. Check your username and password.");
-                return;
-            }
-
-            try
-            {
-                var gameLauncher = new GameLaunchService();
-                gameLauncher.Launch(DqxDir, finalResult.SessionId!, SelectedAccount.Number);
-            }
-            catch (Exception ex)
-            {
-                if (ShowInfoRequested != null)
-                    await ShowInfoRequested("Launch failed", ex.Message);
-                return;
+                try
+                {
+                    var gameLauncher = new GameLaunchService();
+                    gameLauncher.Launch(DqxDir, finalResult.SessionId!, SelectedAccount.Number);
+                }
+                catch (Exception ex)
+                {
+                    if (ShowInfoRequested != null)
+                        await ShowInfoRequested("Launch failed", ex.Message);
+                    return;
+                }
             }
         }
         else if (SimultaneousLaunch && !string.IsNullOrEmpty(DqxDir))

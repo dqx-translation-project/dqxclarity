@@ -375,6 +375,8 @@ public class ConfigService
         var dqxExe = Path.Combine(installDir, "Boot", "DQXBoot.exe");
         if (!File.Exists(dqxExe)) throw new FileNotFoundException($"DQXBoot.exe not found at {dqxExe}");
 
+        var workDir = Path.Combine(installDir, "Boot");
+
         if (!string.IsNullOrEmpty(leDir))
         {
             var leExe = Path.Combine(leDir, "LEProc.exe");
@@ -386,17 +388,16 @@ public class ConfigService
                 Arguments        = $"\"{dqxExe}\"",
             };
             System.Diagnostics.Process.Start(psi);
+            return;
         }
-        else
+
+        var fallback = new System.Diagnostics.ProcessStartInfo(dqxExe)
         {
-            var psi = new System.Diagnostics.ProcessStartInfo(dqxExe)
-            {
-                WorkingDirectory = Path.Combine(installDir, "Boot"),
-                UseShellExecute  = false,
-                CreateNoWindow   = true,
-            };
-            System.Diagnostics.Process.Start(psi);
-        }
+            WorkingDirectory = workDir,
+            UseShellExecute  = false,
+            CreateNoWindow   = true,
+        };
+        System.Diagnostics.Process.Start(fallback);
     }
 
     public void LaunchDqxConfig(string installDir)

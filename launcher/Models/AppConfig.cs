@@ -36,6 +36,8 @@ public class SavedPlayer
     public int Number { get; set; }
     public string Username { get; set; } = "";
     public string Password { get; set; } = "";
+    public bool IsTrialAccount { get; set; }
+    public string DisplayName => IsTrialAccount ? "Easy Play Account" : Username;
 }
 
 public class AppConfig

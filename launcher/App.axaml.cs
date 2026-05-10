@@ -27,6 +27,8 @@ public partial class App : Application
             var s2cInput       = new Send2ChatInputService();
             var s2cVm          = new Send2ChatViewModel(s2cMemory, s2cInput);
 
+            LocaleEmulatorService.EnsureExtracted();
+
             var config  = configSvc.Load();
             var version = configSvc.GetVersion();
             var autoRun = configSvc.HasAutorunFlag();

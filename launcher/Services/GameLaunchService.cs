@@ -27,11 +27,16 @@ public class GameLaunchService
                    $"-PlayerNumber={playerNumber} " +
                    $"-USE_APARTMENTTHREADED";
 
+        var workDir = Path.Combine(installDir, "Game");
+
+        if (LocaleEmulatorService.IsAvailable() && LocaleEmulatorService.Launch(gamePath, args, workDir))
+            return;
+
         var psi = new ProcessStartInfo(gamePath)
         {
-            WorkingDirectory = Path.Combine(installDir, "Game"),
-            UseShellExecute = false,
-            Arguments = args,
+            WorkingDirectory = workDir,
+            UseShellExecute  = false,
+            Arguments        = args,
         };
         Process.Start(psi);
     }

@@ -1,6 +1,7 @@
 # Build output
 bin/
 obj/
+native/build/
 
 # Visual Studio
 .vs/
@@ -15,3 +16,6 @@ obj/
 # OS
 .DS_Store
 Thumbs.db
+
+# task
+.task/

@@ -30,4 +30,10 @@
     <AvaloniaResource Include="Styles\**" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="native\LocaleHook.dll" Condition="Exists('native\LocaleHook.dll')">
+      <LogicalName>LocaleHook.dll</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>
