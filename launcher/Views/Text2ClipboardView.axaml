@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DqxClarity.Launcher.ViewModels"
-             x:Class="DqxClarity.Launcher.Views.Send2ChatView"
-             x:DataType="vm:Send2ChatViewModel"
+             x:Class="DqxClarity.Launcher.Views.Text2ClipboardView"
+             x:DataType="vm:Text2ClipboardViewModel"
              Background="{DynamicResource AppBg}">
     <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto">

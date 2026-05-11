@@ -33,7 +33,7 @@ public partial class App : Application
             ThemeService.Apply(config.Launcher.Theme);
 
             var window = new MainWindow();
-            var s2cVm  = new Send2ChatViewModel(window.Clipboard);
+            var s2cVm  = new Text2ClipboardViewModel(window.Clipboard);
 
             var mainVm = new MainViewModel(
                 config, version, autoRun,

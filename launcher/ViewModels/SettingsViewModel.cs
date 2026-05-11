@@ -20,7 +20,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly ValidateService _validate;
     private readonly string          _saveFolderPath;
     private UpdateService?           _updateSvc;
-    public Send2ChatViewModel Send2Chat { get; }
+    public Text2ClipboardViewModel Text2Clipboard { get; }
 
     public event Action<List<string>>? RunRequested; // args list
     public event Action? ShowSupportPopup;
@@ -434,14 +434,14 @@ public partial class SettingsViewModel : ObservableObject
         AppConfig config,
         string version,
         UpdateInfo? updateInfo,
-        Send2ChatViewModel send2Chat,
+        Text2ClipboardViewModel text2Clipboard,
         ConfigService cfg,
         PatchService patch,
         DatabaseService db,
         ValidateService validate,
         MaintenanceService maintenance)
     {
-        Send2Chat    = send2Chat;
+        Text2Clipboard    = text2Clipboard;
         _cfg         = cfg;
         _patch       = patch;
         _db          = db;

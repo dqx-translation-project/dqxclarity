@@ -5,7 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace DqxClarity.Launcher.ViewModels;
 
-public partial class Send2ChatViewModel : ObservableObject
+public partial class Text2ClipboardViewModel : ObservableObject
 {
     private readonly IClipboard? _clipboard;
 
@@ -16,17 +16,17 @@ public partial class Send2ChatViewModel : ObservableObject
     public IReadOnlyList<string> QuestKeys { get; }
     public IReadOnlyList<KeyValuePair<string, string>> CommonPhrases { get; }
 
-    public Send2ChatViewModel(IClipboard? clipboard)
+    public Text2ClipboardViewModel(IClipboard? clipboard)
     {
         _clipboard = clipboard;
-        QuestKeys = new ReadOnlyCollection<string>(Services.Send2ChatStrings.Quests.Keys.ToList());
-        CommonPhrases = new ReadOnlyCollection<KeyValuePair<string, string>>(Services.Send2ChatStrings.CommonPhrases.ToList());
+        QuestKeys = new ReadOnlyCollection<string>(Services.Text2ClipboardStrings.Quests.Keys.ToList());
+        CommonPhrases = new ReadOnlyCollection<KeyValuePair<string, string>>(Services.Text2ClipboardStrings.CommonPhrases.ToList());
     }
 
     partial void OnSelectedQuestKeyChanged(string? value)
     {
         CopySelectedQuestCommand.NotifyCanExecuteChanged();
-        if (value == null || !Services.Send2ChatStrings.Quests.TryGetValue(value, out var text)) return;
+        if (value == null || !Services.Text2ClipboardStrings.Quests.TryGetValue(value, out var text)) return;
         Preview = text;
         _ = CopyToClipboard(text);
     }
@@ -35,13 +35,13 @@ public partial class Send2ChatViewModel : ObservableObject
     private async Task CopySelectedQuest()
     {
         if (SelectedQuestKey == null) return;
-        await CopyToClipboard(Services.Send2ChatStrings.Quests[SelectedQuestKey]);
+        await CopyToClipboard(Services.Text2ClipboardStrings.Quests[SelectedQuestKey]);
     }
 
     [RelayCommand]
     private async Task CopyPhrase(string phraseKey)
     {
-        if (!Services.Send2ChatStrings.CommonPhrases.TryGetValue(phraseKey, out var phrase)) return;
+        if (!Services.Text2ClipboardStrings.CommonPhrases.TryGetValue(phraseKey, out var phrase)) return;
         await CopyToClipboard(phrase);
     }
 

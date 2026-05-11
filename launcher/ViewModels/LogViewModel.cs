@@ -20,15 +20,15 @@ public partial class LogViewModel : ObservableObject
     [ObservableProperty] private string _statusTitle = "dqxclarity — running";
     [ObservableProperty] private string _activeLogTab = "dqxclarity";
 
-    public Send2ChatViewModel Send2Chat { get; }
+    public Text2ClipboardViewModel Text2Clipboard { get; }
 
     public ObservableCollection<LogLine> Lines { get; } = [];
     public bool HasNoLines => Lines.Count == 0;
 
-    public LogViewModel(ProcessService processSvc, Send2ChatViewModel send2Chat)
+    public LogViewModel(ProcessService processSvc, Text2ClipboardViewModel text2Clipboard)
     {
         _processSvc = processSvc;
-        Send2Chat = send2Chat;
+        Text2Clipboard = text2Clipboard;
         _processSvc.LogLine       += OnLogLine;
         _processSvc.ProcessExited += OnProcessExited;
     }
