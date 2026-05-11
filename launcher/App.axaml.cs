@@ -23,9 +23,6 @@ public partial class App : Application
             var dbSvc          = new DatabaseService();
             var validateSvc    = new ValidateService();
             var maintenanceSvc = new MaintenanceService();
-            var s2cMemory      = new Send2ChatMemoryService();
-            var s2cInput       = new Send2ChatInputService();
-            var s2cVm          = new Send2ChatViewModel(s2cMemory, s2cInput);
 
             LocaleEmulatorService.EnsureExtracted();
 
@@ -35,14 +32,16 @@ public partial class App : Application
 
             ThemeService.Apply(config.Launcher.Theme);
 
+            var window = new MainWindow();
+            var s2cVm  = new Text2ClipboardViewModel(window.Clipboard);
+
             var mainVm = new MainViewModel(
                 config, version, autoRun,
                 configSvc, setupSvc, processSvc, updateSvc, patchSvc, dbSvc, validateSvc, maintenanceSvc, s2cVm);
 
-            var window = new MainWindow { DataContext = mainVm };
+            window.DataContext = mainVm;
             mainVm.Window = window;
             desktop.MainWindow = window;
-            desktop.Exit += (_, _) => s2cMemory.Dispose();
         }
 
         base.OnFrameworkInitializationCompleted();

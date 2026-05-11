@@ -15,7 +15,7 @@ public partial class MainViewModel : ObservableObject
     public SetupViewModel    Setup    { get; }
     public SettingsViewModel Settings { get; }
     public LogViewModel      Log      { get; }
-    public Send2ChatViewModel Send2Chat { get; }
+    public Text2ClipboardViewModel Text2Clipboard { get; }
 
     public string Version { get; }
 
@@ -43,19 +43,19 @@ public partial class MainViewModel : ObservableObject
         DatabaseService dbSvc,
         ValidateService validateSvc,
         MaintenanceService maintenanceSvc,
-        Send2ChatViewModel send2Chat)
+        Text2ClipboardViewModel text2Clipboard)
     {
         _config     = config;
         _cfg        = cfg;
         _updateSvc  = updateSvc;
         _processSvc = processSvc;
         Version     = version;
-        Send2Chat = send2Chat;
+        Text2Clipboard = text2Clipboard;
 
         Setup    = new SetupViewModel(setupSvc);
-        Log      = new LogViewModel(processSvc, send2Chat);
+        Log      = new LogViewModel(processSvc, text2Clipboard);
         Settings = new SettingsViewModel(
-            config, version, null, send2Chat, cfg, patchSvc, dbSvc, validateSvc, maintenanceSvc);
+            config, version, null, text2Clipboard, cfg, patchSvc, dbSvc, validateSvc, maintenanceSvc);
 
         Setup.SetupDone     += () => SwitchTo(autoRun ? "log" : "settings");
         Log.NavigateBack    += () => SwitchTo("settings");

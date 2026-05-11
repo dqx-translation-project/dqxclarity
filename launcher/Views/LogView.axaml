@@ -40,7 +40,7 @@
                 Background="{DynamicResource AppSurface}">
             <StackPanel Orientation="Horizontal" Spacing="0">
                 <Button x:Name="TabClarity" Classes="tab" Click="OnLogTabClick" Tag="dqxclarity">dqxclarity</Button>
-                <Button x:Name="TabSend2Chat" Classes="tab" Click="OnLogTabClick" Tag="send2chat">SendChat</Button>
+                <Button x:Name="TabText2Clipboard" Classes="tab" Click="OnLogTabClick" Tag="text2clipboard">Text2Clipboard</Button>
             </StackPanel>
         </Border>
 
@@ -61,13 +61,13 @@
                 </Panel>
             </ScrollViewer>
 
-            <ContentControl x:Name="Send2ChatPanel"
+            <ContentControl x:Name="Text2ClipboardPanel"
                             IsVisible="False"
                             Margin="10,8"
-                            Content="{Binding Send2Chat}">
+                            Content="{Binding Text2Clipboard}">
                 <ContentControl.ContentTemplate>
-                    <DataTemplate DataType="vm:Send2ChatViewModel">
-                        <v:Send2ChatView/>
+                    <DataTemplate DataType="vm:Text2ClipboardViewModel">
+                        <v:Text2ClipboardView/>
                     </DataTemplate>
                 </ContentControl.ContentTemplate>
             </ContentControl>

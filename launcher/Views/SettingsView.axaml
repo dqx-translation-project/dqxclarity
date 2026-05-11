@@ -111,7 +111,7 @@
                     <Button x:Name="TabOverrides"  Classes="tab" Click="OnTabClick" Tag="nameoverrides">Name Overrides</Button>
                     <Button x:Name="TabDatabase"   Classes="tab" Click="OnTabClick" Tag="database">Database</Button>
                     <Button x:Name="TabGame"       Classes="tab" Click="OnTabClick" Tag="game">Game</Button>
-                    <Button x:Name="TabSend2Chat"  Classes="tab" Click="OnTabClick" Tag="send2chat">SendChat</Button>
+                    <Button x:Name="TabText2Clipboard"  Classes="tab" Click="OnTabClick" Tag="text2clipboard">Text2Clipboard</Button>
                 </StackPanel>
             </Border>
 
@@ -835,13 +835,13 @@
                                            Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                 </Grid>
 
-                <ContentControl x:Name="PanelSend2Chat"
+                <ContentControl x:Name="PanelText2Clipboard"
                                 IsVisible="False"
                                 Margin="14,12"
-                                Content="{Binding Send2Chat}">
+                                Content="{Binding Text2Clipboard}">
                     <ContentControl.ContentTemplate>
-                        <DataTemplate DataType="vm:Send2ChatViewModel">
-                            <v:Send2ChatView/>
+                        <DataTemplate DataType="vm:Text2ClipboardViewModel">
+                            <v:Text2ClipboardView/>
                         </DataTemplate>
                     </ContentControl.ContentTemplate>
                 </ContentControl>
