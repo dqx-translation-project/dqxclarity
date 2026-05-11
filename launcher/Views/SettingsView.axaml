@@ -469,7 +469,10 @@
                                 <!-- Accounts -->
                                 <Border Classes="fieldset">
                                     <StackPanel Spacing="8">
-                                        <TextBlock Classes="legend" Text="Accounts" Margin="0"/>
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock Classes="legend" Text="Accounts" Margin="0" VerticalAlignment="Center"/>
+                                            <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnAccountsHelpClick">?</Button>
+                                        </StackPanel>
 
                                         <!-- Selector row -->
                                         <Grid ColumnDefinitions="*,Auto,Auto" IsVisible="{Binding Accounts.Count,
@@ -502,7 +505,7 @@
                                                 BorderThickness="1"
                                                 CornerRadius="4"
                                                 Padding="8,6">
-                                            <TextBlock Text="Easy Play Accounts are not recommended to log in with. They're not tied to a Square Enix account and only exist on your local computer. In the event something happens to your computer, your save data will be unrecoverable!"
+                                            <TextBlock Text="Easy Play Accounts are not recommended to log in with. They're not tied to a Square Enix account and only exist on your local computer. In the event something happens to your computer, your save data will be unrecoverable!&#x0a;&#x0a;If you have previously linked your Square Enix account through Easy Play, you can ignore this warning and log in with this method as normal."
                                                        FontSize="11"
                                                        Foreground="{DynamicResource AppDanger}"
                                                        TextWrapping="Wrap"/>

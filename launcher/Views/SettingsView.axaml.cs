@@ -94,13 +94,24 @@ public partial class SettingsView : UserControl
         "This field is optional — leave it empty if you do not use Locale Emulator.";
 
     private const string LaunchHelpText =
-        "Open DQX\n" +
+        "Open DQX Launcher\n" +
         "Launches DQXBoot.exe — the standard DQX game client.\n\n" +
         "Open DQXConfig\n" +
         "Launches DQXConfig.exe, which lets you adjust in-game graphics and audio settings without opening the game itself.\n\n" +
-        "Launch DQX with dqxclarity\n" +
-        "When enabled, clicking Run will start DQX automatically alongside dqxclarity. " +
-        "Useful if you want your full session to start with a single click.";
+        "Launch DQX Launcher with dqxclarity\n" +
+        "When enabled, clicking Run will open the official DQX launcher alongside dqxclarity. " +
+        "Useful if you want both to start together with a single click.\n\n" +
+        "Log into DQX directly with dqxclarity\n" +
+        "When enabled, clicking Run will use the account saved in the Accounts section below to log into DQX automatically, " +
+        "bypassing the DQX launcher entirely. dqxclarity will start alongside the game.";
+
+    private const string AccountsHelpText =
+        "Accounts\n" +
+        "Store your DQX login credentials here so dqxclarity can log you into the game automatically " +
+        "when \"Log into DQX directly with dqxclarity\" is enabled.\n\n" +
+        "Easy Play Accounts\n" +
+        "Easy Play is a login method that does not require a Square Enix account. " +
+        "These accounts exist only on your local computer and cannot be recovered if something happens to your machine.";
 
     private const string PatchHelpText =
         "Patch Launcher / Restore Launcher\n" +
@@ -111,6 +122,9 @@ public partial class SettingsView : UserControl
         "Patch Game Files\n" +
         "Downloads and applies the latest DAT/IDX translation mod to your game directory. " +
         "This is the main translation patch that enables in-game text translation. " +
+        "Requires administrator rights and DQX must be fully closed before running.\n\n" +
+        "Restore Game Files\n" +
+        "Removes the DAT/IDX translation mod and restores the original untranslated game files. " +
         "Requires administrator rights and DQX must be fully closed before running.";
 
     public SettingsView()
@@ -734,6 +748,13 @@ public partial class SettingsView : UserControl
         var win = TopLevel.GetTopLevel(this) as MainWindow;
         if (win == null) return;
         await win.ShowInfoAsync("Patch", PatchHelpText);
+    }
+
+    private async void OnAccountsHelpClick(object? sender, RoutedEventArgs e)
+    {
+        var win = TopLevel.GetTopLevel(this) as MainWindow;
+        if (win == null) return;
+        await win.ShowInfoAsync("Accounts", AccountsHelpText);
     }
 
     private void OnRefreshTapped(object? sender, TappedEventArgs e) =>
