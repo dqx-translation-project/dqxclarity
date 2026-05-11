@@ -76,11 +76,11 @@ public partial class LogView : UserControl
 
     private void SwitchTab(string active)
     {
-        if (LogPanel == null || Send2ChatPanel == null) return;
+        if (LogPanel == null || Text2ClipboardPanel == null) return;
         LogPanel.IsVisible = active == "dqxclarity";
-        Send2ChatPanel.IsVisible = active == "send2chat";
+        Text2ClipboardPanel.IsVisible = active == "text2clipboard";
         TabClarity.Classes.Set("tab-active", active == "dqxclarity");
-        TabSend2Chat.Classes.Set("tab-active", active == "send2chat");
+        TabText2Clipboard.Classes.Set("tab-active", active == "text2clipboard");
     }
 
     private TextBlock MakeLogBlock(LogLine line)

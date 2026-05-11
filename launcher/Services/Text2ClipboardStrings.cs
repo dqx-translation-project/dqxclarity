@@ -1,6 +1,6 @@
 namespace DqxClarity.Launcher.Services;
 
-public static class Send2ChatStrings
+public static class Text2ClipboardStrings
 {
     public static readonly IReadOnlyDictionary<string, string> Quests = new Dictionary<string, string>
     {

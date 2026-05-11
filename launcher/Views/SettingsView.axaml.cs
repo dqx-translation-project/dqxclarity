@@ -267,13 +267,13 @@ public partial class SettingsView : UserControl
         PanelOverrides.IsVisible = tab == "nameoverrides";
         PanelDatabase.IsVisible  = tab == "database";
         PanelGame.IsVisible      = tab == "game";
-        PanelSend2Chat.IsVisible = tab == "send2chat";
+        PanelText2Clipboard.IsVisible = tab == "text2clipboard";
         UpdateTabStyles(tab);
     }
 
     private void UpdateTabStyles(string active)
     {
-        foreach (var btn in new[] { TabGeneral, TabAdvanced, TabOverrides, TabDatabase, TabGame, TabSend2Chat })
+        foreach (var btn in new[] { TabGeneral, TabAdvanced, TabOverrides, TabDatabase, TabGame, TabText2Clipboard })
         {
             if (btn == null) continue;
             btn.Classes.Set("tab-active", btn.Tag as string == active);

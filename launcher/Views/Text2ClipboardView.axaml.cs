@@ -2,9 +2,9 @@ using Avalonia.Controls;
 
 namespace DqxClarity.Launcher.Views;
 
-public partial class Send2ChatView : UserControl
+public partial class Text2ClipboardView : UserControl
 {
-    public Send2ChatView()
+    public Text2ClipboardView()
     {
         InitializeComponent();
     }

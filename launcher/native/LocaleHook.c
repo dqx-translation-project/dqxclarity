@@ -1,5 +1,6 @@
 #include <Windows.h>
 #include <string.h>
+#include <imm.h>
 
 static HINSTANCE g_hInst = NULL;
 
@@ -21,7 +22,13 @@ static PFN_WCTMB Orig_WideCharToMultiByte = NULL;
 
 static int WINAPI H_MultiByteToWideChar(UINT cp, DWORD flags, LPCCH mb, int cbMb, LPWSTR wc, int cchWc)
 {
-    if (cp == CP_ACP || cp == CP_OEMCP) cp = 932;
+    if (cp == CP_ACP || cp == CP_OEMCP) {
+        // Clipboard paste sends UTF-8; Shift-JIS lead bytes (0x81-0x9F, 0xE0-0xFC) are
+        // never valid UTF-8 starts, so this disambiguates without false positives.
+        int r = Orig_MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, mb, cbMb, wc, cchWc);
+        if (r > 0) return r;
+        cp = 932;
+    }
     return Orig_MultiByteToWideChar(cp, flags, mb, cbMb, wc, cchWc);
 }
 
@@ -89,6 +96,125 @@ static void WriteLog(const char* msg)
     CloseHandle(h);
 }
 
+// ── Paste support ─────────────────────────────────────────────────────────────
+
+static HWND    g_gameHwnd    = NULL;
+static WNDPROC g_origWndProc = NULL;
+static BOOL    g_unicodeWnd  = FALSE;
+
+static void PasteClipboardText(HWND hwnd)
+{
+    if (!OpenClipboard(hwnd)) return;
+
+    HANDLE hMem = GetClipboardData(CF_UNICODETEXT);
+    if (!hMem) { CloseClipboard(); return; }
+
+    WCHAR *wtext = (WCHAR *)GlobalLock(hMem);
+    if (!wtext || !wtext[0]) { GlobalUnlock(hMem); CloseClipboard(); return; }
+
+    // Inject via IME composition — the same path the Japanese IME uses when the user
+    // types normally. WM_IME_COMPOSITION fires with GCS_RESULTSTR; the game reads
+    // the Unicode result and converts it to UTF-8 for the chat buffer.
+    // Falls back to WM_CHAR for ASCII when no IME context is available.
+    int wlen = lstrlenW(wtext);
+    HIMC hImc = ImmGetContext(hwnd);
+    if (hImc) {
+        ImmSetCompositionStringW(hImc, SCS_SETSTR, wtext, (DWORD)(wlen * sizeof(WCHAR)), NULL, 0);
+        ImmNotifyIME(hImc, NI_COMPOSITIONSTR, CPS_COMPLETE, 0);
+        ImmReleaseContext(hwnd, hImc);
+    } else {
+        for (int i = 0; i < wlen; i++) {
+            if (wtext[i] <= 0x7E)
+                PostMessage(hwnd, WM_CHAR, (WPARAM)wtext[i], 1);
+        }
+    }
+
+    GlobalUnlock(hMem);
+    CloseClipboard();
+}
+
+static LRESULT CALLBACK PasteWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    // Intercept Ctrl+V keydown (bit 31 of lParam = 0 means key is being pressed).
+    // Suppress default handling so the game doesn't see the raw V keydown.
+    if (msg == WM_KEYDOWN && wParam == 'V' && !(lParam >> 31) &&
+        (GetKeyState(VK_CONTROL) & 0x8000) && !(GetKeyState(VK_SHIFT) & 0x8000))
+    {
+        PasteClipboardText(hwnd);
+        return 0;
+    }
+
+    // Remove subclass when the window is being destroyed.
+    if (msg == WM_NCDESTROY) {
+        if (g_unicodeWnd)
+            SetWindowLongPtrW(hwnd, GWLP_WNDPROC, (LONG_PTR)g_origWndProc);
+        else
+            SetWindowLongPtrA(hwnd, GWLP_WNDPROC, (LONG_PTR)g_origWndProc);
+        g_gameHwnd = NULL;
+    }
+
+    return g_unicodeWnd
+        ? CallWindowProcW(g_origWndProc, hwnd, msg, wParam, lParam)
+        : CallWindowProcA(g_origWndProc, hwnd, msg, wParam, lParam);
+}
+
+typedef struct { DWORD pid; HWND hwnd; } FindData;
+
+static BOOL CALLBACK FindMainWindow(HWND hwnd, LPARAM lParam)
+{
+    FindData *fd = (FindData *)lParam;
+    DWORD wpid = 0;
+    GetWindowThreadProcessId(hwnd, &wpid);
+    if (wpid != fd->pid || !IsWindowVisible(hwnd)) return TRUE;
+
+    // Skip IME and system helper windows.
+    char cls[64];
+    GetClassNameA(hwnd, cls, sizeof(cls));
+    if (lstrcmpiA(cls, "IME") == 0 || lstrcmpiA(cls, "MSCTFIME UI") == 0) return TRUE;
+
+    // Skip anything too small to be the game surface.
+    RECT r = {0};
+    GetWindowRect(hwnd, &r);
+    if ((r.right - r.left) < 300 || (r.bottom - r.top) < 200) return TRUE;
+
+    fd->hwnd = hwnd;
+    return FALSE;
+}
+
+static DWORD WINAPI WatchThread(LPVOID unused)
+{
+    DWORD pid = GetCurrentProcessId();
+    FindData fd;
+
+    // The game window may not exist yet at DLL load time; poll until it appears.
+    for (;;) {
+        Sleep(200);
+        fd.pid  = pid;
+        fd.hwnd = NULL;
+        EnumWindows(FindMainWindow, (LPARAM)&fd);
+        if (fd.hwnd) break;
+    }
+
+    g_gameHwnd   = fd.hwnd;
+    g_unicodeWnd = IsWindowUnicode(g_gameHwnd);
+
+    if (g_unicodeWnd) {
+        g_origWndProc = (WNDPROC)(LONG_PTR)GetWindowLongPtrW(g_gameHwnd, GWLP_WNDPROC);
+        SetWindowLongPtrW(g_gameHwnd, GWLP_WNDPROC, (LONG_PTR)PasteWndProc);
+    } else {
+        g_origWndProc = (WNDPROC)(LONG_PTR)GetWindowLongPtrA(g_gameHwnd, GWLP_WNDPROC);
+        SetWindowLongPtrA(g_gameHwnd, GWLP_WNDPROC, (LONG_PTR)PasteWndProc);
+    }
+
+    char logmsg[128];
+    wsprintfA(logmsg, "[LocaleHook] paste hook on HWND %p (unicode=%d)\r\n",
+              (void *)g_gameHwnd, (int)g_unicodeWnd);
+    WriteLog(logmsg);
+    return 0;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 typedef struct { const char* name; void* hook; } HookDef;
 
 static const HookDef k_locale_hooks[] = {
@@ -136,6 +262,10 @@ BOOL WINAPI DllMain(HINSTANCE hInst, DWORD reason, LPVOID reserved)
                   Orig_MultiByteToWideChar ? "ok" : "FAIL",
                   Orig_WideCharToMultiByte ? "ok" : "FAIL");
         WriteLog(msg);
+
+        // Spawn background thread to subclass the game window once it appears.
+        HANDLE t = CreateThread(NULL, 0, WatchThread, NULL, 0, NULL);
+        if (t) CloseHandle(t);
     }
     return TRUE;
 }

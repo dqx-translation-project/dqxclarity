@@ -16,12 +16,16 @@ jobs:
       - name: Checkout branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ steps.fetch-branch-name.outputs.head_ref || 'main' }}
+          ref: ${{ steps.fetch-branch-name.outputs.head_ref || '' }}
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '9.0.x'
+
+      - name: Build native DLL
+        run: pwsh -ExecutionPolicy Bypass -File native/build.ps1
+        working-directory: launcher
 
       - name: Publish launcher
         run: >
@@ -38,5 +42,5 @@ jobs:
           name: dqxclarity.exe
           path: launcher/bin/Release/net9.0-windows/win-x64/publish/dqxclarity.exe
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 7
           overwrite: true
