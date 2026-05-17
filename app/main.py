@@ -55,9 +55,15 @@ def main():
     log.debug("Ensuring db structure.")
     create_db_schema()
 
-    # we don't do anything with the config here, but this will validate the config is ok before running.
     log.debug("Checking user_settings.ini.")
-    UserConfig()
+    user_settings = UserConfig()
+
+    # the communication window hooks (dialogue, quest, walkthrough) call out to a
+    # translation service. if the user selected "none", disable the flag so we
+    # don't load hooks that have nothing to translate with.
+    if args.communication_window and user_settings.translate_service in ("none", ""):
+        log.info("No translation service selected. Skipping communication window hooks.")
+        args.communication_window = False
 
     log.info("Updating custom text in db.")
     download_custom_files()

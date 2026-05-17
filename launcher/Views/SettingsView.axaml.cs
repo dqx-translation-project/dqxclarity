@@ -177,7 +177,10 @@ public partial class SettingsView : UserControl
         if (TranslateServiceCombo != null)
         {
             TranslateServiceCombo.Items.Clear();
-            foreach (var opt in SettingsViewModel.TranslateServiceOptions.Where(o => !o.Display.Contains("(free)")))
+            foreach (var opt in SettingsViewModel.TranslateServiceOptions.Where(o => o.Value == "none"))
+                TranslateServiceCombo.Items.Add(new ComboBoxItem { Content = opt.Display, Tag = opt.Value });
+            TranslateServiceCombo.Items.Add(new ComboBoxItem { Content = "─────────────", IsEnabled = false });
+            foreach (var opt in SettingsViewModel.TranslateServiceOptions.Where(o => o.Value != "none" && !o.Display.Contains("(free)")))
                 TranslateServiceCombo.Items.Add(new ComboBoxItem { Content = opt.Display, Tag = opt.Value });
             TranslateServiceCombo.Items.Add(new ComboBoxItem { Content = "─────────────", IsEnabled = false });
             foreach (var opt in SettingsViewModel.TranslateServiceOptions.Where(o => o.Display.Contains("(free)")))

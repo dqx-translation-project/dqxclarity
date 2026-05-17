@@ -151,6 +151,13 @@
                                               SelectionChanged="OnTranslateServiceChanged"
                                               ToolTip.Tip="Select the translation service to use for untranslated game text."/>
 
+                                    <!-- None service info -->
+                                    <TextBlock IsVisible="{Binding IsNoneService}"
+                                               Text="No server-side text translation will be performed."
+                                               FontSize="11"
+                                               Foreground="{DynamicResource AppMuted}"
+                                               TextWrapping="Wrap"/>
+
                                     <!-- Free service warning -->
                                     <TextBlock IsVisible="{Binding IsFreeService}"
                                                Text="Free APIs are unstable, unreliable and tend to have a poor translation quality."
