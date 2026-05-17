@@ -18,4 +18,8 @@ app/dqxclarity.lock
 # building dqxcrypt
 **/node_modules/**
 
+# native build artifacts (rebuilt by Taskfile / CI)
+launcher/native/LocaleHook.dll
+launcher/native/build/
+
 .claude
