@@ -104,7 +104,8 @@ public partial class MainViewModel : ObservableObject
         if (cfg.Launcher.Nameplates)       args.Add("--nameplates");
         if (cfg.Launcher.DebugLogging)     args.Add("--debug");
         if (cfg.Launcher.CommunityLogging) args.Add("--community-logging");
-        if (!string.IsNullOrEmpty(cfg.Translation.TranslateService))
+        if (!string.IsNullOrEmpty(cfg.Translation.TranslateService)
+            && cfg.Translation.TranslateService != "none")
             args.Add("--communication-window");
         return args;
     }

@@ -38,6 +38,8 @@ public partial class SettingsViewModel : ObservableObject
 
     public static IReadOnlyList<TranslateServiceOption> TranslateServiceOptions { get; } =
     [
+        // disable translation entirely
+        new("none",             "None"),
         // key-based (alphabetical)
         new("chatgpt",          "ChatGPT"),
         new("deepl",            "DeepL"),
@@ -74,6 +76,9 @@ public partial class SettingsViewModel : ObservableObject
     public bool IsFreeService =>
         SelectedTranslateService?.Value is "googlefree" or "googletranslatepa" or "yandex";
 
+    public bool IsNoneService =>
+        SelectedTranslateService?.Value == "none";
+
     public bool ShowValidateButton =>
         SelectedTranslateService?.Value is "deepl" or "google";
 
@@ -84,6 +89,7 @@ public partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowChatGptModel));
         OnPropertyChanged(nameof(ShowLibreTranslateUrl));
         OnPropertyChanged(nameof(IsFreeService));
+        OnPropertyChanged(nameof(IsNoneService));
         OnPropertyChanged(nameof(ShowValidateButton));
         OnPropertyChanged(nameof(CanValidate));
     }
@@ -739,7 +745,7 @@ public partial class SettingsViewModel : ObservableObject
         if (Nameplates)       args.Add("--nameplates");
         if (DebugLogging)     args.Add("--debug");
         if (CommunityLogging) args.Add("--community-logging");
-        if (!string.IsNullOrEmpty(svc)) args.Add("--communication-window");
+        if (!string.IsNullOrEmpty(svc) && svc != "none") args.Add("--communication-window");
 
         RunRequested?.Invoke(args);
         await Task.CompletedTask;
