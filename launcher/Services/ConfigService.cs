@@ -430,6 +430,23 @@ public class ConfigService
         File.WriteAllText(path, content);
     }
 
+    public string ReadUserPhrases()
+    {
+        try
+        {
+            var path = Path.Combine(AppDir(), "misc_files", "user_phrases.json");
+            return File.Exists(path) ? File.ReadAllText(path) : "";
+        }
+        catch { return ""; }
+    }
+
+    public void SaveUserPhrases(string content)
+    {
+        var path = Path.Combine(AppDir(), "misc_files", "user_phrases.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, content);
+    }
+
     public bool HasAutorunFlag() => Environment.GetCommandLineArgs().Any(a => a == "/r");
 
     public string AppDirectory() => AppDir();
