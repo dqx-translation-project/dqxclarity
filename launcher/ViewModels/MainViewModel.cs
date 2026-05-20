@@ -1,4 +1,6 @@
+using System.Collections.ObjectModel;
 using Avalonia.Controls;
+using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using DqxClarity.Launcher.Models;
 using DqxClarity.Launcher.Services;
@@ -11,6 +13,7 @@ public partial class MainViewModel : ObservableObject
     private readonly ConfigService  _cfg;
     private readonly UpdateService  _updateSvc;
     private readonly ProcessService _processSvc;
+    private readonly BannerService  _bannerSvc = new();
 
     public SetupViewModel    Setup    { get; }
     public SettingsViewModel Settings { get; }
@@ -19,16 +22,40 @@ public partial class MainViewModel : ObservableObject
 
     public string Version { get; }
 
-    [ObservableProperty] private string _currentView = "setup";
+    [ObservableProperty] private string  _currentView      = "setup";
+    [ObservableProperty] private Bitmap? _bannerImage;
+    [ObservableProperty] private string  _bannerUrl        = "";
+    [ObservableProperty] private double  _bannerOpacity    = 1;
+    [ObservableProperty] private bool    _isBannerCollapsed;
+
+    public bool ShowBanner => CurrentView == "settings";
+
+    partial void OnCurrentViewChanged(string value) =>
+        OnPropertyChanged(nameof(ShowBanner));
+
+    partial void OnIsBannerCollapsedChanged(bool value)
+    {
+        if (Window == null || CurrentView != "settings") return;
+        var newH = GetWinSize("settings").H;
+        Window.MaxHeight = newH;
+        Window.Height    = newH;
+    }
 
     // Set by MainWindow after construction
     public Window? Window { get; set; }
 
-    private static readonly Dictionary<string, (double W, double H)> WinSizes = new()
+    // Loaded banners (item + bitmap pairs, only entries where image loaded OK)
+    private List<(BannerItem Item, Bitmap Image)> _banners = [];
+    private int                                    _bannerIdx    = 0;
+    private int                                    _bannerStripH = 0;
+    private Avalonia.Threading.DispatcherTimer?    _bannerTimer;
+
+    public ObservableCollection<BannerDotItem> BannerDots { get; } = [];
+
+    private (double W, double H) GetWinSize(string view) => view switch
     {
-        ["setup"]    = (680, 580),
-        ["settings"] = (680, 580),
-        ["log"]      = (680, 580),
+        "settings" => (680, 580 + (IsBannerCollapsed ? 0 : _bannerStripH)),
+        _          => (680, 580),
     };
 
     public MainViewModel(
@@ -96,6 +123,104 @@ public partial class MainViewModel : ObservableObject
 
         // Start setup immediately after UI is ready
         Avalonia.Threading.Dispatcher.UIThread.Post(() => Setup.StartSetup());
+
+        // Load rotation banners in background
+        _ = Task.Run(LoadBannersAsync);
+    }
+
+    private async Task LoadBannersAsync()
+    {
+        var items = await _bannerSvc.GetAllAsync();
+        if (items.Count == 0) return;
+
+        // Load first image immediately so it shows fast
+        var first = await _bannerSvc.LoadImageAsync(items[0].ImageUrl);
+        if (first == null) return;
+
+        _banners.Add((items[0], first));
+
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            BannerUrl   = items[0].LinkUrl;
+            BannerImage = first;
+
+            // Natural display height at 680px width + dots row + toggle bar
+            var pxW = first.PixelSize.Width;
+            var pxH = first.PixelSize.Height;
+            _bannerStripH = (int)Math.Min(pxH * 680.0 / pxW, 350) + 24;
+
+            // Resize window if already sitting on settings
+            if (CurrentView == "settings")
+                SwitchTo("settings");
+
+            RefreshDots();
+        });
+
+        // Load remaining images in background
+        for (var i = 1; i < items.Count; i++)
+        {
+            var bmp = await _bannerSvc.LoadImageAsync(items[i].ImageUrl);
+            if (bmp != null) _banners.Add((items[i], bmp));
+        }
+
+        // Start rotation once we have at least two banners; refresh dots for full count
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            RefreshDots();
+
+            if (_banners.Count > 1)
+            {
+                _bannerTimer = new Avalonia.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromSeconds(6)
+                };
+                _bannerTimer.Tick += async (_, _) => await AdvanceBannerAsync();
+                _bannerTimer.Start();
+            }
+        });
+    }
+
+    private async Task AdvanceBannerAsync()
+    {
+        if (_banners.Count < 2) return;
+
+        BannerOpacity = 0;
+        await Task.Delay(420); // slightly more than transition duration
+
+        _bannerIdx  = (_bannerIdx + 1) % _banners.Count;
+        BannerImage = _banners[_bannerIdx].Image;
+        BannerUrl   = _banners[_bannerIdx].Item.LinkUrl;
+        RefreshDots();
+
+        BannerOpacity = 1;
+    }
+
+    public async Task JumpToBannerAsync(int idx)
+    {
+        if (idx < 0 || idx >= _banners.Count || idx == _bannerIdx) return;
+
+        _bannerTimer?.Stop();
+
+        BannerOpacity = 0;
+        await Task.Delay(420);
+
+        _bannerIdx  = idx;
+        BannerImage = _banners[idx].Image;
+        BannerUrl   = _banners[idx].Item.LinkUrl;
+        RefreshDots();
+
+        BannerOpacity = 1;
+
+        _bannerTimer?.Start();
+    }
+
+    private void RefreshDots()
+    {
+        BannerDots.Clear();
+        // Only render dots when there's more than one banner to navigate
+        if (_banners.Count <= 1) return;
+        for (var i = 0; i < _banners.Count; i++)
+            BannerDots.Add(new BannerDotItem { Index = i, IsActive = i == _bannerIdx });
     }
 
     private static List<string> BuildArgs(AppConfig cfg)
@@ -121,8 +246,9 @@ public partial class MainViewModel : ObservableObject
     public void SwitchTo(string view)
     {
         CurrentView = view;
-        if (Window == null || !WinSizes.TryGetValue(view, out var size)) return;
+        if (Window == null) return;
 
+        var size     = GetWinSize(view);
         var sameSize = Math.Abs(Window.Width - size.W) < 1 && Math.Abs(Window.Height - size.H) < 1;
 
         if (!sameSize)
