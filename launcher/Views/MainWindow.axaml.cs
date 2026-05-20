@@ -159,6 +159,25 @@ public partial class MainWindow : Window
         // footer lives inside SettingsView sidebar — no MainWindow-level visibility toggle needed
     }
 
+    private void OnBannerTapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        if (_vm?.BannerUrl is { Length: > 0 } url)
+            _vm.OpenBrowser(url);
+    }
+
+    private void OnBannerToggleClick(object? sender, RoutedEventArgs e)
+    {
+        if (_vm != null)
+            _vm.IsBannerCollapsed = !_vm.IsBannerCollapsed;
+    }
+
+    private void OnBannerDotTapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        e.Handled = true; // prevent bubbling to any parent handlers
+        if (sender is Avalonia.Controls.Shapes.Ellipse { DataContext: BannerDotItem dot })
+            _ = _vm!.JumpToBannerAsync(dot.Index);
+    }
+
     private void OnAboutClick(object? sender, RoutedEventArgs e) => OpenAbout();
     internal void OpenAbout()
     {
