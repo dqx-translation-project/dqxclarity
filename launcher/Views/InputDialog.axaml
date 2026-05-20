@@ -15,7 +15,7 @@
                        Foreground="{DynamicResource AppMuted}"
                        TextWrapping="Wrap"
                        LineHeight="18"/>
-            <TextBox x:Name="InputBox" FontSize="12"/>
+            <TextBox x:Name="InputBox" FontSize="12" KeyDown="OnInputKeyDown"/>
             <StackPanel Orientation="Horizontal"
                         Spacing="8"
                         HorizontalAlignment="Right">
