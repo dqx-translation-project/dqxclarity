@@ -1,79 +1,173 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:DqxClarity.Launcher.ViewModels"
+             xmlns:conv="using:DqxClarity.Launcher.Views"
              x:Class="DqxClarity.Launcher.Views.Text2ClipboardView"
              x:DataType="vm:Text2ClipboardViewModel"
              Background="{DynamicResource AppBg}">
     <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto">
         <StackPanel Spacing="14" HorizontalAlignment="Stretch" MaxWidth="720">
+
+            <!-- ══ QUEST ════════════════════════════════════════════════ -->
             <Border Classes="fieldset">
-                <DockPanel LastChildFill="True">
-                    <Button DockPanel.Dock="Bottom"
-                            Classes="accent"
-                            HorizontalAlignment="Stretch"
-                            HorizontalContentAlignment="Center"
-                            Margin="0,8,0,0"
-                            Command="{Binding CopySelectedQuestCommand}">Copy to clipboard</Button>
-                    <StackPanel Spacing="8">
-                        <TextBlock Classes="legend" Text="Quest"/>
-                        <ComboBox HorizontalAlignment="Stretch"
-                                  MaxWidth="300"
-                                  ItemsSource="{Binding QuestKeys}"
-                                  SelectedItem="{Binding SelectedQuestKey}"
-                                  PlaceholderText="Select quest...">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis"/>
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                        <TextBlock Text="Preview"
+                <StackPanel Spacing="8">
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <TextBlock Classes="legend" Text="Quest" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding QuestStatus}"
                                    FontSize="11"
+                                   VerticalAlignment="Center"
                                    Foreground="{DynamicResource AppMuted}"/>
-                        <Border Background="{DynamicResource AppSurface2}"
+                    </StackPanel>
+                    <Grid ColumnDefinitions="240,*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="6">
+                            <ComboBox HorizontalAlignment="Stretch"
+                                      ItemsSource="{Binding QuestKeys}"
+                                      SelectedItem="{Binding SelectedQuestKey}"
+                                      PlaceholderText="Select quest...">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button Classes="accent"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
+                                    Command="{Binding CopySelectedQuestCommand}">Copy to clipboard</Button>
+                        </StackPanel>
+                        <Border Grid.Column="2"
+                                Background="{DynamicResource AppSurface2}"
                                 BorderBrush="{DynamicResource AppBorder}"
                                 BorderThickness="1"
                                 CornerRadius="4"
-                                Padding="8,6">
+                                Padding="8,6"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Top">
                             <SelectableTextBlock Text="{Binding Preview}"
-                                                 TextWrapping="Wrap"
-                                                 FontSize="13"/>
+                                                 TextWrapping="NoWrap"
+                                                 FontSize="13"
+                                                 VerticalAlignment="Center"/>
                         </Border>
-                    </StackPanel>
-                </DockPanel>
-            </Border>
-
-            <Border Classes="fieldset">
-                <StackPanel Spacing="8">
-                    <TextBlock Classes="legend" Text="Common phrases"/>
-                    <TextBlock Text="Tap a phrase to copy it to clipboard."
-                               FontSize="11"
-                               Foreground="{DynamicResource AppMuted}"/>
-                    <ItemsControl ItemsSource="{Binding CommonPhrases}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <UniformGrid Columns="3"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Button Margin="0,0,6,6"
-                                        FontSize="12"
-                                        Command="{Binding DataContext.CopyPhraseCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        CommandParameter="{Binding Key}"
-                                        Content="{Binding Key}"/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    </Grid>
                 </StackPanel>
             </Border>
 
-            <TextBlock Text="{Binding Status}"
-                       FontSize="11"
-                       Foreground="{DynamicResource AppMuted}"
-                       TextWrapping="Wrap"
-                       Margin="0,4,0,0"/>
+            <!-- ══ COMMON PHRASES ═══════════════════════════════════════ -->
+            <Border Classes="fieldset">
+                <StackPanel Spacing="8">
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <TextBlock Classes="legend" Text="Common phrases" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding PhrasesStatus}"
+                                   FontSize="11"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AppMuted}"/>
+                    </StackPanel>
+                    <TextBlock Text="Pick a phrase to copy it. Pin up to 20 favorites for quick access."
+                               FontSize="11"
+                               TextWrapping="NoWrap"
+                               TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource AppMuted}"/>
+
+                    <!-- Pinned quick-access buttons: 5 per row, equal-width, label truncated to 20 chars -->
+                    <ItemsControl ItemsSource="{Binding PinnedButtons}"
+                                  IsVisible="{Binding HasPins}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="5"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:PinnedEntry">
+                                <Button Margin="0,0,6,6"
+                                        FontSize="12"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Center"
+                                        ToolTip.Tip="{Binding TooltipText}"
+                                        DragDrop.AllowDrop="True"
+                                        Command="{Binding DataContext.SelectPinCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding Identifier}">
+                                    <TextBlock Text="{Binding Identifier, Converter={x:Static conv:StringTruncateConverter.Instance}, ConverterParameter=20}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Dropdown + pin/delete controls -->
+                    <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,2,0,0">
+                        <ComboBox Grid.Column="0"
+                                  HorizontalAlignment="Stretch"
+                                  ItemsSource="{Binding DropdownItems}"
+                                  SelectedItem="{Binding SelectedPhrase}"
+                                  PlaceholderText="Select a phrase...">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PhraseEntry">
+                                    <Grid>
+                                        <TextBlock Text="{Binding Identifier}"
+                                                   IsVisible="{Binding !IsDivider}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <Separator IsVisible="{Binding IsDivider}"
+                                                   Margin="0,2"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <Button Grid.Column="1"
+                                Margin="6,0,0,0"
+                                MinWidth="72"
+                                Classes="accent"
+                                HorizontalContentAlignment="Center"
+                                Command="{Binding PinToggleCommand}"
+                                Content="{Binding PinButtonLabel}"/>
+                        <Button Grid.Column="2"
+                                Margin="6,0,0,0"
+                                Classes="danger"
+                                HorizontalContentAlignment="Center"
+                                Command="{Binding DeleteCustomCommand}"
+                                Content="Delete"/>
+                    </Grid>
+
+                    <!-- Fixed add-new-phrase row -->
+                    <Border BorderBrush="{DynamicResource AppBorder}"
+                            BorderThickness="0,1,0,0"
+                            Margin="0,8,0,0"
+                            Padding="0,8,0,0">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Add a custom phrase"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource AppMuted}"/>
+                            <Grid ColumnDefinitions="*,*,Auto">
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding NewIdentifier}"
+                                         FontSize="12"
+                                         Watermark="Identifier"
+                                         Margin="0,0,4,0"/>
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding NewJapanese}"
+                                         FontSize="12"
+                                         Watermark="Japanese"
+                                         Margin="0,0,4,0"/>
+                                <Button Grid.Column="2"
+                                        Command="{Binding AddCustomPhraseCommand}"
+                                        Padding="10,2">+</Button>
+                            </Grid>
+                            <Border BorderBrush="{DynamicResource AppDanger}"
+                                    BorderThickness="1" CornerRadius="4" Padding="8,6"
+                                    Background="{DynamicResource AppSurface2}"
+                                    Margin="0,4,0,0"
+                                    IsVisible="{Binding PhrasesSaveError,
+                                                Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <TextBlock Text="{Binding PhrasesSaveError}"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource AppDanger}"
+                                           TextWrapping="Wrap"/>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
         </StackPanel>
     </ScrollViewer>
 </UserControl>

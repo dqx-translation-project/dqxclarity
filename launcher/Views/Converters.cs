@@ -147,6 +147,27 @@ public class RowValueConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
+/// <summary>Truncates a string to at most ConverterParameter chars, appending an ellipsis when cut.</summary>
+public class StringTruncateConverter : IValueConverter
+{
+    public static readonly StringTruncateConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is not string s) return value;
+        var max = parameter switch
+        {
+            int n      => n,
+            string str => int.TryParse(str, out var n2) ? n2 : 20,
+            _          => 20,
+        };
+        return s.Length <= max ? s : s.Substring(0, max) + "…";
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
 /// <summary>Maps bool to AppDanger or AppMuted brush.</summary>
 public class BoolToBrushConverter : IValueConverter
 {
