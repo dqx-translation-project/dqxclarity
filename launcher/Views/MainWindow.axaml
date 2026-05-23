@@ -54,7 +54,7 @@
                             <DataTemplate x:DataType="vm:BannerDotItem">
                                 <Ellipse Width="8" Height="8"
                                          Cursor="Hand"
-                                         Fill="White"
+                                         Fill="{DynamicResource AppText}"
                                          Opacity="{Binding IsActive,
                                                    Converter={x:Static v:BoolToOpacityConverter.DotInstance}}"
                                          Tapped="OnBannerDotTapped"/>
