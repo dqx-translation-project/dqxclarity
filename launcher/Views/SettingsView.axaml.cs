@@ -126,11 +126,6 @@ public partial class SettingsView : UserControl
         InitializeComponent();
     }
 
-    protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
-    {
-        base.OnApplyTemplate(e);
-    }
-
     // ── Hover hints ──────────────────────────────────────────────────────
 
     protected override void OnPointerMoved(PointerEventArgs e)

@@ -273,12 +273,6 @@ public class ConfigService
     public void SaveDirectLoginAccountNumber(int number) =>
         UpdateIniValue(ConfigPath(), "launcher", "directloginaccountnumber", number.ToString());
 
-    public void SaveSaveFolderPath(string dir)
-    {
-        var path = ConfigPath();
-        UpdateIniValue(path, "config", "savefolderdirectory", dir.Replace('\\', '/'));
-    }
-
     public bool ValidateSaveFolder(string dir, out string error)
     {
         if (!Directory.Exists(dir))
@@ -414,7 +408,4 @@ public class ConfigService
     }
 
     public bool HasAutorunFlag() => Environment.GetCommandLineArgs().Any(a => a == "/r");
-
-    public string AppDirectory() => AppDir();
-    public string ExeDirectory() => ExeDir();
 }

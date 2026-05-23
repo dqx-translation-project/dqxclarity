@@ -23,7 +23,6 @@ public partial class SettingsViewModel : ObservableObject
     public Text2ClipboardViewModel Text2Clipboard { get; }
 
     public event Action<List<string>>? RunRequested; // args list
-    public event Action? ShowSupportPopup;
     public event Action<string>? OpenUrl;
     public event Func<string, string, Task>? ShowInfoRequested;
     public event Func<string, string, Task<bool>>? ShowConfirmRequested;
@@ -394,9 +393,6 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _dbSelectedTable = "";
     [ObservableProperty] private string _dbRowCount = "";
     [ObservableProperty] private string _dbFilter = "";
-    [ObservableProperty] private bool   _dbDeleteConfirm;
-    [ObservableProperty] private bool   _dbPurgeConfirm;
-
     public ObservableCollection<string>  DbTables  { get; } = [];
     public ObservableCollection<string>  DbColumns { get; } = [];
 
@@ -418,11 +414,7 @@ public partial class SettingsViewModel : ObservableObject
     partial void OnHintTextChanged(string value) =>
         OnPropertyChanged(nameof(UpdateBarText));
 
-    /// <summary>
-    /// Text shown in the left side of the bottom bar when hovering a control.
-    /// </summary>
-    public string UpdateBarText =>
-        !string.IsNullOrEmpty(HintText) ? HintText : "";
+    public string UpdateBarText => HintText;
 
     /// <summary>
     /// Label for the update button, e.g. "Update to 1.2.3".
@@ -431,8 +423,6 @@ public partial class SettingsViewModel : ObservableObject
         UpdateInfo != null ? $"Update to {UpdateInfo.Version}" : "";
 
     public void SetUpdateInfo(UpdateInfo info) => UpdateInfo = info;
-
-    private bool _gameTabInitialized;
 
     public SettingsViewModel(
         AppConfig config,
@@ -504,8 +494,6 @@ public partial class SettingsViewModel : ObservableObject
             _dqxDirError = $"DQX installation not found at the default location ({ConfigService.DefaultDqxDir}). Browse to your DQX installation folder to continue.";
         }
 
-        _gameTabInitialized = true;
-
         _ = FetchMaintenanceStatus();
 
         _patch.Progress += (downloaded, total) =>
@@ -546,12 +534,6 @@ public partial class SettingsViewModel : ObservableObject
         {
             _nameOverridesLoaded = true;
             _ = LoadNamePairsAsync();
-        }
-        if (tab == "game" && !_gameTabInitialized)
-        {
-            _gameTabInitialized = true;
-            if (!string.IsNullOrEmpty(DqxDir))
-                DqxDirValid = _cfg.ValidateDqxDir(DqxDir, out _);
         }
     }
 
@@ -902,19 +884,9 @@ public partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(DbFilteredRows));     // code-behind resets ItemsSource in bulk
     }
 
-    public int DbSelectedCount => _dbRows.Count(r => r.Selected);
-
-    [RelayCommand]
-    private void InitiateDelete()
-    {
-        if (_dbRows.Any(r => r.Selected))
-            DbDeleteConfirm = true;
-    }
-
     [RelayCommand]
     private async Task ConfirmDbDelete()
     {
-        DbDeleteConfirm = false;
         var ids = new HashSet<long>(_dbRows.Where(r => r.Selected).Select(r => r.RowId));
         try
         {
@@ -932,7 +904,6 @@ public partial class SettingsViewModel : ObservableObject
         try
         {
             await Task.Run(() => _db.PurgeDialogCache());
-            DbPurgeConfirm = false;
             if (DbSelectedTable == "dialog")
             {
                 DbColumns.Clear();
@@ -947,15 +918,7 @@ public partial class SettingsViewModel : ObservableObject
 
     // ── Game tab ──────────────────────────────────────────────────────────
 
-    [RelayCommand]
-    private async Task BrowseDqxDir()
-    {
-        // Folder selection delegated to View via OpenFolderDialog
-        // The view will call SetDqxDir() with the result
-        await Task.CompletedTask;
-    }
-
-    public async Task SetDqxDir(string dir)
+    public Task SetDqxDir(string dir)
     {
         DqxDirError = "";
         DqxDirValid = false;
@@ -970,7 +933,7 @@ public partial class SettingsViewModel : ObservableObject
             DqxDir = dir;
             DqxDirError = err;
         }
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
     [RelayCommand]
@@ -1056,9 +1019,6 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private void OpenGitHub() =>
         OpenUrl?.Invoke("https://github.com/dqx-translation-project/dqxclarity");
-
-    [RelayCommand]
-    private void OpenSupport() => ShowSupportPopup?.Invoke();
 
     [RelayCommand]
     private void OpenLogFolder()
