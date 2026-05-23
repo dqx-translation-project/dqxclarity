@@ -205,7 +205,6 @@ public partial class Text2ClipboardViewModel : ObservableObject
 
     partial void OnSelectedQuestKeyChanged(string? value)
     {
-        CopySelectedQuestCommand.NotifyCanExecuteChanged();
         if (value == null || !Services.Text2ClipboardStrings.Quests.TryGetValue(value, out var text)) return;
         Preview = FormatQuestPreview(text);
         _ = CopyToClipboard(text, forQuest: true);
@@ -234,13 +233,6 @@ public partial class Text2ClipboardViewModel : ObservableObject
             return;
         }
         _ = CopyToClipboard(value.Japanese, forQuest: false);
-    }
-
-    [RelayCommand(CanExecute = nameof(CanCopyQuest))]
-    private void CopySelectedQuest()
-    {
-        if (SelectedQuestKey == null) return;
-        _ = CopyToClipboard(Services.Text2ClipboardStrings.Quests[SelectedQuestKey], forQuest: true);
     }
 
     [RelayCommand]
@@ -356,8 +348,6 @@ public partial class Text2ClipboardViewModel : ObservableObject
             });
         _cfg.SaveUserPhrases(json);
     }
-
-    private bool CanCopyQuest() => !string.IsNullOrEmpty(SelectedQuestKey);
 
     private async Task CopyToClipboard(string text, bool forQuest)
     {

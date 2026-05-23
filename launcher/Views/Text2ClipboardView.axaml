@@ -20,22 +20,17 @@
                                    Foreground="{DynamicResource AppMuted}"/>
                     </StackPanel>
                     <Grid ColumnDefinitions="240,*,Auto">
-                        <StackPanel Grid.Column="0" Spacing="6">
-                            <ComboBox HorizontalAlignment="Stretch"
-                                      ItemsSource="{Binding QuestKeys}"
-                                      SelectedItem="{Binding SelectedQuestKey}"
-                                      PlaceholderText="Select quest...">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis"/>
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                            <Button Classes="accent"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Center"
-                                    Command="{Binding CopySelectedQuestCommand}">Copy to clipboard</Button>
-                        </StackPanel>
+                        <ComboBox Grid.Column="0"
+                                  HorizontalAlignment="Stretch"
+                                  ItemsSource="{Binding QuestKeys}"
+                                  SelectedItem="{Binding SelectedQuestKey}"
+                                  PlaceholderText="Select quest...">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
                         <Border Grid.Column="2"
                                 Background="{DynamicResource AppSurface2}"
                                 BorderBrush="{DynamicResource AppBorder}"
