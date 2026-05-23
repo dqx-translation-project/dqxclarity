@@ -27,7 +27,6 @@ public class TranslationConfig
 public class GameConfig
 {
     public string InstallDirectory { get; set; } = "";
-    public string LocaleEmulatorDirectory { get; set; } = "";
     public string SaveFolderPath { get; set; } = "";
 }
 

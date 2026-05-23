@@ -102,17 +102,6 @@ public partial class MainWindow : Window
                 await vm.Settings.SetDqxDir(results[0].Path.LocalPath);
         };
 
-        _settingsView.BrowseLeFolderRequested += async () =>
-        {
-            var results = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-            {
-                Title         = "Select Locale Emulator Folder",
-                AllowMultiple = false,
-            });
-            if (results.Count > 0)
-                await vm.Settings.SetLeDir(results[0].Path.LocalPath);
-        };
-
         // Subscribe to view changes
         vm.PropertyChanged += (_, args) =>
         {
