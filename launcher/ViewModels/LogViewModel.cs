@@ -17,7 +17,7 @@ public partial class LogViewModel : ObservableObject
     [ObservableProperty] private bool _exitedWithError;
     [ObservableProperty] private bool _hasExited;
     [ObservableProperty] private bool _showStopWarning;
-    [ObservableProperty] private string _statusTitle = "dqxclarity — running";
+    [ObservableProperty] private string _statusTitle = "dqxclarity - running";
     [ObservableProperty] private string _activeLogTab = "dqxclarity";
 
     public Text2ClipboardViewModel Text2Clipboard { get; }
@@ -36,8 +36,8 @@ public partial class LogViewModel : ObservableObject
     public void UpdateTitle(string version)
     {
         StatusTitle = ExitedWithError
-            ? "dqxclarity — exited with error"
-            : $"dqxclarity — running (v{version})";
+            ? "dqxclarity - exited with error"
+            : $"dqxclarity - running (v{version})";
     }
 
     private void OnLogLine(LogLine line) =>
@@ -67,7 +67,7 @@ public partial class LogViewModel : ObservableObject
             }
             ExitedWithError = true;
             HasExited = true;
-            StatusTitle = "dqxclarity — exited with error";
+            StatusTitle = "dqxclarity - exited with error";
         });
 
     private bool _userInitiatedStop;
@@ -90,7 +90,7 @@ public partial class LogViewModel : ObservableObject
         Lines.Clear();
         ExitedWithError = false;
         HasExited = false;
-        StatusTitle = "dqxclarity — running";
+        StatusTitle = "dqxclarity - running";
         ActiveLogTab = "dqxclarity";
         OnPropertyChanged(nameof(HasNoLines));
     }

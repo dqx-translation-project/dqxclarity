@@ -126,6 +126,11 @@
 
                         <!-- ══ GENERAL TAB ══════════════════════════════ -->
                         <StackPanel x:Name="PanelGeneral" Spacing="14">
+                            <TextBlock IsVisible="{Binding !DirectLogin}"
+                                       Text="Native copy/paste support only works when &quot;Log into DQX directly with dqxclarity&quot; is enabled! This can be configured under Game > Launch."
+                                       FontSize="11"
+                                       Foreground="{DynamicResource AppDanger}"
+                                       TextWrapping="Wrap"/>
                             <Border Classes="fieldset">
                                 <StackPanel Spacing="0">
                                     <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,8">
@@ -801,16 +806,26 @@
                                            Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                 </Grid>
 
-                <ContentControl x:Name="PanelText2Clipboard"
-                                IsVisible="False"
-                                Margin="14,12"
-                                Content="{Binding Text2Clipboard}">
-                    <ContentControl.ContentTemplate>
-                        <DataTemplate DataType="vm:Text2ClipboardViewModel">
-                            <v:Text2ClipboardView/>
-                        </DataTemplate>
-                    </ContentControl.ContentTemplate>
-                </ContentControl>
+                <Grid x:Name="PanelText2Clipboard"
+                      IsVisible="False"
+                      Margin="14,12"
+                      RowDefinitions="Auto,*">
+                    <TextBlock Grid.Row="0"
+                               IsVisible="{Binding !DirectLogin}"
+                               Text="Native copy/paste support only works when &quot;Log into DQX directly with dqxclarity&quot; is enabled! This can be configured under Game > Launch."
+                               FontSize="11"
+                               Foreground="{DynamicResource AppDanger}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,8"/>
+                    <ContentControl Grid.Row="1"
+                                    Content="{Binding Text2Clipboard}">
+                        <ContentControl.ContentTemplate>
+                            <DataTemplate DataType="vm:Text2ClipboardViewModel">
+                                <v:Text2ClipboardView/>
+                            </DataTemplate>
+                        </ContentControl.ContentTemplate>
+                    </ContentControl>
+                </Grid>
 
             </Grid>
         </Grid>

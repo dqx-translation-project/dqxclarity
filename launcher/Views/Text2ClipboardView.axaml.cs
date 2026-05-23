@@ -10,6 +10,12 @@ namespace DqxClarity.Launcher.Views;
 public partial class Text2ClipboardView : UserControl
 {
     private const string DragFormat = "dqxclarity/pin-id";
+
+    private const string CommonPhrasesHelpText =
+        "Pick a phrase from the dropdown to copy it to your clipboard.\n\n" +
+        "Pin up to 20 favorites for quick access - pinned phrases appear as buttons at the top of the section. " +
+        "You can reorder pins by dragging them.\n\n" +
+        "Use the Add a custom phrase section at the bottom to add your own entries.";
     private const double DragThresholdSquared = 25; // ~5px
 
     private Button? _pressedButton;
@@ -92,6 +98,13 @@ public partial class Text2ClipboardView : UserControl
             ? DragDropEffects.Move
             : DragDropEffects.None;
         e.Handled = true;
+    }
+
+    private async void OnCommonPhrasesHelpClick(object? sender, RoutedEventArgs e)
+    {
+        var win = TopLevel.GetTopLevel(this) as MainWindow;
+        if (win == null) return;
+        await win.ShowInfoAsync("Common Phrases", CommonPhrasesHelpText);
     }
 
     private void OnPinDrop(object? sender, DragEventArgs e)
