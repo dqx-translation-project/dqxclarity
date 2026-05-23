@@ -160,6 +160,12 @@ public partial class MainWindow : Window
             _vm.IsBannerCollapsed = !_vm.IsBannerCollapsed;
     }
 
+    private void OnBannerPrevClick(object? sender, RoutedEventArgs e) =>
+        _ = _vm!.JumpToPrevBannerAsync();
+
+    private void OnBannerNextClick(object? sender, RoutedEventArgs e) =>
+        _ = _vm!.JumpToNextBannerAsync();
+
     private void OnBannerDotTapped(object? sender, Avalonia.Input.TappedEventArgs e)
     {
         e.Handled = true; // prevent bubbling to any parent handlers

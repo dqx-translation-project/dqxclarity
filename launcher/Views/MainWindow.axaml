@@ -23,21 +23,43 @@
                     Background="{DynamicResource AppBg}">
                 <!-- Content hidden when collapsed; border height collapses to 0 automatically -->
                 <StackPanel IsVisible="{Binding !IsBannerCollapsed}">
-                    <!-- Banner image (clickable → opens event URL) -->
-                    <Image Source="{Binding BannerImage}"
-                           Opacity="{Binding BannerOpacity}"
-                           Stretch="Uniform"
-                           HorizontalAlignment="Stretch"
-                           VerticalAlignment="Center"
-                           MaxHeight="350"
-                           Cursor="Hand"
-                           Tapped="OnBannerTapped">
-                        <Image.Transitions>
-                            <Transitions>
-                                <DoubleTransition Property="Opacity" Duration="0:0:0.35"/>
-                            </Transitions>
-                        </Image.Transitions>
-                    </Image>
+                    <!-- Banner image (clickable → opens event URL) + nav arrows overlay -->
+                    <Panel>
+                        <Image Source="{Binding BannerImage}"
+                               Opacity="{Binding BannerOpacity}"
+                               Stretch="Uniform"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Center"
+                               MaxHeight="350"
+                               Cursor="Hand"
+                               Tapped="OnBannerTapped">
+                            <Image.Transitions>
+                                <Transitions>
+                                    <DoubleTransition Property="Opacity" Duration="0:0:0.35"/>
+                                </Transitions>
+                            </Image.Transitions>
+                        </Image>
+
+                        <Button Classes="bannerArrow"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Stretch"
+                                IsVisible="{Binding BannerDots.Count,
+                                            Converter={x:Static v:CountToBoolConverter.Instance}}"
+                                Click="OnBannerPrevClick">
+                            <TextBlock Text="&#x276E;" FontSize="28" FontWeight="Bold"
+                                       Foreground="White" VerticalAlignment="Center"/>
+                        </Button>
+
+                        <Button Classes="bannerArrow"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Stretch"
+                                IsVisible="{Binding BannerDots.Count,
+                                            Converter={x:Static v:CountToBoolConverter.Instance}}"
+                                Click="OnBannerNextClick">
+                            <TextBlock Text="&#x276F;" FontSize="28" FontWeight="Bold"
+                                       Foreground="White" VerticalAlignment="Center"/>
+                        </Button>
+                    </Panel>
 
                     <!-- Dot navigation — only rendered when multiple banners are loaded -->
                     <ItemsControl HorizontalAlignment="Center"

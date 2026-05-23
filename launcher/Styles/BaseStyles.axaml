@@ -245,6 +245,24 @@
         <Setter Property="BorderBrush" Value="{DynamicResource AppAccent}"/>
     </Style>
 
+    <!-- ── Banner nav arrows ────────────────────────────────────────────── -->
+    <Style Selector="Button.bannerArrow">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="0"/>
+        <Setter Property="Padding" Value="14,0"/>
+        <Setter Property="Opacity" Value="0.45"/>
+    </Style>
+    <Style Selector="Button.bannerArrow /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.bannerArrow:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.bannerArrow:pointerover">
+        <Setter Property="Opacity" Value="0.9"/>
+    </Style>
+
     <!-- ── Fieldset-style border ──────────────────────────────────────── -->
     <Style Selector="Border.fieldset">
         <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}"/>

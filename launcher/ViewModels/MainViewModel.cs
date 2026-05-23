@@ -195,6 +195,12 @@ public partial class MainViewModel : ObservableObject
         BannerOpacity = 1;
     }
 
+    public Task JumpToPrevBannerAsync() =>
+        JumpToBannerAsync((_bannerIdx - 1 + _banners.Count) % _banners.Count);
+
+    public Task JumpToNextBannerAsync() =>
+        JumpToBannerAsync((_bannerIdx + 1) % _banners.Count);
+
     public async Task JumpToBannerAsync(int idx)
     {
         if (idx < 0 || idx >= _banners.Count || idx == _bannerIdx) return;
