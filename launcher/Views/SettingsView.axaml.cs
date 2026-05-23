@@ -21,7 +21,7 @@ public partial class SettingsView : UserControl
         "The Community API submits your translation strings to a shared remote database. " +
         "These strings are pooled across all contributors and help improve translations for the entire project.\n\n" +
         "To participate, you must meet the following requirement:\n\n" +
-        "  • Both your player name and sibling name must be unique — not a common Japanese word, name, or in-game name.\n\n" +
+        "  • Both your player name and sibling name must be unique - not a common Japanese word, name, or in-game name.\n\n" +
         "If you meet this requirement and want to contribute, reach out to Serany (mebo) on Discord. " +
         "They'll verify your names and provide you with an API key to paste here.";
 
@@ -29,8 +29,8 @@ public partial class SettingsView : UserControl
         "This tab lets you override how Japanese player and MyTown names are displayed.\n\n" +
         "If you encounter a player or MyTown name that dqxclarity mistranslates or renders incorrectly, " +
         "you can map the original Japanese name to a custom display name here.\n\n" +
-        "Player Names — overrides how player name strings appear.\n" +
-        "Mytown Names — overrides how MyTown name strings appear.\n\n" +
+        "Player Names - overrides how player name strings appear.\n" +
+        "Mytown Names - overrides how MyTown name strings appear.\n\n" +
         "Use the + button to add a row. Enter the original Japanese name in the first column " +
         "and the replacement name in the second column. Names are limited to 12 characters each. " +
         "Use the x button to remove a row.\n\n" +
@@ -42,7 +42,7 @@ public partial class SettingsView : UserControl
         "1. Click Read Database and select the dialog table from the dropdown.\n" +
         "2. Use the filter box to search for the offending text.\n" +
         "3. Check the box next to each row you want to remove.\n" +
-        "4. Click Delete — the rows are removed and the database is saved immediately.\n\n" +
+        "4. Click Delete - the rows are removed and the database is saved immediately.\n\n" +
         "This lets you fix specific problem strings without losing the rest of your translation cache.\n\n" +
         "Note: only the dialog table supports row deletion. All other tables are for reference only and are automatically maintained by the dqxclarity team.";
 
@@ -63,7 +63,7 @@ public partial class SettingsView : UserControl
     private const string AdvancedConfigHelpText =
         "Community Logging\n" +
         "Records untranslated or unknown in-game strings to a local text file. " +
-        "Enabling this helps the translation team identify missing strings — " +
+        "Enabling this helps the translation team identify missing strings - " +
         "if you report a missing translation, they may ask you to share this log file.";
 
     private const string LoggingHelpText =
@@ -78,18 +78,18 @@ public partial class SettingsView : UserControl
         "Community API\n" +
         "Submits untranslated strings encountered during your session to the dqxclarity team's server " +
         "so they can be reviewed and added to the translation database. " +
-        "This is a contributor feature — you will need a Community API key from the team. " +
+        "This is a contributor feature - you will need a Community API key from the team. " +
         "Reach out to Serany (mebo) on Discord if you would like one.";
 
     private const string InstallationHelpText =
         "DQX Folder Path\n" +
         "The path to your DQX installation directory. dqxclarity needs this to find game executables " +
-        "and DAT/IDX files for patching. Use the Browse button to select the folder — " +
+        "and DAT/IDX files for patching. Use the Browse button to select the folder - " +
         "it should be the DRAGON QUEST X folder inside your SquareEnix directory.";
 
     private const string LaunchHelpText =
         "Open DQX Launcher\n" +
-        "Launches DQXBoot.exe — the standard DQX game client.\n\n" +
+        "Launches DQXBoot.exe - the standard DQX game client.\n\n" +
         "Open DQXConfig\n" +
         "Launches DQXConfig.exe, which lets you adjust in-game graphics and audio settings without opening the game itself.\n\n" +
         "Launch DQX Launcher with dqxclarity\n" +
@@ -112,7 +112,7 @@ public partial class SettingsView : UserControl
         "Swaps the DQX launcher executable with an English-patched version, or restores the original Japanese file. " +
         "This only affects the launcher window's UI text and has no impact on gameplay.\n\n" +
         "Patch Config / Restore Config\n" +
-        "Same as above but for DQXConfig.exe — patches or restores the configuration tool's interface text.\n\n" +
+        "Same as above but for DQXConfig.exe - patches or restores the configuration tool's interface text.\n\n" +
         "Patch Game Files\n" +
         "Downloads and applies the latest DAT/IDX translation mod to your game directory. " +
         "This is the main translation patch that enables in-game text translation. " +
@@ -451,7 +451,7 @@ public partial class SettingsView : UserControl
 
         if (vpW <= 10 && !_rebuildPending)
         {
-            // Layout not yet done — schedule a rebuild after the first layout pass
+            // Layout not yet done -schedule a rebuild after the first layout pass
             _rebuildPending = true;
             DbScroll.LayoutUpdated += OnDbScrollFirstLayout;
         }
@@ -552,7 +552,7 @@ public partial class SettingsView : UserControl
         for (int i = 0; i < _tableColCount; i++)
             grid.ColumnDefinitions.Add(new ColumnDefinition(_tableColWidth, GridUnitType.Pixel));
 
-        // Checkbox — top-aligned for multi-line dialog rows, centered for single-line rows
+        // Checkbox -top-aligned for multi-line dialog rows, centered for single-line rows
         var cb = new CheckBox
         {
             IsChecked           = row.Selected,

@@ -56,18 +56,15 @@
             <!-- ══ COMMON PHRASES ═══════════════════════════════════════ -->
             <Border Classes="fieldset">
                 <StackPanel Spacing="8">
-                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                        <TextBlock Classes="legend" Text="Common phrases" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <TextBlock Classes="legend" Text="Common phrases" Margin="0" VerticalAlignment="Center"/>
+                        <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnCommonPhrasesHelpClick">?</Button>
                         <TextBlock Text="{Binding PhrasesStatus}"
                                    FontSize="11"
                                    VerticalAlignment="Center"
+                                   Margin="6,0,0,0"
                                    Foreground="{DynamicResource AppMuted}"/>
                     </StackPanel>
-                    <TextBlock Text="Pick a phrase to copy it. Pin up to 20 favorites for quick access."
-                               FontSize="11"
-                               TextWrapping="NoWrap"
-                               TextTrimming="CharacterEllipsis"
-                               Foreground="{DynamicResource AppMuted}"/>
 
                     <!-- Pinned quick-access buttons: 5 per row, equal-width, label truncated to 20 chars -->
                     <ItemsControl ItemsSource="{Binding PinnedButtons}"

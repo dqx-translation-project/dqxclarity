@@ -13,7 +13,7 @@ public partial class UpdateDialog : UserControl
     public UpdateDialog(UpdateInfo info)
     {
         InitializeComponent();
-        HeaderText.Text = $"Update available — {info.Version}";
+        HeaderText.Text = $"Update available - {info.Version}";
         BodyText.Text   = CleanMarkdown(info.Body);
     }
 

@@ -134,14 +134,14 @@ public class DqxAuthService
             };
         }
 
-        // No session ID and no error — likely OTP step
+        // No session ID and no error -likely OTP step
         if (response.Form is not null)
         {
             _pendingForm = response.Form;
             return AuthResult.NeedsOtp(username);
         }
 
-        return AuthResult.Fail("Login failed — unexpected server response");
+        return AuthResult.Fail("Login failed - unexpected server response");
     }
 
     private async Task<DqxWebForm?> FetchLoginFormAsync(Dictionary<string, string> payload)
