@@ -194,7 +194,6 @@ public class ConfigService
             Game = new GameConfig
             {
                 InstallDirectory        = c.GetValueOrDefault("installdirectory") ?? "",
-                LocaleEmulatorDirectory = l.GetValueOrDefault("localeemulatordirectory") ?? "",
                 SaveFolderPath          = c.GetValueOrDefault("savefolderdirectory") ?? "",
             },
             Players = LoadPlayers(p),
@@ -209,7 +208,6 @@ public class ConfigService
         var playersSection = existing.GetValueOrDefault("players") ?? [];
         var configPairs    = configSection.OrderBy(kv => kv.Key).ToList();
         var existingLauncher = existing.GetValueOrDefault("launcher") ?? [];
-        var leDir       = existingLauncher.GetValueOrDefault("localeemulatordirectory") ?? "";
         var seenWelcome = existingLauncher.GetValueOrDefault("seenwelcomemessage") ?? BoolToIni(launcher.SeenWelcomeMessage);
 
         var sb = new System.Text.StringBuilder();
@@ -250,7 +248,6 @@ public class ConfigService
         WriteKv(sb, "directlogin",              BoolToIni(launcher.DirectLogin));
         WriteKv(sb, "directloginaccountnumber", launcher.DirectLoginAccountNumber.ToString());
         WriteKv(sb, "theme",                    launcher.Theme);
-        WriteKv(sb, "localeemulatordirectory",  leDir);
         WriteKv(sb, "seenwelcomemessage",       seenWelcome);
 
         var dir = Path.GetDirectoryName(path)!;
@@ -329,25 +326,10 @@ public class ConfigService
         return null;
     }
 
-
-    public void SaveLocaleEmulatorDir(string dir)
-    {
-        var path = ConfigPath();
-        UpdateIniValue(path, "launcher", "localeemulatordirectory", dir.Replace('\\', '/'));
-    }
-
     public void SaveSeenWelcomeMessage()
     {
         var path = ConfigPath();
         UpdateIniValue(path, "launcher", "seenwelcomemessage", "True");
-    }
-
-    public bool ValidateLocaleEmulatorDir(string dir, out string error)
-    {
-        var exe = Path.Combine(dir, "LEProc.exe");
-        if (File.Exists(exe)) { error = ""; return true; }
-        error = "Could not find LEProc.exe in the selected folder. Make sure you selected the Locale Emulator installation folder.";
-        return false;
     }
 
     public string GetVersion()
@@ -370,34 +352,18 @@ public class ConfigService
         return false;
     }
 
-    public void LaunchDqx(string installDir, string? leDir = null)
+    public void LaunchDqx(string installDir)
     {
         var dqxExe = Path.Combine(installDir, "Boot", "DQXBoot.exe");
         if (!File.Exists(dqxExe)) throw new FileNotFoundException($"DQXBoot.exe not found at {dqxExe}");
 
-        var workDir = Path.Combine(installDir, "Boot");
-
-        if (!string.IsNullOrEmpty(leDir))
+        var psi = new System.Diagnostics.ProcessStartInfo(dqxExe)
         {
-            var leExe = Path.Combine(leDir, "LEProc.exe");
-            if (!File.Exists(leExe)) throw new FileNotFoundException($"LEProc.exe not found at {leExe}");
-            var psi = new System.Diagnostics.ProcessStartInfo(leExe)
-            {
-                WorkingDirectory = leDir,
-                UseShellExecute  = false,
-                Arguments        = $"\"{dqxExe}\"",
-            };
-            System.Diagnostics.Process.Start(psi);
-            return;
-        }
-
-        var fallback = new System.Diagnostics.ProcessStartInfo(dqxExe)
-        {
-            WorkingDirectory = workDir,
+            WorkingDirectory = Path.Combine(installDir, "Boot"),
             UseShellExecute  = false,
             CreateNoWindow   = true,
         };
-        System.Diagnostics.Process.Start(fallback);
+        System.Diagnostics.Process.Start(psi);
     }
 
     public void LaunchDqxConfig(string installDir)
