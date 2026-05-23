@@ -16,7 +16,7 @@ dependencies = [
     "openpyxl==3.1.5",
     "pykakasi==2.3.0",
     "regex==2026.4.4",
-    "requests==2.33.1",
+    "requests==2.34.2",
 ]
 
 [project.optional-dependencies]
