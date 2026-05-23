@@ -8,7 +8,11 @@ set(COMMON_DEFS WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS)
 
 # --- LocaleHook.dll ---
 add_library(LocaleHook SHARED LocaleHook.c)
-set_target_properties(LocaleHook PROPERTIES PREFIX "" OUTPUT_NAME "LocaleHook")
+set_target_properties(LocaleHook PROPERTIES
+    PREFIX ""
+    OUTPUT_NAME "LocaleHook"
+    MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+)
 target_compile_definitions(LocaleHook PRIVATE ${COMMON_DEFS})
 target_link_libraries(LocaleHook PRIVATE kernel32 user32 imm32)
 
