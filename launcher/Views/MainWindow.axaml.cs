@@ -90,6 +90,17 @@ public partial class MainWindow : Window
         _settingsView = new SettingsView { DataContext = vm.Settings };
         _logView      = new LogView      { DataContext = vm.Log      };
 
+        // Wire settings dialogs here (not in SettingsView code-behind) so they work
+        // regardless of whether SettingsView is currently in the visual tree (e.g. autorun).
+        vm.Settings.ShowInfoRequested += async (title, body) =>
+            await ShowInfoAsync(title, body);
+        vm.Settings.ShowConfirmRequested += async (title, body) =>
+            await ShowConfirmAsync(title, body);
+        vm.Settings.ShowOtpDialogRequested += async () =>
+            await ShowInputAsync(
+                "One-Time Password",
+                "Your account has multi-factor authentication enabled. Enter your 6-digit OTP code.");
+
         // Wire browse button in settings to use Avalonia folder picker
         _settingsView.BrowseFolderRequested += async () =>
         {

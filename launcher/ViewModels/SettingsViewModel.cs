@@ -578,7 +578,7 @@ public partial class SettingsViewModel : ObservableObject
     // ── Run ───────────────────────────────────────────────────────────────
 
     [RelayCommand]
-    private async Task Run()
+    public async Task Run()
     {
         if (_nameOverridesDirty)
             await PromptSaveNameOverrides();

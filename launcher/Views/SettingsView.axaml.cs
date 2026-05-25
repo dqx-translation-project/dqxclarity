@@ -239,27 +239,6 @@ public partial class SettingsView : UserControl
             }
         };
 
-        // Show missing-key errors as a popup
-        vm.ShowInfoRequested += async (title, body) =>
-        {
-            var win = TopLevel.GetTopLevel(this) as MainWindow;
-            if (win != null) await win.ShowInfoAsync(title, body);
-        };
-
-        vm.ShowConfirmRequested += async (title, body) =>
-        {
-            var win = TopLevel.GetTopLevel(this) as MainWindow;
-            return win != null && await win.ShowConfirmAsync(title, body);
-        };
-
-        vm.ShowOtpDialogRequested += async () =>
-        {
-            var win = TopLevel.GetTopLevel(this) as MainWindow;
-            return win == null ? null : await win.ShowInputAsync(
-                "One-Time Password",
-                "Your account has multi-factor authentication enabled. Enter your 6-digit OTP code.");
-        };
-
     }
 
     private void SwitchTab(string tab)
