@@ -90,18 +90,13 @@ public partial class MainViewModel : ObservableObject
         Settings.RunRequested += OnRunRequested;
         Settings.OpenUrl      += OpenBrowser;
 
-        // If autorun, also launch the process after setup
+        // If autorun, trigger the full run flow (respects DirectLogin, SimultaneousLaunch, etc.)
         if (autoRun)
         {
-            Setup.SetupDone += () =>
+            Setup.SetupDone += async () =>
             {
-                if (config.Launcher.SimultaneousLaunch && !string.IsNullOrEmpty(config.Game.InstallDirectory))
-                    try { _cfg.LaunchDqx(config.Game.InstallDirectory); } catch { }
+                await Settings.Run();
 
-                Log.UpdateTitle(version);
-                _processSvc.Launch(BuildArgs(config));
-
-                // Minimize window
                 Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
                     if (Window != null)
