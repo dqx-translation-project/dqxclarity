@@ -483,73 +483,6 @@ static BOOL CheckDedup(uint32_t key, uint32_t len, uint32_t hash)
     return FALSE;
 }
 
-// ── Packet trace ──────────────────────────────────────────────────────────────
-//
-// Active only when g_forwardAll is set. Tracks every unique routing key seen
-// and logs a frequency summary periodically so high-frequency or unknown
-// packets can be identified. Uses a persistent file handle opened at install
-// time to avoid per-packet open/close overhead.
-
-#define TRACE_MAX_KEYS 512
-static uint32_t g_traceKeys[TRACE_MAX_KEYS];
-static uint32_t g_traceCounts[TRACE_MAX_KEYS];
-static int      g_traceKeyCount  = 0;
-static uint32_t g_traceTotalSeen = 0;
-static HANDLE   g_traceFile      = INVALID_HANDLE_VALUE;
-static CRITICAL_SECTION g_trace_cs;
-
-static void OpenTraceLog(void)
-{
-    InitializeCriticalSection(&g_trace_cs);
-    WCHAR path[MAX_PATH];
-    GetModuleFileNameW(g_hInst, path, MAX_PATH);
-    WCHAR* sl = wcsrchr(path, L'\\');
-    if (sl) { *sl = L'\0'; sl = wcsrchr(path, L'\\'); }
-    if (sl) sl[1] = L'\0'; else path[0] = L'\0';
-    lstrcatW(path, L"logs\\packet_trace.log");
-    g_traceFile = CreateFileW(path, FILE_APPEND_DATA, FILE_SHARE_READ, NULL,
-                              CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-}
-
-static void TracePacket(uint32_t key)
-{
-    if (g_traceFile == INVALID_HANDLE_VALUE) return;
-    EnterCriticalSection(&g_trace_cs);
-
-    g_traceTotalSeen++;
-
-    // find or insert key
-    int idx = -1;
-    for (int i = 0; i < g_traceKeyCount; i++) {
-        if (g_traceKeys[i] == key) { idx = i; break; }
-    }
-    if (idx < 0 && g_traceKeyCount < TRACE_MAX_KEYS) {
-        idx = g_traceKeyCount++;
-        g_traceKeys[idx]  = key;
-        g_traceCounts[idx] = 0;
-        // log first occurrence immediately
-        char buf[80];
-        DWORD w;
-        int n = wsprintfA(buf, "NEW 0x%06X op=0x%02X mk=0x%04X\n",
-                          key, key >> 16, key & 0xFFFF);
-        WriteFile(g_traceFile, buf, n, &w, NULL);
-    }
-    if (idx >= 0) g_traceCounts[idx]++;
-
-    // dump frequency summary every 10000 packets
-    if (g_traceTotalSeen % 10000 == 0) {
-        char buf[80];
-        DWORD w;
-        int n = wsprintfA(buf, "--- summary after %u packets ---\n", g_traceTotalSeen);
-        WriteFile(g_traceFile, buf, n, &w, NULL);
-        for (int i = 0; i < g_traceKeyCount; i++) {
-            n = wsprintfA(buf, "  0x%06X: %u\n", g_traceKeys[i], g_traceCounts[i]);
-            WriteFile(g_traceFile, buf, n, &w, NULL);
-        }
-    }
-
-    LeaveCriticalSection(&g_trace_cs);
-}
 
 // Debug-discovery mode: when the env var DQXCLARITY_FORWARD_ALL is "1", the
 // hook forwards EVERY type-0/type-4 data packet to the c# host instead of just
@@ -764,8 +697,6 @@ static int __stdcall H_ParseNetworkPacket(BYTE* packet_data, unsigned int packet
                  | ((uint32_t)packet_data[payload_off + 1] << 8)
                  |  (uint32_t)packet_data[payload_off + 2];
 
-    // Trace all packets when debug-discovery mode is active.
-    if (g_forwardAll) TracePacket(key);
 
     // Not in our table of known translatable packets -- pass through, UNLESS
     // debug-discovery mode is on (env var DQXCLARITY_FORWARD_ALL=1), in which
@@ -845,8 +776,6 @@ static DWORD WINAPI InstallThread(LPVOID arg)
     if (envLen > 0 && envVal[0] == '1') {
         g_forwardAll = TRUE;
         Log("DQXCLARITY_FORWARD_ALL=1 - forwarding ALL data packets to c# host (debug-discovery mode)");
-        OpenTraceLog();
-        Log("packet trace log opened: logs\\packet_trace.log");
     }
 
     // Scan the game's memory for the parser function's body fingerprint.
