@@ -39,9 +39,9 @@ jobs:
 
       - name: Build package
         run: |
-          rsync -av --exclude="imgs/" --exclude="DqxClarity/" --exclude="tests/" app/* dqxclarity/;
-          cp version.update pyproject.toml user_settings.ini dqxclarity.exe dqxclarity/;
-          cp clarity_dialog.db dqxclarity/misc_files;
+          mkdir -p dqxclarity/misc_files
+          cp version.update dqxclarity.exe dqxclarity/
+          cp clarity_dialog.db dqxclarity/misc_files/
 
       - name: Zip package (pre-release)
         if: startsWith(github.ref, 'refs/tags/v') != true

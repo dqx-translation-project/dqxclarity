@@ -11,23 +11,8 @@ public class DatabaseService
         return Path.GetDirectoryName(exe) ?? throw new Exception("Cannot determine executable directory");
     }
 
-    private static string FindAppDir(string exeDir)
-    {
-        var dir = exeDir;
-        for (int i = 0; i < 4; i++)
-        {
-            if (File.Exists(Path.Combine(dir, "main.py")))
-                return Path.GetFullPath(dir);
-            dir = Path.Combine(dir, "..");
-        }
-        return Path.GetFullPath(Path.Combine(exeDir, ".."));
-    }
-
-    private string DbPath()
-    {
-        var dir = FindAppDir(ExeDir());
-        return Path.Combine(dir, "misc_files", "clarity_dialog.db");
-    }
+    private string DbPath() =>
+        Path.Combine(ExeDir(), "misc_files", "clarity_dialog.db");
 
     private static void ValidateIdentifier(string name)
     {

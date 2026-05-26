@@ -298,6 +298,14 @@ public partial class MainWindow : Window
             _overlayDismissAction?.Invoke();
     }
 
+    internal void ShowNonDismissableOverlay(UserControl content)
+    {
+        _overlayDismissAction = null;
+        ShowOverlay(content);
+    }
+
+    internal void DismissOverlay() => HideOverlay();
+
     private void ShowOverlay(UserControl content)
     {
         OverlayContent.Content = content;

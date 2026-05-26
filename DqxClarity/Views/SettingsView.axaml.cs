@@ -743,10 +743,21 @@ public partial class SettingsView : UserControl
         if (win == null) return;
 
         var confirmed = await win.ShowUpdateAsync(_vm.UpdateInfo);
-        if (confirmed)
-        {
-            _vm.SetUpdateService(new UpdateService());
-            await _vm.RunUpdaterCommand.ExecuteAsync(null);
-        }
+        if (!confirmed) return;
+
+        var progressDlg = new UpdateProgressDialog();
+        win.ShowNonDismissableOverlay(progressDlg);
+
+        var svc = new UpdateService();
+        var progress = new Progress<(long received, long total)>(p =>
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                progressDlg.UpdateProgress(p.received, p.total)));
+
+        try { await svc.RunUpdaterAsync(_vm.UpdateInfo.Version, progress); }
+        catch { }
+
+        // Only reached if update failed (success exits the process)
+        win.DismissOverlay();
+        await win.ShowInfoAsync("Update failed", "The update could not be completed. Please try again or download from GitHub manually.");
     }
 }

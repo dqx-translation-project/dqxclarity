@@ -324,14 +324,8 @@ public class ConfigService
 
     public string GetVersion()
     {
-        try
-        {
-            var versionFile = Path.Combine(AppDir(), "version.update");
-            if (!File.Exists(versionFile)) return "???";
-            var v = File.ReadAllText(versionFile).Trim();
-            return string.IsNullOrEmpty(v) ? "???" : v;
-        }
-        catch { return "???"; }
+        var v = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version;
+        return v is null ? "???" : $"{v.Major}.{v.Minor}.{v.Build}";
     }
 
     public bool ValidateDqxDir(string dir, out string error)

@@ -3,6 +3,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows</TargetFramework>
+    <Version>0.0.0</Version>
     <RootNamespace>DqxClarity</RootNamespace>
     <AssemblyName>dqxclarity</AssemblyName>
     <Nullable>enable</Nullable>

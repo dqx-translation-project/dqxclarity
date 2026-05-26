@@ -17,6 +17,14 @@ internal sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        var bak = (Environment.ProcessPath ?? "") + ".bak";
+        if (File.Exists(bak))
+            for (int i = 0; i < 5; i++)
+            {
+                try { File.Delete(bak); break; }
+                catch { Thread.Sleep(200); }
+            }
+
         SetCurrentProcessExplicitAppUserModelID("dqxclarity.launcher");
 
         // Single-instance guard

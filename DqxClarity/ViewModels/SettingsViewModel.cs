@@ -1030,14 +1030,7 @@ public partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            var exeDir = Path.GetDirectoryName(Environment.ProcessPath ?? "") ?? "";
-            var appDir = exeDir;
-            for (int i = 0; i < 4; i++)
-            {
-                if (File.Exists(Path.Combine(appDir, "main.py")))
-                { appDir = Path.GetFullPath(appDir); break; }
-                appDir = Path.GetFullPath(Path.Combine(appDir, ".."));
-            }
+            var appDir = Path.GetDirectoryName(Environment.ProcessPath ?? "") ?? "";
             var logsDir = Path.Combine(appDir, "logs");
             if (!Directory.Exists(logsDir)) Directory.CreateDirectory(logsDir);
             Process.Start(new ProcessStartInfo(logsDir) { UseShellExecute = true });
