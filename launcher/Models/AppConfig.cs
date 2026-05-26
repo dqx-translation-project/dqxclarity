@@ -10,6 +10,7 @@ public class LauncherConfig
     public int DirectLoginAccountNumber { get; set; }
     public string Theme { get; set; } = "rosie";
     public bool SeenWelcomeMessage { get; set; }
+    public bool BannerCollapsed { get; set; }
 }
 
 public class TranslationConfig
