@@ -179,6 +179,7 @@ public class ConfigService
                 DirectLoginAccountNumber = int.TryParse(l.GetValueOrDefault("directloginaccountnumber"), out var dla) ? dla : 0,
                 Theme                    = l.GetValueOrDefault("theme") ?? "rosie",
                 SeenWelcomeMessage       = ToBool(l.GetValueOrDefault("seenwelcomemessage")),
+                BannerCollapsed          = ToBool(l.GetValueOrDefault("bannercollapsed")),
             },
             Translation = LoadTranslationConfig(t),
             Game = new GameConfig
@@ -198,7 +199,8 @@ public class ConfigService
         var playersSection = existing.GetValueOrDefault("players") ?? [];
         var configPairs    = configSection.OrderBy(kv => kv.Key).ToList();
         var existingLauncher = existing.GetValueOrDefault("launcher") ?? [];
-        var seenWelcome = existingLauncher.GetValueOrDefault("seenwelcomemessage") ?? BoolToIni(launcher.SeenWelcomeMessage);
+        var seenWelcome      = existingLauncher.GetValueOrDefault("seenwelcomemessage") ?? BoolToIni(launcher.SeenWelcomeMessage);
+        var bannerCollapsed  = existingLauncher.GetValueOrDefault("bannercollapsed")    ?? BoolToIni(launcher.BannerCollapsed);
 
         var sb = new System.Text.StringBuilder();
 
@@ -239,6 +241,7 @@ public class ConfigService
         WriteKv(sb, "directloginaccountnumber", launcher.DirectLoginAccountNumber.ToString());
         WriteKv(sb, "theme",                    launcher.Theme);
         WriteKv(sb, "seenwelcomemessage",       seenWelcome);
+        WriteKv(sb, "bannercollapsed",          bannerCollapsed);
 
         var dir = Path.GetDirectoryName(path)!;
         Directory.CreateDirectory(dir);
@@ -315,6 +318,9 @@ public class ConfigService
         var path = ConfigPath();
         UpdateIniValue(path, "launcher", "seenwelcomemessage", "True");
     }
+
+    public void SaveBannerCollapsed(bool value) =>
+        UpdateIniValue(ConfigPath(), "launcher", "bannercollapsed", BoolToIni(value));
 
     public string GetVersion()
     {

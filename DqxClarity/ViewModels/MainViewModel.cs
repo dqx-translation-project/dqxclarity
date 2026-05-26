@@ -40,6 +40,7 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnIsBannerCollapsedChanged(bool value)
     {
+        _cfg.SaveBannerCollapsed(value);
         if (Window == null || CurrentView != "settings") return;
         var newH = GetWinSize("settings").H;
         Window.MaxHeight = newH;
@@ -79,6 +80,7 @@ public partial class MainViewModel : ObservableObject
         _cfg        = cfg;
         _updateSvc  = updateSvc;
         Version     = version;
+        _isBannerCollapsed = config.Launcher.BannerCollapsed;
         Text2Clipboard = text2Clipboard;
 
         Log      = new LogViewModel(text2Clipboard);
