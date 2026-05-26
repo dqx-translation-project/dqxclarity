@@ -9,6 +9,7 @@ app/misc_files/*.xlsx
 app/misc_files/*.db
 app/logs
 app/user_settings*
+user_settings.ini
 app/dqxclarity.exe
 app/pyproject.toml
 app/dqxclarity.lock
