@@ -1,0 +1,308 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ── Root window background ─────────────────────────────────────── -->
+    <Style Selector="Window">
+        <Setter Property="Background" Value="{DynamicResource AppBg}"/>
+        <Setter Property="FontFamily" Value="Segoe UI,system-ui,sans-serif"/>
+        <Setter Property="FontSize" Value="13"/>
+    </Style>
+
+    <!-- ── TextBlock defaults ─────────────────────────────────────────── -->
+    <Style Selector="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource AppText}"/>
+    </Style>
+
+    <!-- ── Suppress tooltip popups — ToolTip.Tip is hint-bar data only ── -->
+    <Style Selector=":is(Control)">
+        <Setter Property="ToolTip.ShowDelay" Value="2147483647"/>
+    </Style>
+
+    <!-- ── Base Button ────────────────────────────────────────────────── -->
+    <Style Selector="Button">
+        <Setter Property="Background" Value="{DynamicResource AppSurface}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppText}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AppSurface2}"/>
+    </Style>
+    <Style Selector="Button:pressed /template/ ContentPresenter">
+        <Setter Property="Opacity" Value="0.85"/>
+    </Style>
+    <Style Selector="Button:disabled /template/ ContentPresenter">
+        <Setter Property="Opacity" Value="0.45"/>
+    </Style>
+
+    <!-- Accent button -->
+    <Style Selector="Button.accent">
+        <Setter Property="Background" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="Button.accent /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AppAccent}"/>
+    </Style>
+    <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="Opacity" Value="0.9"/>
+    </Style>
+
+    <!-- Danger button -->
+    <Style Selector="Button.danger">
+        <Setter Property="Background" Value="{DynamicResource AppDanger}"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppDanger}"/>
+    </Style>
+    <Style Selector="Button.danger /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AppDanger}"/>
+    </Style>
+    <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AppDanger}"/>
+        <Setter Property="Opacity" Value="0.9"/>
+    </Style>
+
+    <!-- Ghost / link button -->
+    <Style Selector="Button.ghost">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppMuted}"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="FontSize" Value="11"/>
+    </Style>
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AppText}"/>
+    </Style>
+
+    <!-- ── TextBox ────────────────────────────────────────────────────── -->
+    <Style Selector="TextBox">
+        <Setter Property="Background" Value="{DynamicResource AppSurface}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppText}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="6,3"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="SelectionBrush" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="SelectionForegroundBrush" Value="White"/>
+    </Style>
+    <Style Selector="TextBox /template/ TextPresenter#PART_TextPresenter">
+        <Setter Property="SelectionBrush" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="SelectionForegroundBrush" Value="White"/>
+    </Style>
+    <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="Background" Value="{DynamicResource AppSurface}"/>
+    </Style>
+    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="Background" Value="{DynamicResource AppSurface}"/>
+    </Style>
+    <Style Selector="TextBox:disabled /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="{DynamicResource AppSurface2}"/>
+        <Setter Property="Opacity" Value="0.5"/>
+    </Style>
+    <Style Selector="TextBox:disabled">
+        <Setter Property="Foreground" Value="{DynamicResource AppMuted}"/>
+        <Setter Property="Opacity" Value="0.5"/>
+    </Style>
+
+    <!-- ── ComboBox ───────────────────────────────────────────────────── -->
+    <Style Selector="ComboBox">
+        <Setter Property="Background" Value="{DynamicResource AppSurface}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppText}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="6,3"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+    <Style Selector="ComboBox:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="Background" Value="{DynamicResource AppSurface}"/>
+    </Style>
+    <Style Selector="ComboBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="Background" Value="{DynamicResource AppSurface}"/>
+    </Style>
+    <Style Selector="ComboBox:dropdownopen /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="Background" Value="{DynamicResource AppSurface}"/>
+    </Style>
+    <Style Selector="ComboBoxItem">
+        <Setter Property="Background" Value="{DynamicResource AppSurface}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppText}"/>
+    </Style>
+    <Style Selector="ComboBoxItem:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="TextElement.Foreground" Value="White"/>
+    </Style>
+    <Style Selector="ComboBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AppAccent}"/>
+    </Style>
+    <Style Selector="ComboBoxItem:disabled">
+        <Setter Property="IsHitTestVisible" Value="False"/>
+        <Setter Property="Opacity" Value="0.5"/>
+    </Style>
+
+    <!-- ── CheckBox ───────────────────────────────────────────────────── -->
+    <Style Selector="CheckBox">
+        <Setter Property="Foreground" Value="{DynamicResource AppText}"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+    <Style Selector="CheckBox /template/ ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AppText}"/>
+    </Style>
+    <Style Selector="CheckBox:checked /template/ Border#NormalRectangle">
+        <Setter Property="Background" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppAccent}"/>
+    </Style>
+    <Style Selector="CheckBox:indeterminate /template/ Border#NormalRectangle">
+        <Setter Property="Background" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppAccent}"/>
+    </Style>
+
+    <!-- ── ScrollBar ──────────────────────────────────────────────────── -->
+    <Style Selector="ScrollBar">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <!-- ── TabControl / TabItem ───────────────────────────────────────── -->
+    <Style Selector="TabControl">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="TabStripPlacement" Value="Top"/>
+        <Setter Property="Padding" Value="0"/>
+    </Style>
+    <Style Selector="TabItem">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppMuted}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="10,5"/>
+    </Style>
+    <Style Selector="TabItem:selected">
+        <Setter Property="Foreground" Value="{DynamicResource AppAccent}"/>
+    </Style>
+
+    <!-- ── Separator ──────────────────────────────────────────────────── -->
+    <Style Selector="Separator">
+        <Setter Property="Background" Value="{DynamicResource AppBorder}"/>
+        <Setter Property="Height" Value="1"/>
+    </Style>
+
+    <!-- ── ProgressBar ────────────────────────────────────────────────── -->
+    <Style Selector="ProgressBar">
+        <Setter Property="Background" Value="{DynamicResource AppBorder}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="Height" Value="4"/>
+        <Setter Property="CornerRadius" Value="2"/>
+    </Style>
+
+    <!-- ── ListBox ────────────────────────────────────────────────────── -->
+    <Style Selector="ListBox">
+        <Setter Property="Background" Value="{DynamicResource AppSurface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+    </Style>
+    <Style Selector="ListBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource AppText}"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AppAccent}"/>
+    </Style>
+
+    <!-- ── Debug expander header stretch ───────────────────────────────── -->
+    <Style Selector="Expander /template/ ToggleButton#PART_toggle">
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    </Style>
+
+    <!-- ── Custom tab button ─────────────────────────────────────────── -->
+    <Style Selector="Button.tab">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppMuted}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="0"/>
+        <Setter Property="Padding" Value="12,7"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+    <Style Selector="Button.tab:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AppText}"/>
+    </Style>
+    <Style Selector="Button.tab-active">
+        <Setter Property="Foreground" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="BorderThickness" Value="0,0,0,2"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppAccent}"/>
+    </Style>
+    <Style Selector="Button.tab-active:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppAccent}"/>
+    </Style>
+
+    <!-- ── Banner nav arrows ────────────────────────────────────────────── -->
+    <Style Selector="Button.bannerArrow">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="0"/>
+        <Setter Property="Padding" Value="14,0"/>
+        <Setter Property="Opacity" Value="0.45"/>
+    </Style>
+    <Style Selector="Button.bannerArrow /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.bannerArrow:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.bannerArrow:pointerover">
+        <Setter Property="Opacity" Value="0.9"/>
+    </Style>
+
+    <!-- ── Fieldset-style border ──────────────────────────────────────── -->
+    <Style Selector="Border.fieldset">
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="12,10"/>
+        <Setter Property="Background" Value="{DynamicResource AppSurface}"/>
+    </Style>
+    <Style Selector="TextBlock.legend">
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppMuted}"/>
+        <Setter Property="Margin" Value="0,0,0,8"/>
+    </Style>
+
+    <!-- ── DataGrid ───────────────────────────────────────────────────── -->
+    <Style Selector="DataGrid">
+        <Setter Property="Background" Value="{DynamicResource AppSurface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="RowBackground" Value="{DynamicResource AppSurface}"/>
+        <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource AppBorder}"/>
+        <Setter Property="VerticalGridLinesBrush" Value="{DynamicResource AppBorder}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppText}"/>
+        <Setter Property="FontSize" Value="11"/>
+    </Style>
+    <Style Selector="DataGridColumnHeader">
+        <Setter Property="Background" Value="{DynamicResource AppSurface2}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppMuted}"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Padding" Value="6,3"/>
+    </Style>
+    <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+        <Setter Property="Fill" Value="{DynamicResource AppAccent}"/>
+        <Setter Property="Opacity" Value="0.35"/>
+    </Style>
+
+</Styles>

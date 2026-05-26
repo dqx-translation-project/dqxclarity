@@ -9,8 +9,6 @@ app/misc_files/*.xlsx
 app/misc_files/*.db
 app/logs
 app/user_settings*
-app/launcher/user_settings*
-app/launcher/*.exe
 app/dqxclarity.exe
 app/pyproject.toml
 app/dqxclarity.lock
@@ -19,7 +17,14 @@ app/dqxclarity.lock
 **/node_modules/**
 
 # native build artifacts (rebuilt by Taskfile / CI)
-launcher/native/LocaleHook.dll
-launcher/native/build/
+DqxClarity/native/LocaleHook.dll
+DqxClarity/native/PacketWarden.dll
+DqxClarity/native/wanakana.dll
+DqxClarity/native/build/
+DqxClarity/native/wanakana/target/
+
+# dotnet build outputs
+DqxClarity/bin/
+DqxClarity/obj/
 
 .claude

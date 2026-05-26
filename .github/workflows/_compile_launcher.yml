@@ -25,22 +25,22 @@ jobs:
 
       - name: Build native DLL
         run: pwsh -ExecutionPolicy Bypass -File native/build.ps1
-        working-directory: launcher
+        working-directory: DqxClarity
 
-      - name: Publish launcher
+      - name: Publish
         run: >
           dotnet publish
           -c Release
           -r win-x64
           --self-contained false
           -p:PublishSingleFile=true
-        working-directory: launcher
+        working-directory: DqxClarity
 
       - name: Upload exe artifact
         uses: actions/upload-artifact@v7
         with:
           name: dqxclarity.exe
-          path: launcher/bin/Release/net9.0-windows/win-x64/publish/dqxclarity.exe
+          path: DqxClarity/bin/Release/net9.0-windows/win-x64/publish/dqxclarity.exe
           if-no-files-found: error
           retention-days: 7
           overwrite: true

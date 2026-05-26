@@ -1,0 +1,31 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="DqxClarity.App"
+             RequestedThemeVariant="Dark">
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://dqxclarity/Styles/BaseStyles.axaml"/>
+    </Application.Styles>
+    <Application.Resources>
+        <!-- Default rosie theme — updated at runtime by ThemeService -->
+        <SolidColorBrush x:Key="AppBg">#060d0b</SolidColorBrush>
+        <SolidColorBrush x:Key="AppSurface">#0c1814</SolidColorBrush>
+        <SolidColorBrush x:Key="AppSurface2">#142018</SolidColorBrush>
+        <SolidColorBrush x:Key="AppBorder">#203828</SolidColorBrush>
+        <SolidColorBrush x:Key="AppText">#c8e8de</SolidColorBrush>
+        <SolidColorBrush x:Key="AppMuted">#508870</SolidColorBrush>
+        <SolidColorBrush x:Key="AppAccent">#18b090</SolidColorBrush>
+        <SolidColorBrush x:Key="AppSuccess">#4caf82</SolidColorBrush>
+        <SolidColorBrush x:Key="AppDanger">#e05c6a</SolidColorBrush>
+
+        <Color x:Key="AppBgColor">#060d0b</Color>
+        <Color x:Key="AppSurfaceColor">#0c1814</Color>
+        <Color x:Key="AppSurface2Color">#142018</Color>
+        <Color x:Key="AppBorderColor">#203828</Color>
+        <Color x:Key="AppTextColor">#c8e8de</Color>
+        <Color x:Key="AppMutedColor">#508870</Color>
+        <Color x:Key="AppAccentColor">#18b090</Color>
+        <Color x:Key="AppSuccessColor">#4caf82</Color>
+        <Color x:Key="AppDangerColor">#e05c6a</Color>
+    </Application.Resources>
+</Application>

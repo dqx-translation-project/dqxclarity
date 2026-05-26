@@ -39,7 +39,7 @@ jobs:
 
       - name: Build package
         run: |
-          rsync -av --exclude="imgs/" --exclude="launcher/" --exclude="tests/" app/* dqxclarity/;
+          rsync -av --exclude="imgs/" --exclude="DqxClarity/" --exclude="tests/" app/* dqxclarity/;
           cp version.update pyproject.toml user_settings.ini dqxclarity.exe dqxclarity/;
           cp clarity_dialog.db dqxclarity/misc_files;
 

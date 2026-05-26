@@ -1,0 +1,198 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:DqxClarity.ViewModels"
+             x:Class="DqxClarity.Views.DebugView"
+             x:DataType="vm:DebugViewModel">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <Border Grid.Row="0"
+                Background="{DynamicResource AppSurface2}"
+                Padding="10,6">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="Filter:"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"
+                           Foreground="{DynamicResource AppMuted}"/>
+                <ComboBox Grid.Column="1"
+                          ItemsSource="{Binding Filters}"
+                          SelectedItem="{Binding SelectedFilter}"
+                          FontSize="11"
+                          MinWidth="200"
+                          MaxWidth="350"
+                          KeyDown="OnFilterKeyDown"
+                          ToolTip.Tip="Focus and type to jump to a matching packet type"/>
+                <Button Grid.Column="2"
+                        Padding="8,3"
+                        FontSize="11"
+                        Margin="8,0,0,0"
+                        ToolTip.Tip="Remove the current filter and its packets"
+                        Command="{Binding ClearCommand}">Clear</Button>
+                <Button Grid.Column="3"
+                        Padding="8,3"
+                        FontSize="11"
+                        Margin="8,0,0,0"
+                        ToolTip.Tip="Remove all filters and packets"
+                        Command="{Binding ClearAllCommand}">Clear All</Button>
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1"
+                      x:Name="DebugScroll"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto"
+                      AllowAutoHide="False"
+                      Background="{DynamicResource AppSurface}">
+            <ItemsControl ItemsSource="{Binding VisibleEntries}" Margin="10,4,10,8">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DebugPacketEntry">
+                        <Expander Margin="0,2"
+                                  Padding="0"
+                                  HorizontalAlignment="Stretch"
+                                  Background="{DynamicResource AppSurface2}"
+                                  BorderBrush="{DynamicResource AppBorder}"
+                                  BorderThickness="1"
+                                  CornerRadius="4">
+                            <Expander.Header>
+                                <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Stretch">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                                        <TextBlock FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppMuted}"
+                                                   Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss.fff}'}"/>
+                                        <TextBlock FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppAccent}"
+                                                   Text="{Binding TypeName}"/>
+                                        <TextBlock FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppMuted}"
+                                                   Text="{Binding ByteLength, StringFormat='({0} bytes)'}"/>
+                                        <TextBlock FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppSuccess}"
+                                                   IsVisible="{Binding WasModified}"
+                                                   Text="[modified]"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1"
+                                            Padding="4,2"
+                                            FontSize="10"
+                                            VerticalAlignment="Center"
+                                            ToolTip.Tip="Copy all to clipboard"
+                                            Click="OnCopyClick"
+                                            Tag="{Binding}">Copy</Button>
+                                </Grid>
+                            </Expander.Header>
+
+                            <StackPanel Margin="8,4,8,8">
+                                <!-- Unmodified: hex dump in a scrollable area -->
+                                <ScrollViewer IsVisible="{Binding !WasModified}"
+                                              MaxHeight="400"
+                                              HorizontalScrollBarVisibility="Auto"
+                                              VerticalScrollBarVisibility="Auto">
+                                    <TextBlock Text="{Binding HexDump}"
+                                               FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource AppText}"
+                                               TextWrapping="NoWrap"
+                                               Margin="8,0"/>
+                                </ScrollViewer>
+
+                                <!-- Modified: sub-expanders for original and modified -->
+                                <Expander IsVisible="{Binding WasModified}"
+                                          HorizontalAlignment="Stretch"
+                                          Margin="0,0,0,4"
+                                          Padding="0"
+                                          Background="Transparent"
+                                          BorderBrush="{DynamicResource AppBorder}"
+                                          BorderThickness="1"
+                                          CornerRadius="3">
+                                    <Expander.Header>
+                                        <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Stretch">
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="Original"
+                                                           FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                                                           FontSize="10"
+                                                           Foreground="{DynamicResource AppMuted}"
+                                                           VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding ByteLength, StringFormat='({0} bytes)'}"
+                                                           FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                                                           FontSize="10"
+                                                           Foreground="{DynamicResource AppMuted}"
+                                                           VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="1"
+                                                    Padding="4,1"
+                                                    FontSize="10"
+                                                    VerticalAlignment="Center"
+                                                    ToolTip.Tip="Copy original to clipboard"
+                                                    Click="OnCopyOriginalClick"
+                                                    Tag="{Binding}">Copy</Button>
+                                        </Grid>
+                                    </Expander.Header>
+                                    <ScrollViewer MaxHeight="400"
+                                                  HorizontalScrollBarVisibility="Auto"
+                                                  VerticalScrollBarVisibility="Auto">
+                                        <TextBlock Text="{Binding HexDump}"
+                                                   FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppText}"
+                                                   TextWrapping="NoWrap"
+                                                   Margin="8,4"/>
+                                    </ScrollViewer>
+                                </Expander>
+
+                                <Expander IsVisible="{Binding WasModified}"
+                                          HorizontalAlignment="Stretch"
+                                          Padding="0"
+                                          Background="Transparent"
+                                          BorderBrush="{DynamicResource AppBorder}"
+                                          BorderThickness="1"
+                                          CornerRadius="3">
+                                    <Expander.Header>
+                                        <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Stretch">
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="Modified"
+                                                           FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                                                           FontSize="10"
+                                                           Foreground="{DynamicResource AppSuccess}"
+                                                           VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding ModifiedByteLength, StringFormat='({0} bytes)'}"
+                                                           FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                                                           FontSize="10"
+                                                           Foreground="{DynamicResource AppMuted}"
+                                                           VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="1"
+                                                    Padding="4,1"
+                                                    FontSize="10"
+                                                    VerticalAlignment="Center"
+                                                    ToolTip.Tip="Copy modified to clipboard"
+                                                    Click="OnCopyModifiedClick"
+                                                    Tag="{Binding}">Copy</Button>
+                                        </Grid>
+                                    </Expander.Header>
+                                    <ScrollViewer MaxHeight="400"
+                                                  HorizontalScrollBarVisibility="Auto"
+                                                  VerticalScrollBarVisibility="Auto">
+                                        <TextBlock Text="{Binding ModifiedHexDump}"
+                                                   FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppText}"
+                                                   TextWrapping="NoWrap"
+                                                   Margin="8,4"/>
+                                    </ScrollViewer>
+                                </Expander>
+                            </StackPanel>
+
+                        </Expander>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+    </Grid>
+
+</UserControl>
