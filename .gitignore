@@ -3,19 +3,7 @@ venv*
 .vscode
 *.log
 .env
-app/defaults.pref
-app/misc_files/*.csv
-app/misc_files/*.xlsx
-app/misc_files/*.db
-app/logs
-app/user_settings*
 user_settings.ini
-app/dqxclarity.exe
-app/pyproject.toml
-app/dqxclarity.lock
-
-# building dqxcrypt
-**/node_modules/**
 
 # native build artifacts (rebuilt by Taskfile / CI)
 DqxClarity/native/LocaleHook.dll
