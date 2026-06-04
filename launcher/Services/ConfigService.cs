@@ -295,7 +295,7 @@ public class ConfigService
             var username = p.GetValueOrDefault($"player{n}_username") ?? "";
             var password = p.GetValueOrDefault($"player{n}_password") ?? "";
             if (!string.IsNullOrEmpty(username))
-                players.Add(new Models.SavedPlayer { Number = n, Username = username, Password = password });
+                players.Add(new Models.SavedPlayer { Number = n - 1, Username = username, Password = password });
         }
         return players;
     }
@@ -303,22 +303,22 @@ public class ConfigService
     public void SavePlayer(Models.SavedPlayer player)
     {
         var path = ConfigPath();
-        UpdateIniValue(path, "players", $"player{player.Number}_username", player.Username);
-        UpdateIniValue(path, "players", $"player{player.Number}_password", player.Password);
+        UpdateIniValue(path, "players", $"player{player.Number + 1}_username", player.Username);
+        UpdateIniValue(path, "players", $"player{player.Number + 1}_password", player.Password);
     }
 
     public void RemovePlayer(int number)
     {
         var path = ConfigPath();
-        UpdateIniValue(path, "players", $"player{number}_username", "");
-        UpdateIniValue(path, "players", $"player{number}_password", "");
+        UpdateIniValue(path, "players", $"player{number + 1}_username", "");
+        UpdateIniValue(path, "players", $"player{number + 1}_password", "");
     }
 
-    /// <summary>Returns the next unused player slot (1–4), or null if all are taken.</summary>
+    /// <summary>Returns the next unused player slot (0–3), or null if all are taken.</summary>
     public int? NextPlayerNumber(List<Models.SavedPlayer> existing)
     {
         var taken = existing.Select(p => p.Number).ToHashSet();
-        for (var n = 1; n <= 4; n++)
+        for (var n = 0; n <= 3; n++)
             if (!taken.Contains(n)) return n;
         return null;
     }
