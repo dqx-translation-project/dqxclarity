@@ -5,7 +5,7 @@
 
 .NOTES
     Requires Visual Studio Build Tools with the "Desktop development with C++"
-    workload (any of 2017, 2019, 2022).  MinGW is not supported because the
+    workload (any of 2017, 2019, 2022, 2026).  MinGW is not supported because the
     -m32 multilib is rarely installed on Windows.
 #>
 
@@ -38,6 +38,7 @@ to PATH, or install VS Build Tools with the "Desktop development with C++" workl
 Write-Host "Using cmake: $cmake"
 
 $vsGenerators = @(
+    "Visual Studio 18 2026",
     "Visual Studio 17 2022",
     "Visual Studio 16 2019",
     "Visual Studio 15 2017"
