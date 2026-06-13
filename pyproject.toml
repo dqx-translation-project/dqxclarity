@@ -8,6 +8,7 @@ dynamic = ["version"]
 requires-python = ">=3.11"
 dependencies = [
     "configparser==7.2.0",
+    "cryptography<46",
     "deepl==1.29.0",
     "frida==17.5.2",
     "google-api-core==2.30.3",
