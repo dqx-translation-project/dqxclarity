@@ -8,7 +8,7 @@ $PythonInstaller = "python-$PythonVersion.exe"
 $PythonUrl       = "https://www.python.org/ftp/python/$PythonVersion/$PythonInstaller"
 $PythonMD5Hash   = "691232496E346CE0860AEF052DD6844F"  # pragma: allowlist secret
 $PythonRegKey    = "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Python\PythonCore\3.11-$PythonArch\InstallPath"
-$HelpMessage     = "If you need help, please join the DQX Discord and post your question in the #clarity-questions channel. https://discord.gg/dragonquestx"
+$HelpMessage     = "If you need help, please open an issue on GitHub. https://github.com/dqx-translation-project/dqxclarity/issues"
 
 function LogWrite($string) {
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss.fff"

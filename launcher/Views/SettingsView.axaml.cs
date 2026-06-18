@@ -17,13 +17,6 @@ public partial class SettingsView : UserControl
 
     public event Func<Task>? BrowseFolderRequested;
 
-    private const string CommunityApiInfoText =
-        "The Community API submits your translation strings to a shared remote database. " +
-        "These strings are pooled across all contributors and help improve translations for the entire project.\n\n" +
-        "To participate, you must meet the following requirement:\n\n" +
-        "  • Both your player name and sibling name must be unique - not a common Japanese word, name, or in-game name.\n\n" +
-        "If you meet this requirement and want to contribute, reach out to Serany (mebo) on Discord. " +
-        "They'll verify your names and provide you with an API key to paste here.";
 
     private const string NameOverridesHelpText =
         "This tab lets you override how Japanese player and MyTown names are displayed.\n\n" +
@@ -74,12 +67,6 @@ public partial class SettingsView : UserControl
         "Opens the folder where dqxclarity stores its log files in your file explorer, " +
         "so you can quickly find and attach them when reporting issues.";
 
-    private const string AdvancedApiHelpText =
-        "Community API\n" +
-        "Submits untranslated strings encountered during your session to the dqxclarity team's server " +
-        "so they can be reviewed and added to the translation database. " +
-        "This is a contributor feature - you will need a Community API key from the team. " +
-        "Reach out to Serany (mebo) on Discord if you would like one.";
 
     private const string InstallationHelpText =
         "DQX Folder Path\n" +
@@ -317,14 +304,6 @@ public partial class SettingsView : UserControl
     {
         if (BrowseFolderRequested != null)
             await BrowseFolderRequested.Invoke();
-    }
-
-    private async void OnCommunityApiChanged(object? sender, RoutedEventArgs e)
-    {
-        if (sender is not CheckBox cb || cb.IsChecked != true) return;
-        var win = TopLevel.GetTopLevel(this) as MainWindow;
-        if (win == null) return;
-        await win.ShowInfoAsync("Community API", CommunityApiInfoText);
     }
 
     private void OnDbTableSelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -685,13 +664,6 @@ public partial class SettingsView : UserControl
         var win = TopLevel.GetTopLevel(this) as MainWindow;
         if (win == null) return;
         await win.ShowInfoAsync("Logging", LoggingHelpText);
-    }
-
-    private async void OnAdvancedApiHelpClick(object? sender, RoutedEventArgs e)
-    {
-        var win = TopLevel.GetTopLevel(this) as MainWindow;
-        if (win == null) return;
-        await win.ShowInfoAsync("API Settings", AdvancedApiHelpText);
     }
 
     private async void OnInstallationHelpClick(object? sender, RoutedEventArgs e)

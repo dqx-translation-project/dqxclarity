@@ -117,15 +117,3 @@ jobs:
           name: 'Release: ${{ env.NEW_TAG }}'  # github.ref does not trim refs/tags/ when used here
           generate_release_notes: true
           fail_on_unmatched_files: true
-
-      - name: Notify Discord of new release
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          TAG="${{ env.NEW_TAG }}"
-          REPO="${{ github.repository }}"
-          MESSAGE=$(printf "dqxclarity has been updated to %s.\n\nchanges: https://github.com/%s/releases/tag/%s" "$TAG" "$REPO" "$TAG")
-          PAYLOAD=$(jq -n --arg content "$MESSAGE" '{content: $content}')
-
-          curl -s -X POST "${{ secrets.DISCORD_CLARITY_RELEASES_WEBHOOK_URL }}" \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD"

@@ -157,8 +157,6 @@ public class ConfigService
             OllamaUrl         = t.GetValueOrDefault("ollama_url")         ?? "http://localhost:11434",
             OllamaModel       = t.GetValueOrDefault("ollama_model")       ?? "llama3",
             LibreTranslateUrl = t.GetValueOrDefault("libretranslate_url") ?? "https://libretranslate.com",
-            EnableCommunityApi = ToBool(t.GetValueOrDefault("enablecommunityapi")),
-            CommunityApiKey   = t.GetValueOrDefault("communityapikey")    ?? "",
         };
     }
 
@@ -222,8 +220,6 @@ public class ConfigService
         WriteKv(sb, "ollama_url",          translation.OllamaUrl);
         WriteKv(sb, "ollama_model",        translation.OllamaModel);
         WriteKv(sb, "libretranslate_url",  translation.LibreTranslateUrl);
-        WriteKv(sb, "enablecommunityapi",  BoolToIni(translation.EnableCommunityApi));
-        WriteKv(sb, "communityapikey",     translation.CommunityApiKey);
 
         if (configPairs.Count > 0)
         {

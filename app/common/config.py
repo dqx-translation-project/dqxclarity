@@ -22,8 +22,6 @@ class UserConfig:
             "ollama_url": "http://localhost:11434",
             "ollama_model": "llama3",
             "libretranslate_url": "https://libretranslate.com",
-            "communityapikey": "",
-            "enablecommunityapi": "False",
         }
         config["config"] = {"installdirectory": "C:/Program Files (x86)/SquareEnix/DRAGON QUEST X"}
         return config
@@ -107,14 +105,6 @@ class UserConfig:
     @property
     def libretranslate_url(self) -> str:
         return self.translation_section.get("libretranslate_url", "https://libretranslate.com")
-
-    @property
-    def community_enabled(self) -> bool:
-        return self.translation_section.getboolean("enablecommunityapi", False)
-
-    @property
-    def community_key(self) -> str:
-        return self.translation_section.get("communityapikey", "")
 
     @property
     def config_section(self):

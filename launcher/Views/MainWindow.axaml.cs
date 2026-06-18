@@ -208,7 +208,8 @@ public partial class MainWindow : Window
         _supportOpen = true;
         var dlg = new SupportPopup();
         void close() { _supportOpen = false; HideOverlay(); }
-        dlg.RequestClose += close;
+        dlg.RequestClose   += close;
+        dlg.RequestOpenUrl += url => _vm?.OpenBrowser(url);
         _overlayDismissAction = close;
         ShowOverlay(dlg);
     }
