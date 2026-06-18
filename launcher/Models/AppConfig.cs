@@ -21,8 +21,6 @@ public class TranslationConfig
     public string OllamaUrl          { get; set; } = "http://localhost:11434";
     public string OllamaModel        { get; set; } = "llama3";
     public string LibreTranslateUrl  { get; set; } = "https://libretranslate.com";
-    public bool   EnableCommunityApi { get; set; }
-    public string CommunityApiKey    { get; set; } = "";
 }
 
 public class GameConfig

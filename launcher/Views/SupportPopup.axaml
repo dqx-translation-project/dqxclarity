@@ -11,27 +11,17 @@
                        FontSize="13"
                        Foreground="{DynamicResource AppText}"/>
 
-            <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto">
-                <TextBlock Grid.Column="0"
-                           Text="Discord:"
-                           FontSize="12"
-                           Foreground="{DynamicResource AppMuted}"
-                           VerticalAlignment="Center"
-                           Margin="0,0,8,0"/>
-                <TextBox Grid.Column="1"
-                         x:Name="DiscordBox"
-                         IsReadOnly="True"
-                         FontSize="11"
-                         Text="https://discord.gg/dragonquestx"/>
-                <Button Grid.Column="2"
-                        x:Name="CopyBtn"
-                        Margin="6,0,0,0"
-                        Click="OnCopy">Copy</Button>
-            </Grid>
+            <TextBlock Text="For help with dqxclarity, please open an issue on GitHub. Only program-specific help is provided."
+                       FontSize="12"
+                       Foreground="{DynamicResource AppMuted}"
+                       TextWrapping="Wrap"/>
 
-            <Button HorizontalAlignment="Right"
-                    Padding="16,5"
-                    Click="OnClose">Close</Button>
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <Button x:Name="GithubBtn"
+                        Click="OnGithubClick">Open GitHub Issues</Button>
+                <Button Padding="16,5"
+                        Click="OnClose">Close</Button>
+            </StackPanel>
         </StackPanel>
     </Border>
 </UserControl>

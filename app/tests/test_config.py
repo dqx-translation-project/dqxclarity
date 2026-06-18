@@ -64,14 +64,6 @@ class TestConfig(unittest.TestCase):
         config = UserConfig(".")
         self.assertEqual(config.libretranslate_url, "http://localhost:5000")
 
-    def test_community_api_properties(self) -> None:
-        config = UserConfig(".")
-        config.update(section="translation", key="enablecommunityapi", value="True")
-        config.update(section="translation", key="communityapikey", value="community_key_789")
-        config = UserConfig(".")
-        self.assertTrue(config.community_enabled)
-        self.assertEqual(config.community_key, "community_key_789")
-
     def test_game_directory_property(self) -> None:
         config = UserConfig(".")
         config.update(section="config", key="installdirectory", value="D:/Games/DQX")
@@ -94,8 +86,6 @@ class TestConfig(unittest.TestCase):
             "enablegoogletranslate": "False",
             "googletranslatekey": "",
             "enablegoogletranslatefree": "False",
-            "communityapikey": "",
-            "enablecommunityapi": "False",
         }
         cfg["config"] = {"installdirectory": "C:/Program Files (x86)/SquareEnix/DRAGON QUEST X"}
         with open("user_settings.ini", "w") as f:
@@ -115,8 +105,6 @@ class TestConfig(unittest.TestCase):
             "enablegoogletranslate": "True",
             "googletranslatekey": "gkey",
             "enablegoogletranslatefree": "False",
-            "communityapikey": "",
-            "enablecommunityapi": "False",
         }
         cfg["config"] = {"installdirectory": "C:/Program Files (x86)/SquareEnix/DRAGON QUEST X"}
         with open("user_settings.ini", "w") as f:
@@ -136,8 +124,6 @@ class TestConfig(unittest.TestCase):
             "enablegoogletranslate": "False",
             "googletranslatekey": "",
             "enablegoogletranslatefree": "True",
-            "communityapikey": "",
-            "enablecommunityapi": "False",
         }
         cfg["config"] = {"installdirectory": "C:/Program Files (x86)/SquareEnix/DRAGON QUEST X"}
         with open("user_settings.ini", "w") as f:
@@ -156,11 +142,11 @@ class TestConfig(unittest.TestCase):
 
     def test_config_auto_add_missing_keys(self) -> None:
         config = UserConfig(".")
-        config.config.remove_option("translation", "enablecommunityapi")
+        config.config.remove_option("translation", "translate_service")
         with open(config.file, "w") as f:
             config.config.write(f)
         config = UserConfig(".")
-        self.assertTrue(config.config.has_option("translation", "enablecommunityapi"))
+        self.assertTrue(config.config.has_option("translation", "translate_service"))
 
     def test_translation_section_property(self) -> None:
         config = UserConfig(".")

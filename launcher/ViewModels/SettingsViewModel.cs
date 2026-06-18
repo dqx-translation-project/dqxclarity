@@ -57,8 +57,6 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _ollamaUrl         = "http://localhost:11434";
     [ObservableProperty] private string _ollamaModel       = "llama3";
     [ObservableProperty] private string _libreTranslateUrl = "https://libretranslate.com";
-    [ObservableProperty] private bool   _useCommunityApi;
-    [ObservableProperty] private string _communityApiKey   = "";
 
     public bool ShowKeyField =>
         SelectedTranslateService?.Value is "deepl" or "google" or "chatgpt" or "libretranslate";
@@ -378,7 +376,6 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _hintText = "";
     [ObservableProperty] private bool   _updaterRunning;
     [ObservableProperty] private bool   _showDbHelp;
-    [ObservableProperty] private bool   _showCommunityApiInfo;
     // ── Name overrides ────────────────────────────────────────────────────
     public ObservableCollection<NamePair> PlayerNames { get; } = [];
     public ObservableCollection<NamePair> MytownNames { get; } = [];
@@ -459,9 +456,6 @@ public partial class SettingsViewModel : ObservableObject
         _ollamaUrl          = config.Translation.OllamaUrl;
         _ollamaModel        = config.Translation.OllamaModel;
         _libreTranslateUrl  = config.Translation.LibreTranslateUrl;
-        _useCommunityApi   = config.Translation.EnableCommunityApi;
-        _communityApiKey   = config.Translation.CommunityApiKey;
-
         _dqxDir           = config.Game.InstallDirectory;
         _saveFolderPath   = config.Game.SaveFolderPath;
         _simultaneousLaunch = config.Launcher.SimultaneousLaunch;
@@ -587,8 +581,6 @@ public partial class SettingsViewModel : ObservableObject
         var missing = new List<string>();
         if (svc is "deepl" or "google" or "chatgpt" && string.IsNullOrWhiteSpace(TranslateKey))
             missing.Add(SelectedTranslateService?.Display ?? "Translation service");
-        if (UseCommunityApi && string.IsNullOrWhiteSpace(CommunityApiKey))
-            missing.Add("Community API");
 
         if (missing.Count > 0)
         {
@@ -616,8 +608,6 @@ public partial class SettingsViewModel : ObservableObject
             OllamaUrl          = OllamaUrl,
             OllamaModel        = OllamaModel,
             LibreTranslateUrl  = LibreTranslateUrl,
-            EnableCommunityApi = UseCommunityApi,
-            CommunityApiKey    = CommunityApiKey,
         };
         try { _cfg.Save(launcherCfg, translation); } catch { }
 

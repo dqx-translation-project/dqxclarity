@@ -244,27 +244,6 @@
                                             ToolTip.Tip="Open the logs folder in file explorer.">Open Log Folder</Button>
                                 </StackPanel>
                             </Border>
-                            <Border Classes="fieldset">
-                                <StackPanel Spacing="8">
-                                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,0">
-                                        <TextBlock Classes="legend" Text="API Settings" Margin="0" VerticalAlignment="Center"/>
-                                        <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnAdvancedApiHelpClick">?</Button>
-                                    </StackPanel>
-                                    <Grid ColumnDefinitions="130,*">
-                                        <CheckBox Grid.Column="0"
-                                                  Content="Community API"
-                                                  IsChecked="{Binding UseCommunityApi}"
-                                                  IsCheckedChanged="OnCommunityApiChanged"
-                                                  ToolTip.Tip="Enable Community API for submitting game strings to devs."/>
-                                        <TextBox Grid.Column="1"
-                                                 PasswordChar="•"
-                                                 Watermark="Community API key"
-                                                 Text="{Binding CommunityApiKey}"
-                                                 IsEnabled="{Binding UseCommunityApi}"
-                                                 ToolTip.Tip="Paste your Community API Key here."/>
-                                    </Grid>
-                                </StackPanel>
-                            </Border>
                         </StackPanel>
 
                         <!-- ══ GAME TAB ══════════════════════════════════ -->
