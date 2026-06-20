@@ -6,19 +6,13 @@ See the [wiki](https://dqx-translation-project.github.io/) for how to get starte
 
 ## About
 
-Hello, I'm Serany (Discord: @mebo, Github: @jmctune) and wrote `dqxclarity`. I've worked on this project since about April 2021~ and have used it as a learning experience to pick up Python, learn a bit of reverse engineering and remote process memory editing. I've put a lot of time into this project and will continue to actively develop and maintain it as long as I have an interest in Dragon Quest X (or if this game ever gets a western localization).
+`dqxclarity` has been in active development since April 2021. This includes `dqxclarity` (this repository), the modded translation DAT published in the releases, and other tooling as part of the `dqx-translation-project` GitHub org.
 
-This includes `dqxclarity` (this repository), the modded translation DAT you see published in the releases and other tooling as part of this Github org (`dqx-translation-project`).
-
-I appreciate the support and contributions from others that have committed to this project:
+Contributors:
 
 - @xshobux
 - @SuperFirm84
 - @Sevithian (built the initial launcher)
-
-## Support
-
-If you'd like to show your appreciation for developing these English tools, see the Sponsorship link on the right-hand side of this page.
 
 ## Disclaimer
 
