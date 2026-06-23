@@ -10,7 +10,7 @@ dependencies = [
     "configparser==7.2.0",
     "cryptography==48.0.1",  # do not upgrade this, 49.0.0 no longer supports 32-bit python
     "deepl==1.29.0",
-    "frida==17.5.2",
+    "frida==17.15.3",
     "google-api-core==2.30.3",
     "google-api-python-client==2.196.0",
     "loguru==0.7.3",
