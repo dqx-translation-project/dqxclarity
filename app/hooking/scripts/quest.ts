@@ -1,4 +1,4 @@
-// hook for translating a quest.
+// hook for translating a quest. (8.0: prologue DQXGame.exe+24B030, sig match at +24B145)
 /*
     55                    - push ebp
     8B EC                 - mov ebp,esp

@@ -1,11 +1,11 @@
-// hook for dialogue text
+// hook for dialogue text (8.0: DQXGame.exe+755F50)
 /*
     55                    - push ebp
     8B EC                 - mov ebp,esp
     56                    - push esi
     8B F1                 - mov esi,ecx
     80 BE EC000000 00     - cmp byte ptr [esi+000000EC],00
-    74 07                 - je DQXGame.exe+72B7E6
+    74 07                 - je DQXGame.exe+755F66
     C6 86 ED000000 01     - mov byte ptr [esi+000000ED],01
     FF 75 18              - push [ebp+18]
     8B 45 0C              - mov eax,[ebp+0C]

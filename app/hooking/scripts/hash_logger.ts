@@ -1,10 +1,10 @@
-// hook for logging hashed filenames.
+// hook for logging hashed filenames. (8.0: DQXGame.exe+1043C0)
 /*
     55                    - push ebp
     8B EC                 - mov ebp,esp
     8B 55 08              - mov edx,[ebp+08]
     85 D2                 - test edx,edx
-    75 04                 - jne DQXGame.exe+1039DE
+    75 04                 - jne DQXGame.exe+1043CE
     33 C0                 - xor eax,eax
     5D                    - pop ebp
     C3                    - ret

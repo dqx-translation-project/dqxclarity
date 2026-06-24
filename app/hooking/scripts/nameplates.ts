@@ -1,11 +1,11 @@
-// hook for entity nameplates.
+// hook for entity nameplates. (8.0: DQXGame.exe+14BB90)
 /*
     55                    - push ebp
     8B EC                 - mov ebp,esp
     56                    - push esi
     8B B1 88010000        - mov esi,[ecx+00000188]
     85 F6                 - test esi,esi
-    74 16                 - je DQXGame.exe+141B54
+    74 16                 - je DQXGame.exe+142BB4
     8B 45 08              - mov eax,[ebp+08]
     8D 4E 08              - lea ecx,[esi+08]
     51                    - push ecx
