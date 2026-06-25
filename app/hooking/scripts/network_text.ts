@@ -1,13 +1,13 @@
-// hook for network text template string replacements.
+// hook for network text template string replacements. (8.0: DQXGame.exe+53A750)
 /*
     55                    - push ebp
     8B EC                 - mov ebp,esp
     81 EC DC030000        - sub esp,000003DC
-    A1 40C5F701           - mov eax,[DQXGame.exe+1C3C540]
+    A1 C0211502           - mov eax,[DQXGame.exe+1CA21C0]   ; /GS cookie
     33 C5                 - xor eax,ebp
     89 45 FC              - mov [ebp-04],eax
     8B 45 14              - mov eax,[ebp+14]
-    8B 0D C083FA01        - mov ecx,[DQXGame.exe+1C683C0]
+    8B 0D D0E41702        - mov ecx,[DQXGame.exe+1CCE4D0]
     89 45 D8              - mov [ebp-28],eax
     64 A1 2C000000        - mov eax,fs:[0000002C]
     53                    - push ebx

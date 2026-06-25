@@ -1,5 +1,6 @@
 // hook for player login - initializes database with player/sibling data.
 // this is triggered when the player logs in with their character.
+// (8.0: DQXGame.exe+4F4290)
 /*
     55                    - push ebp
     8B EC                 - mov ebp,esp
@@ -8,14 +9,14 @@
     57                    - push edi
     8B 46 58              - mov eax,[esi+58]
     85 C0                 - test eax,eax
-    74 10                 - je DQXGame.exe+422C8E
+    74 10                 - je DQXGame.exe+4F42AE
     50                    - push eax
-    E8 9CAEC1FF           - call DQXGame.exe+3DB20
+    E8 6CC7BCFF           - call mem_deleteIfNotNull
     83 C4 04              - add esp,04
     C7 46 58 00000000     - mov [esi+58],00000000
     6A 02                 - push 02
-    68 B0000000           - push 000000B0
-    E8 F6ADC1FF           - call DQXGame.exe+3DA90
+    68 B8000000           - push 000000B8           ; struct grew 0xB0 -> 0xB8 in 8.0
+    E8 36C7BCFF           - call <allocator>
 */
 (function() {
     const hookName = '{{HOOK_NAME}}';

@@ -108,7 +108,7 @@ HOOKS = {
     "default": [
         FridaHook(
             name="corner_text",
-            signature="55 8B EC 8B 45 ?? 83 EC ?? 53 8B 5D ?? 56 8B F1 57 85 C0",
+            signature="55 8B EC 83 EC ?? 8B 45 14 53 56 8B 75 10 89 4D ?? 89 45 ?? 57 85 F6",
             script_file="corner_text.ts",
             message_handler=corner_text_on_message,
             enabled=True,

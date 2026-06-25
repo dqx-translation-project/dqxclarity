@@ -1,9 +1,9 @@
-// hook for walkthrough text replacements.
+// hook for walkthrough text replacements. (8.0: DQXGame.exe+2E3030)
 /*
     55                    - push ebp
     8B EC                 - mov ebp,esp
     83 EC 40              - sub esp,40
-    8B 15 90C2F901        - mov edx,[DQXGame.exe+1C5C290]
+    8B 15 C8201702        - mov edx,[DQXGame.exe+1CC20C8]
     53                    - push ebx
     8B D9                 - mov ebx,ecx
     89 5D FC              - mov [ebp-04],ebx
@@ -12,14 +12,14 @@
     85 D2                 - test edx,edx
     ...
     ...
- >> E8 437FFFFF           - call DQXGame.exe+2D59E0
+ >> E8 337FFFFF           - call DQXGame.exe+2DAFA0   ; <- signature anchors here, callee hooked
  >> 8D B8 EC000000        - lea edi,[eax+000000EC]
     8B CF                 - mov ecx,edi
     8D 51 01              - lea edx,[ecx+01]
     8A 01                 - mov al,[ecx]
     41                    - inc ecx
     84 C0                 - test al,al
-    75 F9                 - jne DQXGame.exe+2DDAA8
+    75 F9                 - jne DQXGame.exe+2E3078
     2B CA                 - sub ecx,edx
 
     to find this, search for walkthrough text:

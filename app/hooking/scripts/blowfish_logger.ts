@@ -1,4 +1,4 @@
-// hook for logging blowfish decryption keys.
+// hook for logging blowfish decryption keys. (8.0: DQXGame.exe+104BF0)
 /*
     55                    - push ebp
     8B EC                 - mov ebp,esp
@@ -6,9 +6,9 @@
     57                    - push edi
     8B 79 24              - mov edi,[ecx+24]
     85 FF                 - test edi,edi
-    74 59                 - je DQXGame.exe+104265
+    74 59                 - je DQXGame.exe+104C55
     83 7D 08 00           - cmp dword ptr [ebp+08],00
-    74 53                 - je DQXGame.exe+104265
+    74 53                 - je DQXGame.exe+104C55
     8B 45 0C              - mov eax,[ebp+0C]
 
 */

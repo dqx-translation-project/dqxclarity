@@ -1,16 +1,22 @@
-// hook for corner text.
+// hook for corner text. (8.0: DQXGame.exe+7416D0)
 /*
     55                    - push ebp
     8B EC                 - mov ebp,esp
-    8B 45 10              - mov eax,[ebp+10]
-    83 EC 14              - sub esp,14
+    83 EC 34              - sub esp,34
+    8B 45 14              - mov eax,[ebp+14]
     53                    - push ebx
-    8B 5D 14              - mov ebx,[ebp+14]
     56                    - push esi
-    8B F1                 - mov esi,ecx
+    8B 75 10              - mov esi,[ebp+10]      ; esi = text (args[2])
+    89 4D F4              - mov [ebp-0C],ecx      ; this
+    89 45 D8              - mov [ebp-28],eax
     57                    - push edi
-    85 C0                 - test eax,eax
-    0F84 16020000         - je DQXGame.exe+717F9F
+    85 F6                 - test esi,esi
+    0F84 21040000         - je DQXGame.exe+741B0E
+
+    note: prior to the 8.0 patch this function used a different register
+    allocation (text in eax, this in esi). it was recompiled and the old
+    signature stopped matching. text pointer is still the 3rd stack arg
+    (args[2]).
 
     top-right corner text from NPCs. seen primarily in v5/v6.
     how it was found:
