@@ -190,6 +190,7 @@ public class ConfigService
                 BannerCollapsed          = ToBool(l.GetValueOrDefault("bannercollapsed")),
                 LanguagePackSupport      = ToBool(l.GetValueOrDefault("languagepacksupport")),
                 LanguagePackFirstRunDone = ToBool(l.GetValueOrDefault("languagepackfirstrundone")),
+                AutomaticLanguagePackUpdates = ToBool(l.GetValueOrDefault("automaticlanguagepackupdates")),
                 ActiveLanguagePacks      = (l.GetValueOrDefault("activelanguagepacks") ?? "")
                     .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -257,6 +258,7 @@ public class ConfigService
         WriteKv(sb, "bannercollapsed",          bannerCollapsed);
         WriteKv(sb, "languagepacksupport",      BoolToIni(launcher.LanguagePackSupport));
         WriteKv(sb, "languagepackfirstrundone", langPackFirstRun);
+        WriteKv(sb, "automaticlanguagepackupdates", BoolToIni(launcher.AutomaticLanguagePackUpdates));
         WriteKv(sb, "activelanguagepacks",       string.Join('|', launcher.ActiveLanguagePacks));
 
         var dir = Path.GetDirectoryName(path)!;
@@ -343,6 +345,9 @@ public class ConfigService
 
     public void SaveLanguagePackFirstRunDone(bool value) =>
         UpdateIniValue(ConfigPath(), "launcher", "languagepackfirstrundone", BoolToIni(value));
+
+    public void SaveAutomaticLanguagePackUpdates(bool value) =>
+        UpdateIniValue(ConfigPath(), "launcher", "automaticlanguagepackupdates", BoolToIni(value));
 
     public void SaveActiveLanguagePacks(IEnumerable<string> fileNames) =>
         UpdateIniValue(

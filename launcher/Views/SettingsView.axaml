@@ -745,18 +745,23 @@
                         <Button Grid.Column="2"
                                 Command="{Binding CheckLanguagePackUpdatesCommand}"
                                 IsEnabled="{Binding !LanguagePacksLoading}"
-                                ToolTip.Tip="Downloads each language pack's download_url and compares its mod.jsons version."
+                                ToolTip.Tip="Checks each pack's download URL for a newer version (CLPK sha256, using cache headers / a ranged header read)."
                                 Margin="0,0,10,0">Check Updates</Button>
                         <Button Grid.Column="3"
                                 Command="{Binding LoadPackFromDiskCommand}"
                                 IsEnabled="{Binding !LanguagePacksLoading}"
                                 ToolTip.Tip="Imports a language pack .zip from your computer into the language packs folder."
                                 Margin="0,0,10,0">Load .zip…</Button>
-                        <CheckBox Grid.Column="4"
-                                  Content="Activate Language Pack support"
-                                  IsChecked="{Binding LanguagePackSupport}"
-                                  VerticalAlignment="Center"
-                                  ToolTip.Tip="Copies version.dll into the DQX Game folder when enabled, and removes it when disabled."/>
+                        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                            <CheckBox Content="Activate Language Pack support"
+                                      IsChecked="{Binding LanguagePackSupport}"
+                                      VerticalAlignment="Center"
+                                      ToolTip.Tip="Copies version.dll into the DQX Game folder when enabled, and removes it when disabled."/>
+                            <CheckBox Content="Automatic updates"
+                                      IsChecked="{Binding AutomaticUpdates}"
+                                      VerticalAlignment="Center"
+                                      ToolTip.Tip="On every startup, checks each pack's download URL and silently downloads + applies any newer version (sha256-verified)."/>
+                        </StackPanel>
                     </Grid>
 
                     <TextBlock Grid.Row="1"

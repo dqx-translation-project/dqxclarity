@@ -1,9 +1,30 @@
 using DqxClarity.Launcher.Models;
 using System.IO.Compression;
+using System.Net;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace DqxClarity.Launcher.Services;
+
+/// <summary>Per-pack HTTP cache validators, persisted to a sidecar so startup checks are cheap.</summary>
+public record PackUpdateRecord
+{
+    [JsonPropertyName("etag")]         public string? Etag { get; init; }
+    [JsonPropertyName("lastModified")] public string? LastModified { get; init; }
+    [JsonPropertyName("checkedAt")]    public string? CheckedAt { get; init; }
+}
+
+/// <summary>Outcome of an update check. When <see cref="DownloadedBytes"/> is non-null the new pack
+/// is already in hand (a check that had to fetch the whole body), so applying it avoids a re-download.</summary>
+public sealed class UpdateCheckResult
+{
+    public bool    UpdateAvailable;
+    public byte[]? DownloadedBytes;
+    public string? RemoteSha;
+    public string  Message = "";
+}
 
 public class LanguagePackService
 {
@@ -161,32 +182,23 @@ public class LanguagePackService
             Status = reason,
         };
 
+    /// <summary>Manual "Check Updates": runs the CLPK-aware check for each pack and flags HasUpdate.</summary>
     public async Task CheckUpdatesAsync(IEnumerable<LanguagePack> languagePacks)
     {
-        using var http = new HttpClient();
-        http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("dqxclarity-launcher", "1.0"));
-
         foreach (var pack in languagePacks.Where(m => m.CanActivate))
         {
             if (string.IsNullOrWhiteSpace(pack.DownloadUrl))
             {
-                pack.Status = "No download_url";
+                pack.Status = "No download URL";
                 continue;
             }
 
             try
             {
                 pack.Status = "Checking...";
-                var remote = await ReadRemoteManifest(http, pack.DownloadUrl);
-                pack.RemoteVersion = remote.Version;
-
-                var compare = CompareVersions(remote.Version, pack.Version);
-                pack.HasUpdate = compare > 0;
-                pack.Status = compare > 0
-                    ? $"Update available: {remote.Version}"
-                    : compare == 0
-                        ? "Up to date"
-                        : $"Local newer: {pack.Version}";
+                var check = await CheckForUpdateAsync(pack);
+                pack.HasUpdate = check.UpdateAvailable;
+                pack.Status = check.UpdateAvailable ? "Update available" : check.Message;
             }
             catch (Exception ex)
             {
@@ -196,23 +208,226 @@ public class LanguagePackService
         }
     }
 
-    public async Task<LanguagePack> DownloadUpdateAsync(LanguagePack pack)
+    public Task<LanguagePack> DownloadUpdateAsync(LanguagePack pack) =>
+        ApplyUpdateAsync(pack, null);
+
+    // ── CLPK-aware updater ────────────────────────────────────────────────
+    //
+    // Tiered check (validated against HTTP semantics):
+    //   1. If we have a stored ETag/Last-Modified, send a conditional GET (If-None-Match /
+    //      If-Modified-Since, Cache-Control: no-cache). 304 => unchanged. 200 => compare the
+    //      body's sha to the local sha (the server may have ignored the conditional).
+    //   2. Otherwise Range-peek bytes 0-2047 to read the remote CLPK header's sha256 without
+    //      pulling the whole payload; compare to the local sha. (206 expected; a 200 means the
+    //      server ignored Range and returned the full body, which we then compare directly.)
+    // The sha — not the ETag — is the authority for "actually changed"; ETag/304 is only the
+    // fast path for "definitely unchanged". Any ETag/Last-Modified seen is stored for next time.
+
+    private string UpdateStatePath() => Path.Combine(SourceLanguagePacksDir(), ".update-state.json");
+
+    private Dictionary<string, PackUpdateRecord> LoadUpdateState()
+    {
+        try
+        {
+            var path = UpdateStatePath();
+            if (!File.Exists(path)) return new(StringComparer.OrdinalIgnoreCase);
+            var parsed = JsonSerializer.Deserialize<Dictionary<string, PackUpdateRecord>>(File.ReadAllText(path));
+            return parsed == null
+                ? new(StringComparer.OrdinalIgnoreCase)
+                : new(parsed, StringComparer.OrdinalIgnoreCase);
+        }
+        catch { return new(StringComparer.OrdinalIgnoreCase); }
+    }
+
+    private void SaveUpdateState(Dictionary<string, PackUpdateRecord> state)
+    {
+        try
+        {
+            EnsureSourceLanguagePacksFolder();
+            File.WriteAllText(UpdateStatePath(),
+                JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true }));
+        }
+        catch { /* sidecar is a cache; failing to persist only costs a redundant check next time */ }
+    }
+
+    private void RecordValidators(Dictionary<string, PackUpdateRecord> state, string fileName, HttpResponseMessage resp)
+    {
+        var etag = resp.Headers.ETag?.ToString();
+        var lastMod = resp.Content.Headers.LastModified?.ToString("o");
+        state[fileName] = new PackUpdateRecord
+        {
+            Etag         = string.IsNullOrEmpty(etag) ? null : etag,
+            LastModified = lastMod,
+            CheckedAt    = DateTimeOffset.UtcNow.ToString("o"),
+        };
+        SaveUpdateState(state);
+    }
+
+    private static string ComputeLocalPayloadSha(string path)
+    {
+        var (payload, _) = ClpkFormat.OpenPayload(path);
+        using var _p = payload;
+        return ClpkFormat.ComputeSha256Hex(payload);
+    }
+
+    private static string RemoteShaFromBytes(byte[] bytes)
+    {
+        using var ms = new MemoryStream(bytes);
+        if (ClpkFormat.TryReadHeader(ms, out var meta, out _, out _) && !string.IsNullOrEmpty(meta!.Sha256))
+            return meta.Sha256.ToLowerInvariant();
+        // Remote is a plain zip (no CLPK header): its bytes ARE the payload.
+        return Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+    }
+
+    private static HttpClient NewHttp()
+    {
+        var http = new HttpClient();
+        http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("dqxclarity-launcher", "1.0"));
+        return http;
+    }
+
+    public async Task<UpdateCheckResult> CheckForUpdateAsync(LanguagePack pack)
+    {
+        var result = new UpdateCheckResult();
+        if (string.IsNullOrWhiteSpace(pack.DownloadUrl)) { result.Message = "No download URL"; return result; }
+
+        var fileName = Path.GetFileName(pack.Path);
+        var state = LoadUpdateState();
+        state.TryGetValue(fileName, out var rec);
+
+        string localSha;
+        try { localSha = ComputeLocalPayloadSha(pack.Path); } catch { localSha = ""; }
+
+        using var http = NewHttp();
+        var haveValidators = rec != null && (!string.IsNullOrEmpty(rec.Etag) || !string.IsNullOrEmpty(rec.LastModified));
+
+        if (haveValidators)
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, pack.DownloadUrl);
+            req.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true };
+            if (!string.IsNullOrEmpty(rec!.Etag))
+                try { req.Headers.IfNoneMatch.Add(EntityTagHeaderValue.Parse(rec.Etag)); } catch { }
+            if (!string.IsNullOrEmpty(rec.LastModified) && DateTimeOffset.TryParse(rec.LastModified, out var lm))
+                req.Headers.IfModifiedSince = lm;
+
+            using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
+            if (resp.StatusCode == HttpStatusCode.NotModified)
+            {
+                RecordValidators(state, fileName, resp);
+                result.Message = "Up to date";
+                return result;
+            }
+            if (resp.IsSuccessStatusCode)
+            {
+                var bytes = await resp.Content.ReadAsByteArrayAsync();
+                RecordValidators(state, fileName, resp);
+                var remoteSha = RemoteShaFromBytes(bytes);
+                if (!string.IsNullOrEmpty(remoteSha) && !remoteSha.Equals(localSha, StringComparison.OrdinalIgnoreCase))
+                {
+                    result.UpdateAvailable = true;
+                    result.DownloadedBytes = bytes;
+                    result.RemoteSha = remoteSha;
+                    result.Message = "Update available";
+                }
+                else result.Message = "Up to date";
+                return result;
+            }
+            result.Message = $"Update check failed: HTTP {(int)resp.StatusCode}";
+            return result;
+        }
+
+        // No validators yet — Range-peek the CLPK header.
+        using (var req = new HttpRequestMessage(HttpMethod.Get, pack.DownloadUrl))
+        {
+            req.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true };
+            req.Headers.Range = new RangeHeaderValue(0, 2047);
+            using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
+
+            if (resp.StatusCode == HttpStatusCode.PartialContent)
+            {
+                var headBytes = await resp.Content.ReadAsByteArrayAsync();
+                RecordValidators(state, fileName, resp);
+                string remoteSha = "";
+                using (var ms = new MemoryStream(headBytes))
+                    if (ClpkFormat.TryReadHeader(ms, out var meta, out _, out _) && !string.IsNullOrEmpty(meta!.Sha256))
+                        remoteSha = meta.Sha256.ToLowerInvariant();
+
+                if (string.IsNullOrEmpty(remoteSha))
+                {
+                    // Remote isn't a CLPK (or header exceeds the peek window): fall back to a full compare.
+                    var full = await http.GetByteArrayAsync(pack.DownloadUrl);
+                    remoteSha = RemoteShaFromBytes(full);
+                    if (!string.IsNullOrEmpty(remoteSha) && !remoteSha.Equals(localSha, StringComparison.OrdinalIgnoreCase))
+                    {
+                        result.UpdateAvailable = true;
+                        result.DownloadedBytes = full;
+                    }
+                }
+                else
+                {
+                    result.UpdateAvailable = !remoteSha.Equals(localSha, StringComparison.OrdinalIgnoreCase);
+                }
+                result.RemoteSha = remoteSha;
+                result.Message = result.UpdateAvailable ? "Update available" : "Up to date";
+                return result;
+            }
+
+            if (resp.IsSuccessStatusCode) // server ignored Range; full body returned
+            {
+                var bytes = await resp.Content.ReadAsByteArrayAsync();
+                RecordValidators(state, fileName, resp);
+                var remoteSha = RemoteShaFromBytes(bytes);
+                if (!string.IsNullOrEmpty(remoteSha) && !remoteSha.Equals(localSha, StringComparison.OrdinalIgnoreCase))
+                {
+                    result.UpdateAvailable = true;
+                    result.DownloadedBytes = bytes;
+                    result.RemoteSha = remoteSha;
+                    result.Message = "Update available";
+                }
+                else result.Message = "Up to date";
+                return result;
+            }
+
+            result.Message = $"Update check failed: HTTP {(int)resp.StatusCode}";
+            return result;
+        }
+    }
+
+    /// <summary>Downloads (unless bytes are already in hand), verifies sha256 for CLPK packs, and
+    /// replaces the local pack file. Returns the re-read pack.</summary>
+    public async Task<LanguagePack> ApplyUpdateAsync(LanguagePack pack, byte[]? alreadyDownloaded)
     {
         if (string.IsNullOrWhiteSpace(pack.DownloadUrl))
-            throw new InvalidDataException("No download_url");
+            throw new InvalidDataException("No download URL");
 
-        using var http = new HttpClient();
-        http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("dqxclarity-launcher", "1.0"));
+        byte[] bytes;
+        if (alreadyDownloaded != null)
+        {
+            bytes = alreadyDownloaded;
+        }
+        else
+        {
+            using var http = NewHttp();
+            bytes = await http.GetByteArrayAsync(pack.DownloadUrl);
+        }
+
+        // Integrity: if the download is a CLPK, its payload sha must match the header.
+        using (var ms = new MemoryStream(bytes))
+            if (ClpkFormat.TryReadHeader(ms, out var meta, out var off, out var len) && !string.IsNullOrEmpty(meta!.Sha256))
+            {
+                using var payload = new SubStream(ms, off, len, leaveOpen: true);
+                var actual = ClpkFormat.ComputeSha256Hex(payload);
+                if (!actual.Equals(meta.Sha256, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("Downloaded pack failed sha256 verification.");
+            }
 
         var temp = Path.GetTempFileName();
         try
         {
-            var bytes = await http.GetByteArrayAsync(pack.DownloadUrl);
             await File.WriteAllBytesAsync(temp, bytes);
-
-            var downloaded = ReadLanguagePack(temp);
-            if (!downloaded.CanActivate)
-                throw new InvalidDataException(downloaded.Status);
+            var probe = ReadLanguagePack(temp);
+            if (!probe.CanActivate)
+                throw new InvalidDataException(probe.Status);
 
             File.Copy(temp, pack.Path, overwrite: true);
             return ReadLanguagePack(pack.Path);
@@ -312,34 +527,6 @@ public class LanguagePackService
         if (!safe.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
             safe += ".zip";
         return safe;
-    }
-
-    private static async Task<LanguagePackManifest> ReadRemoteManifest(HttpClient http, string url)
-    {
-        var bytes = await http.GetByteArrayAsync(url);
-
-        try
-        {
-            using var ms = new MemoryStream(bytes);
-            using var archive = new ZipArchive(ms, ZipArchiveMode.Read);
-            var manifestEntry = archive.Entries.FirstOrDefault(e =>
-                NormalizeZipPath(e.FullName).Equals("mod.jsons", StringComparison.OrdinalIgnoreCase));
-            if (manifestEntry == null)
-                throw new InvalidDataException("Remote zip has no mod.jsons");
-            using var stream = manifestEntry.Open();
-            return JsonSerializer.Deserialize<LanguagePackManifest>(stream, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            }) ?? throw new InvalidDataException("Remote mod.jsons is empty");
-        }
-        catch (InvalidDataException)
-        {
-            using var ms = new MemoryStream(bytes);
-            return await JsonSerializer.DeserializeAsync<LanguagePackManifest>(ms, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            }) ?? throw new InvalidDataException("Remote manifest is empty");
-        }
     }
 
     public int ExtractLanguagePack(string installDir, LanguagePack pack)
@@ -467,30 +654,6 @@ public class LanguagePackService
 
     private static string FirstNonEmpty(params string[] values) =>
         values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? "";
-
-    private static int CompareVersions(string remote, string local)
-    {
-        var r = ParseVersionParts(remote);
-        var l = ParseVersionParts(local);
-        var count = Math.Max(r.Count, l.Count);
-        for (var i = 0; i < count; i++)
-        {
-            var rv = i < r.Count ? r[i] : 0;
-            var lv = i < l.Count ? l[i] : 0;
-            if (rv != lv) return rv.CompareTo(lv);
-        }
-        return string.Equals(remote, local, StringComparison.OrdinalIgnoreCase)
-            ? 0
-            : string.Compare(remote, local, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static List<int> ParseVersionParts(string version) =>
-        version.Trim()
-            .TrimStart('v', 'V')
-            .Split(['.', '-', '_', '+'], StringSplitOptions.RemoveEmptyEntries)
-            .TakeWhile(part => int.TryParse(part, out _))
-            .Select(int.Parse)
-            .ToList();
 
     private static string NormalizeZipPath(string path) =>
         path.Replace('\\', '/').Trim('/');

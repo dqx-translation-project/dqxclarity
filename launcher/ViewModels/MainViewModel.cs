@@ -78,6 +78,9 @@ public partial class MainViewModel : ObservableObject
             config, version, null, text2Clipboard, cfg, patchSvc, dbSvc, validateSvc, maintenanceSvc, langPackSvc);
         Settings.CleanupLanguagePackRuntime();
 
+        // Startup auto-update check (no-op unless the user enabled it); fire-and-forget, never blocks launch.
+        _ = Settings.RunAutomaticUpdatesIfEnabledAsync();
+
         Setup.SetupDone     += () => SwitchTo(autoRun ? "log" : "settings");
         Log.NavigateBack    += () => SwitchTo("settings");
         Log.CloseApp        += () => Window?.Close();

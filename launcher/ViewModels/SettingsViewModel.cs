@@ -108,6 +108,62 @@ public partial class SettingsViewModel : ObservableObject
             CleanupLanguagePackRuntime();
     }
 
+    [ObservableProperty] private bool _automaticUpdates;
+
+    partial void OnAutomaticUpdatesChanged(bool value)
+    {
+        try { _cfg.SaveAutomaticLanguagePackUpdates(value); } catch { }
+    }
+
+    /// <summary>
+    /// Run on startup (fire-and-forget). When automatic updates are enabled, checks every pack with
+    /// a download URL and silently downloads + applies any that changed (sha-verified), re-extracting
+    /// active packs into Game\mods. Never throws; offline/placeholder URLs simply no-op.
+    /// </summary>
+    public async Task RunAutomaticUpdatesIfEnabledAsync()
+    {
+        if (!AutomaticUpdates) return;
+
+        try
+        {
+            if (!_languagePacksScanned)
+                await ScanLanguagePacks();
+
+            var updatedAnyActive = false;
+            foreach (var pack in LanguagePacks.Where(p => p.CanActivate && !string.IsNullOrWhiteSpace(p.DownloadUrl)).ToList())
+            {
+                try
+                {
+                    var check = await _languagePacks.CheckForUpdateAsync(pack);
+                    if (!check.UpdateAvailable) continue;
+
+                    await _languagePacks.ApplyUpdateAsync(pack, check.DownloadedBytes);
+                    if (pack.IsActive) updatedAnyActive = true;
+                }
+                catch { /* one pack failing must not stop the rest */ }
+            }
+
+            // Reflect new versions/metadata in the list.
+            await ScanLanguagePacks();
+
+            // Re-extract into Game\mods if an active pack changed and support is on.
+            if (updatedAnyActive && LanguagePackSupport && DqxDirValid)
+            {
+                var activePacks = LanguagePacks.Where(m => m.IsActive && m.CanActivate).ToList();
+                if (activePacks.Count > 0)
+                {
+                    try
+                    {
+                        var count = await Task.Run(() => _languagePacks.RebuildGameModsFolder(DqxDir, activePacks));
+                        SetLanguagePackStatus($"Automatic update applied. Game\\mods rebuilt: {activePacks.Count} pack(s), {count} file(s).");
+                    }
+                    catch (Exception ex) { SetLanguagePackStatus(ex.Message, true); }
+                }
+            }
+        }
+        catch { /* never let startup auto-update throw */ }
+    }
+
     // ── Translation ───────────────────────────────────────────────────────
     public record TranslateServiceOption(string Value, string Display);
 
@@ -526,6 +582,7 @@ public partial class SettingsViewModel : ObservableObject
         _selectedTheme     = config.Launcher.Theme;
         _characterImage    = LoadCharacterImage(_selectedTheme);
         _languagePackSupport = config.Launcher.LanguagePackSupport;
+        _automaticUpdates    = config.Launcher.AutomaticLanguagePackUpdates;
         foreach (var fileName in config.Launcher.ActiveLanguagePacks)
             _savedActiveLanguagePacks.Add(fileName);
         try { _languagePacks.EnsureSourceLanguagePacksFolder(); } catch { }
