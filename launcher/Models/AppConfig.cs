@@ -15,6 +15,7 @@ public class LauncherConfig
     public bool SeenWelcomeMessage { get; set; }
     public bool BannerCollapsed { get; set; }
     public bool LanguagePackSupport { get; set; }
+    public bool LanguagePackFirstRunDone { get; set; }
     public List<string> ActiveLanguagePacks { get; set; } = [];
 }
 

@@ -189,6 +189,7 @@ public class ConfigService
                 SeenWelcomeMessage       = ToBool(l.GetValueOrDefault("seenwelcomemessage")),
                 BannerCollapsed          = ToBool(l.GetValueOrDefault("bannercollapsed")),
                 LanguagePackSupport      = ToBool(l.GetValueOrDefault("languagepacksupport")),
+                LanguagePackFirstRunDone = ToBool(l.GetValueOrDefault("languagepackfirstrundone")),
                 ActiveLanguagePacks      = (l.GetValueOrDefault("activelanguagepacks") ?? "")
                     .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -214,6 +215,7 @@ public class ConfigService
         var existingLauncher = existing.GetValueOrDefault("launcher") ?? [];
         var seenWelcome      = existingLauncher.GetValueOrDefault("seenwelcomemessage") ?? BoolToIni(launcher.SeenWelcomeMessage);
         var bannerCollapsed  = existingLauncher.GetValueOrDefault("bannercollapsed")    ?? BoolToIni(launcher.BannerCollapsed);
+        var langPackFirstRun = existingLauncher.GetValueOrDefault("languagepackfirstrundone") ?? BoolToIni(launcher.LanguagePackFirstRunDone);
 
         var sb = new System.Text.StringBuilder();
 
@@ -254,6 +256,7 @@ public class ConfigService
         WriteKv(sb, "seenwelcomemessage",       seenWelcome);
         WriteKv(sb, "bannercollapsed",          bannerCollapsed);
         WriteKv(sb, "languagepacksupport",      BoolToIni(launcher.LanguagePackSupport));
+        WriteKv(sb, "languagepackfirstrundone", langPackFirstRun);
         WriteKv(sb, "activelanguagepacks",       string.Join('|', launcher.ActiveLanguagePacks));
 
         var dir = Path.GetDirectoryName(path)!;
@@ -337,6 +340,9 @@ public class ConfigService
 
     public void SaveLanguagePackSupport(bool value) =>
         UpdateIniValue(ConfigPath(), "launcher", "languagepacksupport", BoolToIni(value));
+
+    public void SaveLanguagePackFirstRunDone(bool value) =>
+        UpdateIniValue(ConfigPath(), "launcher", "languagepackfirstrundone", BoolToIni(value));
 
     public void SaveActiveLanguagePacks(IEnumerable<string> fileNames) =>
         UpdateIniValue(

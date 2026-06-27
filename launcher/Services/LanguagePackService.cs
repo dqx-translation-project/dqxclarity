@@ -216,6 +216,72 @@ public class LanguagePackService
         }
     }
 
+    public async Task<LanguagePack> DownloadCatalogPackAsync(LanguagePackCatalogEntry entry)
+    {
+        if (string.IsNullOrWhiteSpace(entry.DownloadUrl))
+            throw new InvalidDataException("Catalog entry has no download URL.");
+
+        EnsureSourceLanguagePacksFolder();
+
+        using var http = new HttpClient();
+        http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("dqxclarity-launcher", "1.0"));
+
+        var fileName = SanitizeZipFileName(entry.Name);
+        var destPath = Path.Combine(SourceLanguagePacksDir(), fileName);
+
+        var temp = Path.GetTempFileName();
+        try
+        {
+            var bytes = await http.GetByteArrayAsync(entry.DownloadUrl);
+            await File.WriteAllBytesAsync(temp, bytes);
+
+            var downloaded = ReadLanguagePack(temp);
+            if (!downloaded.CanActivate)
+                throw new InvalidDataException(downloaded.Status);
+
+            File.Copy(temp, destPath, overwrite: true);
+            return ReadLanguagePack(destPath);
+        }
+        finally
+        {
+            try { File.Delete(temp); } catch { }
+        }
+    }
+
+    public LanguagePack ImportZipFromDisk(string sourceZipPath)
+    {
+        if (string.IsNullOrWhiteSpace(sourceZipPath) || !File.Exists(sourceZipPath))
+            throw new FileNotFoundException($"Zip file not found: {sourceZipPath}");
+
+        EnsureSourceLanguagePacksFolder();
+
+        // Validate before importing so we don't copy a broken archive.
+        var probe = ReadLanguagePack(sourceZipPath);
+        if (!probe.CanActivate)
+            throw new InvalidDataException(probe.Status);
+
+        var fileName = SanitizeZipFileName(Path.GetFileNameWithoutExtension(sourceZipPath));
+        var destPath = Path.Combine(SourceLanguagePacksDir(), fileName);
+
+        // If the chosen file already lives in the language-packs folder, don't copy onto itself.
+        if (!string.Equals(Path.GetFullPath(sourceZipPath), Path.GetFullPath(destPath), StringComparison.OrdinalIgnoreCase))
+            File.Copy(sourceZipPath, destPath, overwrite: true);
+
+        return ReadLanguagePack(destPath);
+    }
+
+    private static string SanitizeZipFileName(string name)
+    {
+        var safe = name.Trim();
+        foreach (var c in Path.GetInvalidFileNameChars())
+            safe = safe.Replace(c, '_');
+        if (string.IsNullOrWhiteSpace(safe))
+            safe = "language-pack";
+        if (!safe.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            safe += ".zip";
+        return safe;
+    }
+
     private static async Task<LanguagePackManifest> ReadRemoteManifest(HttpClient http, string url)
     {
         var bytes = await http.GetByteArrayAsync(url);

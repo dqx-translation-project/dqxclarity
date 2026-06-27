@@ -113,6 +113,24 @@ public partial class MainWindow : Window
                 await vm.Settings.SetDqxDir(results[0].Path.LocalPath);
         };
 
+        // Wire the language-pack "Load .zip…" button to an Avalonia file picker.
+        vm.Settings.PickZipFileRequested += async () =>
+        {
+            var results = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title         = "Select a Language Pack .zip",
+                AllowMultiple = false,
+                FileTypeFilter =
+                [
+                    new FilePickerFileType("Language pack (*.zip)")
+                    {
+                        Patterns = ["*.zip"],
+                    },
+                ],
+            });
+            return results.Count > 0 ? results[0].Path.LocalPath : null;
+        };
+
         // Subscribe to view changes
         vm.PropertyChanged += (_, args) =>
         {

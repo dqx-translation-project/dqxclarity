@@ -640,6 +640,90 @@ public partial class SettingsView : UserControl
             await _vm.DownloadLanguagePackUpdate(pack);
     }
 
+    // ── Drag-to-reorder installed language packs ──────────────────────────
+    private LanguagePack? _draggingPack;
+    private bool _dragActive;
+    private bool _dragMoved;
+    private Point _dragStart;
+
+    private void OnLanguagePackHandlePressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Control handle || handle.DataContext is not LanguagePack pack) return;
+        if (!e.GetCurrentPoint(handle).Properties.IsLeftButtonPressed) return;
+
+        _draggingPack = pack;
+        _dragActive   = true;
+        _dragStart    = e.GetPosition(this);
+        e.Pointer.Capture(handle);
+        handle.PointerMoved        += OnLanguagePackHandleMoved;
+        handle.PointerReleased     += OnLanguagePackHandleReleased;
+        handle.PointerCaptureLost  += OnLanguagePackHandleCaptureLost;
+        e.Handled = true;
+    }
+
+    private void OnLanguagePackHandleMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_dragActive || _draggingPack == null || _vm == null) return;
+
+        var target = HitTestLanguagePackRow(e.GetPosition(this));
+        if (target == null || ReferenceEquals(target, _draggingPack)) return;
+
+        var newIndex = _vm.LanguagePacks.IndexOf(target);
+        if (newIndex < 0) return;
+
+        // Cheap visual move only — persistence + Game\mods rebuild happen once on drop.
+        if (_vm.MoveLanguagePack(_draggingPack, newIndex))
+            _dragMoved = true;
+    }
+
+    private void OnLanguagePackHandleReleased(object? sender, PointerReleasedEventArgs e) =>
+        EndLanguagePackDrag(sender as Control, e.Pointer);
+
+    private void OnLanguagePackHandleCaptureLost(object? sender, PointerCaptureLostEventArgs e) =>
+        EndLanguagePackDrag(sender as Control, null);
+
+    private void EndLanguagePackDrag(Control? handle, IPointer? pointer)
+    {
+        var moved = _dragMoved;
+        _dragActive   = false;
+        _dragMoved    = false;
+        _draggingPack = null;
+        pointer?.Capture(null);
+        if (handle != null)
+        {
+            handle.PointerMoved       -= OnLanguagePackHandleMoved;
+            handle.PointerReleased    -= OnLanguagePackHandleReleased;
+            handle.PointerCaptureLost -= OnLanguagePackHandleCaptureLost;
+        }
+
+        // Persist the final order and rebuild once, only if the order actually changed.
+        if (moved) _ = _vm?.CommitLanguagePackOrderAsync();
+    }
+
+    // Finds the LanguagePack whose realized row Border contains the given point (in this control's coords).
+    private LanguagePack? HitTestLanguagePackRow(Point point)
+    {
+        if (LanguagePackList == null) return null;
+
+        LanguagePack? best = null;
+        foreach (var pack in _vm?.LanguagePacks ?? Enumerable.Empty<LanguagePack>())
+        {
+            var container = LanguagePackList.ContainerFromItem(pack) as Control;
+            if (container == null) continue;
+
+            var topLeft = container.TranslatePoint(new Point(0, 0), this);
+            if (topLeft == null) continue;
+
+            var bounds = new Rect(topLeft.Value, container.Bounds.Size);
+            if (point.Y >= bounds.Top && point.Y <= bounds.Bottom)
+            {
+                best = pack;
+                break;
+            }
+        }
+        return best;
+    }
+
     private async void OnNameOverridesHelpClick(object? sender, RoutedEventArgs e)
     {
         var win = TopLevel.GetTopLevel(this) as MainWindow;

@@ -39,8 +39,13 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _languagePackStatus = "";
     [ObservableProperty] private bool   _languagePackStatusIsError;
     public ObservableCollection<LanguagePack> LanguagePacks { get; } = [];
+    public ObservableCollection<LanguagePackCatalogEntry> AvailablePacks { get; } = [];
     private readonly HashSet<string> _savedActiveLanguagePacks = new(StringComparer.OrdinalIgnoreCase);
     private bool _languagePacksScanned;
+    private bool _languagePackFirstRunChecked;
+
+    /// <summary>Invoked to let the view show a file picker; returns the chosen .zip path or null.</summary>
+    public event Func<Task<string?>>? PickZipFileRequested;
 
     partial void OnLanguagePackSupportChanged(bool value)
     {
@@ -560,6 +565,8 @@ public partial class SettingsViewModel : ObservableObject
         else if (tab == "languagepacks")
         {
             await ScanLanguagePacks();
+            // Fire-and-forget first-run default English download so it never blocks the UI.
+            _ = EnsureDefaultLanguagePackAsync();
             await CheckLanguagePackUpdates();
         }
     }
@@ -1044,6 +1051,7 @@ public partial class SettingsViewModel : ObservableObject
                 LanguagePacks.Add(file);
             }
             _languagePacksScanned = true;
+            RefreshAvailablePacks();
             SetLanguagePackStatus(files.Count == 0 ? "No .zip language packs found in dqxclarity\\language-packs." : $"{files.Count} .zip language pack(s) found in dqxclarity\\language-packs.");
         }
         catch (Exception ex)
@@ -1091,6 +1099,116 @@ public partial class SettingsViewModel : ObservableObject
         catch (Exception ex)
         {
             SetLanguagePackStatus(ex.Message, true);
+        }
+    }
+
+    private void RefreshAvailablePacks()
+    {
+        var notInstalled = LanguagePackCatalog.NotInstalled(LanguagePacks);
+        AvailablePacks.Clear();
+        foreach (var entry in notInstalled)
+            AvailablePacks.Add(entry);
+    }
+
+    [RelayCommand]
+    private async Task DownloadCatalogPack(LanguagePackCatalogEntry? entry)
+    {
+        if (entry == null) return;
+        LanguagePacksLoading = true;
+        try
+        {
+            SetLanguagePackStatus($"Downloading {entry.Name}...");
+            await _languagePacks.DownloadCatalogPackAsync(entry);
+        }
+        catch (Exception ex)
+        {
+            SetLanguagePackStatus($"Could not download {entry.Name}: {ex.Message}", true);
+            LanguagePacksLoading = false;
+            return;
+        }
+        LanguagePacksLoading = false;
+
+        await ScanLanguagePacks();
+        SetLanguagePackStatus($"Downloaded {entry.Name}.");
+    }
+
+    [RelayCommand]
+    private async Task LoadPackFromDisk()
+    {
+        if (PickZipFileRequested == null) return;
+
+        var path = await PickZipFileRequested.Invoke();
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        LanguagePacksLoading = true;
+        LanguagePack imported;
+        try
+        {
+            imported = await Task.Run(() => _languagePacks.ImportZipFromDisk(path));
+        }
+        catch (Exception ex)
+        {
+            SetLanguagePackStatus($"Could not import zip: {ex.Message}", true);
+            LanguagePacksLoading = false;
+            return;
+        }
+        LanguagePacksLoading = false;
+
+        await ScanLanguagePacks();
+        SetLanguagePackStatus($"Imported {imported.Name}.");
+    }
+
+    /// <summary>
+    /// On the very first run, attempt to fetch and activate the default English catalog pack.
+    /// Never throws to the caller; always marks first-run done afterward so it doesn't retry.
+    /// </summary>
+    public async Task EnsureDefaultLanguagePackAsync()
+    {
+        if (_languagePackFirstRunChecked) return;
+        _languagePackFirstRunChecked = true;
+
+        try
+        {
+            if (_cfg.Load().Launcher.LanguagePackFirstRunDone)
+                return;
+
+            var defaultEntry = LanguagePackCatalog.Default;
+            if (defaultEntry == null)
+                return;
+
+            // Make sure we have an up-to-date view of what's already installed.
+            if (!_languagePacksScanned)
+            {
+                try { await ScanLanguagePacks(); } catch { }
+            }
+
+            if (LanguagePackCatalog.IsInstalled(defaultEntry, LanguagePacks))
+                return;
+
+            try
+            {
+                await _languagePacks.DownloadCatalogPackAsync(defaultEntry);
+                await ScanLanguagePacks();
+
+                var pack = LanguagePacks.FirstOrDefault(p =>
+                    string.Equals(System.IO.Path.GetFileName(p.Path), defaultEntry.ZipFileName, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(p.Name, defaultEntry.Name, StringComparison.OrdinalIgnoreCase));
+
+                if (pack != null && pack.CanActivate && DqxDirValid)
+                    await SetLanguagePackActive(pack, true);
+            }
+            catch (Exception ex)
+            {
+                SetLanguagePackStatus($"Couldn't fetch the default English pack (no URL configured yet). {ex.Message}");
+            }
+        }
+        catch
+        {
+            // Never let first-run setup throw to the caller.
+        }
+        finally
+        {
+            try { _cfg.SaveLanguagePackFirstRunDone(true); } catch { }
         }
     }
 
@@ -1180,8 +1298,10 @@ public partial class SettingsViewModel : ObservableObject
 
     private List<string> GetActiveLanguagePackFileNames()
     {
+        // Order follows the LanguagePacks collection (precedence / extraction order),
+        // not alphabetical — reordering the list changes the persisted order.
         if (!_languagePacksScanned)
-            return _savedActiveLanguagePacks.OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToList();
+            return _savedActiveLanguagePacks.ToList();
 
         return LanguagePacks
             .Where(m => m.IsActive && m.CanActivate)
@@ -1189,8 +1309,57 @@ public partial class SettingsViewModel : ObservableObject
             .Where(name => !string.IsNullOrWhiteSpace(name))
             .Select(name => name!)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    /// <summary>
+    /// Moves a pack within the LanguagePacks collection to a new index, re-persists the active
+    /// order, and rebuilds Game\mods in the new precedence order when packs are active.
+    /// </summary>
+    /// <summary>
+    /// Cheap visual move within the list — safe to call repeatedly while dragging.
+    /// Does NOT persist or rebuild Game\mods; call <see cref="CommitLanguagePackOrderAsync"/>
+    /// once on drop to persist the final order. Returns true if the position changed.
+    /// </summary>
+    public bool MoveLanguagePack(LanguagePack pack, int newIndex)
+    {
+        var oldIndex = LanguagePacks.IndexOf(pack);
+        if (oldIndex < 0) return false;
+
+        newIndex = Math.Clamp(newIndex, 0, LanguagePacks.Count - 1);
+        if (newIndex == oldIndex) return false;
+
+        LanguagePacks.Move(oldIndex, newIndex);
+        return true;
+    }
+
+    /// <summary>
+    /// Persists the current list order and rebuilds Game\mods once. Call on drop, not per pointer-move.
+    /// </summary>
+    public async Task CommitLanguagePackOrderAsync()
+    {
+        SaveActiveLanguagePackSelection();
+
+        if (!LanguagePackSupport || !DqxDirValid) return;
+
+        try
+        {
+            LanguagePacksLoading = true;
+            var activePacks = LanguagePacks.Where(m => m.IsActive && m.CanActivate).ToList();
+            if (activePacks.Count > 0)
+            {
+                var count = await Task.Run(() => _languagePacks.RebuildGameModsFolder(DqxDir, activePacks));
+                SetLanguagePackStatus($"Reordered. Game\\mods rebuilt: {activePacks.Count} language pack(s), {count} file(s) extracted.");
+            }
+        }
+        catch (Exception ex)
+        {
+            SetLanguagePackStatus(ex.Message, true);
+        }
+        finally
+        {
+            LanguagePacksLoading = false;
+        }
     }
 
     private void SaveActiveLanguagePackSelection()

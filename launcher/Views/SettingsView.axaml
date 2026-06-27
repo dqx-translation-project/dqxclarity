@@ -689,7 +689,7 @@
 
                 <!-- ══ LANGUAGE PACKS (full height) ═════════════════════ -->
                 <Grid x:Name="PanelLanguagePacks" IsVisible="False" Margin="14,8"
-                      RowDefinitions="Auto,Auto,*">
+                      RowDefinitions="Auto,Auto,Auto,*">
 
                     <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,Auto,*" Margin="0,0,0,10">
                         <Button Grid.Column="0"
@@ -706,7 +706,12 @@
                                 IsEnabled="{Binding !LanguagePacksLoading}"
                                 ToolTip.Tip="Downloads each language pack's download_url and compares its mod.jsons version."
                                 Margin="0,0,10,0">Check Updates</Button>
-                        <CheckBox Grid.Column="3"
+                        <Button Grid.Column="3"
+                                Command="{Binding LoadPackFromDiskCommand}"
+                                IsEnabled="{Binding !LanguagePacksLoading}"
+                                ToolTip.Tip="Imports a language pack .zip from your computer into the language packs folder."
+                                Margin="0,0,10,0">Load .zip…</Button>
+                        <CheckBox Grid.Column="4"
                                   Content="Activate Language Pack support"
                                   IsChecked="{Binding LanguagePackSupport}"
                                   VerticalAlignment="Center"
@@ -733,36 +738,78 @@
                             BorderThickness="1"
                             CornerRadius="4"
                             Padding="8"
+                            Margin="0,0,0,10"
+                            Background="{DynamicResource AppSurface}"
+                            IsVisible="{Binding AvailablePacks.Count, Converter={x:Static v:CountToBoolConverter.Instance}}">
+                        <StackPanel>
+                            <TextBlock Text="Available to download"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AppMuted}"
+                                       Margin="0,0,0,6"/>
+                            <ItemsControl ItemsSource="{Binding AvailablePacks}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="m:LanguagePackCatalogEntry">
+                                        <Grid ColumnDefinitions="120,*,Auto" Margin="0,2">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding Name}"
+                                                       FontSize="13"
+                                                       Foreground="{DynamicResource AppText}"
+                                                       VerticalAlignment="Center"
+                                                       Padding="0,0,8,0"/>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Type}"
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource AppMuted}"
+                                                       VerticalAlignment="Center"/>
+                                            <Button Grid.Column="2"
+                                                    Content="Download"
+                                                    FontSize="11"
+                                                    Padding="10,2"
+                                                    Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).DownloadCatalogPackCommand}"
+                                                    CommandParameter="{Binding}"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Row="3"
+                            BorderBrush="{DynamicResource AppBorder}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="8"
                             Background="{DynamicResource AppSurface}">
                         <Grid RowDefinitions="Auto,*">
                             <Grid Grid.Row="0"
-                                  ColumnDefinitions="34,120,3*,120,120,2*"
+                                  ColumnDefinitions="24,34,120,3*,120,120,2*"
                                   Background="{DynamicResource AppSurface2}">
-                                <TextBlock Grid.Column="1"
+                                <TextBlock Grid.Column="2"
                                            Text="type"
                                            FontSize="11"
                                            FontWeight="SemiBold"
                                            Foreground="{DynamicResource AppMuted}"
                                            Padding="8,4"/>
-                                <TextBlock Grid.Column="2"
+                                <TextBlock Grid.Column="3"
                                            Text="name"
                                            FontSize="11"
                                            FontWeight="SemiBold"
                                            Foreground="{DynamicResource AppMuted}"
                                            Padding="8,4"/>
-                                <TextBlock Grid.Column="3"
+                                <TextBlock Grid.Column="4"
                                            Text="version"
                                            FontSize="11"
                                            FontWeight="SemiBold"
                                            Foreground="{DynamicResource AppMuted}"
                                            Padding="8,4"/>
-                                <TextBlock Grid.Column="4"
+                                <TextBlock Grid.Column="5"
                                            Text="author"
                                            FontSize="11"
                                            FontWeight="SemiBold"
                                            Foreground="{DynamicResource AppMuted}"
                                            Padding="8,4"/>
-                                <TextBlock Grid.Column="5"
+                                <TextBlock Grid.Column="6"
                                            Text="status"
                                            FontSize="11"
                                            FontWeight="SemiBold"
@@ -773,51 +820,61 @@
                             <ScrollViewer Grid.Row="1"
                                           HorizontalScrollBarVisibility="Disabled"
                                           VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding LanguagePacks}">
+                                <ItemsControl x:Name="LanguagePackList" ItemsSource="{Binding LanguagePacks}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="m:LanguagePack">
                                             <Border BorderBrush="{DynamicResource AppBorder}"
                                                     BorderThickness="0,0,0,1">
-                                                <Grid ColumnDefinitions="34,120,3*,120,120,2*">
-                                                    <CheckBox Grid.Column="0"
+                                                <Grid ColumnDefinitions="24,34,120,3*,120,120,2*">
+                                                    <TextBlock Grid.Column="0"
+                                                               Name="DragHandle"
+                                                               Text="⠿"
+                                                               FontSize="15"
+                                                               Cursor="SizeAll"
+                                                               Foreground="{DynamicResource AppMuted}"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               ToolTip.Tip="Drag to reorder (order is extraction precedence)."
+                                                               PointerPressed="OnLanguagePackHandlePressed"/>
+                                                    <CheckBox Grid.Column="1"
                                                               IsChecked="{Binding IsActive}"
                                                               IsEnabled="{Binding CanActivate}"
                                                               HorizontalAlignment="Center"
                                                               VerticalAlignment="Center"
                                                               Click="OnLanguagePackActiveClick"/>
-                                                    <TextBlock Grid.Column="1"
+                                                    <TextBlock Grid.Column="2"
                                                                Text="{Binding Type}"
                                                                FontSize="13"
                                                                Foreground="{DynamicResource AppText}"
                                                                Padding="8,4"
                                                                TextTrimming="CharacterEllipsis"/>
-                                                    <TextBlock Grid.Column="2"
+                                                    <TextBlock Grid.Column="3"
                                                                Text="{Binding Name}"
                                                                FontSize="13"
                                                                Foreground="{DynamicResource AppText}"
                                                                Padding="8,4"
                                                                TextTrimming="CharacterEllipsis"/>
-                                                    <TextBlock Grid.Column="3"
+                                                    <TextBlock Grid.Column="4"
                                                                Text="{Binding Version}"
                                                                FontSize="13"
                                                                Foreground="{DynamicResource AppText}"
                                                                Padding="8,4"
                                                                IsVisible="{Binding !HasUpdate}"
                                                                TextTrimming="CharacterEllipsis"/>
-                                                    <Button Grid.Column="3"
+                                                    <Button Grid.Column="4"
                                                             IsVisible="{Binding HasUpdate}"
                                                             Click="OnLanguagePackUpdateClick"
                                                             FontSize="11"
                                                             HorizontalAlignment="Left"
                                                             Padding="8,2"
                                                             Margin="8,2">DL update</Button>
-                                                    <TextBlock Grid.Column="4"
+                                                    <TextBlock Grid.Column="5"
                                                                Text="{Binding Author}"
                                                                FontSize="13"
                                                                Foreground="{DynamicResource AppText}"
                                                                Padding="8,4"
                                                                TextTrimming="CharacterEllipsis"/>
-                                                    <TextBlock Grid.Column="5"
+                                                    <TextBlock Grid.Column="6"
                                                                Text="{Binding Status}"
                                                                FontSize="13"
                                                                Foreground="{DynamicResource AppMuted}"
