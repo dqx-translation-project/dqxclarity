@@ -86,8 +86,10 @@ public class LanguagePackService
     public List<LanguagePack> ScanLanguagePacks()
     {
         EnsureSourceLanguagePacksFolder();
+        var dir = SourceLanguagePacksDir();
         return Directory
-            .EnumerateFiles(SourceLanguagePacksDir(), "*.zip", SearchOption.TopDirectoryOnly)
+            .EnumerateFiles(dir, "*.zip", SearchOption.TopDirectoryOnly)
+            .Concat(Directory.EnumerateFiles(dir, "*.clpk", SearchOption.TopDirectoryOnly))
             .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
             .Select(ReadLanguagePack)
             .ToList();
@@ -97,7 +99,9 @@ public class LanguagePackService
     {
         try
         {
-            using var archive = ZipFile.OpenRead(path);
+            var (payload, meta) = ClpkFormat.OpenPayload(path);
+            using var _payload = payload;
+            using var archive = new ZipArchive(payload, ZipArchiveMode.Read);
             var manifestEntry = archive.Entries.FirstOrDefault(e =>
                 NormalizeZipPath(e.FullName).Equals("mod.jsons", StringComparison.OrdinalIgnoreCase));
             if (manifestEntry == null)
@@ -129,7 +133,10 @@ public class LanguagePackService
                 Author = manifest.Author,
                 Description = manifest.Description,
                 Path = path,
-                DownloadUrl = FirstNonEmpty(manifest.DownloadUrl, manifest.UpdateUrl, manifest.Homepage),
+                // A CLPK header's downloadUrl, when present, overrides whatever the manifest declares.
+                DownloadUrl = meta != null && !string.IsNullOrWhiteSpace(meta.DownloadUrl)
+                    ? meta.DownloadUrl
+                    : FirstNonEmpty(manifest.DownloadUrl, manifest.UpdateUrl, manifest.Homepage),
                 GameMods = gameMods,
                 CanActivate = true,
                 Status = "Ready",
@@ -270,6 +277,31 @@ public class LanguagePackService
         return ReadLanguagePack(destPath);
     }
 
+    /// <summary>
+    /// Builds a CLPK container from a plain input .zip: validates the input is a zip, hashes it, and
+    /// stamps a CLPK header (sha256 + metadata) in front of the payload. Overwrites the output if it
+    /// already exists. File IO and hashing run on a background thread.
+    /// </summary>
+    public async Task BuildClpkAsync(string inputZipPath, string outputClpkPath, string language, string downloadUrl)
+    {
+        if (string.IsNullOrWhiteSpace(inputZipPath) || !File.Exists(inputZipPath))
+            throw new FileNotFoundException($"Input zip file not found: {inputZipPath}");
+        if (string.IsNullOrWhiteSpace(outputClpkPath))
+            throw new InvalidDataException("No output path specified.");
+
+        await Task.Run(() =>
+        {
+            var zipBytes = File.ReadAllBytes(inputZipPath);
+            if (zipBytes.Length < 2 || zipBytes[0] != (byte)'P' || zipBytes[1] != (byte)'K')
+                throw new InvalidDataException("Input file is not a valid .zip archive (missing 'PK' signature).");
+
+            var builtAt = DateTime.UtcNow.ToString("o");
+
+            using var output = new FileStream(outputClpkPath, FileMode.Create, FileAccess.Write, FileShare.None);
+            ClpkFormat.Write(output, zipBytes, language ?? "", downloadUrl ?? "", builtAt);
+        });
+    }
+
     private static string SanitizeZipFileName(string name)
     {
         var safe = name.Trim();
@@ -325,7 +357,9 @@ public class LanguagePackService
         if (!pack.CanActivate)
             throw new InvalidDataException(pack.Status);
 
-        using var archive = ZipFile.OpenRead(pack.Path);
+        var (payload, _) = ClpkFormat.OpenPayload(pack.Path);
+        using var _payload = payload;
+        using var archive = new ZipArchive(payload, ZipArchiveMode.Read);
         foreach (var entry in archive.Entries)
         {
             var normalizedEntry = NormalizeZipPath(entry.FullName);
@@ -386,7 +420,9 @@ public class LanguagePackService
             if (!File.Exists(pack.Path))
                 throw new FileNotFoundException($"Language pack archive not found: {pack.Path}");
 
-            using var archive = ZipFile.OpenRead(pack.Path);
+            var (payload, _) = ClpkFormat.OpenPayload(pack.Path);
+            using var _payload = payload;
+            using var archive = new ZipArchive(payload, ZipArchiveMode.Read);
             foreach (var entry in archive.Entries)
             {
                 if (string.IsNullOrEmpty(entry.Name))

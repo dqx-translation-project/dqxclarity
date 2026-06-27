@@ -47,6 +47,57 @@ public partial class SettingsViewModel : ObservableObject
     /// <summary>Invoked to let the view show a file picker; returns the chosen .zip path or null.</summary>
     public event Func<Task<string?>>? PickZipFileRequested;
 
+    /// <summary>Invoked to let the view show a save-file picker for a .clpk; returns the chosen path or null.</summary>
+    public event Func<string, Task<string?>>? SaveClpkFileRequested;
+
+    // ── Build language pack (CLPK) tool ───────────────────────────────────
+    [ObservableProperty] private string _clpkInputZipPath = "";
+    [ObservableProperty] private string _clpkLanguage = "en";
+    [ObservableProperty] private string _clpkDownloadUrl = "";
+    [ObservableProperty] private string _clpkBuildStatus = "";
+    [ObservableProperty] private bool   _clpkBuildStatusIsError;
+
+    private void SetClpkBuildStatus(string message, bool isError = false)
+    {
+        ClpkBuildStatus = message;
+        ClpkBuildStatusIsError = isError;
+    }
+
+    [RelayCommand]
+    private async Task PickClpkInput()
+    {
+        if (PickZipFileRequested == null) return;
+        var path = await PickZipFileRequested.Invoke();
+        if (string.IsNullOrWhiteSpace(path)) return;
+        ClpkInputZipPath = path;
+    }
+
+    [RelayCommand]
+    private async Task BuildClpk()
+    {
+        if (string.IsNullOrWhiteSpace(ClpkInputZipPath))
+        {
+            SetClpkBuildStatus("Choose an input .zip first.", true);
+            return;
+        }
+        if (SaveClpkFileRequested == null) return;
+
+        try
+        {
+            var suggested = Path.GetFileNameWithoutExtension(ClpkInputZipPath) + ".clpk";
+            var outputPath = await SaveClpkFileRequested.Invoke(suggested);
+            if (string.IsNullOrWhiteSpace(outputPath)) return;
+
+            SetClpkBuildStatus("Building...");
+            await _languagePacks.BuildClpkAsync(ClpkInputZipPath, outputPath, ClpkLanguage, ClpkDownloadUrl);
+            SetClpkBuildStatus($"Built {Path.GetFileName(outputPath)}.");
+        }
+        catch (Exception ex)
+        {
+            SetClpkBuildStatus($"Build failed: {ex.Message}", true);
+        }
+    }
+
     partial void OnLanguagePackSupportChanged(bool value)
     {
         try { _cfg.SaveLanguagePackSupport(value); } catch { }

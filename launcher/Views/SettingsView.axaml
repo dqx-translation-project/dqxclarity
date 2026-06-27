@@ -245,6 +245,47 @@
                                             ToolTip.Tip="Open the logs folder in file explorer.">Open Log Folder</Button>
                                 </StackPanel>
                             </Border>
+                            <Border Classes="fieldset"
+                                    ToolTip.Tip="Stamps a CLPK header (sha256 + metadata) onto a plain .zip so it can be distributed and verified as a Clarity language pack.">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Classes="legend" Text="Build language pack (CLPK)" Margin="0,0,0,0"/>
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBox Grid.Column="0"
+                                                 IsReadOnly="True"
+                                                 Watermark="No .zip selected"
+                                                 Text="{Binding ClpkInputZipPath}"
+                                                 Margin="0,0,6,0"
+                                                 ToolTip.Tip="The plain .zip language pack to wrap into a .clpk container."/>
+                                        <Button Grid.Column="1"
+                                                Command="{Binding PickClpkInputCommand}"
+                                                ToolTip.Tip="Choose the input .zip to build from.">Choose ZIP…</Button>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="Language:"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"/>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding ClpkLanguage}"
+                                                 ToolTip.Tip="Language code stamped into the CLPK metadata (e.g. en)."/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="Download URL:"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"/>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding ClpkDownloadUrl}"
+                                                 ToolTip.Tip="Optional URL stamped into the CLPK metadata; overrides the manifest's download URL when set."/>
+                                    </Grid>
+                                    <Button Command="{Binding BuildClpkCommand}"
+                                            ToolTip.Tip="Hash the input .zip and write a .clpk container with the metadata above.">Build .clpk</Button>
+                                    <TextBlock Text="{Binding ClpkBuildStatus}"
+                                               FontSize="11" TextWrapping="Wrap"
+                                               IsVisible="{Binding ClpkBuildStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                               Foreground="{Binding ClpkBuildStatusIsError, Converter={x:Static v:BoolToBrushConverter.ErrorOrMuted}}"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
 
                         <!-- ══ GAME TAB ══════════════════════════════════ -->

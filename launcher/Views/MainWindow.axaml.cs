@@ -131,6 +131,25 @@ public partial class MainWindow : Window
             return results.Count > 0 ? results[0].Path.LocalPath : null;
         };
 
+        // Wire the Advanced-tab "Build .clpk" save dialog to an Avalonia save-file picker.
+        vm.Settings.SaveClpkFileRequested += async suggestedName =>
+        {
+            var result = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title             = "Save language pack (.clpk)",
+                SuggestedFileName = suggestedName,
+                DefaultExtension  = "clpk",
+                FileTypeChoices =
+                [
+                    new FilePickerFileType("Clarity language pack (*.clpk)")
+                    {
+                        Patterns = ["*.clpk"],
+                    },
+                ],
+            });
+            return result?.Path.LocalPath;
+        };
+
         // Subscribe to view changes
         vm.PropertyChanged += (_, args) =>
         {
