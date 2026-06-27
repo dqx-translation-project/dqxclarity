@@ -18,7 +18,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly PatchService    _patch;
     private readonly DatabaseService _db;
     private readonly ValidateService _validate;
-    private readonly ModsService     _mods;
+    private readonly LanguagePackService _languagePacks;
     private readonly string          _saveFolderPath;
     private UpdateService?           _updateSvc;
     public Text2ClipboardViewModel Text2Clipboard { get; }
@@ -33,23 +33,23 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _debugLogging;
     [ObservableProperty] private bool _communityLogging;
 
-    // ── Mods ──────────────────────────────────────────────────────────────
-    [ObservableProperty] private bool   _modsSupport;
-    [ObservableProperty] private bool   _modsLoading;
-    [ObservableProperty] private string _modsStatus = "";
-    [ObservableProperty] private bool   _modsStatusIsError;
-    public ObservableCollection<ModFile> ModFiles { get; } = [];
-    private readonly HashSet<string> _savedActiveMods = new(StringComparer.OrdinalIgnoreCase);
-    private bool _modsScanned;
+    // ── Language Packs ────────────────────────────────────────────────────
+    [ObservableProperty] private bool   _languagePackSupport;
+    [ObservableProperty] private bool   _languagePacksLoading;
+    [ObservableProperty] private string _languagePackStatus = "";
+    [ObservableProperty] private bool   _languagePackStatusIsError;
+    public ObservableCollection<LanguagePack> LanguagePacks { get; } = [];
+    private readonly HashSet<string> _savedActiveLanguagePacks = new(StringComparer.OrdinalIgnoreCase);
+    private bool _languagePacksScanned;
 
-    partial void OnModsSupportChanged(bool value)
+    partial void OnLanguagePackSupportChanged(bool value)
     {
-        try { _cfg.SaveModsSupport(value); } catch { }
-        SetModsStatus(value
-            ? "Mods support enabled. version.dll will be installed when you click Run."
-            : "Mods support disabled. version.dll will be removed when possible.");
+        try { _cfg.SaveLanguagePackSupport(value); } catch { }
+        SetLanguagePackStatus(value
+            ? "Language pack support enabled. version.dll will be installed when you click Run."
+            : "Language pack support disabled. version.dll will be removed when possible.");
         if (!value)
-            CleanupModsRuntime();
+            CleanupLanguagePackRuntime();
     }
 
     // ── Translation ───────────────────────────────────────────────────────
@@ -451,7 +451,7 @@ public partial class SettingsViewModel : ObservableObject
         DatabaseService db,
         ValidateService validate,
         MaintenanceService maintenance,
-        ModsService mods)
+        LanguagePackService languagePacks)
     {
         Text2Clipboard    = text2Clipboard;
         _cfg         = cfg;
@@ -459,7 +459,7 @@ public partial class SettingsViewModel : ObservableObject
         _db          = db;
         _validate    = validate;
         _maintenance = maintenance;
-        _mods        = mods;
+        _languagePacks = languagePacks;
 
         Version    = version;
         _updateInfo = updateInfo;
@@ -469,10 +469,10 @@ public partial class SettingsViewModel : ObservableObject
         _communityLogging  = config.Launcher.CommunityLogging;
         _selectedTheme     = config.Launcher.Theme;
         _characterImage    = LoadCharacterImage(_selectedTheme);
-        _modsSupport       = config.Launcher.ModsSupport;
-        foreach (var fileName in config.Launcher.ActiveMods)
-            _savedActiveMods.Add(fileName);
-        try { _mods.EnsureSourceModsFolder(); } catch { }
+        _languagePackSupport = config.Launcher.LanguagePackSupport;
+        foreach (var fileName in config.Launcher.ActiveLanguagePacks)
+            _savedActiveLanguagePacks.Add(fileName);
+        try { _languagePacks.EnsureSourceLanguagePacksFolder(); } catch { }
 
         var savedService = config.Translation.TranslateService;
         _selectedTranslateService = TranslateServiceOptions.FirstOrDefault(o => o.Value == savedService)
@@ -508,12 +508,12 @@ public partial class SettingsViewModel : ObservableObject
         {
             _dqxDirValid = cfg.ValidateDqxDir(_dqxDir, out var dqxErr);
             if (!_dqxDirValid) _dqxDirError = dqxErr;
-            else InitializeModsFolder();
+            else InitializeLanguagePacksFolder();
         }
         else
         {
             _dqxDirError = $"DQX installation not found at the default location ({ConfigService.DefaultDqxDir}). Browse to your DQX installation folder to continue.";
-            SetModsStatus("dqxclarity\\mods is ready. Set a valid DQX folder path before activating mods.");
+            SetLanguagePackStatus("dqxclarity\\language-packs is ready. Set a valid DQX folder path before activating language packs.");
         }
 
         _ = FetchMaintenanceStatus();
@@ -557,10 +557,10 @@ public partial class SettingsViewModel : ObservableObject
             _nameOverridesLoaded = true;
             _ = LoadNamePairsAsync();
         }
-        else if (tab == "mods")
+        else if (tab == "languagepacks")
         {
-            await ScanMods();
-            await CheckModUpdates();
+            await ScanLanguagePacks();
+            await CheckLanguagePackUpdates();
         }
     }
 
@@ -632,8 +632,8 @@ public partial class SettingsViewModel : ObservableObject
             DirectLogin              = DirectLogin,
             DirectLoginAccountNumber = SelectedAccount?.Number ?? 0,
             Theme                    = SelectedTheme,
-            ModsSupport              = ModsSupport,
-            ActiveMods               = GetActiveModFileNames(),
+            LanguagePackSupport      = LanguagePackSupport,
+            ActiveLanguagePacks      = GetActiveLanguagePackFileNames(),
         };
         var translation = new TranslationConfig
         {
@@ -684,13 +684,13 @@ public partial class SettingsViewModel : ObservableObject
 
                 try
                 {
-                    if (!PrepareModsRuntime())
+                    if (!PrepareLanguagePackRuntime())
                         return;
                     new GameLaunchService().Launch(DqxDir, tr.SessionId!, 99);
                 }
                 catch (Exception ex)
                 {
-                    CleanupModsRuntime();
+                    CleanupLanguagePackRuntime();
                     if (ShowInfoRequested != null)
                         await ShowInfoRequested("Launch failed", ex.Message);
                     return;
@@ -732,14 +732,14 @@ public partial class SettingsViewModel : ObservableObject
 
                 try
                 {
-                    if (!PrepareModsRuntime())
+                    if (!PrepareLanguagePackRuntime())
                         return;
                     var gameLauncher = new GameLaunchService();
                     gameLauncher.Launch(DqxDir, finalResult.SessionId!, SelectedAccount.Number);
                 }
                 catch (Exception ex)
                 {
-                    CleanupModsRuntime();
+                    CleanupLanguagePackRuntime();
                     if (ShowInfoRequested != null)
                         await ShowInfoRequested("Launch failed", ex.Message);
                     return;
@@ -748,15 +748,15 @@ public partial class SettingsViewModel : ObservableObject
         }
         else if (SimultaneousLaunch && !string.IsNullOrEmpty(DqxDir))
         {
-            if (!PrepareModsRuntime())
+            if (!PrepareLanguagePackRuntime())
                 return;
             try { _cfg.LaunchDqx(DqxDir); }
             catch
             {
-                CleanupModsRuntime();
+                CleanupLanguagePackRuntime();
             }
         }
-        else if (!PrepareModsRuntime())
+        else if (!PrepareLanguagePackRuntime())
         {
             return;
         }
@@ -959,231 +959,231 @@ public partial class SettingsViewModel : ObservableObject
 
     // ── Game tab ──────────────────────────────────────────────────────────
 
-    private void SetModsStatus(string message, bool isError = false)
+    private void SetLanguagePackStatus(string message, bool isError = false)
     {
-        ModsStatus = message;
-        ModsStatusIsError = isError;
+        LanguagePackStatus = message;
+        LanguagePackStatusIsError = isError;
     }
 
-    private void InitializeModsFolder()
+    private void InitializeLanguagePacksFolder()
     {
         if (!DqxDirValid) return;
         try
         {
-            _mods.EnsureFolders(DqxDir);
-            SetModsStatus(ModsSupport
-                ? "Mods support enabled. version.dll will be installed when you click Run."
-                : "Mods folders ready.");
+            _languagePacks.EnsureFolders(DqxDir);
+            SetLanguagePackStatus(LanguagePackSupport
+                ? "Language pack support enabled. version.dll will be installed when you click Run."
+                : "Language pack folders ready.");
         }
         catch (Exception ex)
         {
-            SetModsStatus(ex.Message, true);
+            SetLanguagePackStatus(ex.Message, true);
         }
     }
 
-    public void CleanupModsRuntime()
+    public void CleanupLanguagePackRuntime()
     {
         if (!DqxDirValid) return;
 
         try
         {
-            _mods.CleanupRuntime(DqxDir);
-            if (!ModsSupport)
-                SetModsStatus("Mods support disabled.");
+            _languagePacks.CleanupRuntime(DqxDir);
+            if (!LanguagePackSupport)
+                SetLanguagePackStatus("Language pack support disabled.");
         }
         catch (Exception ex)
         {
-            SetModsStatus($"Could not remove version.dll: {ex.Message}", true);
+            SetLanguagePackStatus($"Could not remove version.dll: {ex.Message}", true);
         }
     }
 
-    private bool PrepareModsRuntime()
+    private bool PrepareLanguagePackRuntime()
     {
         if (!DqxDirValid)
         {
-            if (ModsSupport)
-                SetModsStatus("Set a valid DQX folder path before using mods support.", true);
-            return !ModsSupport;
+            if (LanguagePackSupport)
+                SetLanguagePackStatus("Set a valid DQX folder path before using language pack support.", true);
+            return !LanguagePackSupport;
         }
 
         try
         {
-            _mods.PrepareRuntime(DqxDir, ModsSupport);
-            SetModsStatus(ModsSupport
-                ? "Mods support active for this run."
-                : "Mods support disabled.");
+            _languagePacks.PrepareRuntime(DqxDir, LanguagePackSupport);
+            SetLanguagePackStatus(LanguagePackSupport
+                ? "Language pack support active for this run."
+                : "Language pack support disabled.");
             return true;
         }
         catch (Exception ex)
         {
-            SetModsStatus(ex.Message, true);
+            SetLanguagePackStatus(ex.Message, true);
             return false;
         }
     }
 
     [RelayCommand]
-    private async Task ScanMods()
+    private async Task ScanLanguagePacks()
     {
-        ModsLoading = true;
+        LanguagePacksLoading = true;
         try
         {
-            var activeFileNames = ModFiles
+            var activeFileNames = LanguagePacks
                 .Where(m => m.IsActive)
                 .Select(m => Path.GetFileName(m.Path))
                 .Where(name => !string.IsNullOrWhiteSpace(name))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            activeFileNames.UnionWith(_savedActiveMods);
+            activeFileNames.UnionWith(_savedActiveLanguagePacks);
 
-            var files = await Task.Run(() => _mods.ScanZipMods());
-            ModFiles.Clear();
+            var files = await Task.Run(() => _languagePacks.ScanLanguagePacks());
+            LanguagePacks.Clear();
             foreach (var file in files)
             {
                 file.IsActive = activeFileNames.Contains(Path.GetFileName(file.Path));
                 if (file.IsActive && file.CanActivate)
                     file.Status = "Active";
-                ModFiles.Add(file);
+                LanguagePacks.Add(file);
             }
-            _modsScanned = true;
-            SetModsStatus(files.Count == 0 ? "No .zip mods found in dqxclarity\\mods." : $"{files.Count} .zip mod(s) found in dqxclarity\\mods.");
+            _languagePacksScanned = true;
+            SetLanguagePackStatus(files.Count == 0 ? "No .zip language packs found in dqxclarity\\language-packs." : $"{files.Count} .zip language pack(s) found in dqxclarity\\language-packs.");
         }
         catch (Exception ex)
         {
-            SetModsStatus(ex.Message, true);
+            SetLanguagePackStatus(ex.Message, true);
         }
-        ModsLoading = false;
+        LanguagePacksLoading = false;
     }
 
     [RelayCommand]
-    private async Task CheckModUpdates()
+    private async Task CheckLanguagePackUpdates()
     {
-        ModsLoading = true;
+        LanguagePacksLoading = true;
         try
         {
-            var checkable = ModFiles.Where(m => m.CanActivate).ToList();
+            var checkable = LanguagePacks.Where(m => m.CanActivate).ToList();
             if (checkable.Count == 0)
             {
-                SetModsStatus("No valid mods to check.");
+                SetLanguagePackStatus("No valid language packs to check.");
                 return;
             }
 
-            await _mods.CheckUpdatesAsync(checkable);
+            await _languagePacks.CheckUpdatesAsync(checkable);
             var updates = checkable.Count(m => m.Status.StartsWith("Update available:", StringComparison.OrdinalIgnoreCase));
-            SetModsStatus(updates == 0 ? "No mod updates found." : $"{updates} mod update(s) available.");
+            SetLanguagePackStatus(updates == 0 ? "No language pack updates found." : $"{updates} language pack update(s) available.");
         }
         catch (Exception ex)
         {
-            SetModsStatus(ex.Message, true);
+            SetLanguagePackStatus(ex.Message, true);
         }
         finally
         {
-            ModsLoading = false;
+            LanguagePacksLoading = false;
         }
     }
 
     [RelayCommand]
-    private void OpenModsFolder()
+    private void OpenLanguagePacksFolder()
     {
         try
         {
-            var dir = _mods.GetSourceModsFolder();
+            var dir = _languagePacks.GetSourceLanguagePacksFolder();
             Process.Start(new ProcessStartInfo(dir) { UseShellExecute = true });
         }
         catch (Exception ex)
         {
-            SetModsStatus(ex.Message, true);
+            SetLanguagePackStatus(ex.Message, true);
         }
     }
 
-    public async Task DownloadModUpdate(ModFile mod)
+    public async Task DownloadLanguagePackUpdate(LanguagePack pack)
     {
-        if (!mod.HasUpdate)
+        if (!pack.HasUpdate)
             return;
 
-        var wasActive = mod.IsActive;
+        var wasActive = pack.IsActive;
         try
         {
-            ModsLoading = true;
-            mod.Status = "Downloading update...";
+            LanguagePacksLoading = true;
+            pack.Status = "Downloading update...";
 
-            var updated = await _mods.DownloadUpdateAsync(mod);
-            mod.Type = updated.Type;
-            mod.Name = updated.Name;
-            mod.Version = updated.Version;
-            mod.Author = updated.Author;
-            mod.Description = updated.Description;
-            mod.DownloadUrl = updated.DownloadUrl;
-            mod.GameMods = updated.GameMods;
-            mod.CanActivate = updated.CanActivate;
-            mod.RemoteVersion = "";
-            mod.HasUpdate = false;
-            mod.IsActive = wasActive;
-            mod.Status = wasActive ? "Active" : "Ready";
+            var updated = await _languagePacks.DownloadUpdateAsync(pack);
+            pack.Type = updated.Type;
+            pack.Name = updated.Name;
+            pack.Version = updated.Version;
+            pack.Author = updated.Author;
+            pack.Description = updated.Description;
+            pack.DownloadUrl = updated.DownloadUrl;
+            pack.GameMods = updated.GameMods;
+            pack.CanActivate = updated.CanActivate;
+            pack.RemoteVersion = "";
+            pack.HasUpdate = false;
+            pack.IsActive = wasActive;
+            pack.Status = wasActive ? "Active" : "Ready";
 
             if (wasActive && DqxDirValid)
             {
-                var activeMods = ModFiles.Where(m => m.IsActive && m.CanActivate).ToList();
-                var count = await Task.Run(() => _mods.RebuildGameModsFolder(DqxDir, activeMods));
-                SetModsStatus($"Updated {mod.Name} to {mod.Version}. Game\\mods rebuilt: {count} file(s) extracted.");
+                var activePacks = LanguagePacks.Where(m => m.IsActive && m.CanActivate).ToList();
+                var count = await Task.Run(() => _languagePacks.RebuildGameModsFolder(DqxDir, activePacks));
+                SetLanguagePackStatus($"Updated {pack.Name} to {pack.Version}. Game\\mods rebuilt: {count} file(s) extracted.");
             }
             else
             {
-                SetModsStatus($"Updated {mod.Name} to {mod.Version}.");
+                SetLanguagePackStatus($"Updated {pack.Name} to {pack.Version}.");
             }
         }
         catch (Exception ex)
         {
-            mod.Status = $"Update failed: {ex.Message}";
-            SetModsStatus(ex.Message, true);
+            pack.Status = $"Update failed: {ex.Message}";
+            SetLanguagePackStatus(ex.Message, true);
         }
         finally
         {
-            ModsLoading = false;
+            LanguagePacksLoading = false;
         }
     }
 
-    public async Task SetModActive(ModFile mod, bool enabled)
+    public async Task SetLanguagePackActive(LanguagePack pack, bool enabled)
     {
         if (!DqxDirValid)
         {
-            SetModsStatus("Set a valid DQX folder path before activating mods.", true);
+            SetLanguagePackStatus("Set a valid DQX folder path before activating language packs.", true);
             return;
         }
 
-        var previousState = mod.IsActive;
-        mod.IsActive = enabled;
+        var previousState = pack.IsActive;
+        pack.IsActive = enabled;
 
         try
         {
-            ModsLoading = true;
-            var activeMods = ModFiles.Where(m => m.IsActive && m.CanActivate).ToList();
-            var count = await Task.Run(() => _mods.RebuildGameModsFolder(DqxDir, activeMods));
+            LanguagePacksLoading = true;
+            var activePacks = LanguagePacks.Where(m => m.IsActive && m.CanActivate).ToList();
+            var count = await Task.Run(() => _languagePacks.RebuildGameModsFolder(DqxDir, activePacks));
 
-            foreach (var item in ModFiles.Where(m => m.CanActivate))
+            foreach (var item in LanguagePacks.Where(m => m.CanActivate))
                 item.Status = item.IsActive ? "Active" : "Ready";
 
-            SaveActiveModsSelection();
-            SetModsStatus(activeMods.Count == 0
-                ? "Game\\mods cleaned. No mods active."
-                : $"Game\\mods rebuilt: {activeMods.Count} mod(s), {count} file(s) extracted.");
+            SaveActiveLanguagePackSelection();
+            SetLanguagePackStatus(activePacks.Count == 0
+                ? "Game\\mods cleaned. No language packs active."
+                : $"Game\\mods rebuilt: {activePacks.Count} language pack(s), {count} file(s) extracted.");
         }
         catch (Exception ex)
         {
-            mod.IsActive = previousState;
-            mod.Status = ex.Message;
-            SetModsStatus(ex.Message, true);
+            pack.IsActive = previousState;
+            pack.Status = ex.Message;
+            SetLanguagePackStatus(ex.Message, true);
         }
         finally
         {
-            ModsLoading = false;
+            LanguagePacksLoading = false;
         }
     }
 
-    private List<string> GetActiveModFileNames()
+    private List<string> GetActiveLanguagePackFileNames()
     {
-        if (!_modsScanned)
-            return _savedActiveMods.OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToList();
+        if (!_languagePacksScanned)
+            return _savedActiveLanguagePacks.OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToList();
 
-        return ModFiles
+        return LanguagePacks
             .Where(m => m.IsActive && m.CanActivate)
             .Select(m => Path.GetFileName(m.Path))
             .Where(name => !string.IsNullOrWhiteSpace(name))
@@ -1193,12 +1193,12 @@ public partial class SettingsViewModel : ObservableObject
             .ToList();
     }
 
-    private void SaveActiveModsSelection()
+    private void SaveActiveLanguagePackSelection()
     {
-        var fileNames = GetActiveModFileNames();
-        _savedActiveMods.Clear();
-        _savedActiveMods.UnionWith(fileNames);
-        _cfg.SaveActiveMods(fileNames);
+        var fileNames = GetActiveLanguagePackFileNames();
+        _savedActiveLanguagePacks.Clear();
+        _savedActiveLanguagePacks.UnionWith(fileNames);
+        _cfg.SaveActiveLanguagePacks(fileNames);
     }
 
     public Task SetDqxDir(string dir)
@@ -1210,7 +1210,7 @@ public partial class SettingsViewModel : ObservableObject
             DqxDir = dir;
             DqxDirValid = true;
             try { _cfg.SaveGameDir(dir); } catch { }
-            InitializeModsFolder();
+            InitializeLanguagePacksFolder();
         }
         else
         {

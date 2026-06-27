@@ -111,7 +111,7 @@
                     <Button x:Name="TabOverrides"  Classes="tab" Click="OnTabClick" Tag="nameoverrides">Name Overrides</Button>
                     <Button x:Name="TabDatabase"   Classes="tab" Click="OnTabClick" Tag="database">Database</Button>
                     <Button x:Name="TabGame"       Classes="tab" Click="OnTabClick" Tag="game">Game</Button>
-                    <Button x:Name="TabMods"       Classes="tab" Click="OnTabClick" Tag="mods">Mods</Button>
+                    <Button x:Name="TabLanguagePacks" Classes="tab" Click="OnTabClick" Tag="languagepacks">Language Packs</Button>
                     <Button x:Name="TabText2Clipboard"  Classes="tab" Click="OnTabClick" Tag="text2clipboard">Text2Clipboard</Button>
                 </StackPanel>
             </Border>
@@ -687,46 +687,46 @@
                     </Grid>
                 </Grid>
 
-                <!-- ══ MODS (full height) ═══════════════════════════════ -->
-                <Grid x:Name="PanelMods" IsVisible="False" Margin="14,8"
+                <!-- ══ LANGUAGE PACKS (full height) ═════════════════════ -->
+                <Grid x:Name="PanelLanguagePacks" IsVisible="False" Margin="14,8"
                       RowDefinitions="Auto,Auto,*">
 
                     <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,Auto,*" Margin="0,0,0,10">
                         <Button Grid.Column="0"
-                                Command="{Binding ScanModsCommand}"
-                                IsEnabled="{Binding !ModsLoading}"
-                                ToolTip.Tip="Scans the mods folder in the dqxclarity directory."
+                                Command="{Binding ScanLanguagePacksCommand}"
+                                IsEnabled="{Binding !LanguagePacksLoading}"
+                                ToolTip.Tip="Scans the language packs folder in the dqxclarity directory."
                                 Margin="0,0,10,0">Scan Folder</Button>
                         <Button Grid.Column="1"
-                                Command="{Binding OpenModsFolderCommand}"
-                                ToolTip.Tip="Opens the dqxclarity mods folder."
-                                Margin="0,0,10,0">Open Mods Folder</Button>
+                                Command="{Binding OpenLanguagePacksFolderCommand}"
+                                ToolTip.Tip="Opens the dqxclarity language packs folder."
+                                Margin="0,0,10,0">Open Language Packs Folder</Button>
                         <Button Grid.Column="2"
-                                Command="{Binding CheckModUpdatesCommand}"
-                                IsEnabled="{Binding !ModsLoading}"
-                                ToolTip.Tip="Downloads each mod's download_url and compares its mod.jsons version."
+                                Command="{Binding CheckLanguagePackUpdatesCommand}"
+                                IsEnabled="{Binding !LanguagePacksLoading}"
+                                ToolTip.Tip="Downloads each language pack's download_url and compares its mod.jsons version."
                                 Margin="0,0,10,0">Check Updates</Button>
                         <CheckBox Grid.Column="3"
-                                  Content="Activate Mods support"
-                                  IsChecked="{Binding ModsSupport}"
+                                  Content="Activate Language Pack support"
+                                  IsChecked="{Binding LanguagePackSupport}"
                                   VerticalAlignment="Center"
                                   ToolTip.Tip="Copies version.dll into the DQX Game folder when enabled, and removes it when disabled."/>
                     </Grid>
 
                     <TextBlock Grid.Row="1"
-                               Text="{Binding ModsStatus}"
+                               Text="{Binding LanguagePackStatus}"
                                FontSize="11"
                                Foreground="{DynamicResource AppMuted}"
                                TextWrapping="Wrap"
                                Margin="0,0,0,8"
-                               IsVisible="{Binding !ModsStatusIsError}"/>
+                               IsVisible="{Binding !LanguagePackStatusIsError}"/>
                     <TextBlock Grid.Row="1"
-                               Text="{Binding ModsStatus}"
+                               Text="{Binding LanguagePackStatus}"
                                FontSize="11"
                                Foreground="{DynamicResource AppDanger}"
                                TextWrapping="Wrap"
                                Margin="0,0,0,8"
-                               IsVisible="{Binding ModsStatusIsError}"/>
+                               IsVisible="{Binding LanguagePackStatusIsError}"/>
 
                     <Border Grid.Row="2"
                             BorderBrush="{DynamicResource AppBorder}"
@@ -773,9 +773,9 @@
                             <ScrollViewer Grid.Row="1"
                                           HorizontalScrollBarVisibility="Disabled"
                                           VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding ModFiles}">
+                                <ItemsControl ItemsSource="{Binding LanguagePacks}">
                                     <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="m:ModFile">
+                                        <DataTemplate x:DataType="m:LanguagePack">
                                             <Border BorderBrush="{DynamicResource AppBorder}"
                                                     BorderThickness="0,0,0,1">
                                                 <Grid ColumnDefinitions="34,120,3*,120,120,2*">
@@ -784,7 +784,7 @@
                                                               IsEnabled="{Binding CanActivate}"
                                                               HorizontalAlignment="Center"
                                                               VerticalAlignment="Center"
-                                                              Click="OnModActiveClick"/>
+                                                              Click="OnLanguagePackActiveClick"/>
                                                     <TextBlock Grid.Column="1"
                                                                Text="{Binding Type}"
                                                                FontSize="13"
@@ -806,7 +806,7 @@
                                                                TextTrimming="CharacterEllipsis"/>
                                                     <Button Grid.Column="3"
                                                             IsVisible="{Binding HasUpdate}"
-                                                            Click="OnModUpdateClick"
+                                                            Click="OnLanguagePackUpdateClick"
                                                             FontSize="11"
                                                             HorizontalAlignment="Left"
                                                             Padding="8,2"

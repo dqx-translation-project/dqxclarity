@@ -188,8 +188,8 @@ public class ConfigService
                 Theme                    = l.GetValueOrDefault("theme") ?? "rosie",
                 SeenWelcomeMessage       = ToBool(l.GetValueOrDefault("seenwelcomemessage")),
                 BannerCollapsed          = ToBool(l.GetValueOrDefault("bannercollapsed")),
-                ModsSupport              = ToBool(l.GetValueOrDefault("modssupport")),
-                ActiveMods               = (l.GetValueOrDefault("activemods") ?? "")
+                LanguagePackSupport      = ToBool(l.GetValueOrDefault("languagepacksupport")),
+                ActiveLanguagePacks      = (l.GetValueOrDefault("activelanguagepacks") ?? "")
                     .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList(),
@@ -253,8 +253,8 @@ public class ConfigService
         WriteKv(sb, "theme",                    launcher.Theme);
         WriteKv(sb, "seenwelcomemessage",       seenWelcome);
         WriteKv(sb, "bannercollapsed",          bannerCollapsed);
-        WriteKv(sb, "modssupport",              BoolToIni(launcher.ModsSupport));
-        WriteKv(sb, "activemods",                string.Join('|', launcher.ActiveMods));
+        WriteKv(sb, "languagepacksupport",      BoolToIni(launcher.LanguagePackSupport));
+        WriteKv(sb, "activelanguagepacks",       string.Join('|', launcher.ActiveLanguagePacks));
 
         var dir = Path.GetDirectoryName(path)!;
         Directory.CreateDirectory(dir);
@@ -335,14 +335,14 @@ public class ConfigService
     public void SaveBannerCollapsed(bool value) =>
         UpdateIniValue(ConfigPath(), "launcher", "bannercollapsed", BoolToIni(value));
 
-    public void SaveModsSupport(bool value) =>
-        UpdateIniValue(ConfigPath(), "launcher", "modssupport", BoolToIni(value));
+    public void SaveLanguagePackSupport(bool value) =>
+        UpdateIniValue(ConfigPath(), "launcher", "languagepacksupport", BoolToIni(value));
 
-    public void SaveActiveMods(IEnumerable<string> fileNames) =>
+    public void SaveActiveLanguagePacks(IEnumerable<string> fileNames) =>
         UpdateIniValue(
             ConfigPath(),
             "launcher",
-            "activemods",
+            "activelanguagepacks",
             string.Join('|', fileNames.Distinct(StringComparer.OrdinalIgnoreCase)));
 
     public string GetVersion()

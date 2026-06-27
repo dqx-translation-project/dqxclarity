@@ -55,9 +55,9 @@ local-build\dqxclarity-mod.zip
 
 That folder contains the Python app, config/default files, database, and the rebuilt `dqxclarity.exe`.
 
-## Mod zip manifest
+## Language pack zip manifest
 
-Every mod zip scanned by the Mods tab must contain a root-level `mod.jsons`.
+Every language pack zip scanned by the Language Packs tab must contain a root-level `mod.jsons`.
 
 Example:
 
@@ -86,10 +86,12 @@ ExampleMod\...
 
 `download_url` must be a stable direct URL to a zip containing its own `mod.jsons`. The launcher compares the remote manifest version with the installed version and can replace the local archive.
 
+The launcher scans for `*.zip` language packs in the `dqxclarity/language-packs` folder.
+
 ## Notes
 
 - Keep custom helper scripts in `local-tools/` so upstream code remains easy to diff.
 - Use `git status` before and after changes.
 - The launcher is C#/.NET 9 Avalonia; the in-game engine is Python plus Frida hooks.
 - The launcher expects the Python app files near the exe in the final packaged folder.
-- `launcher/native/version.dll` is embedded in the launcher and installed in the game only while mod support is running.
+- `launcher/native/version.dll` is embedded in the launcher and installed in the game only while language pack support is running.

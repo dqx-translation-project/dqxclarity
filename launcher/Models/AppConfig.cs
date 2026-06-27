@@ -14,11 +14,11 @@ public class LauncherConfig
     public string Theme { get; set; } = "rosie";
     public bool SeenWelcomeMessage { get; set; }
     public bool BannerCollapsed { get; set; }
-    public bool ModsSupport { get; set; }
-    public List<string> ActiveMods { get; set; } = [];
+    public bool LanguagePackSupport { get; set; }
+    public List<string> ActiveLanguagePacks { get; set; } = [];
 }
 
-public partial class ModFile : ObservableObject
+public partial class LanguagePack : ObservableObject
 {
     [ObservableProperty] private string _type = "";
     [ObservableProperty] private string _name = "";
@@ -35,7 +35,7 @@ public partial class ModFile : ObservableObject
     [ObservableProperty] private List<string> _gameMods = [];
 }
 
-public class ModManifest
+public class LanguagePackManifest
 {
     [JsonPropertyName("name")]
     public string Name { get; set; } = "";

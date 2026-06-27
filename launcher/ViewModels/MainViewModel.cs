@@ -61,7 +61,7 @@ public partial class MainViewModel : ObservableObject
         DatabaseService dbSvc,
         ValidateService validateSvc,
         MaintenanceService maintenanceSvc,
-        ModsService modsSvc,
+        LanguagePackService langPackSvc,
         Text2ClipboardViewModel text2Clipboard)
     {
         _config     = config;
@@ -75,15 +75,15 @@ public partial class MainViewModel : ObservableObject
         Setup    = new SetupViewModel(setupSvc);
         Log      = new LogViewModel(processSvc, text2Clipboard);
         Settings = new SettingsViewModel(
-            config, version, null, text2Clipboard, cfg, patchSvc, dbSvc, validateSvc, maintenanceSvc, modsSvc);
-        Settings.CleanupModsRuntime();
+            config, version, null, text2Clipboard, cfg, patchSvc, dbSvc, validateSvc, maintenanceSvc, langPackSvc);
+        Settings.CleanupLanguagePackRuntime();
 
         Setup.SetupDone     += () => SwitchTo(autoRun ? "log" : "settings");
         Log.NavigateBack    += () => SwitchTo("settings");
         Log.CloseApp        += () => Window?.Close();
         Settings.RunRequested += OnRunRequested;
         Settings.OpenUrl      += OpenBrowser;
-        _processSvc.ProcessExited += _ => Settings.CleanupModsRuntime();
+        _processSvc.ProcessExited += _ => Settings.CleanupLanguagePackRuntime();
 
         // If autorun, trigger the full run flow (respects DirectLogin, SimultaneousLaunch, etc.)
         if (autoRun)
@@ -242,7 +242,7 @@ public partial class MainViewModel : ObservableObject
         }
         catch
         {
-            Settings.CleanupModsRuntime();
+            Settings.CleanupLanguagePackRuntime();
             throw;
         }
     }

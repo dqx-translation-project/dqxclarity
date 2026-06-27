@@ -22,8 +22,8 @@ app/dqxclarity.lock
 launcher/native/LocaleHook.dll
 launcher/native/build/
 
-# mods are downloaded at runtime, not shipped in the repo
-mods/
+# language packs are downloaded at runtime, not shipped in the repo
+language-packs/
 
 # local release artifacts
 local-build/

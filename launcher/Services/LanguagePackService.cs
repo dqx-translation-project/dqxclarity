@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace DqxClarity.Launcher.Services;
 
-public class ModsService
+public class LanguagePackService
 {
     private static string AppDir()
     {
@@ -23,22 +23,23 @@ public class ModsService
     private static string GameDir(string installDir) =>
         Path.Combine(installDir, "Game");
 
+    // "mods" is the folder name the dragonhook proxy DLL scans in the game dir; do not rename.
     private static string GameModsDir(string installDir) =>
         Path.Combine(GameDir(installDir), "mods");
 
-    private static string SourceModsDir() =>
-        Path.Combine(AppDir(), "mods");
+    private static string SourceLanguagePacksDir() =>
+        Path.Combine(AppDir(), "language-packs");
 
     private static string TargetDll(string installDir) =>
         Path.Combine(GameDir(installDir), "version.dll");
 
-    public void EnsureSourceModsFolder() =>
-        Directory.CreateDirectory(SourceModsDir());
+    public void EnsureSourceLanguagePacksFolder() =>
+        Directory.CreateDirectory(SourceLanguagePacksDir());
 
-    public string GetSourceModsFolder()
+    public string GetSourceLanguagePacksFolder()
     {
-        EnsureSourceModsFolder();
-        return SourceModsDir();
+        EnsureSourceLanguagePacksFolder();
+        return SourceLanguagePacksDir();
     }
 
     public void EnsureGameModsFolder(string installDir)
@@ -49,7 +50,7 @@ public class ModsService
 
     public void EnsureFolders(string installDir)
     {
-        EnsureSourceModsFolder();
+        EnsureSourceLanguagePacksFolder();
         EnsureGameModsFolder(installDir);
     }
 
@@ -66,11 +67,11 @@ public class ModsService
 
     public void EnableSupport(string installDir)
     {
-        EnsureSourceModsFolder();
+        EnsureSourceLanguagePacksFolder();
         EnsureGameModsFolder(installDir);
 
-        using var stream = typeof(ModsService).Assembly.GetManifestResourceStream("version.dll")
-            ?? throw new FileNotFoundException("The embedded mod support DLL is missing.");
+        using var stream = typeof(LanguagePackService).Assembly.GetManifestResourceStream("version.dll")
+            ?? throw new FileNotFoundException("The embedded language pack support DLL is missing.");
         using var target = File.Create(TargetDll(installDir));
         stream.CopyTo(target);
     }
@@ -82,17 +83,17 @@ public class ModsService
             File.Delete(target);
     }
 
-    public List<ModFile> ScanZipMods()
+    public List<LanguagePack> ScanLanguagePacks()
     {
-        EnsureSourceModsFolder();
+        EnsureSourceLanguagePacksFolder();
         return Directory
-            .EnumerateFiles(SourceModsDir(), "*.zip", SearchOption.TopDirectoryOnly)
+            .EnumerateFiles(SourceLanguagePacksDir(), "*.zip", SearchOption.TopDirectoryOnly)
             .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
-            .Select(ReadModFile)
+            .Select(ReadLanguagePack)
             .ToList();
     }
 
-    private static ModFile ReadModFile(string path)
+    private static LanguagePack ReadLanguagePack(string path)
     {
         try
         {
@@ -100,10 +101,10 @@ public class ModsService
             var manifestEntry = archive.Entries.FirstOrDefault(e =>
                 NormalizeZipPath(e.FullName).Equals("mod.jsons", StringComparison.OrdinalIgnoreCase));
             if (manifestEntry == null)
-                return InvalidMod(path, "Missing mod.jsons");
+                return InvalidLanguagePack(path, "Missing mod.jsons");
 
             using var stream = manifestEntry.Open();
-            var manifest = JsonSerializer.Deserialize<ModManifest>(stream, new JsonSerializerOptions
+            var manifest = JsonSerializer.Deserialize<LanguagePackManifest>(stream, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
             }) ?? throw new InvalidDataException("mod.jsons is empty");
@@ -115,12 +116,12 @@ public class ModsService
                 .ToList();
 
             if (gameMods.Count == 0)
-                return InvalidMod(path, "mod.jsons has no game_mods entries", manifest);
+                return InvalidLanguagePack(path, "mod.jsons has no game_mods entries", manifest);
 
             foreach (var item in gameMods)
                 ValidateRelativeZipPath(item);
 
-            return new ModFile
+            return new LanguagePack
             {
                 Type = string.IsNullOrWhiteSpace(manifest.Type) ? "Unknown" : manifest.Type,
                 Name = string.IsNullOrWhiteSpace(manifest.Name) ? Path.GetFileNameWithoutExtension(path) : manifest.Name,
@@ -136,11 +137,11 @@ public class ModsService
         }
         catch (Exception ex)
         {
-            return InvalidMod(path, ex.Message);
+            return InvalidLanguagePack(path, ex.Message);
         }
     }
 
-    private static ModFile InvalidMod(string path, string reason, ModManifest? manifest = null) =>
+    private static LanguagePack InvalidLanguagePack(string path, string reason, LanguagePackManifest? manifest = null) =>
         new()
         {
             Type = string.IsNullOrWhiteSpace(manifest?.Type) ? "Invalid" : manifest!.Type,
@@ -153,44 +154,44 @@ public class ModsService
             Status = reason,
         };
 
-    public async Task CheckUpdatesAsync(IEnumerable<ModFile> mods)
+    public async Task CheckUpdatesAsync(IEnumerable<LanguagePack> languagePacks)
     {
         using var http = new HttpClient();
         http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("dqxclarity-launcher", "1.0"));
 
-        foreach (var mod in mods.Where(m => m.CanActivate))
+        foreach (var pack in languagePacks.Where(m => m.CanActivate))
         {
-            if (string.IsNullOrWhiteSpace(mod.DownloadUrl))
+            if (string.IsNullOrWhiteSpace(pack.DownloadUrl))
             {
-                mod.Status = "No download_url";
+                pack.Status = "No download_url";
                 continue;
             }
 
             try
             {
-                mod.Status = "Checking...";
-                var remote = await ReadRemoteManifest(http, mod.DownloadUrl);
-                mod.RemoteVersion = remote.Version;
+                pack.Status = "Checking...";
+                var remote = await ReadRemoteManifest(http, pack.DownloadUrl);
+                pack.RemoteVersion = remote.Version;
 
-                var compare = CompareVersions(remote.Version, mod.Version);
-                mod.HasUpdate = compare > 0;
-                mod.Status = compare > 0
+                var compare = CompareVersions(remote.Version, pack.Version);
+                pack.HasUpdate = compare > 0;
+                pack.Status = compare > 0
                     ? $"Update available: {remote.Version}"
                     : compare == 0
                         ? "Up to date"
-                        : $"Local newer: {mod.Version}";
+                        : $"Local newer: {pack.Version}";
             }
             catch (Exception ex)
             {
-                mod.HasUpdate = false;
-                mod.Status = $"Update check failed: {ex.Message}";
+                pack.HasUpdate = false;
+                pack.Status = $"Update check failed: {ex.Message}";
             }
         }
     }
 
-    public async Task<ModFile> DownloadUpdateAsync(ModFile mod)
+    public async Task<LanguagePack> DownloadUpdateAsync(LanguagePack pack)
     {
-        if (string.IsNullOrWhiteSpace(mod.DownloadUrl))
+        if (string.IsNullOrWhiteSpace(pack.DownloadUrl))
             throw new InvalidDataException("No download_url");
 
         using var http = new HttpClient();
@@ -199,15 +200,15 @@ public class ModsService
         var temp = Path.GetTempFileName();
         try
         {
-            var bytes = await http.GetByteArrayAsync(mod.DownloadUrl);
+            var bytes = await http.GetByteArrayAsync(pack.DownloadUrl);
             await File.WriteAllBytesAsync(temp, bytes);
 
-            var downloaded = ReadModFile(temp);
+            var downloaded = ReadLanguagePack(temp);
             if (!downloaded.CanActivate)
                 throw new InvalidDataException(downloaded.Status);
 
-            File.Copy(temp, mod.Path, overwrite: true);
-            return ReadModFile(mod.Path);
+            File.Copy(temp, pack.Path, overwrite: true);
+            return ReadLanguagePack(pack.Path);
         }
         finally
         {
@@ -215,7 +216,7 @@ public class ModsService
         }
     }
 
-    private static async Task<ModManifest> ReadRemoteManifest(HttpClient http, string url)
+    private static async Task<LanguagePackManifest> ReadRemoteManifest(HttpClient http, string url)
     {
         var bytes = await http.GetByteArrayAsync(url);
 
@@ -228,7 +229,7 @@ public class ModsService
             if (manifestEntry == null)
                 throw new InvalidDataException("Remote zip has no mod.jsons");
             using var stream = manifestEntry.Open();
-            return JsonSerializer.Deserialize<ModManifest>(stream, new JsonSerializerOptions
+            return JsonSerializer.Deserialize<LanguagePackManifest>(stream, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
             }) ?? throw new InvalidDataException("Remote mod.jsons is empty");
@@ -236,36 +237,36 @@ public class ModsService
         catch (InvalidDataException)
         {
             using var ms = new MemoryStream(bytes);
-            return await JsonSerializer.DeserializeAsync<ModManifest>(ms, new JsonSerializerOptions
+            return await JsonSerializer.DeserializeAsync<LanguagePackManifest>(ms, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
             }) ?? throw new InvalidDataException("Remote manifest is empty");
         }
     }
 
-    public int ExtractZipMod(string installDir, ModFile mod)
+    public int ExtractLanguagePack(string installDir, LanguagePack pack)
     {
-        EnsureSourceModsFolder();
+        EnsureSourceLanguagePacksFolder();
         EnsureGameModsFolder(installDir);
-        if (!File.Exists(mod.Path))
-            throw new FileNotFoundException($"Mod archive not found: {mod.Path}");
+        if (!File.Exists(pack.Path))
+            throw new FileNotFoundException($"Language pack archive not found: {pack.Path}");
 
         var modsDir = Path.GetFullPath(GameModsDir(installDir));
         var root = modsDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
                    + Path.DirectorySeparatorChar;
         var extracted = 0;
 
-        if (!mod.CanActivate)
-            throw new InvalidDataException(mod.Status);
+        if (!pack.CanActivate)
+            throw new InvalidDataException(pack.Status);
 
-        using var archive = ZipFile.OpenRead(mod.Path);
+        using var archive = ZipFile.OpenRead(pack.Path);
         foreach (var entry in archive.Entries)
         {
             var normalizedEntry = NormalizeZipPath(entry.FullName);
             if (string.IsNullOrWhiteSpace(normalizedEntry) || normalizedEntry.Equals("mod.jsons", StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            if (!mod.GameMods.Any(source => IsUnderSource(normalizedEntry, source)))
+            if (!pack.GameMods.Any(source => IsUnderSource(normalizedEntry, source)))
                 continue;
 
             var target = Path.GetFullPath(Path.Combine(modsDir, normalizedEntry));
@@ -289,12 +290,12 @@ public class ModsService
         return extracted;
     }
 
-    public int RebuildGameModsFolder(string installDir, IEnumerable<ModFile> activeMods)
+    public int RebuildGameModsFolder(string installDir, IEnumerable<LanguagePack> activeLanguagePacks)
     {
         EnsureGameModsFolder(installDir);
 
-        var mods = activeMods.ToList();
-        ValidateNoOutputConflicts(mods);
+        var packs = activeLanguagePacks.ToList();
+        ValidateNoOutputConflicts(packs);
 
         var modsDir = GameModsDir(installDir);
         foreach (var file in Directory.EnumerateFiles(modsDir))
@@ -303,23 +304,23 @@ public class ModsService
             Directory.Delete(dir, recursive: true);
 
         var total = 0;
-        foreach (var mod in mods)
-            total += ExtractZipMod(installDir, mod);
+        foreach (var pack in packs)
+            total += ExtractLanguagePack(installDir, pack);
         return total;
     }
 
-    private static void ValidateNoOutputConflicts(IReadOnlyList<ModFile> activeMods)
+    private static void ValidateNoOutputConflicts(IReadOnlyList<LanguagePack> activeLanguagePacks)
     {
         var outputs = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var mod in activeMods)
+        foreach (var pack in activeLanguagePacks)
         {
-            if (!mod.CanActivate)
-                throw new InvalidDataException(mod.Status);
-            if (!File.Exists(mod.Path))
-                throw new FileNotFoundException($"Mod archive not found: {mod.Path}");
+            if (!pack.CanActivate)
+                throw new InvalidDataException(pack.Status);
+            if (!File.Exists(pack.Path))
+                throw new FileNotFoundException($"Language pack archive not found: {pack.Path}");
 
-            using var archive = ZipFile.OpenRead(mod.Path);
+            using var archive = ZipFile.OpenRead(pack.Path);
             foreach (var entry in archive.Entries)
             {
                 if (string.IsNullOrEmpty(entry.Name))
@@ -330,7 +331,7 @@ public class ModsService
                     || normalizedEntry.Equals("mod.jsons", StringComparison.OrdinalIgnoreCase))
                     continue;
 
-                if (!mod.GameMods.Any(source => IsUnderSource(normalizedEntry, source)))
+                if (!pack.GameMods.Any(source => IsUnderSource(normalizedEntry, source)))
                     continue;
 
                 ValidateRelativeZipPath(normalizedEntry);
@@ -341,8 +342,8 @@ public class ModsService
                     outputs[normalizedEntry] = owners;
                 }
 
-                if (!owners.Contains(mod.Name, StringComparer.OrdinalIgnoreCase))
-                    owners.Add(mod.Name);
+                if (!owners.Contains(pack.Name, StringComparer.OrdinalIgnoreCase))
+                    owners.Add(pack.Name);
             }
         }
 
@@ -354,7 +355,7 @@ public class ModsService
 
         if (conflicts.Count > 0)
             throw new InvalidDataException(
-                "Mod file conflict detected. These files are provided by multiple active mods:\n"
+                "Language pack file conflict detected. These files are provided by multiple active language packs:\n"
                 + string.Join("\n", conflicts));
     }
 

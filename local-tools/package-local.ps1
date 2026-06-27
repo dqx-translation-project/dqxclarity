@@ -53,22 +53,22 @@ $MiscDir = Join-Path $PackageDir "misc_files"
 New-Item -ItemType Directory -Force -Path $MiscDir | Out-Null
 Copy-Item -LiteralPath (Join-Path $RepoRoot "clarity_dialog.db") -Destination $MiscDir -Force
 
-$PackageModsDir = Join-Path $PackageDir "mods"
-New-Item -ItemType Directory -Force -Path $PackageModsDir | Out-Null
+$PackageLanguagePacksDir = Join-Path $PackageDir "language-packs"
+New-Item -ItemType Directory -Force -Path $PackageLanguagePacksDir | Out-Null
 
-$SourceModsDir = Join-Path $RepoRoot "mods"
-$copiedSourceMods = $false
-if (Test-Path $SourceModsDir) {
-    Get-ChildItem -LiteralPath $SourceModsDir -Filter "*.zip" -File | ForEach-Object {
-        Copy-Item -LiteralPath $_.FullName -Destination $PackageModsDir -Force
-        $copiedSourceMods = $true
+$SourceLanguagePacksDir = Join-Path $RepoRoot "language-packs"
+$copiedSourceLanguagePacks = $false
+if (Test-Path $SourceLanguagePacksDir) {
+    Get-ChildItem -LiteralPath $SourceLanguagePacksDir -Filter "*.zip" -File | ForEach-Object {
+        Copy-Item -LiteralPath $_.FullName -Destination $PackageLanguagePacksDir -Force
+        $copiedSourceLanguagePacks = $true
     }
 }
 
-$BundledModsDir = Join-Path (Split-Path -Parent $LauncherExe) "mods"
-if (-not $copiedSourceMods -and (Test-Path $BundledModsDir)) {
-    Get-ChildItem -LiteralPath $BundledModsDir -Filter "*.zip" -File | ForEach-Object {
-        Copy-Item -LiteralPath $_.FullName -Destination $PackageModsDir -Force
+$BundledLanguagePacksDir = Join-Path (Split-Path -Parent $LauncherExe) "language-packs"
+if (-not $copiedSourceLanguagePacks -and (Test-Path $BundledLanguagePacksDir)) {
+    Get-ChildItem -LiteralPath $BundledLanguagePacksDir -Filter "*.zip" -File | ForEach-Object {
+        Copy-Item -LiteralPath $_.FullName -Destination $PackageLanguagePacksDir -Force
     }
 }
 
