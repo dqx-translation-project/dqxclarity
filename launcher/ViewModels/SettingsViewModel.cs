@@ -18,6 +18,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly PatchService    _patch;
     private readonly DatabaseService _db;
     private readonly ValidateService _validate;
+    private readonly ModsService     _mods;
     private readonly string          _saveFolderPath;
     private UpdateService?           _updateSvc;
     public Text2ClipboardViewModel Text2Clipboard { get; }
@@ -31,6 +32,25 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _nameplates;
     [ObservableProperty] private bool _debugLogging;
     [ObservableProperty] private bool _communityLogging;
+
+    // ── Mods ──────────────────────────────────────────────────────────────
+    [ObservableProperty] private bool   _modsSupport;
+    [ObservableProperty] private bool   _modsLoading;
+    [ObservableProperty] private string _modsStatus = "";
+    [ObservableProperty] private bool   _modsStatusIsError;
+    public ObservableCollection<ModFile> ModFiles { get; } = [];
+    private readonly HashSet<string> _savedActiveMods = new(StringComparer.OrdinalIgnoreCase);
+    private bool _modsScanned;
+
+    partial void OnModsSupportChanged(bool value)
+    {
+        try { _cfg.SaveModsSupport(value); } catch { }
+        SetModsStatus(value
+            ? "Mods support enabled. version.dll will be installed when you click Run."
+            : "Mods support disabled. version.dll will be removed when possible.");
+        if (!value)
+            CleanupModsRuntime();
+    }
 
     // ── Translation ───────────────────────────────────────────────────────
     public record TranslateServiceOption(string Value, string Display);
@@ -430,7 +450,8 @@ public partial class SettingsViewModel : ObservableObject
         PatchService patch,
         DatabaseService db,
         ValidateService validate,
-        MaintenanceService maintenance)
+        MaintenanceService maintenance,
+        ModsService mods)
     {
         Text2Clipboard    = text2Clipboard;
         _cfg         = cfg;
@@ -438,6 +459,7 @@ public partial class SettingsViewModel : ObservableObject
         _db          = db;
         _validate    = validate;
         _maintenance = maintenance;
+        _mods        = mods;
 
         Version    = version;
         _updateInfo = updateInfo;
@@ -447,6 +469,10 @@ public partial class SettingsViewModel : ObservableObject
         _communityLogging  = config.Launcher.CommunityLogging;
         _selectedTheme     = config.Launcher.Theme;
         _characterImage    = LoadCharacterImage(_selectedTheme);
+        _modsSupport       = config.Launcher.ModsSupport;
+        foreach (var fileName in config.Launcher.ActiveMods)
+            _savedActiveMods.Add(fileName);
+        try { _mods.EnsureSourceModsFolder(); } catch { }
 
         var savedService = config.Translation.TranslateService;
         _selectedTranslateService = TranslateServiceOptions.FirstOrDefault(o => o.Value == savedService)
@@ -482,10 +508,12 @@ public partial class SettingsViewModel : ObservableObject
         {
             _dqxDirValid = cfg.ValidateDqxDir(_dqxDir, out var dqxErr);
             if (!_dqxDirValid) _dqxDirError = dqxErr;
+            else InitializeModsFolder();
         }
         else
         {
             _dqxDirError = $"DQX installation not found at the default location ({ConfigService.DefaultDqxDir}). Browse to your DQX installation folder to continue.";
+            SetModsStatus("dqxclarity\\mods is ready. Set a valid DQX folder path before activating mods.");
         }
 
         _ = FetchMaintenanceStatus();
@@ -528,6 +556,11 @@ public partial class SettingsViewModel : ObservableObject
         {
             _nameOverridesLoaded = true;
             _ = LoadNamePairsAsync();
+        }
+        else if (tab == "mods")
+        {
+            await ScanMods();
+            await CheckModUpdates();
         }
     }
 
@@ -599,6 +632,8 @@ public partial class SettingsViewModel : ObservableObject
             DirectLogin              = DirectLogin,
             DirectLoginAccountNumber = SelectedAccount?.Number ?? 0,
             Theme                    = SelectedTheme,
+            ModsSupport              = ModsSupport,
+            ActiveMods               = GetActiveModFileNames(),
         };
         var translation = new TranslationConfig
         {
@@ -649,10 +684,13 @@ public partial class SettingsViewModel : ObservableObject
 
                 try
                 {
+                    if (!PrepareModsRuntime())
+                        return;
                     new GameLaunchService().Launch(DqxDir, tr.SessionId!, 99);
                 }
                 catch (Exception ex)
                 {
+                    CleanupModsRuntime();
                     if (ShowInfoRequested != null)
                         await ShowInfoRequested("Launch failed", ex.Message);
                     return;
@@ -694,11 +732,14 @@ public partial class SettingsViewModel : ObservableObject
 
                 try
                 {
+                    if (!PrepareModsRuntime())
+                        return;
                     var gameLauncher = new GameLaunchService();
                     gameLauncher.Launch(DqxDir, finalResult.SessionId!, SelectedAccount.Number);
                 }
                 catch (Exception ex)
                 {
+                    CleanupModsRuntime();
                     if (ShowInfoRequested != null)
                         await ShowInfoRequested("Launch failed", ex.Message);
                     return;
@@ -707,7 +748,17 @@ public partial class SettingsViewModel : ObservableObject
         }
         else if (SimultaneousLaunch && !string.IsNullOrEmpty(DqxDir))
         {
-            try { _cfg.LaunchDqx(DqxDir); } catch { }
+            if (!PrepareModsRuntime())
+                return;
+            try { _cfg.LaunchDqx(DqxDir); }
+            catch
+            {
+                CleanupModsRuntime();
+            }
+        }
+        else if (!PrepareModsRuntime())
+        {
+            return;
         }
 
         var args = new List<string>();
@@ -908,6 +959,248 @@ public partial class SettingsViewModel : ObservableObject
 
     // ── Game tab ──────────────────────────────────────────────────────────
 
+    private void SetModsStatus(string message, bool isError = false)
+    {
+        ModsStatus = message;
+        ModsStatusIsError = isError;
+    }
+
+    private void InitializeModsFolder()
+    {
+        if (!DqxDirValid) return;
+        try
+        {
+            _mods.EnsureFolders(DqxDir);
+            SetModsStatus(ModsSupport
+                ? "Mods support enabled. version.dll will be installed when you click Run."
+                : "Mods folders ready.");
+        }
+        catch (Exception ex)
+        {
+            SetModsStatus(ex.Message, true);
+        }
+    }
+
+    public void CleanupModsRuntime()
+    {
+        if (!DqxDirValid) return;
+
+        try
+        {
+            _mods.CleanupRuntime(DqxDir);
+            if (!ModsSupport)
+                SetModsStatus("Mods support disabled.");
+        }
+        catch (Exception ex)
+        {
+            SetModsStatus($"Could not remove version.dll: {ex.Message}", true);
+        }
+    }
+
+    private bool PrepareModsRuntime()
+    {
+        if (!DqxDirValid)
+        {
+            if (ModsSupport)
+                SetModsStatus("Set a valid DQX folder path before using mods support.", true);
+            return !ModsSupport;
+        }
+
+        try
+        {
+            _mods.PrepareRuntime(DqxDir, ModsSupport);
+            SetModsStatus(ModsSupport
+                ? "Mods support active for this run."
+                : "Mods support disabled.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            SetModsStatus(ex.Message, true);
+            return false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ScanMods()
+    {
+        ModsLoading = true;
+        try
+        {
+            var activeFileNames = ModFiles
+                .Where(m => m.IsActive)
+                .Select(m => Path.GetFileName(m.Path))
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            activeFileNames.UnionWith(_savedActiveMods);
+
+            var files = await Task.Run(() => _mods.ScanZipMods());
+            ModFiles.Clear();
+            foreach (var file in files)
+            {
+                file.IsActive = activeFileNames.Contains(Path.GetFileName(file.Path));
+                if (file.IsActive && file.CanActivate)
+                    file.Status = "Active";
+                ModFiles.Add(file);
+            }
+            _modsScanned = true;
+            SetModsStatus(files.Count == 0 ? "No .zip mods found in dqxclarity\\mods." : $"{files.Count} .zip mod(s) found in dqxclarity\\mods.");
+        }
+        catch (Exception ex)
+        {
+            SetModsStatus(ex.Message, true);
+        }
+        ModsLoading = false;
+    }
+
+    [RelayCommand]
+    private async Task CheckModUpdates()
+    {
+        ModsLoading = true;
+        try
+        {
+            var checkable = ModFiles.Where(m => m.CanActivate).ToList();
+            if (checkable.Count == 0)
+            {
+                SetModsStatus("No valid mods to check.");
+                return;
+            }
+
+            await _mods.CheckUpdatesAsync(checkable);
+            var updates = checkable.Count(m => m.Status.StartsWith("Update available:", StringComparison.OrdinalIgnoreCase));
+            SetModsStatus(updates == 0 ? "No mod updates found." : $"{updates} mod update(s) available.");
+        }
+        catch (Exception ex)
+        {
+            SetModsStatus(ex.Message, true);
+        }
+        finally
+        {
+            ModsLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private void OpenModsFolder()
+    {
+        try
+        {
+            var dir = _mods.GetSourceModsFolder();
+            Process.Start(new ProcessStartInfo(dir) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            SetModsStatus(ex.Message, true);
+        }
+    }
+
+    public async Task DownloadModUpdate(ModFile mod)
+    {
+        if (!mod.HasUpdate)
+            return;
+
+        var wasActive = mod.IsActive;
+        try
+        {
+            ModsLoading = true;
+            mod.Status = "Downloading update...";
+
+            var updated = await _mods.DownloadUpdateAsync(mod);
+            mod.Type = updated.Type;
+            mod.Name = updated.Name;
+            mod.Version = updated.Version;
+            mod.Author = updated.Author;
+            mod.Description = updated.Description;
+            mod.DownloadUrl = updated.DownloadUrl;
+            mod.GameMods = updated.GameMods;
+            mod.CanActivate = updated.CanActivate;
+            mod.RemoteVersion = "";
+            mod.HasUpdate = false;
+            mod.IsActive = wasActive;
+            mod.Status = wasActive ? "Active" : "Ready";
+
+            if (wasActive && DqxDirValid)
+            {
+                var activeMods = ModFiles.Where(m => m.IsActive && m.CanActivate).ToList();
+                var count = await Task.Run(() => _mods.RebuildGameModsFolder(DqxDir, activeMods));
+                SetModsStatus($"Updated {mod.Name} to {mod.Version}. Game\\mods rebuilt: {count} file(s) extracted.");
+            }
+            else
+            {
+                SetModsStatus($"Updated {mod.Name} to {mod.Version}.");
+            }
+        }
+        catch (Exception ex)
+        {
+            mod.Status = $"Update failed: {ex.Message}";
+            SetModsStatus(ex.Message, true);
+        }
+        finally
+        {
+            ModsLoading = false;
+        }
+    }
+
+    public async Task SetModActive(ModFile mod, bool enabled)
+    {
+        if (!DqxDirValid)
+        {
+            SetModsStatus("Set a valid DQX folder path before activating mods.", true);
+            return;
+        }
+
+        var previousState = mod.IsActive;
+        mod.IsActive = enabled;
+
+        try
+        {
+            ModsLoading = true;
+            var activeMods = ModFiles.Where(m => m.IsActive && m.CanActivate).ToList();
+            var count = await Task.Run(() => _mods.RebuildGameModsFolder(DqxDir, activeMods));
+
+            foreach (var item in ModFiles.Where(m => m.CanActivate))
+                item.Status = item.IsActive ? "Active" : "Ready";
+
+            SaveActiveModsSelection();
+            SetModsStatus(activeMods.Count == 0
+                ? "Game\\mods cleaned. No mods active."
+                : $"Game\\mods rebuilt: {activeMods.Count} mod(s), {count} file(s) extracted.");
+        }
+        catch (Exception ex)
+        {
+            mod.IsActive = previousState;
+            mod.Status = ex.Message;
+            SetModsStatus(ex.Message, true);
+        }
+        finally
+        {
+            ModsLoading = false;
+        }
+    }
+
+    private List<string> GetActiveModFileNames()
+    {
+        if (!_modsScanned)
+            return _savedActiveMods.OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToList();
+
+        return ModFiles
+            .Where(m => m.IsActive && m.CanActivate)
+            .Select(m => Path.GetFileName(m.Path))
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Select(name => name!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private void SaveActiveModsSelection()
+    {
+        var fileNames = GetActiveModFileNames();
+        _savedActiveMods.Clear();
+        _savedActiveMods.UnionWith(fileNames);
+        _cfg.SaveActiveMods(fileNames);
+    }
+
     public Task SetDqxDir(string dir)
     {
         DqxDirError = "";
@@ -917,6 +1210,7 @@ public partial class SettingsViewModel : ObservableObject
             DqxDir = dir;
             DqxDirValid = true;
             try { _cfg.SaveGameDir(dir); } catch { }
+            InitializeModsFolder();
         }
         else
         {

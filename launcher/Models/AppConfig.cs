@@ -1,3 +1,6 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using System.Text.Json.Serialization;
+
 namespace DqxClarity.Launcher.Models;
 
 public class LauncherConfig
@@ -11,6 +14,58 @@ public class LauncherConfig
     public string Theme { get; set; } = "rosie";
     public bool SeenWelcomeMessage { get; set; }
     public bool BannerCollapsed { get; set; }
+    public bool ModsSupport { get; set; }
+    public List<string> ActiveMods { get; set; } = [];
+}
+
+public partial class ModFile : ObservableObject
+{
+    [ObservableProperty] private string _type = "";
+    [ObservableProperty] private string _name = "";
+    [ObservableProperty] private string _version = "";
+    [ObservableProperty] private string _author = "";
+    [ObservableProperty] private string _description = "";
+    [ObservableProperty] private string _status = "";
+    [ObservableProperty] private string _path = "";
+    [ObservableProperty] private string _downloadUrl = "";
+    [ObservableProperty] private string _remoteVersion = "";
+    [ObservableProperty] private bool _hasUpdate;
+    [ObservableProperty] private bool _isActive;
+    [ObservableProperty] private bool _canActivate;
+    [ObservableProperty] private List<string> _gameMods = [];
+}
+
+public class ModManifest
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = "";
+
+    [JsonPropertyName("version")]
+    public string Version { get; set; } = "";
+
+    [JsonPropertyName("author")]
+    public string Author { get; set; } = "";
+
+    [JsonPropertyName("description")]
+    public string Description { get; set; } = "";
+
+    [JsonPropertyName("game_mods")]
+    public List<string> GameMods { get; set; } = [];
+
+    [JsonPropertyName("homepage")]
+    public string Homepage { get; set; } = "";
+
+    [JsonPropertyName("download_url")]
+    public string DownloadUrl { get; set; } = "";
+
+    [JsonPropertyName("update_url")]
+    public string UpdateUrl { get; set; } = "";
+
+    [JsonPropertyName("requires")]
+    public List<string> Requires { get; set; } = [];
 }
 
 public class TranslationConfig

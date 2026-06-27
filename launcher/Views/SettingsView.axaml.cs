@@ -239,13 +239,14 @@ public partial class SettingsView : UserControl
         PanelOverrides.IsVisible = tab == "nameoverrides";
         PanelDatabase.IsVisible  = tab == "database";
         PanelGame.IsVisible      = tab == "game";
+        PanelMods.IsVisible      = tab == "mods";
         PanelText2Clipboard.IsVisible = tab == "text2clipboard";
         UpdateTabStyles(tab);
     }
 
     private void UpdateTabStyles(string active)
     {
-        foreach (var btn in new[] { TabGeneral, TabAdvanced, TabOverrides, TabDatabase, TabGame, TabText2Clipboard })
+        foreach (var btn in new[] { TabGeneral, TabAdvanced, TabOverrides, TabDatabase, TabGame, TabMods, TabText2Clipboard })
         {
             if (btn == null) continue;
             btn.Classes.Set("tab-active", btn.Tag as string == active);
@@ -620,6 +621,23 @@ public partial class SettingsView : UserControl
             "This will delete all rows from the dialog translation cache. Are you sure?");
         if (ok)
             await _vm.PurgeDialogCacheCommand.ExecuteAsync(null);
+    }
+
+    private async void OnModActiveClick(object? sender, RoutedEventArgs e)
+    {
+        if (_vm == null) return;
+        if (sender is CheckBox cb && cb.DataContext is ModFile mod)
+        {
+            await _vm.SetModActive(mod, cb.IsChecked == true);
+            cb.IsChecked = mod.IsActive;
+        }
+    }
+
+    private async void OnModUpdateClick(object? sender, RoutedEventArgs e)
+    {
+        if (_vm == null) return;
+        if (sender is Button btn && btn.DataContext is ModFile mod)
+            await _vm.DownloadModUpdate(mod);
     }
 
     private async void OnNameOverridesHelpClick(object? sender, RoutedEventArgs e)

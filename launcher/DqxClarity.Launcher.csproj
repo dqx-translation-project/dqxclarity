@@ -34,6 +34,9 @@
     <EmbeddedResource Include="native\LocaleHook.dll" Condition="Exists('native\LocaleHook.dll')">
       <LogicalName>LocaleHook.dll</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="native\version.dll">
+      <LogicalName>version.dll</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

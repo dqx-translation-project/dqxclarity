@@ -23,6 +23,7 @@ public partial class App : Application
             var dbSvc          = new DatabaseService();
             var validateSvc    = new ValidateService();
             var maintenanceSvc = new MaintenanceService();
+            var modsSvc        = new ModsService();
 
             LocaleEmulatorService.EnsureExtracted();
 
@@ -37,7 +38,7 @@ public partial class App : Application
 
             var mainVm = new MainViewModel(
                 config, version, autoRun,
-                configSvc, setupSvc, processSvc, updateSvc, patchSvc, dbSvc, validateSvc, maintenanceSvc, s2cVm);
+                configSvc, setupSvc, processSvc, updateSvc, patchSvc, dbSvc, validateSvc, maintenanceSvc, modsSvc, s2cVm);
 
             window.DataContext = mainVm;
             mainVm.Window = window;

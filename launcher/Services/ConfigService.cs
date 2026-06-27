@@ -188,6 +188,11 @@ public class ConfigService
                 Theme                    = l.GetValueOrDefault("theme") ?? "rosie",
                 SeenWelcomeMessage       = ToBool(l.GetValueOrDefault("seenwelcomemessage")),
                 BannerCollapsed          = ToBool(l.GetValueOrDefault("bannercollapsed")),
+                ModsSupport              = ToBool(l.GetValueOrDefault("modssupport")),
+                ActiveMods               = (l.GetValueOrDefault("activemods") ?? "")
+                    .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList(),
             },
             Translation = LoadTranslationConfig(t),
             Game = new GameConfig
@@ -248,6 +253,8 @@ public class ConfigService
         WriteKv(sb, "theme",                    launcher.Theme);
         WriteKv(sb, "seenwelcomemessage",       seenWelcome);
         WriteKv(sb, "bannercollapsed",          bannerCollapsed);
+        WriteKv(sb, "modssupport",              BoolToIni(launcher.ModsSupport));
+        WriteKv(sb, "activemods",                string.Join('|', launcher.ActiveMods));
 
         var dir = Path.GetDirectoryName(path)!;
         Directory.CreateDirectory(dir);
@@ -327,6 +334,16 @@ public class ConfigService
 
     public void SaveBannerCollapsed(bool value) =>
         UpdateIniValue(ConfigPath(), "launcher", "bannercollapsed", BoolToIni(value));
+
+    public void SaveModsSupport(bool value) =>
+        UpdateIniValue(ConfigPath(), "launcher", "modssupport", BoolToIni(value));
+
+    public void SaveActiveMods(IEnumerable<string> fileNames) =>
+        UpdateIniValue(
+            ConfigPath(),
+            "launcher",
+            "activemods",
+            string.Join('|', fileNames.Distinct(StringComparer.OrdinalIgnoreCase)));
 
     public string GetVersion()
     {

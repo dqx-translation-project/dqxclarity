@@ -111,6 +111,7 @@
                     <Button x:Name="TabOverrides"  Classes="tab" Click="OnTabClick" Tag="nameoverrides">Name Overrides</Button>
                     <Button x:Name="TabDatabase"   Classes="tab" Click="OnTabClick" Tag="database">Database</Button>
                     <Button x:Name="TabGame"       Classes="tab" Click="OnTabClick" Tag="game">Game</Button>
+                    <Button x:Name="TabMods"       Classes="tab" Click="OnTabClick" Tag="mods">Mods</Button>
                     <Button x:Name="TabText2Clipboard"  Classes="tab" Click="OnTabClick" Tag="text2clipboard">Text2Clipboard</Button>
                 </StackPanel>
             </Border>
@@ -684,6 +685,152 @@
                             </ScrollViewer>
                         </DockPanel>
                     </Grid>
+                </Grid>
+
+                <!-- ══ MODS (full height) ═══════════════════════════════ -->
+                <Grid x:Name="PanelMods" IsVisible="False" Margin="14,8"
+                      RowDefinitions="Auto,Auto,*">
+
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,Auto,*" Margin="0,0,0,10">
+                        <Button Grid.Column="0"
+                                Command="{Binding ScanModsCommand}"
+                                IsEnabled="{Binding !ModsLoading}"
+                                ToolTip.Tip="Scans the mods folder in the dqxclarity directory."
+                                Margin="0,0,10,0">Scan Folder</Button>
+                        <Button Grid.Column="1"
+                                Command="{Binding OpenModsFolderCommand}"
+                                ToolTip.Tip="Opens the dqxclarity mods folder."
+                                Margin="0,0,10,0">Open Mods Folder</Button>
+                        <Button Grid.Column="2"
+                                Command="{Binding CheckModUpdatesCommand}"
+                                IsEnabled="{Binding !ModsLoading}"
+                                ToolTip.Tip="Downloads each mod's download_url and compares its mod.jsons version."
+                                Margin="0,0,10,0">Check Updates</Button>
+                        <CheckBox Grid.Column="3"
+                                  Content="Activate Mods support"
+                                  IsChecked="{Binding ModsSupport}"
+                                  VerticalAlignment="Center"
+                                  ToolTip.Tip="Copies version.dll into the DQX Game folder when enabled, and removes it when disabled."/>
+                    </Grid>
+
+                    <TextBlock Grid.Row="1"
+                               Text="{Binding ModsStatus}"
+                               FontSize="11"
+                               Foreground="{DynamicResource AppMuted}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,8"
+                               IsVisible="{Binding !ModsStatusIsError}"/>
+                    <TextBlock Grid.Row="1"
+                               Text="{Binding ModsStatus}"
+                               FontSize="11"
+                               Foreground="{DynamicResource AppDanger}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,8"
+                               IsVisible="{Binding ModsStatusIsError}"/>
+
+                    <Border Grid.Row="2"
+                            BorderBrush="{DynamicResource AppBorder}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="8"
+                            Background="{DynamicResource AppSurface}">
+                        <Grid RowDefinitions="Auto,*">
+                            <Grid Grid.Row="0"
+                                  ColumnDefinitions="34,120,3*,120,120,2*"
+                                  Background="{DynamicResource AppSurface2}">
+                                <TextBlock Grid.Column="1"
+                                           Text="type"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AppMuted}"
+                                           Padding="8,4"/>
+                                <TextBlock Grid.Column="2"
+                                           Text="name"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AppMuted}"
+                                           Padding="8,4"/>
+                                <TextBlock Grid.Column="3"
+                                           Text="version"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AppMuted}"
+                                           Padding="8,4"/>
+                                <TextBlock Grid.Column="4"
+                                           Text="author"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AppMuted}"
+                                           Padding="8,4"/>
+                                <TextBlock Grid.Column="5"
+                                           Text="status"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AppMuted}"
+                                           Padding="8,4"/>
+                            </Grid>
+
+                            <ScrollViewer Grid.Row="1"
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding ModFiles}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="m:ModFile">
+                                            <Border BorderBrush="{DynamicResource AppBorder}"
+                                                    BorderThickness="0,0,0,1">
+                                                <Grid ColumnDefinitions="34,120,3*,120,120,2*">
+                                                    <CheckBox Grid.Column="0"
+                                                              IsChecked="{Binding IsActive}"
+                                                              IsEnabled="{Binding CanActivate}"
+                                                              HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"
+                                                              Click="OnModActiveClick"/>
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding Type}"
+                                                               FontSize="13"
+                                                               Foreground="{DynamicResource AppText}"
+                                                               Padding="8,4"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Grid.Column="2"
+                                                               Text="{Binding Name}"
+                                                               FontSize="13"
+                                                               Foreground="{DynamicResource AppText}"
+                                                               Padding="8,4"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Grid.Column="3"
+                                                               Text="{Binding Version}"
+                                                               FontSize="13"
+                                                               Foreground="{DynamicResource AppText}"
+                                                               Padding="8,4"
+                                                               IsVisible="{Binding !HasUpdate}"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                    <Button Grid.Column="3"
+                                                            IsVisible="{Binding HasUpdate}"
+                                                            Click="OnModUpdateClick"
+                                                            FontSize="11"
+                                                            HorizontalAlignment="Left"
+                                                            Padding="8,2"
+                                                            Margin="8,2">DL update</Button>
+                                                    <TextBlock Grid.Column="4"
+                                                               Text="{Binding Author}"
+                                                               FontSize="13"
+                                                               Foreground="{DynamicResource AppText}"
+                                                               Padding="8,4"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Grid.Column="5"
+                                                               Text="{Binding Status}"
+                                                               FontSize="13"
+                                                               Foreground="{DynamicResource AppMuted}"
+                                                               Padding="8,4"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
                 </Grid>
 
                 <!-- ══ DATABASE (full height) ════════════════════════════ -->
