@@ -22,7 +22,7 @@ if (-not $NoBuild) {
 }
 
 if (-not (Test-Path $LauncherExe)) {
-    throw "Launcher exe not found. Run local-tools\build-launcher.ps1 first."
+    throw "Launcher exe not found. Run scripts\build-launcher.ps1 first."
 }
 
 if (Test-Path $PackageDir) {
