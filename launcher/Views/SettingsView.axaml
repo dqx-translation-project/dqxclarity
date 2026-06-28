@@ -745,22 +745,22 @@
                         <Button Grid.Column="0"
                                 Command="{Binding CheckLanguagePackUpdatesCommand}"
                                 IsEnabled="{Binding !LanguagePacksLoading}"
-                                ToolTip.Tip="Checks each pack's download URL for a newer version (CLPK sha256, using cache headers / a ranged header read)."
+                                ToolTip.Tip="Check your installed language packs for newer versions."
                                 Margin="0,0,10,0">Check for Updates</Button>
                         <Button Grid.Column="1"
                                 Command="{Binding LoadPackFromDiskCommand}"
                                 IsEnabled="{Binding !LanguagePacksLoading}"
-                                ToolTip.Tip="Imports a language pack .zip from your computer into the language packs folder."
+                                ToolTip.Tip="Add a Clarity Language Pack (.clpk) from your computer."
                                 Margin="0,0,10,0">Load from File…</Button>
                         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                             <CheckBox Content="Enable"
                                       IsChecked="{Binding LanguagePackSupport}"
                                       VerticalAlignment="Center"
-                                      ToolTip.Tip="Copies version.dll into the DQX Game folder when enabled, and removes it when disabled."/>
+                                      ToolTip.Tip="Use your active language packs while playing."/>
                             <CheckBox Content="Automatic updates"
                                       IsChecked="{Binding AutomaticUpdates}"
                                       VerticalAlignment="Center"
-                                      ToolTip.Tip="On every startup, checks each pack's download URL and silently downloads + applies any newer version (sha256-verified)."/>
+                                      ToolTip.Tip="Automatically download and apply language pack updates when the launcher starts."/>
                         </StackPanel>
                     </Grid>
 
@@ -823,7 +823,7 @@
                             Background="{DynamicResource AppSurface}">
                         <Grid RowDefinitions="Auto,*">
                             <Grid Grid.Row="0"
-                                  ColumnDefinitions="24,34,4*,150,150,2*"
+                                  ColumnDefinitions="24,34,*,140,110,110"
                                   Background="{DynamicResource AppSurface2}">
                                 <TextBlock Grid.Column="2"
                                            Text="language"
@@ -859,7 +859,7 @@
                                         <DataTemplate x:DataType="m:LanguagePack">
                                             <Border BorderBrush="{DynamicResource AppBorder}"
                                                     BorderThickness="0,0,0,1">
-                                                <Grid ColumnDefinitions="24,34,4*,150,150,2*">
+                                                <Grid ColumnDefinitions="24,34,*,140,110,110">
                                                     <TextBlock Grid.Column="0"
                                                                Name="DragHandle"
                                                                Text="⠿"
