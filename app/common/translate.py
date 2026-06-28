@@ -209,6 +209,33 @@ class Translator:
             output = "\n".join(split_text)
             return output
 
+    def __is_majority_english(self, text: str) -> bool:
+        """Returns True if the text contains more English/Latin bytes than Japanese
+        script bytes, meaning it can skip glossification and translation.
+
+        Comparison is done in UTF-8 bytes rather than character count so that
+        multi-byte Japanese characters (hiragana, katakana, kanji — each 3 bytes)
+        are not underweighted against long runs of single-byte ASCII letters such
+        as English proper nouns that appear verbatim in the source text.
+
+        Tags (<...>) are stripped before counting so they don't skew the ratio.
+        When no meaningful script bytes are found the text is treated as English
+        and processing is skipped.
+
+        :param text: Raw pre-glossary text string to evaluate.
+        :returns: True if glossification and translation should be skipped.
+        """
+        combined = re.sub(r"<[^>]+>", "", text)
+
+        jp_bytes = len(_JP_REGEX.findall(combined)) * 3  # every JP char is 3 bytes in UTF-8
+        en_bytes = sum(1 for ch in combined if ch.isascii() and ch.isalpha())
+
+        total = jp_bytes + en_bytes
+        if total == 0:
+            return True
+
+        return en_bytes > jp_bytes
+
     def __api_translate(self, text: list) -> list:
         """Translates a list of strings, passing them through our glossary
         first.
@@ -271,6 +298,10 @@ class Translator:
                 break up text. Used for dialog mainly.
         """
         log.debug(f"[Original]\n{text}")
+
+        if self.__is_majority_english(text):
+            log.debug("[Skip] Text is majority English (by byte weight), returning as-is.")
+            return text
 
         # manage our own line endings later
         output = text.replace("<br>", "　")
