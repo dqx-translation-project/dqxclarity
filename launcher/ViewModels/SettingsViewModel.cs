@@ -1196,20 +1196,6 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    private void OpenLanguagePacksFolder()
-    {
-        try
-        {
-            var dir = _languagePacks.GetSourceLanguagePacksFolder();
-            Process.Start(new ProcessStartInfo(dir) { UseShellExecute = true });
-        }
-        catch (Exception ex)
-        {
-            SetLanguagePackStatus(ex.Message, true);
-        }
-    }
-
     private void RefreshAvailablePacks()
     {
         var notInstalled = LanguagePackCatalog.NotInstalled(LanguagePacks);
