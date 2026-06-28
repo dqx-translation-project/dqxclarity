@@ -640,24 +640,35 @@ public partial class SettingsView : UserControl
             await _vm.DownloadLanguagePackUpdate(pack);
     }
 
+    private void OnDownloadCatalogPackClick(object? sender, RoutedEventArgs e)
+    {
+        if (_vm == null) return;
+        if (sender is Button btn && btn.DataContext is LanguagePackCatalogEntry entry)
+            _vm.DownloadCatalogPackCommand.Execute(entry);
+    }
+
     // ── Drag-to-reorder installed language packs ──────────────────────────
     private LanguagePack? _draggingPack;
     private bool _dragActive;
     private bool _dragMoved;
-    private Point _dragStart;
 
     private void OnLanguagePackHandlePressed(object? sender, PointerPressedEventArgs e)
     {
+        if (LanguagePackList == null) return;
         if (sender is not Control handle || handle.DataContext is not LanguagePack pack) return;
         if (!e.GetCurrentPoint(handle).Properties.IsLeftButtonPressed) return;
 
         _draggingPack = pack;
         _dragActive   = true;
-        _dragStart    = e.GetPosition(this);
-        e.Pointer.Capture(handle);
-        handle.PointerMoved        += OnLanguagePackHandleMoved;
-        handle.PointerReleased     += OnLanguagePackHandleReleased;
-        handle.PointerCaptureLost  += OnLanguagePackHandleCaptureLost;
+        _dragMoved    = false;
+
+        // Capture on the stable ItemsControl rather than the row handle: reordering recycles the
+        // dragged row's container, which would drop capture on the handle and end the drag after a
+        // single swap. The ItemsControl persists across reorders, so the drag continues.
+        e.Pointer.Capture(LanguagePackList);
+        LanguagePackList.PointerMoved       += OnLanguagePackHandleMoved;
+        LanguagePackList.PointerReleased    += OnLanguagePackHandleReleased;
+        LanguagePackList.PointerCaptureLost += OnLanguagePackHandleCaptureLost;
         e.Handled = true;
     }
 

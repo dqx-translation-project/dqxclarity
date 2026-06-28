@@ -812,8 +812,7 @@
                                                     Content="Download"
                                                     FontSize="11"
                                                     Padding="10,2"
-                                                    Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).DownloadCatalogPackCommand}"
-                                                    CommandParameter="{Binding}"/>
+                                                    Click="OnDownloadCatalogPackClick"/>
                                         </Grid>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
