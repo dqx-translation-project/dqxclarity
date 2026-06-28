@@ -141,7 +141,6 @@ public class LanguagePackService
 
             return new LanguagePack
             {
-                Name        = string.IsNullOrWhiteSpace(meta.Name) ? Path.GetFileNameWithoutExtension(path) : meta.Name,
                 Author      = meta.Author ?? "",
                 Language    = meta.Language ?? "",
                 Created     = FormatBuiltAt(meta.BuiltAt),
@@ -161,10 +160,9 @@ public class LanguagePackService
     private static LanguagePack InvalidLanguagePack(string path, string reason) =>
         new()
         {
-            Name = Path.GetFileNameWithoutExtension(path),
             Path = path,
             CanActivate = false,
-            Status = reason,
+            Status = $"{Path.GetFileName(path)}: {reason}",
         };
 
     private static string FormatBuiltAt(long unixSeconds)
@@ -439,8 +437,7 @@ public class LanguagePackService
         using var http = new HttpClient();
         http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("dqxclarity-launcher", "1.0"));
 
-        var fileName = SanitizeZipFileName(entry.Name);
-        var destPath = Path.Combine(SourceLanguagePacksDir(), fileName);
+        var destPath = Path.Combine(SourceLanguagePacksDir(), entry.FileName);
 
         var temp = Path.GetTempFileName();
         try
@@ -495,7 +492,7 @@ public class LanguagePackService
     /// already exists. File IO and hashing run on a background thread.
     /// </summary>
     public async Task BuildClpkAsync(string inputZipPath, string outputClpkPath,
-        string name, string author, string language, string downloadUrl)
+        string author, string language, string downloadUrl)
     {
         if (string.IsNullOrWhiteSpace(inputZipPath) || !File.Exists(inputZipPath))
             throw new FileNotFoundException($"Input zip file not found: {inputZipPath}");
@@ -528,7 +525,6 @@ public class LanguagePackService
 
             var meta = new ClpkMetadata
             {
-                Name        = string.IsNullOrWhiteSpace(name) ? Path.GetFileNameWithoutExtension(inputZipPath) : name,
                 Author      = author ?? "",
                 Language    = language ?? "",
                 BuiltAt     = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
@@ -541,17 +537,6 @@ public class LanguagePackService
         });
     }
 
-    private static string SanitizeZipFileName(string name)
-    {
-        var safe = name.Trim();
-        foreach (var c in Path.GetInvalidFileNameChars())
-            safe = safe.Replace(c, '_');
-        if (string.IsNullOrWhiteSpace(safe))
-            safe = "language-pack";
-        if (!safe.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
-            safe += ".zip";
-        return safe;
-    }
 
     public int ExtractLanguagePack(string installDir, LanguagePack pack)
     {
@@ -655,8 +640,11 @@ public class LanguagePackService
                     outputs[normalizedEntry] = owners;
                 }
 
-                if (!owners.Contains(pack.Name, StringComparer.OrdinalIgnoreCase))
-                    owners.Add(pack.Name);
+                var owner = string.IsNullOrWhiteSpace(pack.LanguageDisplay)
+                    ? Path.GetFileName(pack.Path)
+                    : pack.LanguageDisplay;
+                if (!owners.Contains(owner, StringComparer.OrdinalIgnoreCase))
+                    owners.Add(owner);
             }
         }
 

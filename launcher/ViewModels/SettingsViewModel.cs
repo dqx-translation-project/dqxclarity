@@ -52,7 +52,6 @@ public partial class SettingsViewModel : ObservableObject
 
     // ── Build language pack (CLPK) tool ───────────────────────────────────
     [ObservableProperty] private string _clpkInputZipPath = "";
-    [ObservableProperty] private string _clpkName = "";
     [ObservableProperty] private string _clpkAuthor = "";
     [ObservableProperty] private string _clpkLanguage = "en";
     [ObservableProperty] private string _clpkDownloadUrl = "";
@@ -92,7 +91,7 @@ public partial class SettingsViewModel : ObservableObject
 
             SetClpkBuildStatus("Building...");
             await _languagePacks.BuildClpkAsync(ClpkInputZipPath, outputPath,
-                ClpkName, ClpkAuthor, ClpkLanguage, ClpkDownloadUrl);
+                ClpkAuthor, ClpkLanguage, ClpkDownloadUrl);
             SetClpkBuildStatus($"Built {Path.GetFileName(outputPath)}.");
         }
         catch (Exception ex)
@@ -1214,19 +1213,19 @@ public partial class SettingsViewModel : ObservableObject
         LanguagePacksLoading = true;
         try
         {
-            SetLanguagePackStatus($"Downloading {entry.Name}...");
+            SetLanguagePackStatus($"Downloading {entry.LanguageDisplay}...");
             await _languagePacks.DownloadCatalogPackAsync(entry);
         }
         catch (Exception ex)
         {
-            SetLanguagePackStatus($"Could not download {entry.Name}: {ex.Message}", true);
+            SetLanguagePackStatus($"Could not download {entry.LanguageDisplay}: {ex.Message}", true);
             LanguagePacksLoading = false;
             return;
         }
         LanguagePacksLoading = false;
 
         await ScanLanguagePacks();
-        SetLanguagePackStatus($"Downloaded {entry.Name}.");
+        SetLanguagePackStatus($"Downloaded {entry.LanguageDisplay}.");
     }
 
     [RelayCommand]
@@ -1252,7 +1251,7 @@ public partial class SettingsViewModel : ObservableObject
         LanguagePacksLoading = false;
 
         await ScanLanguagePacks();
-        SetLanguagePackStatus($"Imported {imported.Name}.");
+        SetLanguagePackStatus($"Imported {imported.LanguageDisplay}.");
     }
 
     /// <summary>
@@ -1288,8 +1287,7 @@ public partial class SettingsViewModel : ObservableObject
                 await ScanLanguagePacks();
 
                 var pack = LanguagePacks.FirstOrDefault(p =>
-                    string.Equals(System.IO.Path.GetFileName(p.Path), defaultEntry.ZipFileName, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(p.Name, defaultEntry.Name, StringComparison.OrdinalIgnoreCase));
+                    string.Equals(p.Language, defaultEntry.Language, StringComparison.OrdinalIgnoreCase));
 
                 if (pack != null && pack.CanActivate && DqxDirValid)
                     await SetLanguagePackActive(pack, true);
@@ -1321,7 +1319,6 @@ public partial class SettingsViewModel : ObservableObject
             pack.Status = "Downloading update...";
 
             var updated = await _languagePacks.DownloadUpdateAsync(pack);
-            pack.Name = updated.Name;
             pack.Author = updated.Author;
             pack.Language = updated.Language;
             pack.Created = updated.Created;
@@ -1336,11 +1333,11 @@ public partial class SettingsViewModel : ObservableObject
             {
                 var activePacks = LanguagePacks.Where(m => m.IsActive && m.CanActivate).ToList();
                 var count = await Task.Run(() => _languagePacks.RebuildGameModsFolder(DqxDir, activePacks));
-                SetLanguagePackStatus($"Updated {pack.Name}. Game\\mods rebuilt: {count} file(s) extracted.");
+                SetLanguagePackStatus($"Updated {pack.LanguageDisplay}. Game\\mods rebuilt: {count} file(s) extracted.");
             }
             else
             {
-                SetLanguagePackStatus($"Updated {pack.Name}.");
+                SetLanguagePackStatus($"Updated {pack.LanguageDisplay}.");
             }
         }
         catch (Exception ex)

@@ -262,16 +262,6 @@
                                     </Grid>
                                     <Grid ColumnDefinitions="Auto,*">
                                         <TextBlock Grid.Column="0"
-                                                   Text="Name:"
-                                                   VerticalAlignment="Center"
-                                                   Margin="0,0,8,0"/>
-                                        <TextBox Grid.Column="1"
-                                                 Text="{Binding ClpkName}"
-                                                 Watermark="defaults to the .zip filename"
-                                                 ToolTip.Tip="Pack name stamped into the CLPK metadata."/>
-                                    </Grid>
-                                    <Grid ColumnDefinitions="Auto,*">
-                                        <TextBlock Grid.Column="0"
                                                    Text="Author:"
                                                    VerticalAlignment="Center"
                                                    Margin="0,0,8,0"/>
@@ -806,19 +796,14 @@
                             <ItemsControl ItemsSource="{Binding AvailablePacks}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="m:LanguagePackCatalogEntry">
-                                        <Grid ColumnDefinitions="120,*,Auto" Margin="0,2">
+                                        <Grid ColumnDefinitions="*,Auto" Margin="0,2">
                                             <TextBlock Grid.Column="0"
-                                                       Text="{Binding Name}"
+                                                       Text="{Binding LanguageDisplay}"
                                                        FontSize="13"
                                                        Foreground="{DynamicResource AppText}"
                                                        VerticalAlignment="Center"
                                                        Padding="0,0,8,0"/>
-                                            <TextBlock Grid.Column="1"
-                                                       Text="{Binding Language}"
-                                                       FontSize="12"
-                                                       Foreground="{DynamicResource AppMuted}"
-                                                       VerticalAlignment="Center"/>
-                                            <Button Grid.Column="2"
+                                            <Button Grid.Column="1"
                                                     Content="Download"
                                                     FontSize="11"
                                                     Padding="10,2"
@@ -841,7 +826,7 @@
                                   ColumnDefinitions="24,34,4*,150,150,2*"
                                   Background="{DynamicResource AppSurface2}">
                                 <TextBlock Grid.Column="2"
-                                           Text="name"
+                                           Text="language"
                                            FontSize="11"
                                            FontWeight="SemiBold"
                                            Foreground="{DynamicResource AppMuted}"
@@ -892,7 +877,7 @@
                                                               VerticalAlignment="Center"
                                                               Click="OnLanguagePackActiveClick"/>
                                                     <TextBlock Grid.Column="2"
-                                                               Text="{Binding Name}"
+                                                               Text="{Binding LanguageDisplay}"
                                                                FontSize="13"
                                                                Foreground="{DynamicResource AppText}"
                                                                Padding="8,4"

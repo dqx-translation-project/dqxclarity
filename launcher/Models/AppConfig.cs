@@ -21,9 +21,14 @@ public class LauncherConfig
 
 public partial class LanguagePack : ObservableObject
 {
-    [ObservableProperty] private string _name = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LanguageDisplay))]
+    private string _language = "";
+
+    /// <summary>Human-readable language name (e.g. "English"); this is the pack's display identity.</summary>
+    public string LanguageDisplay => LanguageNames.DisplayName(Language);
+
     [ObservableProperty] private string _author = "";
-    [ObservableProperty] private string _language = "";
     [ObservableProperty] private string _created = "";   // display form of the CLPK builtAt timestamp
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private string _path = "";

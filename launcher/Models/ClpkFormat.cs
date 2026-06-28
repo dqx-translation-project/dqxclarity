@@ -15,9 +15,6 @@ public record ClpkMetadata
     [JsonPropertyName("sha256")]
     public string Sha256 { get; init; } = "";
 
-    [JsonPropertyName("name")]
-    public string Name { get; init; } = "";
-
     [JsonPropertyName("author")]
     public string Author { get; init; } = "";
 
