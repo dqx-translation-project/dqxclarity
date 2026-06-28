@@ -13,6 +13,7 @@ class LibreTranslate:
         base = cfg.libretranslate_url.rstrip("/")
         self.url = f"{base}/translate"
         self.api_key = api_key
+        self.target = cfg.target_language
 
     @measure_duration
     def translate(self, text: list[str]) -> list[str]:
@@ -22,7 +23,7 @@ class LibreTranslate:
                 payload: dict = {
                     "q": phrase,
                     "source": "ja",
-                    "target": "en",
+                    "target": self.target,
                     "format": "text",
                 }
                 if self.api_key:

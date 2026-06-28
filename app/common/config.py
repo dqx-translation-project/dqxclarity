@@ -22,6 +22,11 @@ class UserConfig:
             "ollama_url": "http://localhost:11434",
             "ollama_model": "llama3",
             "libretranslate_url": "https://libretranslate.com",
+            # Runtime translation target, written by the launcher from the highest-priority
+            # active language pack. Code (e.g. "en") drives API targets; name (e.g. "English")
+            # is injected into LLM prompts.
+            "target_language": "en",
+            "target_language_name": "English",
         }
         config["config"] = {"installdirectory": "C:/Program Files (x86)/SquareEnix/DRAGON QUEST X"}
         return config
@@ -105,6 +110,16 @@ class UserConfig:
     @property
     def libretranslate_url(self) -> str:
         return self.translation_section.get("libretranslate_url", "https://libretranslate.com")
+
+    @property
+    def target_language(self) -> str:
+        """Target language code for runtime translation (e.g. "en"). Defaults to English."""
+        return self.translation_section.get("target_language", "en") or "en"
+
+    @property
+    def target_language_name(self) -> str:
+        """Human-readable target language name (e.g. "English"), used in LLM prompts."""
+        return self.translation_section.get("target_language_name", "English") or "English"
 
     @property
     def config_section(self):

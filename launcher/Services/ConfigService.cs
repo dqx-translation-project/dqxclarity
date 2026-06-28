@@ -218,6 +218,11 @@ public class ConfigService
         var bannerCollapsed  = existingLauncher.GetValueOrDefault("bannercollapsed")    ?? BoolToIni(launcher.BannerCollapsed);
         var langPackFirstRun = existingLauncher.GetValueOrDefault("languagepackfirstrundone") ?? BoolToIni(launcher.LanguagePackFirstRunDone);
 
+        // Preserve the runtime translation target (written separately from the active language packs).
+        var existingTranslation = existing.GetValueOrDefault("translation") ?? [];
+        var targetLanguage     = existingTranslation.GetValueOrDefault("target_language") ?? "";
+        var targetLanguageName = existingTranslation.GetValueOrDefault("target_language_name") ?? "";
+
         var sb = new System.Text.StringBuilder();
 
         // translation section — always first, no leading blank line
@@ -228,6 +233,8 @@ public class ConfigService
         WriteKv(sb, "ollama_url",          translation.OllamaUrl);
         WriteKv(sb, "ollama_model",        translation.OllamaModel);
         WriteKv(sb, "libretranslate_url",  translation.LibreTranslateUrl);
+        WriteKv(sb, "target_language",      targetLanguage);
+        WriteKv(sb, "target_language_name", targetLanguageName);
 
         if (configPairs.Count > 0)
         {
@@ -348,6 +355,15 @@ public class ConfigService
 
     public void SaveAutomaticLanguagePackUpdates(bool value) =>
         UpdateIniValue(ConfigPath(), "launcher", "automaticlanguagepackupdates", BoolToIni(value));
+
+    /// <summary>Writes the runtime translation target (highest-priority active language pack) into
+    /// the [translation] section, where the Python app reads it for its translation APIs.</summary>
+    public void SaveTargetLanguage(string code, string name)
+    {
+        var path = ConfigPath();
+        UpdateIniValue(path, "translation", "target_language", code);
+        UpdateIniValue(path, "translation", "target_language_name", name);
+    }
 
     public void SaveActiveLanguagePacks(IEnumerable<string> fileNames) =>
         UpdateIniValue(

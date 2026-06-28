@@ -1,6 +1,15 @@
 import deepl
+from common.config import UserConfig
 from common.measure import measure_duration
 from loguru import logger as log
+
+
+# DeepL requires a regional code for some targets (e.g. EN-US/EN-GB rather than plain EN).
+_DEEPL_TARGETS = {"en": "EN-US", "pt": "PT-BR", "zh": "ZH"}
+
+
+def _deepl_target(code: str) -> str:
+    return _DEEPL_TARGETS.get((code or "").lower(), (code or "en").upper())
 
 
 # uses DeepL's official Translate API to send translations.
@@ -11,6 +20,7 @@ class DeepLTranslate:
         deepl.http_client.max_network_retries = 1
         deepl.http_client.min_connection_timeout = 3
 
+        self.target_lang = _deepl_target(UserConfig().target_language)
         self.translator = deepl.DeepLClient(auth_key=api_key, send_platform_info=False)
 
     @measure_duration
@@ -19,7 +29,7 @@ class DeepLTranslate:
             response = self.translator.translate_text(
                 text=text,
                 source_lang="ja",
-                target_lang="en-us",
+                target_lang=self.target_lang,
                 preserve_formatting=True,
                 model_type="prefer_quality_optimized",
                 custom_instructions=[

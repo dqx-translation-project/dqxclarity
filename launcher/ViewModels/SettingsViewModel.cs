@@ -1460,6 +1460,10 @@ public partial class SettingsViewModel : ObservableObject
         _savedActiveLanguagePacks.Clear();
         _savedActiveLanguagePacks.UnionWith(fileNames);
         _cfg.SaveActiveLanguagePacks(fileNames);
+
+        // The highest-priority active pack (top of the list) drives the runtime translation target.
+        var top = LanguagePacks.FirstOrDefault(m => m.IsActive && m.CanActivate);
+        try { _cfg.SaveTargetLanguage(top?.Language ?? "", top?.LanguageDisplay ?? ""); } catch { }
     }
 
     public Task SetDqxDir(string dir)
