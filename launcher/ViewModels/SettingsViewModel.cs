@@ -1126,6 +1126,10 @@ public partial class SettingsViewModel : ObservableObject
         try
         {
             _languagePacks.PrepareRuntime(DqxDir, LanguagePackSupport);
+            // Unpack the saved active packs into Game\mods now (applies any selection made before
+            // the game folder existed). Reads from the source folder, independent of the UI list.
+            if (LanguagePackSupport)
+                _languagePacks.RebuildGameModsFromActive(DqxDir, GetActiveLanguagePackFileNames());
             SetLanguagePackStatus(LanguagePackSupport
                 ? "Language pack support active for this run."
                 : "Language pack support disabled.");
@@ -1278,24 +1282,26 @@ public partial class SettingsViewModel : ObservableObject
                 try { await ScanLanguagePacks(); } catch { }
             }
 
-            if (LanguagePackCatalog.IsInstalled(defaultEntry, LanguagePacks))
-                return;
-
-            try
+            // Download the default pack if it isn't present yet (placeholder URL fails gracefully).
+            if (!LanguagePackCatalog.IsInstalled(defaultEntry, LanguagePacks))
             {
-                await _languagePacks.DownloadCatalogPackAsync(defaultEntry);
-                await ScanLanguagePacks();
-
-                var pack = LanguagePacks.FirstOrDefault(p =>
-                    string.Equals(p.Language, defaultEntry.Language, StringComparison.OrdinalIgnoreCase));
-
-                if (pack != null && pack.CanActivate && DqxDirValid)
-                    await SetLanguagePackActive(pack, true);
+                try
+                {
+                    await _languagePacks.DownloadCatalogPackAsync(defaultEntry);
+                    await ScanLanguagePacks();
+                }
+                catch (Exception ex)
+                {
+                    SetLanguagePackStatus($"Couldn't fetch the default English pack (no URL configured yet). {ex.Message}");
+                }
             }
-            catch (Exception ex)
-            {
-                SetLanguagePackStatus($"Couldn't fetch the default English pack (no URL configured yet). {ex.Message}");
-            }
+
+            // Enable it by default. Activation is just a persisted selection now, so this works even
+            // before a game folder is set (the unpack is deferred).
+            var pack = LanguagePacks.FirstOrDefault(p =>
+                string.Equals(p.Language, defaultEntry.Language, StringComparison.OrdinalIgnoreCase));
+            if (pack != null && pack.CanActivate && !pack.IsActive)
+                await SetLanguagePackActive(pack, true);
         }
         catch
         {
@@ -1351,40 +1357,68 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    // Activating a pack is just a persisted selection — it does NOT require the game folder.
+    // The unpack into Game\mods is deferred until the folder is set (see ApplyActivePacksToGame /
+    // the run path), so packs can be installed and enabled before a game folder exists.
     public async Task SetLanguagePackActive(LanguagePack pack, bool enabled)
     {
-        if (!DqxDirValid)
-        {
-            SetLanguagePackStatus("Set a valid DQX folder path before activating language packs.", true);
-            return;
-        }
-
         var previousState = pack.IsActive;
         pack.IsActive = enabled;
 
         try
         {
             LanguagePacksLoading = true;
-            var activePacks = LanguagePacks.Where(m => m.IsActive && m.CanActivate).ToList();
-            var count = await Task.Run(() => _languagePacks.RebuildGameModsFolder(DqxDir, activePacks));
+            SaveActiveLanguagePackSelection();
+
+            // Only unpack into the game folder if it's set; otherwise the selection is deferred.
+            if (DqxDirValid)
+            {
+                var activePacks = LanguagePacks.Where(m => m.IsActive && m.CanActivate).ToList();
+                await Task.Run(() => _languagePacks.RebuildGameModsFolder(DqxDir, activePacks));
+            }
 
             foreach (var item in LanguagePacks.Where(m => m.CanActivate))
                 item.Status = item.IsActive ? "Active" : "Ready";
 
-            SaveActiveLanguagePackSelection();
-            SetLanguagePackStatus(activePacks.Count == 0
-                ? "Game\\mods cleaned. No language packs active."
-                : $"Game\\mods rebuilt: {activePacks.Count} language pack(s), {count} file(s) extracted.");
+            SetLanguagePackStatus(ActiveSelectionStatus());
         }
         catch (Exception ex)
         {
+            // Roll back and re-persist the prior selection (e.g. on a file-conflict during unpack).
             pack.IsActive = previousState;
-            pack.Status = ex.Message;
+            SaveActiveLanguagePackSelection();
+            foreach (var item in LanguagePacks.Where(m => m.CanActivate))
+                item.Status = item.IsActive ? "Active" : "Ready";
             SetLanguagePackStatus(ex.Message, true);
         }
         finally
         {
             LanguagePacksLoading = false;
+        }
+    }
+
+    private string ActiveSelectionStatus()
+    {
+        var count = LanguagePacks.Count(m => m.IsActive && m.CanActivate);
+        if (count == 0) return "No language packs active.";
+        return DqxDirValid
+            ? $"{count} language pack(s) active."
+            : $"{count} language pack(s) active — they'll be applied to the game once you set the game folder.";
+    }
+
+    /// <summary>Unpacks the saved active packs into Game\mods. No-op without a valid game folder.</summary>
+    private async Task ApplyActivePacksToGameAsync()
+    {
+        if (!DqxDirValid) return;
+        var fileNames = GetActiveLanguagePackFileNames();
+        if (fileNames.Count == 0) return;
+        try
+        {
+            await Task.Run(() => _languagePacks.RebuildGameModsFromActive(DqxDir, fileNames));
+        }
+        catch (Exception ex)
+        {
+            SetLanguagePackStatus($"Could not apply language packs to the game: {ex.Message}", true);
         }
     }
 
@@ -1426,32 +1460,18 @@ public partial class SettingsViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Persists the current list order and rebuilds Game\mods once. Call on drop, not per pointer-move.
+    /// Persists the new order on drop. Order only affects which active pack is primary (it drives the
+    /// runtime translation language); it does NOT change the unpacked files, since conflicting outputs
+    /// between active packs are rejected rather than overwritten — so no Game\mods rebuild is needed.
     /// </summary>
-    public async Task CommitLanguagePackOrderAsync()
+    public Task CommitLanguagePackOrderAsync()
     {
         SaveActiveLanguagePackSelection();
-
-        if (!LanguagePackSupport || !DqxDirValid) return;
-
-        try
-        {
-            LanguagePacksLoading = true;
-            var activePacks = LanguagePacks.Where(m => m.IsActive && m.CanActivate).ToList();
-            if (activePacks.Count > 0)
-            {
-                var count = await Task.Run(() => _languagePacks.RebuildGameModsFolder(DqxDir, activePacks));
-                SetLanguagePackStatus($"Reordered. Game\\mods rebuilt: {activePacks.Count} language pack(s), {count} file(s) extracted.");
-            }
-        }
-        catch (Exception ex)
-        {
-            SetLanguagePackStatus(ex.Message, true);
-        }
-        finally
-        {
-            LanguagePacksLoading = false;
-        }
+        var top = LanguagePacks.FirstOrDefault(m => m.IsActive && m.CanActivate);
+        SetLanguagePackStatus(top != null
+            ? $"Reordered. {top.LanguageDisplay} is the primary translation language."
+            : ActiveSelectionStatus());
+        return Task.CompletedTask;
     }
 
     private void SaveActiveLanguagePackSelection()
@@ -1476,6 +1496,8 @@ public partial class SettingsViewModel : ObservableObject
             DqxDirValid = true;
             try { _cfg.SaveGameDir(dir); } catch { }
             InitializeLanguagePacksFolder();
+            // Apply any packs that were activated before a game folder existed.
+            _ = ApplyActivePacksToGameAsync();
         }
         else
         {

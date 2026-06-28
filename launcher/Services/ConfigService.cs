@@ -188,9 +188,10 @@ public class ConfigService
                 Theme                    = l.GetValueOrDefault("theme") ?? "rosie",
                 SeenWelcomeMessage       = ToBool(l.GetValueOrDefault("seenwelcomemessage")),
                 BannerCollapsed          = ToBool(l.GetValueOrDefault("bannercollapsed")),
-                LanguagePackSupport      = ToBool(l.GetValueOrDefault("languagepacksupport")),
+                // Default ON for new configs (key absent); respect an explicit False once set.
+                LanguagePackSupport      = l.ContainsKey("languagepacksupport") ? ToBool(l["languagepacksupport"]) : true,
                 LanguagePackFirstRunDone = ToBool(l.GetValueOrDefault("languagepackfirstrundone")),
-                AutomaticLanguagePackUpdates = ToBool(l.GetValueOrDefault("automaticlanguagepackupdates")),
+                AutomaticLanguagePackUpdates = l.ContainsKey("automaticlanguagepackupdates") ? ToBool(l["automaticlanguagepackupdates"]) : true,
                 ActiveLanguagePacks      = (l.GetValueOrDefault("activelanguagepacks") ?? "")
                     .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .Distinct(StringComparer.OrdinalIgnoreCase)

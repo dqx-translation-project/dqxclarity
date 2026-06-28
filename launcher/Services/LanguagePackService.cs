@@ -605,6 +605,19 @@ public class LanguagePackService
         return total;
     }
 
+    /// <summary>Reads the named packs from the source folder and rebuilds Game\mods from them.
+    /// Lets the run/dir-set paths apply the saved active selection without the scanned UI list.</summary>
+    public int RebuildGameModsFromActive(string installDir, IEnumerable<string> activeFileNames)
+    {
+        var packs = activeFileNames
+            .Select(fn => Path.Combine(SourceLanguagePacksDir(), fn))
+            .Where(File.Exists)
+            .Select(ReadLanguagePack)
+            .Where(p => p.CanActivate)
+            .ToList();
+        return RebuildGameModsFolder(installDir, packs);
+    }
+
     private static void ValidateNoOutputConflicts(IReadOnlyList<LanguagePack> activeLanguagePacks)
     {
         var outputs = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
