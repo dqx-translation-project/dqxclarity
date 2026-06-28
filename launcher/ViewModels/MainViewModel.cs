@@ -76,7 +76,6 @@ public partial class MainViewModel : ObservableObject
         Log      = new LogViewModel(processSvc, text2Clipboard);
         Settings = new SettingsViewModel(
             config, version, null, text2Clipboard, cfg, patchSvc, dbSvc, validateSvc, maintenanceSvc, langPackSvc);
-        Settings.CleanupLanguagePackRuntime();
 
         // Startup auto-update check (no-op unless the user enabled it); fire-and-forget, never blocks launch.
         _ = Settings.RunAutomaticUpdatesIfEnabledAsync();
@@ -86,7 +85,6 @@ public partial class MainViewModel : ObservableObject
         Log.CloseApp        += () => Window?.Close();
         Settings.RunRequested += OnRunRequested;
         Settings.OpenUrl      += OpenBrowser;
-        _processSvc.ProcessExited += _ => Settings.CleanupLanguagePackRuntime();
 
         // If autorun, trigger the full run flow (respects DirectLogin, SimultaneousLaunch, etc.)
         if (autoRun)
@@ -239,15 +237,7 @@ public partial class MainViewModel : ObservableObject
         Log.Reset();
         SwitchTo("log");
         Log.UpdateTitle(Version);
-        try
-        {
-            _processSvc.Launch(args);
-        }
-        catch
-        {
-            Settings.CleanupLanguagePackRuntime();
-            throw;
-        }
+        _processSvc.Launch(args);
     }
 
     public void SwitchTo(string view)

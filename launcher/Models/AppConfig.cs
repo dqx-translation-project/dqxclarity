@@ -13,7 +13,6 @@ public class LauncherConfig
     public string Theme { get; set; } = "rosie";
     public bool SeenWelcomeMessage { get; set; }
     public bool BannerCollapsed { get; set; }
-    public bool LanguagePackSupport { get; set; }
     public bool LanguagePackFirstRunDone { get; set; }
     public bool AutomaticLanguagePackUpdates { get; set; }
     public List<string> ActiveLanguagePacks { get; set; } = [];

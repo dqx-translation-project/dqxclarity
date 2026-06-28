@@ -99,7 +99,10 @@ public partial class SettingsView : UserControl
         "Swaps the DQX launcher executable with an English-patched version, or restores the original Japanese file. " +
         "This only affects the launcher window's UI text and has no impact on gameplay.\n\n" +
         "Patch Config / Restore Config\n" +
-        "Same as above but for DQXConfig.exe - patches or restores the configuration tool's interface text.";
+        "Same as above but for DQXConfig.exe - patches or restores the configuration tool's interface text.\n\n" +
+        "Add DragonHook / Remove DragonHook\n" +
+        "Adds or removes the language pack loader (DragonHook) in your game folder. It stays in place until you remove it - " +
+        "active language packs only load in-game while it's present.";
 
     public SettingsView()
     {
