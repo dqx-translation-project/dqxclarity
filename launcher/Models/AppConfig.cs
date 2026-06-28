@@ -36,7 +36,6 @@ public partial class LanguagePack : ObservableObject
     [ObservableProperty] private bool _hasUpdate;
     [ObservableProperty] private bool _isActive;
     [ObservableProperty] private bool _canActivate;
-    [ObservableProperty] private List<string> _gameMods = [];
 }
 
 public class TranslationConfig

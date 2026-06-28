@@ -15,8 +15,10 @@ public record LanguagePackCatalogEntry
 
 public static class LanguagePackCatalog
 {
-    // TODO: replace with the real hosted English pack URL
-    public const string EnglishPackUrl = "https://TODO.invalid/dqxclarity/english-language-pack.zip";
+    // Always-latest release asset. NOTE: the asset is currently named "common.zip"; it is being
+    // renamed to "english.clpk" — update this to .../download/english.clpk once that lands.
+    public const string EnglishPackUrl =
+        "https://github.com/dqx-translation-project/dqxclarity/releases/latest/download/common.zip";
 
     public static readonly IReadOnlyList<LanguagePackCatalogEntry> Entries =
     [
@@ -30,6 +32,12 @@ public static class LanguagePackCatalog
 
     public static LanguagePackCatalogEntry? Default =>
         Entries.FirstOrDefault(e => e.IsDefault);
+
+    /// <summary>The catalog's update/download URL for a language code, or "" if not in the catalog.
+    /// Used so installed packs can be updated even when their header omits a downloadUrl.</summary>
+    public static string DownloadUrlFor(string language) =>
+        Entries.FirstOrDefault(e => string.Equals(e.Language, language, StringComparison.OrdinalIgnoreCase))
+            ?.DownloadUrl ?? "";
 
     /// <summary>A catalog entry counts as installed when a scanned pack has the same language.</summary>
     public static bool IsInstalled(LanguagePackCatalogEntry entry, IEnumerable<LanguagePack> installed) =>

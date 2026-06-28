@@ -127,17 +127,11 @@ public class LanguagePackService
             if (meta == null)
                 return InvalidLanguagePack(path, "Not a Clarity language pack (.clpk)");
 
-            var normalizedMods = (meta.GameMods ?? [])
-                .Select(NormalizeZipPath)
-                .Where(p => !string.IsNullOrWhiteSpace(p))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            if (normalizedMods.Count == 0)
-                return InvalidLanguagePack(path, "Pack lists no game files to install");
-
-            foreach (var item in normalizedMods)
-                ValidateRelativeZipPath(item);
+            // The whole zip payload is installed into Game\mods, so any valid CLPK is activatable.
+            // Update URL: the pack's own (rarely set), else the catalog's URL for this language.
+            var downloadUrl = !string.IsNullOrWhiteSpace(meta.DownloadUrl)
+                ? meta.DownloadUrl
+                : LanguagePackCatalog.DownloadUrlFor(meta.Language);
 
             return new LanguagePack
             {
@@ -145,8 +139,7 @@ public class LanguagePackService
                 Language    = meta.Language ?? "",
                 Updated     = FormatBuiltAt(meta.BuiltAt),
                 Path        = path,
-                DownloadUrl = meta.DownloadUrl ?? "",
-                GameMods    = normalizedMods,
+                DownloadUrl = downloadUrl,
                 CanActivate = true,
                 Status      = "Ready",
             };
@@ -262,8 +255,8 @@ public class LanguagePackService
     private static string RemoteShaFromBytes(byte[] bytes)
     {
         using var ms = new MemoryStream(bytes);
-        if (ClpkFormat.TryReadHeader(ms, out var meta, out _, out _) && !string.IsNullOrEmpty(meta!.Sha256))
-            return meta.Sha256.ToLowerInvariant();
+        if (ClpkFormat.TryReadHeader(ms, out var meta, out _, out _) && !string.IsNullOrEmpty(meta!.Sha))
+            return meta.Sha.ToLowerInvariant();
         // Remote is a plain zip (no CLPK header): its bytes ARE the payload.
         return Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
     }
@@ -338,8 +331,8 @@ public class LanguagePackService
                 RecordValidators(state, fileName, resp);
                 string remoteSha = "";
                 using (var ms = new MemoryStream(headBytes))
-                    if (ClpkFormat.TryReadHeader(ms, out var meta, out _, out _) && !string.IsNullOrEmpty(meta!.Sha256))
-                        remoteSha = meta.Sha256.ToLowerInvariant();
+                    if (ClpkFormat.TryReadHeader(ms, out var meta, out _, out _) && !string.IsNullOrEmpty(meta!.Sha))
+                        remoteSha = meta.Sha.ToLowerInvariant();
 
                 if (string.IsNullOrEmpty(remoteSha))
                 {
@@ -402,11 +395,11 @@ public class LanguagePackService
 
         // Integrity: if the download is a CLPK, its payload sha must match the header.
         using (var ms = new MemoryStream(bytes))
-            if (ClpkFormat.TryReadHeader(ms, out var meta, out var off, out var len) && !string.IsNullOrEmpty(meta!.Sha256))
+            if (ClpkFormat.TryReadHeader(ms, out var meta, out var off, out var len) && !string.IsNullOrEmpty(meta!.Sha))
             {
                 using var payload = new SubStream(ms, off, len, leaveOpen: true);
                 var actual = ClpkFormat.ComputeSha256Hex(payload);
-                if (!actual.Equals(meta.Sha256, StringComparison.OrdinalIgnoreCase))
+                if (!actual.Equals(meta.Sha, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidDataException("Downloaded pack failed sha256 verification.");
             }
 
@@ -505,31 +498,12 @@ public class LanguagePackService
             if (zipBytes.Length < 2 || zipBytes[0] != (byte)'P' || zipBytes[1] != (byte)'K')
                 throw new InvalidDataException("Input file is not a valid .zip archive (missing 'PK' signature).");
 
-            // game_mods is derived from the zip's top-level entries (each top-level folder/file except mod.jsons).
-            var gameMods = new List<string>();
-            using (var ms = new MemoryStream(zipBytes))
-            using (var archive = new ZipArchive(ms, ZipArchiveMode.Read))
-            {
-                foreach (var entry in archive.Entries)
-                {
-                    var norm = NormalizeZipPath(entry.FullName);
-                    if (string.IsNullOrWhiteSpace(norm) || norm.Equals("mod.jsons", StringComparison.OrdinalIgnoreCase))
-                        continue;
-                    var top = norm.Split('/')[0];
-                    if (!string.IsNullOrWhiteSpace(top) && !gameMods.Contains(top, StringComparer.OrdinalIgnoreCase))
-                        gameMods.Add(top);
-                }
-            }
-            if (gameMods.Count == 0)
-                throw new InvalidDataException("Input zip has no installable files (it is empty or contains only mod.jsons).");
-
             var meta = new ClpkMetadata
             {
                 Author      = author ?? "",
                 Language    = language ?? "",
                 BuiltAt     = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 DownloadUrl = downloadUrl ?? "",
-                GameMods    = gameMods,
             };
 
             using var output = new FileStream(outputClpkPath, FileMode.Create, FileAccess.Write, FileShare.None);
@@ -553,16 +527,14 @@ public class LanguagePackService
         if (!pack.CanActivate)
             throw new InvalidDataException(pack.Status);
 
+        // dragonhook serves every loose file under Game\mods, so the whole payload is extracted.
         var (payload, _) = ClpkFormat.OpenPayload(pack.Path);
         using var _payload = payload;
         using var archive = new ZipArchive(payload, ZipArchiveMode.Read);
         foreach (var entry in archive.Entries)
         {
             var normalizedEntry = NormalizeZipPath(entry.FullName);
-            if (string.IsNullOrWhiteSpace(normalizedEntry) || normalizedEntry.Equals("mod.jsons", StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            if (!pack.GameMods.Any(source => IsUnderSource(normalizedEntry, source)))
+            if (string.IsNullOrWhiteSpace(normalizedEntry))
                 continue;
 
             var target = Path.GetFullPath(Path.Combine(modsDir, normalizedEntry));
@@ -579,9 +551,6 @@ public class LanguagePackService
             entry.ExtractToFile(target, overwrite: true);
             extracted++;
         }
-
-        if (extracted == 0)
-            throw new InvalidDataException("No files in the pack matched its game_mods entries.");
 
         return extracted;
     }
@@ -638,11 +607,7 @@ public class LanguagePackService
                     continue;
 
                 var normalizedEntry = NormalizeZipPath(entry.FullName);
-                if (string.IsNullOrWhiteSpace(normalizedEntry)
-                    || normalizedEntry.Equals("mod.jsons", StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                if (!pack.GameMods.Any(source => IsUnderSource(normalizedEntry, source)))
+                if (string.IsNullOrWhiteSpace(normalizedEntry))
                     continue;
 
                 ValidateRelativeZipPath(normalizedEntry);
@@ -673,9 +638,6 @@ public class LanguagePackService
                 + string.Join("\n", conflicts));
     }
 
-    private static bool IsUnderSource(string entry, string source) =>
-        entry.Equals(source, StringComparison.OrdinalIgnoreCase)
-        || entry.StartsWith(source.TrimEnd('/') + "/", StringComparison.OrdinalIgnoreCase);
 
     private static string NormalizeZipPath(string path) =>
         path.Replace('\\', '/').Trim('/');

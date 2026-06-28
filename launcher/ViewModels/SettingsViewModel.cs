@@ -1329,7 +1329,6 @@ public partial class SettingsViewModel : ObservableObject
             pack.Language = updated.Language;
             pack.Updated = updated.Updated;
             pack.DownloadUrl = updated.DownloadUrl;
-            pack.GameMods = updated.GameMods;
             pack.CanActivate = updated.CanActivate;
             pack.HasUpdate = false;
             pack.IsActive = wasActive;

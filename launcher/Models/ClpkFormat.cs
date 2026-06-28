@@ -12,8 +12,9 @@ namespace DqxClarity.Launcher.Models;
 /// </summary>
 public record ClpkMetadata
 {
-    [JsonPropertyName("sha256")]
-    public string Sha256 { get; init; } = "";
+    /// <summary>Lowercase hex SHA-256 of the zip payload (field name "sha" per the pack format).</summary>
+    [JsonPropertyName("sha")]
+    public string Sha { get; init; } = "";
 
     [JsonPropertyName("author")]
     public string Author { get; init; } = "";
@@ -25,11 +26,10 @@ public record ClpkMetadata
     [JsonPropertyName("builtAt")]
     public long BuiltAt { get; init; }
 
+    /// <summary>Optional self-describing update URL. Omitted by the official packs (the launcher
+    /// gets the update URL from the catalog by language instead); honored if a pack does set it.</summary>
     [JsonPropertyName("downloadUrl")]
     public string DownloadUrl { get; init; } = "";
-
-    [JsonPropertyName("gameMods")]
-    public List<string> GameMods { get; init; } = [];
 }
 
 /// <summary>
@@ -170,7 +170,7 @@ public static class ClpkFormat
         var sha256Hex = Convert.ToHexString(sha.ComputeHash(zipBytes)).ToLowerInvariant();
 
         // sha256 is always computed here from the payload; ignore any caller-supplied value.
-        var meta = metadata with { Sha256 = sha256Hex };
+        var meta = metadata with { Sha = sha256Hex };
 
         var json = JsonSerializer.SerializeToUtf8Bytes(meta, JsonOptions);
         if (json.Length > ushort.MaxValue)
