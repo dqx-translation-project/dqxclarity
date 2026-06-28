@@ -113,18 +113,18 @@ public partial class MainWindow : Window
                 await vm.Settings.SetDqxDir(results[0].Path.LocalPath);
         };
 
-        // Wire the language-pack "Load .zip…" button to an Avalonia file picker.
+        // Wire the language-pack "Load from File…" button (and the Build tool's zip input) to a file picker.
         vm.Settings.PickZipFileRequested += async () =>
         {
             var results = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title         = "Select a Language Pack .zip",
+                Title         = "Select a language pack file",
                 AllowMultiple = false,
                 FileTypeFilter =
                 [
-                    new FilePickerFileType("Language pack (*.zip)")
+                    new FilePickerFileType("Language pack (*.clpk, *.zip)")
                     {
-                        Patterns = ["*.zip"],
+                        Patterns = ["*.clpk", "*.zip"],
                     },
                 ],
             });

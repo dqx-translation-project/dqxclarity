@@ -6,7 +6,6 @@ public record LanguagePackCatalogEntry
 {
     public string Name { get; init; } = "";
     public string Language { get; init; } = "";
-    public string Type { get; init; } = "";
     public string DownloadUrl { get; init; } = "";
     public bool IsDefault { get; init; }
 
@@ -25,7 +24,6 @@ public static class LanguagePackCatalog
         {
             Name = "English",
             Language = "en",
-            Type = "Translation",
             DownloadUrl = EnglishPackUrl,
             IsDefault = true,
         },

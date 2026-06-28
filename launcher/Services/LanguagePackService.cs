@@ -122,45 +122,34 @@ public class LanguagePackService
         {
             var (payload, meta) = ClpkFormat.OpenPayload(path);
             using var _payload = payload;
-            using var archive = new ZipArchive(payload, ZipArchiveMode.Read);
-            var manifestEntry = archive.Entries.FirstOrDefault(e =>
-                NormalizeZipPath(e.FullName).Equals("mod.jsons", StringComparison.OrdinalIgnoreCase));
-            if (manifestEntry == null)
-                return InvalidLanguagePack(path, "Missing mod.jsons");
 
-            using var stream = manifestEntry.Open();
-            var manifest = JsonSerializer.Deserialize<LanguagePackManifest>(stream, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            }) ?? throw new InvalidDataException("mod.jsons is empty");
+            // Language packs are CLPK containers; their metadata lives in the header.
+            if (meta == null)
+                return InvalidLanguagePack(path, "Not a Clarity language pack (.clpk)");
 
-            var gameMods = manifest.GameMods
+            var normalizedMods = (meta.GameMods ?? [])
                 .Select(NormalizeZipPath)
                 .Where(p => !string.IsNullOrWhiteSpace(p))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            if (gameMods.Count == 0)
-                return InvalidLanguagePack(path, "mod.jsons has no game_mods entries", manifest);
+            if (normalizedMods.Count == 0)
+                return InvalidLanguagePack(path, "Pack lists no game files to install");
 
-            foreach (var item in gameMods)
+            foreach (var item in normalizedMods)
                 ValidateRelativeZipPath(item);
 
             return new LanguagePack
             {
-                Type = string.IsNullOrWhiteSpace(manifest.Type) ? "Unknown" : manifest.Type,
-                Name = string.IsNullOrWhiteSpace(manifest.Name) ? Path.GetFileNameWithoutExtension(path) : manifest.Name,
-                Version = manifest.Version,
-                Author = manifest.Author,
-                Description = manifest.Description,
-                Path = path,
-                // A CLPK header's downloadUrl, when present, overrides whatever the manifest declares.
-                DownloadUrl = meta != null && !string.IsNullOrWhiteSpace(meta.DownloadUrl)
-                    ? meta.DownloadUrl
-                    : FirstNonEmpty(manifest.DownloadUrl, manifest.UpdateUrl, manifest.Homepage),
-                GameMods = gameMods,
+                Name        = string.IsNullOrWhiteSpace(meta.Name) ? Path.GetFileNameWithoutExtension(path) : meta.Name,
+                Author      = meta.Author ?? "",
+                Language    = meta.Language ?? "",
+                Created     = FormatBuiltAt(meta.BuiltAt),
+                Path        = path,
+                DownloadUrl = meta.DownloadUrl ?? "",
+                GameMods    = normalizedMods,
                 CanActivate = true,
-                Status = "Ready",
+                Status      = "Ready",
             };
         }
         catch (Exception ex)
@@ -169,18 +158,20 @@ public class LanguagePackService
         }
     }
 
-    private static LanguagePack InvalidLanguagePack(string path, string reason, LanguagePackManifest? manifest = null) =>
+    private static LanguagePack InvalidLanguagePack(string path, string reason) =>
         new()
         {
-            Type = string.IsNullOrWhiteSpace(manifest?.Type) ? "Invalid" : manifest!.Type,
-            Name = string.IsNullOrWhiteSpace(manifest?.Name) ? Path.GetFileNameWithoutExtension(path) : manifest!.Name,
-            Version = manifest?.Version ?? "",
-            Author = manifest?.Author ?? "",
+            Name = Path.GetFileNameWithoutExtension(path),
             Path = path,
-            DownloadUrl = manifest == null ? "" : FirstNonEmpty(manifest.DownloadUrl, manifest.UpdateUrl, manifest.Homepage),
             CanActivate = false,
             Status = reason,
         };
+
+    private static string FormatBuiltAt(long unixSeconds)
+    {
+        if (unixSeconds <= 0) return "";
+        return DateTimeOffset.FromUnixTimeSeconds(unixSeconds).LocalDateTime.ToString("yyyy-MM-dd HH:mm");
+    }
 
     /// <summary>Manual "Check Updates": runs the CLPK-aware check for each pack and flags HasUpdate.</summary>
     public async Task CheckUpdatesAsync(IEnumerable<LanguagePack> languagePacks)
@@ -189,7 +180,7 @@ public class LanguagePackService
         {
             if (string.IsNullOrWhiteSpace(pack.DownloadUrl))
             {
-                pack.Status = "No download URL";
+                pack.Status = "No update url";
                 continue;
             }
 
@@ -289,7 +280,7 @@ public class LanguagePackService
     public async Task<UpdateCheckResult> CheckForUpdateAsync(LanguagePack pack)
     {
         var result = new UpdateCheckResult();
-        if (string.IsNullOrWhiteSpace(pack.DownloadUrl)) { result.Message = "No download URL"; return result; }
+        if (string.IsNullOrWhiteSpace(pack.DownloadUrl)) { result.Message = "No update url"; return result; }
 
         var fileName = Path.GetFileName(pack.Path);
         var state = LoadUpdateState();
@@ -482,8 +473,14 @@ public class LanguagePackService
         if (!probe.CanActivate)
             throw new InvalidDataException(probe.Status);
 
-        var fileName = SanitizeZipFileName(Path.GetFileNameWithoutExtension(sourceZipPath));
-        var destPath = Path.Combine(SourceLanguagePacksDir(), fileName);
+        // Preserve the chosen file's extension (.clpk stays .clpk), defaulting to .clpk.
+        var ext = Path.GetExtension(sourceZipPath);
+        if (string.IsNullOrWhiteSpace(ext)) ext = ".clpk";
+        var baseName = Path.GetFileNameWithoutExtension(sourceZipPath).Trim();
+        foreach (var c in Path.GetInvalidFileNameChars())
+            baseName = baseName.Replace(c, '_');
+        if (string.IsNullOrWhiteSpace(baseName)) baseName = "language-pack";
+        var destPath = Path.Combine(SourceLanguagePacksDir(), baseName + ext);
 
         // If the chosen file already lives in the language-packs folder, don't copy onto itself.
         if (!string.Equals(Path.GetFullPath(sourceZipPath), Path.GetFullPath(destPath), StringComparison.OrdinalIgnoreCase))
@@ -497,7 +494,8 @@ public class LanguagePackService
     /// stamps a CLPK header (sha256 + metadata) in front of the payload. Overwrites the output if it
     /// already exists. File IO and hashing run on a background thread.
     /// </summary>
-    public async Task BuildClpkAsync(string inputZipPath, string outputClpkPath, string language, string downloadUrl)
+    public async Task BuildClpkAsync(string inputZipPath, string outputClpkPath,
+        string name, string author, string language, string downloadUrl)
     {
         if (string.IsNullOrWhiteSpace(inputZipPath) || !File.Exists(inputZipPath))
             throw new FileNotFoundException($"Input zip file not found: {inputZipPath}");
@@ -510,10 +508,36 @@ public class LanguagePackService
             if (zipBytes.Length < 2 || zipBytes[0] != (byte)'P' || zipBytes[1] != (byte)'K')
                 throw new InvalidDataException("Input file is not a valid .zip archive (missing 'PK' signature).");
 
-            var builtAt = DateTime.UtcNow.ToString("o");
+            // game_mods is derived from the zip's top-level entries (each top-level folder/file except mod.jsons).
+            var gameMods = new List<string>();
+            using (var ms = new MemoryStream(zipBytes))
+            using (var archive = new ZipArchive(ms, ZipArchiveMode.Read))
+            {
+                foreach (var entry in archive.Entries)
+                {
+                    var norm = NormalizeZipPath(entry.FullName);
+                    if (string.IsNullOrWhiteSpace(norm) || norm.Equals("mod.jsons", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    var top = norm.Split('/')[0];
+                    if (!string.IsNullOrWhiteSpace(top) && !gameMods.Contains(top, StringComparer.OrdinalIgnoreCase))
+                        gameMods.Add(top);
+                }
+            }
+            if (gameMods.Count == 0)
+                throw new InvalidDataException("Input zip has no installable files (it is empty or contains only mod.jsons).");
+
+            var meta = new ClpkMetadata
+            {
+                Name        = string.IsNullOrWhiteSpace(name) ? Path.GetFileNameWithoutExtension(inputZipPath) : name,
+                Author      = author ?? "",
+                Language    = language ?? "",
+                BuiltAt     = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                DownloadUrl = downloadUrl ?? "",
+                GameMods    = gameMods,
+            };
 
             using var output = new FileStream(outputClpkPath, FileMode.Create, FileAccess.Write, FileShare.None);
-            ClpkFormat.Write(output, zipBytes, language ?? "", downloadUrl ?? "", builtAt);
+            ClpkFormat.Write(output, zipBytes, meta);
         });
     }
 
@@ -572,7 +596,7 @@ public class LanguagePackService
         }
 
         if (extracted == 0)
-            throw new InvalidDataException("No files matched the game_mods entries in mod.jsons.");
+            throw new InvalidDataException("No files in the pack matched its game_mods entries.");
 
         return extracted;
     }
@@ -652,15 +676,12 @@ public class LanguagePackService
         entry.Equals(source, StringComparison.OrdinalIgnoreCase)
         || entry.StartsWith(source.TrimEnd('/') + "/", StringComparison.OrdinalIgnoreCase);
 
-    private static string FirstNonEmpty(params string[] values) =>
-        values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? "";
-
     private static string NormalizeZipPath(string path) =>
         path.Replace('\\', '/').Trim('/');
 
     private static void ValidateRelativeZipPath(string path)
     {
         if (Path.IsPathRooted(path) || path.Split('/').Any(p => p == ".."))
-            throw new InvalidDataException($"Unsafe path in mod.jsons: {path}");
+            throw new InvalidDataException($"Unsafe path in pack metadata: {path}");
     }
 }

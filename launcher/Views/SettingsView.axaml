@@ -111,7 +111,7 @@
                     <Button x:Name="TabOverrides"  Classes="tab" Click="OnTabClick" Tag="nameoverrides">Name Overrides</Button>
                     <Button x:Name="TabDatabase"   Classes="tab" Click="OnTabClick" Tag="database">Database</Button>
                     <Button x:Name="TabGame"       Classes="tab" Click="OnTabClick" Tag="game">Game</Button>
-                    <Button x:Name="TabLanguagePacks" Classes="tab" Click="OnTabClick" Tag="languagepacks">Language Packs</Button>
+                    <Button x:Name="TabLanguagePacks" Classes="tab" Click="OnTabClick" Tag="languagepacks">Language</Button>
                     <Button x:Name="TabText2Clipboard"  Classes="tab" Click="OnTabClick" Tag="text2clipboard">Text2Clipboard</Button>
                 </StackPanel>
             </Border>
@@ -259,6 +259,25 @@
                                         <Button Grid.Column="1"
                                                 Command="{Binding PickClpkInputCommand}"
                                                 ToolTip.Tip="Choose the input .zip to build from.">Choose ZIP…</Button>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="Name:"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"/>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding ClpkName}"
+                                                 Watermark="defaults to the .zip filename"
+                                                 ToolTip.Tip="Pack name stamped into the CLPK metadata."/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="Author:"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"/>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding ClpkAuthor}"
+                                                 ToolTip.Tip="Pack author stamped into the CLPK metadata."/>
                                     </Grid>
                                     <Grid ColumnDefinitions="Auto,*">
                                         <TextBlock Grid.Column="0"
@@ -795,7 +814,7 @@
                                                        VerticalAlignment="Center"
                                                        Padding="0,0,8,0"/>
                                             <TextBlock Grid.Column="1"
-                                                       Text="{Binding Type}"
+                                                       Text="{Binding Language}"
                                                        FontSize="12"
                                                        Foreground="{DynamicResource AppMuted}"
                                                        VerticalAlignment="Center"/>
@@ -819,33 +838,27 @@
                             Background="{DynamicResource AppSurface}">
                         <Grid RowDefinitions="Auto,*">
                             <Grid Grid.Row="0"
-                                  ColumnDefinitions="24,34,120,3*,120,120,2*"
+                                  ColumnDefinitions="24,34,4*,150,150,2*"
                                   Background="{DynamicResource AppSurface2}">
                                 <TextBlock Grid.Column="2"
-                                           Text="type"
-                                           FontSize="11"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource AppMuted}"
-                                           Padding="8,4"/>
-                                <TextBlock Grid.Column="3"
                                            Text="name"
                                            FontSize="11"
                                            FontWeight="SemiBold"
                                            Foreground="{DynamicResource AppMuted}"
                                            Padding="8,4"/>
-                                <TextBlock Grid.Column="4"
-                                           Text="version"
+                                <TextBlock Grid.Column="3"
+                                           Text="created"
                                            FontSize="11"
                                            FontWeight="SemiBold"
                                            Foreground="{DynamicResource AppMuted}"
                                            Padding="8,4"/>
-                                <TextBlock Grid.Column="5"
+                                <TextBlock Grid.Column="4"
                                            Text="author"
                                            FontSize="11"
                                            FontWeight="SemiBold"
                                            Foreground="{DynamicResource AppMuted}"
                                            Padding="8,4"/>
-                                <TextBlock Grid.Column="6"
+                                <TextBlock Grid.Column="5"
                                            Text="status"
                                            FontSize="11"
                                            FontWeight="SemiBold"
@@ -861,7 +874,7 @@
                                         <DataTemplate x:DataType="m:LanguagePack">
                                             <Border BorderBrush="{DynamicResource AppBorder}"
                                                     BorderThickness="0,0,0,1">
-                                                <Grid ColumnDefinitions="24,34,120,3*,120,120,2*">
+                                                <Grid ColumnDefinitions="24,34,4*,150,150,2*">
                                                     <TextBlock Grid.Column="0"
                                                                Name="DragHandle"
                                                                Text="⠿"
@@ -879,38 +892,32 @@
                                                               VerticalAlignment="Center"
                                                               Click="OnLanguagePackActiveClick"/>
                                                     <TextBlock Grid.Column="2"
-                                                               Text="{Binding Type}"
-                                                               FontSize="13"
-                                                               Foreground="{DynamicResource AppText}"
-                                                               Padding="8,4"
-                                                               TextTrimming="CharacterEllipsis"/>
-                                                    <TextBlock Grid.Column="3"
                                                                Text="{Binding Name}"
                                                                FontSize="13"
                                                                Foreground="{DynamicResource AppText}"
                                                                Padding="8,4"
                                                                TextTrimming="CharacterEllipsis"/>
-                                                    <TextBlock Grid.Column="4"
-                                                               Text="{Binding Version}"
+                                                    <TextBlock Grid.Column="3"
+                                                               Text="{Binding Created}"
                                                                FontSize="13"
                                                                Foreground="{DynamicResource AppText}"
                                                                Padding="8,4"
                                                                IsVisible="{Binding !HasUpdate}"
                                                                TextTrimming="CharacterEllipsis"/>
-                                                    <Button Grid.Column="4"
+                                                    <Button Grid.Column="3"
                                                             IsVisible="{Binding HasUpdate}"
                                                             Click="OnLanguagePackUpdateClick"
                                                             FontSize="11"
                                                             HorizontalAlignment="Left"
                                                             Padding="8,2"
                                                             Margin="8,2">DL update</Button>
-                                                    <TextBlock Grid.Column="5"
+                                                    <TextBlock Grid.Column="4"
                                                                Text="{Binding Author}"
                                                                FontSize="13"
                                                                Foreground="{DynamicResource AppText}"
                                                                Padding="8,4"
                                                                TextTrimming="CharacterEllipsis"/>
-                                                    <TextBlock Grid.Column="6"
+                                                    <TextBlock Grid.Column="5"
                                                                Text="{Binding Status}"
                                                                FontSize="13"
                                                                Foreground="{DynamicResource AppMuted}"

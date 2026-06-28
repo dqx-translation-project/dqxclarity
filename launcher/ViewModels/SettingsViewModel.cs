@@ -52,6 +52,8 @@ public partial class SettingsViewModel : ObservableObject
 
     // ── Build language pack (CLPK) tool ───────────────────────────────────
     [ObservableProperty] private string _clpkInputZipPath = "";
+    [ObservableProperty] private string _clpkName = "";
+    [ObservableProperty] private string _clpkAuthor = "";
     [ObservableProperty] private string _clpkLanguage = "en";
     [ObservableProperty] private string _clpkDownloadUrl = "";
     [ObservableProperty] private string _clpkBuildStatus = "";
@@ -89,7 +91,8 @@ public partial class SettingsViewModel : ObservableObject
             if (string.IsNullOrWhiteSpace(outputPath)) return;
 
             SetClpkBuildStatus("Building...");
-            await _languagePacks.BuildClpkAsync(ClpkInputZipPath, outputPath, ClpkLanguage, ClpkDownloadUrl);
+            await _languagePacks.BuildClpkAsync(ClpkInputZipPath, outputPath,
+                ClpkName, ClpkAuthor, ClpkLanguage, ClpkDownloadUrl);
             SetClpkBuildStatus($"Built {Path.GetFileName(outputPath)}.");
         }
         catch (Exception ex)
@@ -1318,15 +1321,13 @@ public partial class SettingsViewModel : ObservableObject
             pack.Status = "Downloading update...";
 
             var updated = await _languagePacks.DownloadUpdateAsync(pack);
-            pack.Type = updated.Type;
             pack.Name = updated.Name;
-            pack.Version = updated.Version;
             pack.Author = updated.Author;
-            pack.Description = updated.Description;
+            pack.Language = updated.Language;
+            pack.Created = updated.Created;
             pack.DownloadUrl = updated.DownloadUrl;
             pack.GameMods = updated.GameMods;
             pack.CanActivate = updated.CanActivate;
-            pack.RemoteVersion = "";
             pack.HasUpdate = false;
             pack.IsActive = wasActive;
             pack.Status = wasActive ? "Active" : "Ready";
@@ -1335,11 +1336,11 @@ public partial class SettingsViewModel : ObservableObject
             {
                 var activePacks = LanguagePacks.Where(m => m.IsActive && m.CanActivate).ToList();
                 var count = await Task.Run(() => _languagePacks.RebuildGameModsFolder(DqxDir, activePacks));
-                SetLanguagePackStatus($"Updated {pack.Name} to {pack.Version}. Game\\mods rebuilt: {count} file(s) extracted.");
+                SetLanguagePackStatus($"Updated {pack.Name}. Game\\mods rebuilt: {count} file(s) extracted.");
             }
             else
             {
-                SetLanguagePackStatus($"Updated {pack.Name} to {pack.Version}.");
+                SetLanguagePackStatus($"Updated {pack.Name}.");
             }
         }
         catch (Exception ex)

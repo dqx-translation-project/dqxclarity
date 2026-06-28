@@ -15,14 +15,24 @@ public record ClpkMetadata
     [JsonPropertyName("sha256")]
     public string Sha256 { get; init; } = "";
 
+    [JsonPropertyName("name")]
+    public string Name { get; init; } = "";
+
+    [JsonPropertyName("author")]
+    public string Author { get; init; } = "";
+
     [JsonPropertyName("language")]
     public string Language { get; init; } = "";
 
+    /// <summary>Creation time as a Unix timestamp (seconds since epoch).</summary>
     [JsonPropertyName("builtAt")]
-    public string BuiltAt { get; init; } = "";
+    public long BuiltAt { get; init; }
 
     [JsonPropertyName("downloadUrl")]
     public string DownloadUrl { get; init; } = "";
+
+    [JsonPropertyName("gameMods")]
+    public List<string> GameMods { get; init; } = [];
 }
 
 /// <summary>
@@ -153,21 +163,17 @@ public static class ClpkFormat
     /// Writes a CLPK container to <paramref name="output"/>: magic, version, u16 BE JSON length,
     /// UTF-8 JSON metadata (with sha256 computed over <paramref name="zipBytes"/>), then the zip bytes.
     /// </summary>
-    public static void Write(Stream output, byte[] zipBytes, string language, string downloadUrl, string builtAtIso)
+    public static void Write(Stream output, byte[] zipBytes, ClpkMetadata metadata)
     {
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(zipBytes);
+        ArgumentNullException.ThrowIfNull(metadata);
 
         using var sha = SHA256.Create();
         var sha256Hex = Convert.ToHexString(sha.ComputeHash(zipBytes)).ToLowerInvariant();
 
-        var meta = new ClpkMetadata
-        {
-            Sha256 = sha256Hex,
-            Language = language ?? "",
-            BuiltAt = builtAtIso ?? "",
-            DownloadUrl = downloadUrl ?? "",
-        };
+        // sha256 is always computed here from the payload; ignore any caller-supplied value.
+        var meta = metadata with { Sha256 = sha256Hex };
 
         var json = JsonSerializer.SerializeToUtf8Bytes(meta, JsonOptions);
         if (json.Length > ushort.MaxValue)
