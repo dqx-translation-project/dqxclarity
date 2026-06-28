@@ -29,7 +29,7 @@ public partial class LanguagePack : ObservableObject
     public string LanguageDisplay => LanguageNames.DisplayName(Language);
 
     [ObservableProperty] private string _author = "";
-    [ObservableProperty] private string _created = "";   // display form of the CLPK builtAt timestamp
+    [ObservableProperty] private string _updated = "";   // display form of the CLPK builtAt timestamp
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private string _path = "";
     [ObservableProperty] private string _downloadUrl = "";

@@ -143,7 +143,7 @@ public class LanguagePackService
             {
                 Author      = meta.Author ?? "",
                 Language    = meta.Language ?? "",
-                Created     = FormatBuiltAt(meta.BuiltAt),
+                Updated     = FormatBuiltAt(meta.BuiltAt),
                 Path        = path,
                 DownloadUrl = meta.DownloadUrl ?? "",
                 GameMods    = normalizedMods,

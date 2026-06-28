@@ -1321,7 +1321,7 @@ public partial class SettingsViewModel : ObservableObject
             var updated = await _languagePacks.DownloadUpdateAsync(pack);
             pack.Author = updated.Author;
             pack.Language = updated.Language;
-            pack.Created = updated.Created;
+            pack.Updated = updated.Updated;
             pack.DownloadUrl = updated.DownloadUrl;
             pack.GameMods = updated.GameMods;
             pack.CanActivate = updated.CanActivate;

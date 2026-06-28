@@ -832,7 +832,7 @@
                                            Foreground="{DynamicResource AppMuted}"
                                            Padding="8,4"/>
                                 <TextBlock Grid.Column="3"
-                                           Text="created"
+                                           Text="updated"
                                            FontSize="11"
                                            FontWeight="SemiBold"
                                            Foreground="{DynamicResource AppMuted}"
@@ -868,7 +868,7 @@
                                                                Foreground="{DynamicResource AppMuted}"
                                                                HorizontalAlignment="Center"
                                                                VerticalAlignment="Center"
-                                                               ToolTip.Tip="Drag to reorder (order is extraction precedence)."
+                                                               ToolTip.Tip="Drag to reorder. Higher = higher priority; the top active pack sets the translation language."
                                                                PointerPressed="OnLanguagePackHandlePressed"/>
                                                     <CheckBox Grid.Column="1"
                                                               IsChecked="{Binding IsActive}"
@@ -883,7 +883,7 @@
                                                                Padding="8,4"
                                                                TextTrimming="CharacterEllipsis"/>
                                                     <TextBlock Grid.Column="3"
-                                                               Text="{Binding Created}"
+                                                               Text="{Binding Updated}"
                                                                FontSize="13"
                                                                Foreground="{DynamicResource AppText}"
                                                                Padding="8,4"
