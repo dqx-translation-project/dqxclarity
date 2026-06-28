@@ -1,8 +1,8 @@
 # fmt: off
 GITHUB_CUSTOM_TRANSLATIONS_ZIP_URL = "https://github.com/dqx-translation-project/dqx-custom-translations/archive/refs/heads/main.zip"
-GITHUB_CLARITY_MONSTERS_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx_translations/main/json/_lang/en/subPackage02Client.win32.json"
-GITHUB_CLARITY_NPC_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx_translations/main/json/_lang/en/smldt_msg_pkg_NPC_DB.win32.json"
+GITHUB_CLARITY_MONSTERS_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx_translations/main/json/_lang/en/subPackage02Client.json"
+GITHUB_CLARITY_NPC_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx_translations/main/json/_lang/en/smldt_msg_pkg_NPC_DB.json"
 GITHUB_CLARITY_ITEMS_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx_translations/main/json/_lang/en/subPackage05Client.json"
-GITHUB_CLARITY_KEY_ITEMS_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx_translations/main/json/_lang/en/subPackage41Client.win32.json"
+GITHUB_CLARITY_KEY_ITEMS_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx_translations/main/json/_lang/en/subPackage41Client.json"
 GITHUB_CLARITY_QUESTS_REQUESTS_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx_translations/main/json/_lang/en/eventTextSysQuestaClient.json"
-GITHUB_CLARITY_CUTSCENE_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx_translations/main/json/_lang/en/eventTextSysEventaClient.win32.json"
+GITHUB_CLARITY_CUTSCENE_JSON_URL = "https://raw.githubusercontent.com/dqx-translation-project/dqx_translations/main/json/_lang/en/eventTextSysEventaClient.json"
