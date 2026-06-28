@@ -1564,8 +1564,6 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand] private Task RestoreLauncher()  => RunPatch(_patch.RestoreLauncher);
     [RelayCommand] private Task PatchConfig()      => RunPatch(_patch.PatchConfig);
     [RelayCommand] private Task RestoreConfig()    => RunPatch(_patch.RestoreConfig);
-    [RelayCommand] private Task PatchGameFiles()   => RunPatch(_patch.PatchGameFiles);
-    [RelayCommand] private Task RestoreGameFiles() => RunPatch(_patch.RestoreGameFiles);
 
     // ── Update ────────────────────────────────────────────────────────────
 

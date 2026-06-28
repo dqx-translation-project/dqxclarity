@@ -386,7 +386,7 @@
                                             <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnPatchHelpClick">?</Button>
                                         </StackPanel>
 
-                                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto">
+                                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
                                             <Button Grid.Column="0" Grid.Row="0" Margin="0,0,3,0"
                                                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                                     Command="{Binding PatchLauncherCommand}" IsEnabled="{Binding !Patching}"
@@ -404,15 +404,6 @@
                                                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                                     Command="{Binding RestoreConfigCommand}" IsEnabled="{Binding !Patching}"
                                                     ToolTip.Tip="Restore the original Japanese Config executable.">Restore Config</Button>
-
-                                            <Button Grid.Column="0" Grid.Row="2" Margin="0,4,3,0"
-                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                                    Command="{Binding PatchGameFilesCommand}" IsEnabled="{Binding !Patching}"
-                                                    ToolTip.Tip="Download and apply the latest DAT/IDX translation mod. Requires admin. DQX must be closed.">Patch Game Files</Button>
-                                            <Button Grid.Column="1" Grid.Row="2" Margin="3,4,0,0"
-                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                                    Command="{Binding RestoreGameFilesCommand}" IsEnabled="{Binding !Patching}"
-                                                    ToolTip.Tip="Restore the original game files. Requires admin. DQX must be closed.">Restore Game Files</Button>
                                         </Grid>
 
                                         <ProgressBar IsVisible="{Binding Patching}" Minimum="0" Maximum="100">

@@ -99,14 +99,7 @@ public partial class SettingsView : UserControl
         "Swaps the DQX launcher executable with an English-patched version, or restores the original Japanese file. " +
         "This only affects the launcher window's UI text and has no impact on gameplay.\n\n" +
         "Patch Config / Restore Config\n" +
-        "Same as above but for DQXConfig.exe - patches or restores the configuration tool's interface text.\n\n" +
-        "Patch Game Files\n" +
-        "Downloads and applies the latest DAT/IDX translation mod to your game directory. " +
-        "This is the main translation patch that enables in-game text translation. " +
-        "Requires administrator rights and DQX must be fully closed before running.\n\n" +
-        "Restore Game Files\n" +
-        "Removes the DAT/IDX translation mod and restores the original untranslated game files. " +
-        "Requires administrator rights and DQX must be fully closed before running.";
+        "Same as above but for DQXConfig.exe - patches or restores the configuration tool's interface text.";
 
     public SettingsView()
     {
