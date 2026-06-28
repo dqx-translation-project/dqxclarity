@@ -111,6 +111,7 @@
                     <Button x:Name="TabOverrides"  Classes="tab" Click="OnTabClick" Tag="nameoverrides">Name Overrides</Button>
                     <Button x:Name="TabDatabase"   Classes="tab" Click="OnTabClick" Tag="database">Database</Button>
                     <Button x:Name="TabGame"       Classes="tab" Click="OnTabClick" Tag="game">Game</Button>
+                    <Button x:Name="TabLanguagePacks" Classes="tab" Click="OnTabClick" Tag="languagepacks">Language</Button>
                     <Button x:Name="TabText2Clipboard"  Classes="tab" Click="OnTabClick" Tag="text2clipboard">Text2Clipboard</Button>
                 </StackPanel>
             </Border>
@@ -119,10 +120,12 @@
             <Grid Grid.Row="1">
 
                 <!-- ── Scrollable panels (General / Advanced / Game) ──── -->
+                <!-- Padding lives on the inner content (as Margin), NOT on the ScrollViewer:
+                     ScrollViewer.Padding is subtracted from the scroll extent, which clips the
+                     bottom of taller tabs (e.g. Advanced) by the padding amount. -->
                 <ScrollViewer x:Name="TabScroll"
-                              HorizontalScrollBarVisibility="Disabled"
-                              Padding="14,12">
-                    <StackPanel MaxWidth="504">
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel MaxWidth="504" Margin="14,12">
 
                         <!-- ══ GENERAL TAB ══════════════════════════════ -->
                         <StackPanel x:Name="PanelGeneral" Spacing="14">
@@ -244,6 +247,56 @@
                                             ToolTip.Tip="Open the logs folder in file explorer.">Open Log Folder</Button>
                                 </StackPanel>
                             </Border>
+                            <Border Classes="fieldset"
+                                    ToolTip.Tip="Stamps a CLPK header (sha256 + metadata) onto a plain .zip so it can be distributed and verified as a Clarity language pack.">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Classes="legend" Text="Build language pack (CLPK)" Margin="0,0,0,0"/>
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBox Grid.Column="0"
+                                                 IsReadOnly="True"
+                                                 Watermark="No .zip selected"
+                                                 Text="{Binding ClpkInputZipPath}"
+                                                 Margin="0,0,6,0"
+                                                 ToolTip.Tip="The plain .zip language pack to wrap into a .clpk container."/>
+                                        <Button Grid.Column="1"
+                                                Command="{Binding PickClpkInputCommand}"
+                                                ToolTip.Tip="Choose the input .zip to build from.">Choose ZIP…</Button>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="Author:"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"/>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding ClpkAuthor}"
+                                                 ToolTip.Tip="Pack author stamped into the CLPK metadata."/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="Language:"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"/>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding ClpkLanguage}"
+                                                 ToolTip.Tip="Language code stamped into the CLPK metadata (e.g. en)."/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="Download URL:"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"/>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding ClpkDownloadUrl}"
+                                                 ToolTip.Tip="Optional URL stamped into the CLPK metadata; overrides the manifest's download URL when set."/>
+                                    </Grid>
+                                    <Button Command="{Binding BuildClpkCommand}"
+                                            ToolTip.Tip="Hash the input .zip and write a .clpk container with the metadata above.">Build .clpk</Button>
+                                    <TextBlock Text="{Binding ClpkBuildStatus}"
+                                               FontSize="11" TextWrapping="Wrap"
+                                               IsVisible="{Binding ClpkBuildStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                               Foreground="{Binding ClpkBuildStatusIsError, Converter={x:Static v:BoolToBrushConverter.ErrorOrMuted}}"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
 
                         <!-- ══ GAME TAB ══════════════════════════════════ -->
@@ -333,7 +386,7 @@
                                             <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnPatchHelpClick">?</Button>
                                         </StackPanel>
 
-                                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto">
+                                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
                                             <Button Grid.Column="0" Grid.Row="0" Margin="0,0,3,0"
                                                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                                     Command="{Binding PatchLauncherCommand}" IsEnabled="{Binding !Patching}"
@@ -351,15 +404,6 @@
                                                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                                     Command="{Binding RestoreConfigCommand}" IsEnabled="{Binding !Patching}"
                                                     ToolTip.Tip="Restore the original Japanese Config executable.">Restore Config</Button>
-
-                                            <Button Grid.Column="0" Grid.Row="2" Margin="0,4,3,0"
-                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                                    Command="{Binding PatchGameFilesCommand}" IsEnabled="{Binding !Patching}"
-                                                    ToolTip.Tip="Download and apply the latest DAT/IDX translation mod. Requires admin. DQX must be closed.">Patch Game Files</Button>
-                                            <Button Grid.Column="1" Grid.Row="2" Margin="3,4,0,0"
-                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                                    Command="{Binding RestoreGameFilesCommand}" IsEnabled="{Binding !Patching}"
-                                                    ToolTip.Tip="Restore the original game files. Requires admin. DQX must be closed.">Restore Game Files</Button>
                                         </Grid>
 
                                         <ProgressBar IsVisible="{Binding Patching}" Minimum="0" Maximum="100">
@@ -684,6 +728,187 @@
                             </ScrollViewer>
                         </DockPanel>
                     </Grid>
+                </Grid>
+
+                <!-- ══ LANGUAGE PACKS (full height) ═════════════════════ -->
+                <Grid x:Name="PanelLanguagePacks" IsVisible="False" Margin="14,8"
+                      RowDefinitions="Auto,Auto,Auto,*">
+
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*" Margin="0,0,0,10">
+                        <Button Grid.Column="0"
+                                Command="{Binding CheckLanguagePackUpdatesCommand}"
+                                IsEnabled="{Binding !LanguagePacksLoading}"
+                                ToolTip.Tip="Check your installed language packs for newer versions."
+                                Margin="0,0,10,0">Check for Updates</Button>
+                        <Button Grid.Column="1"
+                                Command="{Binding LoadPackFromDiskCommand}"
+                                IsEnabled="{Binding !LanguagePacksLoading}"
+                                ToolTip.Tip="Add a Clarity Language Pack (.clpk) from your computer."
+                                Margin="0,0,10,0">Load from File…</Button>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                            <CheckBox Content="Enable"
+                                      IsChecked="{Binding LanguagePackSupport}"
+                                      VerticalAlignment="Center"
+                                      ToolTip.Tip="Use your active language packs while playing."/>
+                            <CheckBox Content="Automatic updates"
+                                      IsChecked="{Binding AutomaticUpdates}"
+                                      VerticalAlignment="Center"
+                                      ToolTip.Tip="Automatically download and apply language pack updates when the launcher starts."/>
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Grid.Row="1"
+                               Text="{Binding LanguagePackStatus}"
+                               FontSize="11"
+                               Foreground="{DynamicResource AppMuted}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,8"
+                               IsVisible="{Binding !LanguagePackStatusIsError}"/>
+                    <TextBlock Grid.Row="1"
+                               Text="{Binding LanguagePackStatus}"
+                               FontSize="11"
+                               Foreground="{DynamicResource AppDanger}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,8"
+                               IsVisible="{Binding LanguagePackStatusIsError}"/>
+
+                    <Border Grid.Row="2"
+                            BorderBrush="{DynamicResource AppBorder}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="8"
+                            Margin="0,0,0,10"
+                            Background="{DynamicResource AppSurface}"
+                            IsVisible="{Binding AvailablePacks.Count, Converter={x:Static v:CountToBoolConverter.Instance}}">
+                        <StackPanel>
+                            <TextBlock Text="Available to download"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AppMuted}"
+                                       Margin="0,0,0,6"/>
+                            <ItemsControl ItemsSource="{Binding AvailablePacks}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="m:LanguagePackCatalogEntry">
+                                        <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding LanguageDisplay}"
+                                                       FontSize="13"
+                                                       Foreground="{DynamicResource AppText}"
+                                                       VerticalAlignment="Center"
+                                                       Padding="0,0,8,0"/>
+                                            <Button Grid.Column="1"
+                                                    Content="Download"
+                                                    FontSize="11"
+                                                    Padding="10,2"
+                                                    Click="OnDownloadCatalogPackClick"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Row="3"
+                            BorderBrush="{DynamicResource AppBorder}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="8"
+                            Background="{DynamicResource AppSurface}">
+                        <Grid RowDefinitions="Auto,*">
+                            <Grid Grid.Row="0"
+                                  ColumnDefinitions="24,34,*,140,110,110"
+                                  Background="{DynamicResource AppSurface2}">
+                                <TextBlock Grid.Column="2"
+                                           Text="language"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AppMuted}"
+                                           Padding="8,4"/>
+                                <TextBlock Grid.Column="3"
+                                           Text="updated"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AppMuted}"
+                                           Padding="8,4"/>
+                                <TextBlock Grid.Column="4"
+                                           Text="author"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AppMuted}"
+                                           Padding="8,4"/>
+                                <TextBlock Grid.Column="5"
+                                           Text="status"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AppMuted}"
+                                           Padding="8,4"/>
+                            </Grid>
+
+                            <ScrollViewer Grid.Row="1"
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          VerticalScrollBarVisibility="Auto">
+                                <ItemsControl x:Name="LanguagePackList" ItemsSource="{Binding LanguagePacks}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="m:LanguagePack">
+                                            <Border BorderBrush="{DynamicResource AppBorder}"
+                                                    BorderThickness="0,0,0,1">
+                                                <Grid ColumnDefinitions="24,34,*,140,110,110">
+                                                    <TextBlock Grid.Column="0"
+                                                               Name="DragHandle"
+                                                               Text="⠿"
+                                                               FontSize="15"
+                                                               Cursor="SizeAll"
+                                                               Foreground="{DynamicResource AppMuted}"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               ToolTip.Tip="Drag to reorder. Higher = higher priority; the top active pack sets the translation language."
+                                                               PointerPressed="OnLanguagePackHandlePressed"/>
+                                                    <CheckBox Grid.Column="1"
+                                                              IsChecked="{Binding IsActive}"
+                                                              IsEnabled="{Binding CanActivate}"
+                                                              HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"
+                                                              Click="OnLanguagePackActiveClick"/>
+                                                    <TextBlock Grid.Column="2"
+                                                               Text="{Binding LanguageDisplay}"
+                                                               FontSize="13"
+                                                               Foreground="{DynamicResource AppText}"
+                                                               Padding="8,4"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Grid.Column="3"
+                                                               Text="{Binding Updated}"
+                                                               FontSize="13"
+                                                               Foreground="{DynamicResource AppText}"
+                                                               Padding="8,4"
+                                                               IsVisible="{Binding !HasUpdate}"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                    <Button Grid.Column="3"
+                                                            IsVisible="{Binding HasUpdate}"
+                                                            Click="OnLanguagePackUpdateClick"
+                                                            FontSize="11"
+                                                            HorizontalAlignment="Left"
+                                                            Padding="8,2"
+                                                            Margin="8,2">DL update</Button>
+                                                    <TextBlock Grid.Column="4"
+                                                               Text="{Binding Author}"
+                                                               FontSize="13"
+                                                               Foreground="{DynamicResource AppText}"
+                                                               Padding="8,4"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Grid.Column="5"
+                                                               Text="{Binding Status}"
+                                                               FontSize="13"
+                                                               Foreground="{DynamicResource AppMuted}"
+                                                               Padding="8,4"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
                 </Grid>
 
                 <!-- ══ DATABASE (full height) ════════════════════════════ -->

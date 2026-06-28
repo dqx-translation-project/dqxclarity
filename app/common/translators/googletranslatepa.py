@@ -1,4 +1,5 @@
 import requests
+from common.config import UserConfig
 from common.measure import measure_duration
 from loguru import logger as log
 
@@ -10,6 +11,7 @@ class GoogleTranslatePa:
 
     def __init__(self, api_key: str = "") -> None:
         self.session = requests.Session()
+        self.target = UserConfig().target_language
 
     @measure_duration
     def translate(self, text: list[str]) -> list[str]:
@@ -18,7 +20,7 @@ class GoogleTranslatePa:
             for phrase in text:
                 response = self.session.get(
                     self._URL,
-                    params={"client": "gtx", "sl": "ja", "tl": "en", "dt": "t", "q": phrase},
+                    params={"client": "gtx", "sl": "ja", "tl": self.target, "dt": "t", "q": phrase},
                 )
                 response.raise_for_status()
                 data = response.json()

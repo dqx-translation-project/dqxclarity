@@ -11,3 +11,4 @@
 *.png binary
 *.db binary
 *.dll binary
+*.zip binary

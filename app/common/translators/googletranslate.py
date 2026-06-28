@@ -1,3 +1,4 @@
+from common.config import UserConfig
 from common.measure import measure_duration
 from googleapiclient.discovery import build
 from loguru import logger as log
@@ -9,11 +10,12 @@ from loguru import logger as log
 class GoogleTranslate:
     def __init__(self, api_key: str) -> None:
         self.service = build("translate", "v2", developerKey=api_key)
+        self.target = UserConfig().target_language
 
     @measure_duration
     def translate(self, text: list[str]) -> list[str]:
         try:
-            response = self.service.translations().list(source="ja", target="en", format="text", q=text).execute()
+            response = self.service.translations().list(source="ja", target=self.target, format="text", q=text).execute()
 
             results = []
             for result in response["translations"]:

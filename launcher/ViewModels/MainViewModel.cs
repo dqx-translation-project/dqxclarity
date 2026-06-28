@@ -36,10 +36,6 @@ public partial class MainViewModel : ObservableObject
     partial void OnIsBannerCollapsedChanged(bool value)
     {
         _cfg.SaveBannerCollapsed(value);
-        if (Window == null || CurrentView != "settings") return;
-        var newH = GetWinSize("settings").H;
-        Window.MaxHeight = newH;
-        Window.Height    = newH;
     }
 
     // Set by MainWindow after construction
@@ -53,12 +49,6 @@ public partial class MainViewModel : ObservableObject
 
     public ObservableCollection<BannerDotItem> BannerDots { get; } = [];
 
-    private (double W, double H) GetWinSize(string view) => view switch
-    {
-        "settings" => (680, 580 + (IsBannerCollapsed ? 0 : _bannerStripH)),
-        _          => (680, 580),
-    };
-
     public MainViewModel(
         AppConfig config,
         string version,
@@ -71,6 +61,7 @@ public partial class MainViewModel : ObservableObject
         DatabaseService dbSvc,
         ValidateService validateSvc,
         MaintenanceService maintenanceSvc,
+        LanguagePackService langPackSvc,
         Text2ClipboardViewModel text2Clipboard)
     {
         _config     = config;
@@ -84,13 +75,18 @@ public partial class MainViewModel : ObservableObject
         Setup    = new SetupViewModel(setupSvc);
         Log      = new LogViewModel(processSvc, text2Clipboard);
         Settings = new SettingsViewModel(
-            config, version, null, text2Clipboard, cfg, patchSvc, dbSvc, validateSvc, maintenanceSvc);
+            config, version, null, text2Clipboard, cfg, patchSvc, dbSvc, validateSvc, maintenanceSvc, langPackSvc);
+        Settings.CleanupLanguagePackRuntime();
+
+        // Startup auto-update check (no-op unless the user enabled it); fire-and-forget, never blocks launch.
+        _ = Settings.RunAutomaticUpdatesIfEnabledAsync();
 
         Setup.SetupDone     += () => SwitchTo(autoRun ? "log" : "settings");
         Log.NavigateBack    += () => SwitchTo("settings");
         Log.CloseApp        += () => Window?.Close();
         Settings.RunRequested += OnRunRequested;
         Settings.OpenUrl      += OpenBrowser;
+        _processSvc.ProcessExited += _ => Settings.CleanupLanguagePackRuntime();
 
         // If autorun, trigger the full run flow (respects DirectLogin, SimultaneousLaunch, etc.)
         if (autoRun)
@@ -243,42 +239,21 @@ public partial class MainViewModel : ObservableObject
         Log.Reset();
         SwitchTo("log");
         Log.UpdateTitle(Version);
-        _processSvc.Launch(args);
+        try
+        {
+            _processSvc.Launch(args);
+        }
+        catch
+        {
+            Settings.CleanupLanguagePackRuntime();
+            throw;
+        }
     }
 
     public void SwitchTo(string view)
     {
         CurrentView = view;
         if (Window == null) return;
-
-        var size     = GetWinSize(view);
-        var sameSize = Math.Abs(Window.Width - size.W) < 1 && Math.Abs(Window.Height - size.H) < 1;
-
-        if (!sameSize)
-        {
-            // Hide during resize+reposition so the user never sees an intermediate state
-            Window.Opacity = 0;
-
-            Window.MaxWidth  = size.W;
-            Window.MaxHeight = size.H;
-            Window.Width     = size.W;
-            Window.Height    = size.H;
-
-            var screen = Window.Screens?.Primary;
-            if (screen != null)
-            {
-                var scaling = screen.Scaling;
-                var wa      = screen.WorkingArea;
-                Window.Position = new Avalonia.PixelPoint(
-                    (int)(wa.X + (wa.Width  - size.W * scaling) / 2),
-                    (int)(wa.Y + (wa.Height - size.H * scaling) / 2));
-            }
-
-            // Restore after layout has settled
-            Avalonia.Threading.Dispatcher.UIThread.Post(
-                () => Window.Opacity = 1,
-                Avalonia.Threading.DispatcherPriority.Background);
-        }
     }
 
     public void OpenBrowser(string url)

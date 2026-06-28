@@ -1,3 +1,5 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace DqxClarity.Launcher.Models;
 
 public class LauncherConfig
@@ -11,6 +13,29 @@ public class LauncherConfig
     public string Theme { get; set; } = "rosie";
     public bool SeenWelcomeMessage { get; set; }
     public bool BannerCollapsed { get; set; }
+    public bool LanguagePackSupport { get; set; }
+    public bool LanguagePackFirstRunDone { get; set; }
+    public bool AutomaticLanguagePackUpdates { get; set; }
+    public List<string> ActiveLanguagePacks { get; set; } = [];
+}
+
+public partial class LanguagePack : ObservableObject
+{
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LanguageDisplay))]
+    private string _language = "";
+
+    /// <summary>Human-readable language name (e.g. "English"); this is the pack's display identity.</summary>
+    public string LanguageDisplay => LanguageNames.DisplayName(Language);
+
+    [ObservableProperty] private string _author = "";
+    [ObservableProperty] private string _updated = "";   // display form of the CLPK builtAt timestamp
+    [ObservableProperty] private string _status = "";
+    [ObservableProperty] private string _path = "";
+    [ObservableProperty] private string _downloadUrl = "";
+    [ObservableProperty] private bool _hasUpdate;
+    [ObservableProperty] private bool _isActive;
+    [ObservableProperty] private bool _canActivate;
 }
 
 public class TranslationConfig

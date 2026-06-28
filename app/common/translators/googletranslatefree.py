@@ -1,6 +1,7 @@
 import html
 import re
 import requests
+from common.config import UserConfig
 from common.measure import measure_duration
 from loguru import logger as log
 
@@ -15,6 +16,7 @@ class GoogleTranslateFree:
     def __init__(self) -> None:
         self.session = requests.Session()
         self.session.headers.update(GoogleTranslateFree.headers)
+        self.target = UserConfig().target_language
 
     def __parse_response(self, response: str) -> str:
         """Parses the HTML response to extract the translated text."""
@@ -27,11 +29,11 @@ class GoogleTranslateFree:
 
     @measure_duration
     def translate(self, text: list[str]) -> list[str]:
-        """Translates a list of phrases from Japanese to English."""
+        """Translates a list of phrases from Japanese to the configured target language."""
         try:
             results = []
             for phrase in text:
-                response = self.session.get(f"https://translate.google.com/m?hl=en&sl=ja&tl=en&q={phrase}")
+                response = self.session.get(f"https://translate.google.com/m?hl=en&sl=ja&tl={self.target}&q={phrase}")
                 response.raise_for_status()
                 results.append(self.__parse_response(response.text))
             return results

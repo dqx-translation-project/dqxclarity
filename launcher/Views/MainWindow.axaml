@@ -6,16 +6,15 @@
         x:DataType="vm:MainViewModel"
         Title="dqxclarity"
         Width="680" Height="580"
-        MaxWidth="680" MaxHeight="960"
         MinWidth="400" MinHeight="300"
         SizeToContent="Manual"
-        CanResize="False"
+        CanResize="True"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource AppBg}">
 
     <!-- The active view is swapped by MainWindow.axaml.cs -->
     <Panel>
-        <Grid RowDefinitions="Auto,580">
+        <Grid RowDefinitions="Auto,*">
 
             <!-- Rotation banner — only shown on the settings/main view -->
             <Border Grid.Row="0"

@@ -18,6 +18,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly PatchService    _patch;
     private readonly DatabaseService _db;
     private readonly ValidateService _validate;
+    private readonly LanguagePackService _languagePacks;
     private readonly string          _saveFolderPath;
     private UpdateService?           _updateSvc;
     public Text2ClipboardViewModel Text2Clipboard { get; }
@@ -31,6 +32,139 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _nameplates;
     [ObservableProperty] private bool _debugLogging;
     [ObservableProperty] private bool _communityLogging;
+
+    // ── Language Packs ────────────────────────────────────────────────────
+    [ObservableProperty] private bool   _languagePackSupport;
+    [ObservableProperty] private bool   _languagePacksLoading;
+    [ObservableProperty] private string _languagePackStatus = "";
+    [ObservableProperty] private bool   _languagePackStatusIsError;
+    public ObservableCollection<LanguagePack> LanguagePacks { get; } = [];
+    public ObservableCollection<LanguagePackCatalogEntry> AvailablePacks { get; } = [];
+    private readonly HashSet<string> _savedActiveLanguagePacks = new(StringComparer.OrdinalIgnoreCase);
+    private bool _languagePacksScanned;
+    private bool _languagePackFirstRunChecked;
+
+    /// <summary>Invoked to let the view show a file picker; returns the chosen .zip path or null.</summary>
+    public event Func<Task<string?>>? PickZipFileRequested;
+
+    /// <summary>Invoked to let the view show a save-file picker for a .clpk; returns the chosen path or null.</summary>
+    public event Func<string, Task<string?>>? SaveClpkFileRequested;
+
+    // ── Build language pack (CLPK) tool ───────────────────────────────────
+    [ObservableProperty] private string _clpkInputZipPath = "";
+    [ObservableProperty] private string _clpkAuthor = "";
+    [ObservableProperty] private string _clpkLanguage = "en";
+    [ObservableProperty] private string _clpkDownloadUrl = "";
+    [ObservableProperty] private string _clpkBuildStatus = "";
+    [ObservableProperty] private bool   _clpkBuildStatusIsError;
+
+    private void SetClpkBuildStatus(string message, bool isError = false)
+    {
+        ClpkBuildStatus = message;
+        ClpkBuildStatusIsError = isError;
+    }
+
+    [RelayCommand]
+    private async Task PickClpkInput()
+    {
+        if (PickZipFileRequested == null) return;
+        var path = await PickZipFileRequested.Invoke();
+        if (string.IsNullOrWhiteSpace(path)) return;
+        ClpkInputZipPath = path;
+    }
+
+    [RelayCommand]
+    private async Task BuildClpk()
+    {
+        if (string.IsNullOrWhiteSpace(ClpkInputZipPath))
+        {
+            SetClpkBuildStatus("Choose an input .zip first.", true);
+            return;
+        }
+        if (SaveClpkFileRequested == null) return;
+
+        try
+        {
+            var suggested = Path.GetFileNameWithoutExtension(ClpkInputZipPath) + ".clpk";
+            var outputPath = await SaveClpkFileRequested.Invoke(suggested);
+            if (string.IsNullOrWhiteSpace(outputPath)) return;
+
+            SetClpkBuildStatus("Building...");
+            await _languagePacks.BuildClpkAsync(ClpkInputZipPath, outputPath,
+                ClpkAuthor, ClpkLanguage, ClpkDownloadUrl);
+            SetClpkBuildStatus($"Built {Path.GetFileName(outputPath)}.");
+        }
+        catch (Exception ex)
+        {
+            SetClpkBuildStatus($"Build failed: {ex.Message}", true);
+        }
+    }
+
+    partial void OnLanguagePackSupportChanged(bool value)
+    {
+        try { _cfg.SaveLanguagePackSupport(value); } catch { }
+        SetLanguagePackStatus(value
+            ? "Language pack support enabled. version.dll will be installed when you click Run."
+            : "Language pack support disabled. version.dll will be removed when possible.");
+        if (!value)
+            CleanupLanguagePackRuntime();
+    }
+
+    [ObservableProperty] private bool _automaticUpdates;
+
+    partial void OnAutomaticUpdatesChanged(bool value)
+    {
+        try { _cfg.SaveAutomaticLanguagePackUpdates(value); } catch { }
+    }
+
+    /// <summary>
+    /// Run on startup (fire-and-forget). When automatic updates are enabled, checks every pack with
+    /// a download URL and silently downloads + applies any that changed (sha-verified), re-extracting
+    /// active packs into Game\mods. Never throws; offline/placeholder URLs simply no-op.
+    /// </summary>
+    public async Task RunAutomaticUpdatesIfEnabledAsync()
+    {
+        if (!AutomaticUpdates) return;
+
+        try
+        {
+            if (!_languagePacksScanned)
+                await ScanLanguagePacks();
+
+            var updatedAnyActive = false;
+            foreach (var pack in LanguagePacks.Where(p => p.CanActivate && !string.IsNullOrWhiteSpace(p.DownloadUrl)).ToList())
+            {
+                try
+                {
+                    var check = await _languagePacks.CheckForUpdateAsync(pack);
+                    if (!check.UpdateAvailable) continue;
+
+                    await _languagePacks.ApplyUpdateAsync(pack, check.DownloadedBytes);
+                    if (pack.IsActive) updatedAnyActive = true;
+                }
+                catch { /* one pack failing must not stop the rest */ }
+            }
+
+            // Reflect new versions/metadata in the list.
+            await ScanLanguagePacks();
+
+            // Re-extract into Game\mods if an active pack changed and support is on.
+            if (updatedAnyActive && LanguagePackSupport && DqxDirValid)
+            {
+                var activePacks = LanguagePacks.Where(m => m.IsActive && m.CanActivate).ToList();
+                if (activePacks.Count > 0)
+                {
+                    try
+                    {
+                        var count = await Task.Run(() => _languagePacks.RebuildGameModsFolder(DqxDir, activePacks));
+                        SetLanguagePackStatus($"Automatic update applied. Game\\mods rebuilt: {activePacks.Count} pack(s), {count} file(s).");
+                    }
+                    catch (Exception ex) { SetLanguagePackStatus(ex.Message, true); }
+                }
+            }
+        }
+        catch { /* never let startup auto-update throw */ }
+    }
 
     // ── Translation ───────────────────────────────────────────────────────
     public record TranslateServiceOption(string Value, string Display);
@@ -430,7 +564,8 @@ public partial class SettingsViewModel : ObservableObject
         PatchService patch,
         DatabaseService db,
         ValidateService validate,
-        MaintenanceService maintenance)
+        MaintenanceService maintenance,
+        LanguagePackService languagePacks)
     {
         Text2Clipboard    = text2Clipboard;
         _cfg         = cfg;
@@ -438,6 +573,7 @@ public partial class SettingsViewModel : ObservableObject
         _db          = db;
         _validate    = validate;
         _maintenance = maintenance;
+        _languagePacks = languagePacks;
 
         Version    = version;
         _updateInfo = updateInfo;
@@ -447,6 +583,11 @@ public partial class SettingsViewModel : ObservableObject
         _communityLogging  = config.Launcher.CommunityLogging;
         _selectedTheme     = config.Launcher.Theme;
         _characterImage    = LoadCharacterImage(_selectedTheme);
+        _languagePackSupport = config.Launcher.LanguagePackSupport;
+        _automaticUpdates    = config.Launcher.AutomaticLanguagePackUpdates;
+        foreach (var fileName in config.Launcher.ActiveLanguagePacks)
+            _savedActiveLanguagePacks.Add(fileName);
+        try { _languagePacks.EnsureSourceLanguagePacksFolder(); } catch { }
 
         var savedService = config.Translation.TranslateService;
         _selectedTranslateService = TranslateServiceOptions.FirstOrDefault(o => o.Value == savedService)
@@ -482,10 +623,12 @@ public partial class SettingsViewModel : ObservableObject
         {
             _dqxDirValid = cfg.ValidateDqxDir(_dqxDir, out var dqxErr);
             if (!_dqxDirValid) _dqxDirError = dqxErr;
+            else InitializeLanguagePacksFolder();
         }
         else
         {
             _dqxDirError = $"DQX installation not found at the default location ({ConfigService.DefaultDqxDir}). Browse to your DQX installation folder to continue.";
+            SetLanguagePackStatus("dqxclarity\\language-packs is ready. Set a valid DQX folder path before activating language packs.");
         }
 
         _ = FetchMaintenanceStatus();
@@ -528,6 +671,13 @@ public partial class SettingsViewModel : ObservableObject
         {
             _nameOverridesLoaded = true;
             _ = LoadNamePairsAsync();
+        }
+        else if (tab == "languagepacks")
+        {
+            await ScanLanguagePacks();
+            // Fire-and-forget first-run default English download so it never blocks the UI.
+            _ = EnsureDefaultLanguagePackAsync();
+            await CheckLanguagePackUpdates();
         }
     }
 
@@ -599,6 +749,8 @@ public partial class SettingsViewModel : ObservableObject
             DirectLogin              = DirectLogin,
             DirectLoginAccountNumber = SelectedAccount?.Number ?? 0,
             Theme                    = SelectedTheme,
+            LanguagePackSupport      = LanguagePackSupport,
+            ActiveLanguagePacks      = GetActiveLanguagePackFileNames(),
         };
         var translation = new TranslationConfig
         {
@@ -649,10 +801,13 @@ public partial class SettingsViewModel : ObservableObject
 
                 try
                 {
+                    if (!PrepareLanguagePackRuntime())
+                        return;
                     new GameLaunchService().Launch(DqxDir, tr.SessionId!, 99);
                 }
                 catch (Exception ex)
                 {
+                    CleanupLanguagePackRuntime();
                     if (ShowInfoRequested != null)
                         await ShowInfoRequested("Launch failed", ex.Message);
                     return;
@@ -694,11 +849,14 @@ public partial class SettingsViewModel : ObservableObject
 
                 try
                 {
+                    if (!PrepareLanguagePackRuntime())
+                        return;
                     var gameLauncher = new GameLaunchService();
                     gameLauncher.Launch(DqxDir, finalResult.SessionId!, SelectedAccount.Number);
                 }
                 catch (Exception ex)
                 {
+                    CleanupLanguagePackRuntime();
                     if (ShowInfoRequested != null)
                         await ShowInfoRequested("Launch failed", ex.Message);
                     return;
@@ -707,7 +865,17 @@ public partial class SettingsViewModel : ObservableObject
         }
         else if (SimultaneousLaunch && !string.IsNullOrEmpty(DqxDir))
         {
-            try { _cfg.LaunchDqx(DqxDir); } catch { }
+            if (!PrepareLanguagePackRuntime())
+                return;
+            try { _cfg.LaunchDqx(DqxDir); }
+            catch
+            {
+                CleanupLanguagePackRuntime();
+            }
+        }
+        else if (!PrepareLanguagePackRuntime())
+        {
+            return;
         }
 
         var args = new List<string>();
@@ -908,6 +1076,415 @@ public partial class SettingsViewModel : ObservableObject
 
     // ── Game tab ──────────────────────────────────────────────────────────
 
+    private void SetLanguagePackStatus(string message, bool isError = false)
+    {
+        LanguagePackStatus = message;
+        LanguagePackStatusIsError = isError;
+    }
+
+    private void InitializeLanguagePacksFolder()
+    {
+        if (!DqxDirValid) return;
+        try
+        {
+            _languagePacks.EnsureFolders(DqxDir);
+            SetLanguagePackStatus(LanguagePackSupport
+                ? "Language pack support enabled. version.dll will be installed when you click Run."
+                : "Language pack folders ready.");
+        }
+        catch (Exception ex)
+        {
+            SetLanguagePackStatus(ex.Message, true);
+        }
+    }
+
+    public void CleanupLanguagePackRuntime()
+    {
+        if (!DqxDirValid) return;
+
+        try
+        {
+            _languagePacks.CleanupRuntime(DqxDir);
+            if (!LanguagePackSupport)
+                SetLanguagePackStatus("Language pack support disabled.");
+        }
+        catch (Exception ex)
+        {
+            SetLanguagePackStatus($"Could not remove version.dll: {ex.Message}", true);
+        }
+    }
+
+    private bool PrepareLanguagePackRuntime()
+    {
+        if (!DqxDirValid)
+        {
+            if (LanguagePackSupport)
+                SetLanguagePackStatus("Set a valid DQX folder path before using language pack support.", true);
+            return !LanguagePackSupport;
+        }
+
+        try
+        {
+            _languagePacks.PrepareRuntime(DqxDir, LanguagePackSupport);
+            // Unpack the saved active packs into Game\mods now (applies any selection made before
+            // the game folder existed). Reads from the source folder, independent of the UI list.
+            if (LanguagePackSupport)
+                _languagePacks.RebuildGameModsFromActive(DqxDir, GetActiveLanguagePackFileNames());
+            SetLanguagePackStatus(LanguagePackSupport
+                ? "Language pack support active for this run."
+                : "Language pack support disabled.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            SetLanguagePackStatus(ex.Message, true);
+            return false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ScanLanguagePacks()
+    {
+        LanguagePacksLoading = true;
+        try
+        {
+            var activeFileNames = LanguagePacks
+                .Where(m => m.IsActive)
+                .Select(m => Path.GetFileName(m.Path))
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            activeFileNames.UnionWith(_savedActiveLanguagePacks);
+
+            var files = await Task.Run(() => _languagePacks.ScanLanguagePacks());
+            LanguagePacks.Clear();
+            foreach (var file in files)
+            {
+                file.IsActive = activeFileNames.Contains(Path.GetFileName(file.Path));
+                if (file.IsActive && file.CanActivate)
+                    file.Status = "Active";
+                LanguagePacks.Add(file);
+            }
+            _languagePacksScanned = true;
+            RefreshAvailablePacks();
+            SetLanguagePackStatus(files.Count == 0 ? "No .zip language packs found in dqxclarity\\language-packs." : $"{files.Count} .zip language pack(s) found in dqxclarity\\language-packs.");
+        }
+        catch (Exception ex)
+        {
+            SetLanguagePackStatus(ex.Message, true);
+        }
+        LanguagePacksLoading = false;
+    }
+
+    [RelayCommand]
+    private async Task CheckLanguagePackUpdates()
+    {
+        LanguagePacksLoading = true;
+        try
+        {
+            var checkable = LanguagePacks.Where(m => m.CanActivate).ToList();
+            if (checkable.Count == 0)
+            {
+                SetLanguagePackStatus("No valid language packs to check.");
+                return;
+            }
+
+            await _languagePacks.CheckUpdatesAsync(checkable);
+            var updates = checkable.Count(m => m.Status.StartsWith("Update available:", StringComparison.OrdinalIgnoreCase));
+            SetLanguagePackStatus(updates == 0 ? "No language pack updates found." : $"{updates} language pack update(s) available.");
+        }
+        catch (Exception ex)
+        {
+            SetLanguagePackStatus(ex.Message, true);
+        }
+        finally
+        {
+            LanguagePacksLoading = false;
+        }
+    }
+
+    private void RefreshAvailablePacks()
+    {
+        var notInstalled = LanguagePackCatalog.NotInstalled(LanguagePacks);
+        AvailablePacks.Clear();
+        foreach (var entry in notInstalled)
+            AvailablePacks.Add(entry);
+    }
+
+    [RelayCommand]
+    private async Task DownloadCatalogPack(LanguagePackCatalogEntry? entry)
+    {
+        if (entry == null) return;
+        LanguagePacksLoading = true;
+        try
+        {
+            SetLanguagePackStatus($"Downloading {entry.LanguageDisplay}...");
+            await _languagePacks.DownloadCatalogPackAsync(entry);
+        }
+        catch (Exception ex)
+        {
+            SetLanguagePackStatus($"Could not download {entry.LanguageDisplay}: {ex.Message}", true);
+            LanguagePacksLoading = false;
+            return;
+        }
+        LanguagePacksLoading = false;
+
+        await ScanLanguagePacks();
+        SetLanguagePackStatus($"Downloaded {entry.LanguageDisplay}.");
+    }
+
+    [RelayCommand]
+    private async Task LoadPackFromDisk()
+    {
+        if (PickZipFileRequested == null) return;
+
+        var path = await PickZipFileRequested.Invoke();
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        LanguagePacksLoading = true;
+        LanguagePack imported;
+        try
+        {
+            imported = await Task.Run(() => _languagePacks.ImportZipFromDisk(path));
+        }
+        catch (Exception ex)
+        {
+            SetLanguagePackStatus($"Could not import zip: {ex.Message}", true);
+            LanguagePacksLoading = false;
+            return;
+        }
+        LanguagePacksLoading = false;
+
+        await ScanLanguagePacks();
+        SetLanguagePackStatus($"Imported {imported.LanguageDisplay}.");
+    }
+
+    /// <summary>
+    /// On the very first run, attempt to fetch and activate the default English catalog pack.
+    /// Never throws to the caller; always marks first-run done afterward so it doesn't retry.
+    /// </summary>
+    public async Task EnsureDefaultLanguagePackAsync()
+    {
+        if (_languagePackFirstRunChecked) return;
+        _languagePackFirstRunChecked = true;
+
+        try
+        {
+            if (_cfg.Load().Launcher.LanguagePackFirstRunDone)
+                return;
+
+            var defaultEntry = LanguagePackCatalog.Default;
+            if (defaultEntry == null)
+                return;
+
+            // Make sure we have an up-to-date view of what's already installed.
+            if (!_languagePacksScanned)
+            {
+                try { await ScanLanguagePacks(); } catch { }
+            }
+
+            // Download the default pack if it isn't present yet (placeholder URL fails gracefully).
+            if (!LanguagePackCatalog.IsInstalled(defaultEntry, LanguagePacks))
+            {
+                try
+                {
+                    await _languagePacks.DownloadCatalogPackAsync(defaultEntry);
+                    await ScanLanguagePacks();
+                }
+                catch (Exception ex)
+                {
+                    SetLanguagePackStatus($"Couldn't fetch the default English pack (no URL configured yet). {ex.Message}");
+                }
+            }
+
+            // Enable it by default. Activation is just a persisted selection now, so this works even
+            // before a game folder is set (the unpack is deferred).
+            var pack = LanguagePacks.FirstOrDefault(p =>
+                string.Equals(p.Language, defaultEntry.Language, StringComparison.OrdinalIgnoreCase));
+            if (pack != null && pack.CanActivate && !pack.IsActive)
+                await SetLanguagePackActive(pack, true);
+        }
+        catch
+        {
+            // Never let first-run setup throw to the caller.
+        }
+        finally
+        {
+            try { _cfg.SaveLanguagePackFirstRunDone(true); } catch { }
+        }
+    }
+
+    public async Task DownloadLanguagePackUpdate(LanguagePack pack)
+    {
+        if (!pack.HasUpdate)
+            return;
+
+        var wasActive = pack.IsActive;
+        try
+        {
+            LanguagePacksLoading = true;
+            pack.Status = "Downloading update...";
+
+            var updated = await _languagePacks.DownloadUpdateAsync(pack);
+            pack.Author = updated.Author;
+            pack.Language = updated.Language;
+            pack.Updated = updated.Updated;
+            pack.DownloadUrl = updated.DownloadUrl;
+            pack.CanActivate = updated.CanActivate;
+            pack.HasUpdate = false;
+            pack.IsActive = wasActive;
+            pack.Status = wasActive ? "Active" : "Ready";
+
+            if (wasActive && DqxDirValid)
+            {
+                var activePacks = LanguagePacks.Where(m => m.IsActive && m.CanActivate).ToList();
+                var count = await Task.Run(() => _languagePacks.RebuildGameModsFolder(DqxDir, activePacks));
+                SetLanguagePackStatus($"Updated {pack.LanguageDisplay}. Game\\mods rebuilt: {count} file(s) extracted.");
+            }
+            else
+            {
+                SetLanguagePackStatus($"Updated {pack.LanguageDisplay}.");
+            }
+        }
+        catch (Exception ex)
+        {
+            pack.Status = $"Update failed: {ex.Message}";
+            SetLanguagePackStatus(ex.Message, true);
+        }
+        finally
+        {
+            LanguagePacksLoading = false;
+        }
+    }
+
+    // Activating a pack is just a persisted selection — it does NOT require the game folder.
+    // The unpack into Game\mods is deferred until the folder is set (see ApplyActivePacksToGame /
+    // the run path), so packs can be installed and enabled before a game folder exists.
+    public async Task SetLanguagePackActive(LanguagePack pack, bool enabled)
+    {
+        var previousState = pack.IsActive;
+        pack.IsActive = enabled;
+
+        try
+        {
+            LanguagePacksLoading = true;
+            SaveActiveLanguagePackSelection();
+
+            // Only unpack into the game folder if it's set; otherwise the selection is deferred.
+            if (DqxDirValid)
+            {
+                var activePacks = LanguagePacks.Where(m => m.IsActive && m.CanActivate).ToList();
+                await Task.Run(() => _languagePacks.RebuildGameModsFolder(DqxDir, activePacks));
+            }
+
+            foreach (var item in LanguagePacks.Where(m => m.CanActivate))
+                item.Status = item.IsActive ? "Active" : "Ready";
+
+            SetLanguagePackStatus(ActiveSelectionStatus());
+        }
+        catch (Exception ex)
+        {
+            // Roll back and re-persist the prior selection (e.g. on a file-conflict during unpack).
+            pack.IsActive = previousState;
+            SaveActiveLanguagePackSelection();
+            foreach (var item in LanguagePacks.Where(m => m.CanActivate))
+                item.Status = item.IsActive ? "Active" : "Ready";
+            SetLanguagePackStatus(ex.Message, true);
+        }
+        finally
+        {
+            LanguagePacksLoading = false;
+        }
+    }
+
+    private string ActiveSelectionStatus()
+    {
+        var count = LanguagePacks.Count(m => m.IsActive && m.CanActivate);
+        if (count == 0) return "No language packs active.";
+        return DqxDirValid
+            ? $"{count} language pack(s) active."
+            : $"{count} language pack(s) active — they'll be applied to the game once you set the game folder.";
+    }
+
+    /// <summary>Unpacks the saved active packs into Game\mods. No-op without a valid game folder.</summary>
+    private async Task ApplyActivePacksToGameAsync()
+    {
+        if (!DqxDirValid) return;
+        var fileNames = GetActiveLanguagePackFileNames();
+        if (fileNames.Count == 0) return;
+        try
+        {
+            await Task.Run(() => _languagePacks.RebuildGameModsFromActive(DqxDir, fileNames));
+        }
+        catch (Exception ex)
+        {
+            SetLanguagePackStatus($"Could not apply language packs to the game: {ex.Message}", true);
+        }
+    }
+
+    private List<string> GetActiveLanguagePackFileNames()
+    {
+        // Order follows the LanguagePacks collection (precedence / extraction order),
+        // not alphabetical — reordering the list changes the persisted order.
+        if (!_languagePacksScanned)
+            return _savedActiveLanguagePacks.ToList();
+
+        return LanguagePacks
+            .Where(m => m.IsActive && m.CanActivate)
+            .Select(m => Path.GetFileName(m.Path))
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Select(name => name!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Moves a pack within the LanguagePacks collection to a new index, re-persists the active
+    /// order, and rebuilds Game\mods in the new precedence order when packs are active.
+    /// </summary>
+    /// <summary>
+    /// Cheap visual move within the list — safe to call repeatedly while dragging.
+    /// Does NOT persist or rebuild Game\mods; call <see cref="CommitLanguagePackOrderAsync"/>
+    /// once on drop to persist the final order. Returns true if the position changed.
+    /// </summary>
+    public bool MoveLanguagePack(LanguagePack pack, int newIndex)
+    {
+        var oldIndex = LanguagePacks.IndexOf(pack);
+        if (oldIndex < 0) return false;
+
+        newIndex = Math.Clamp(newIndex, 0, LanguagePacks.Count - 1);
+        if (newIndex == oldIndex) return false;
+
+        LanguagePacks.Move(oldIndex, newIndex);
+        return true;
+    }
+
+    /// <summary>
+    /// Persists the new order on drop. Order only affects which active pack is primary (it drives the
+    /// runtime translation language); it does NOT change the unpacked files, since conflicting outputs
+    /// between active packs are rejected rather than overwritten — so no Game\mods rebuild is needed.
+    /// </summary>
+    public Task CommitLanguagePackOrderAsync()
+    {
+        SaveActiveLanguagePackSelection();
+        var top = LanguagePacks.FirstOrDefault(m => m.IsActive && m.CanActivate);
+        SetLanguagePackStatus(top != null
+            ? $"Reordered. {top.LanguageDisplay} is the primary translation language."
+            : ActiveSelectionStatus());
+        return Task.CompletedTask;
+    }
+
+    private void SaveActiveLanguagePackSelection()
+    {
+        var fileNames = GetActiveLanguagePackFileNames();
+        _savedActiveLanguagePacks.Clear();
+        _savedActiveLanguagePacks.UnionWith(fileNames);
+        _cfg.SaveActiveLanguagePacks(fileNames);
+
+        // The highest-priority active pack (top of the list) drives the runtime translation target.
+        var top = LanguagePacks.FirstOrDefault(m => m.IsActive && m.CanActivate);
+        try { _cfg.SaveTargetLanguage(top?.Language ?? "", top?.LanguageDisplay ?? ""); } catch { }
+    }
+
     public Task SetDqxDir(string dir)
     {
         DqxDirError = "";
@@ -917,6 +1494,9 @@ public partial class SettingsViewModel : ObservableObject
             DqxDir = dir;
             DqxDirValid = true;
             try { _cfg.SaveGameDir(dir); } catch { }
+            InitializeLanguagePacksFolder();
+            // Apply any packs that were activated before a game folder existed.
+            _ = ApplyActivePacksToGameAsync();
         }
         else
         {
@@ -984,8 +1564,6 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand] private Task RestoreLauncher()  => RunPatch(_patch.RestoreLauncher);
     [RelayCommand] private Task PatchConfig()      => RunPatch(_patch.PatchConfig);
     [RelayCommand] private Task RestoreConfig()    => RunPatch(_patch.RestoreConfig);
-    [RelayCommand] private Task PatchGameFiles()   => RunPatch(_patch.PatchGameFiles);
-    [RelayCommand] private Task RestoreGameFiles() => RunPatch(_patch.RestoreGameFiles);
 
     // ── Update ────────────────────────────────────────────────────────────
 
