@@ -188,8 +188,6 @@ public class ConfigService
                 Theme                    = l.GetValueOrDefault("theme") ?? "rosie",
                 SeenWelcomeMessage       = ToBool(l.GetValueOrDefault("seenwelcomemessage")),
                 BannerCollapsed          = ToBool(l.GetValueOrDefault("bannercollapsed")),
-                // Default ON for new configs (key absent); respect an explicit False once set.
-                LanguagePackSupport      = l.ContainsKey("languagepacksupport") ? ToBool(l["languagepacksupport"]) : true,
                 LanguagePackFirstRunDone = ToBool(l.GetValueOrDefault("languagepackfirstrundone")),
                 AutomaticLanguagePackUpdates = l.ContainsKey("automaticlanguagepackupdates") ? ToBool(l["automaticlanguagepackupdates"]) : true,
                 ActiveLanguagePacks      = (l.GetValueOrDefault("activelanguagepacks") ?? "")
@@ -264,7 +262,6 @@ public class ConfigService
         WriteKv(sb, "theme",                    launcher.Theme);
         WriteKv(sb, "seenwelcomemessage",       seenWelcome);
         WriteKv(sb, "bannercollapsed",          bannerCollapsed);
-        WriteKv(sb, "languagepacksupport",      BoolToIni(launcher.LanguagePackSupport));
         WriteKv(sb, "languagepackfirstrundone", langPackFirstRun);
         WriteKv(sb, "automaticlanguagepackupdates", BoolToIni(launcher.AutomaticLanguagePackUpdates));
         WriteKv(sb, "activelanguagepacks",       string.Join('|', launcher.ActiveLanguagePacks));
@@ -347,9 +344,6 @@ public class ConfigService
 
     public void SaveBannerCollapsed(bool value) =>
         UpdateIniValue(ConfigPath(), "launcher", "bannercollapsed", BoolToIni(value));
-
-    public void SaveLanguagePackSupport(bool value) =>
-        UpdateIniValue(ConfigPath(), "launcher", "languagepacksupport", BoolToIni(value));
 
     public void SaveLanguagePackFirstRunDone(bool value) =>
         UpdateIniValue(ConfigPath(), "launcher", "languagepackfirstrundone", BoolToIni(value));

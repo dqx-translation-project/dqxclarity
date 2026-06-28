@@ -98,4 +98,4 @@ The launcher scans the `dqxclarity/language-packs` folder for `*.clpk` (and `*.z
 - Use `git status` before and after changes.
 - The launcher is C#/.NET 9 Avalonia; the in-game engine is Python plus Frida hooks.
 - The launcher expects the Python app files near the exe in the final packaged folder.
-- `launcher/native/version.dll` is the dragonhook proxy DLL, embedded in the launcher and installed into the game only while language pack support is enabled.
+- `launcher/native/version.dll` is the dragonhook proxy DLL, embedded in the launcher and added to / removed from the game folder on demand via the Language tab's Install/Remove support buttons (its presence on disk is what enables language packs in-game).

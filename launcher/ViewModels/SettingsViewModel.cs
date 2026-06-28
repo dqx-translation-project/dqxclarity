@@ -34,7 +34,9 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _communityLogging;
 
     // ── Language Packs ────────────────────────────────────────────────────
-    [ObservableProperty] private bool   _languagePackSupport;
+    // version.dll (the in-game loader) is added/removed on demand via the Install/Remove buttons;
+    // its presence on disk — not a persisted flag — is the source of truth for "support installed".
+    [ObservableProperty] private bool   _languagePackSupportInstalled;
     [ObservableProperty] private bool   _languagePacksLoading;
     [ObservableProperty] private string _languagePackStatus = "";
     [ObservableProperty] private bool   _languagePackStatusIsError;
@@ -100,15 +102,38 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
-    partial void OnLanguagePackSupportChanged(bool value)
+    // version.dll add/remove lives in the Game → Install "Patch" fieldset alongside the launcher/config
+    // patches, so it shares the Patching flag and PatchStatus surface (see RunPatch).
+    public bool CanInstallSupport => DqxDirValid && !LanguagePackSupportInstalled && !Patching;
+    public bool CanRemoveSupport  => DqxDirValid &&  LanguagePackSupportInstalled && !Patching;
+
+    partial void OnLanguagePackSupportInstalledChanged(bool value)
     {
-        try { _cfg.SaveLanguagePackSupport(value); } catch { }
-        SetLanguagePackStatus(value
-            ? "Language pack support enabled. version.dll will be installed when you click Run."
-            : "Language pack support disabled. version.dll will be removed when possible.");
-        if (!value)
-            CleanupLanguagePackRuntime();
+        OnPropertyChanged(nameof(CanInstallSupport));
+        OnPropertyChanged(nameof(CanRemoveSupport));
     }
+
+    private void RefreshLanguagePackSupportInstalled() =>
+        LanguagePackSupportInstalled = DqxDirValid && _languagePacks.IsSupportInstalled(DqxDir);
+
+    [RelayCommand]
+    private Task InstallLanguagePackSupport() => RunPatch(async installDir =>
+    {
+        var fileNames = GetActiveLanguagePackFileNames();
+        await Task.Run(() =>
+        {
+            _languagePacks.EnableSupport(installDir);
+            _languagePacks.RebuildGameModsFromActive(installDir, fileNames);
+        });
+        LanguagePackSupportInstalled = true;
+    });
+
+    [RelayCommand]
+    private Task RemoveLanguagePackSupport() => RunPatch(async installDir =>
+    {
+        await Task.Run(() => _languagePacks.DisableSupport(installDir));
+        LanguagePackSupportInstalled = false;
+    });
 
     [ObservableProperty] private bool _automaticUpdates;
 
@@ -148,8 +173,8 @@ public partial class SettingsViewModel : ObservableObject
             // Reflect new versions/metadata in the list.
             await ScanLanguagePacks();
 
-            // Re-extract into Game\mods if an active pack changed and support is on.
-            if (updatedAnyActive && LanguagePackSupport && DqxDirValid)
+            // Re-extract into Game\mods if an active pack changed and support is installed.
+            if (updatedAnyActive && LanguagePackSupportInstalled && DqxDirValid)
             {
                 var activePacks = LanguagePacks.Where(m => m.IsActive && m.CanActivate).ToList();
                 if (activePacks.Count > 0)
@@ -258,6 +283,9 @@ public partial class SettingsViewModel : ObservableObject
     {
         if (!value && GameSubTab == "launch")
             GameSubTab = "install";
+        RefreshLanguagePackSupportInstalled();
+        OnPropertyChanged(nameof(CanInstallSupport));
+        OnPropertyChanged(nameof(CanRemoveSupport));
     }
 
     partial void OnSimultaneousLaunchChanged(bool value)
@@ -443,6 +471,12 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private long   _patchDownloaded;
     [ObservableProperty] private long   _patchTotal;
 
+    partial void OnPatchingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanInstallSupport));
+        OnPropertyChanged(nameof(CanRemoveSupport));
+    }
+
     // ── Maintenance ───────────────────────────────────────────────────────
     private readonly MaintenanceService _maintenance;
     [ObservableProperty] private bool             _checkingMaintenance    = true;
@@ -583,7 +617,6 @@ public partial class SettingsViewModel : ObservableObject
         _communityLogging  = config.Launcher.CommunityLogging;
         _selectedTheme     = config.Launcher.Theme;
         _characterImage    = LoadCharacterImage(_selectedTheme);
-        _languagePackSupport = config.Launcher.LanguagePackSupport;
         _automaticUpdates    = config.Launcher.AutomaticLanguagePackUpdates;
         foreach (var fileName in config.Launcher.ActiveLanguagePacks)
             _savedActiveLanguagePacks.Add(fileName);
@@ -631,6 +664,8 @@ public partial class SettingsViewModel : ObservableObject
             SetLanguagePackStatus("dqxclarity\\language-packs is ready. Set a valid DQX folder path before activating language packs.");
         }
 
+        _languagePackSupportInstalled = _dqxDirValid && languagePacks.IsSupportInstalled(_dqxDir);
+
         _ = FetchMaintenanceStatus();
 
         _patch.Progress += (downloaded, total) =>
@@ -672,8 +707,15 @@ public partial class SettingsViewModel : ObservableObject
             _nameOverridesLoaded = true;
             _ = LoadNamePairsAsync();
         }
+        else if (tab == "game")
+        {
+            // The version.dll add/remove buttons live in the Patch fieldset; reflect on-disk state
+            // in case the file was changed outside the app.
+            RefreshLanguagePackSupportInstalled();
+        }
         else if (tab == "languagepacks")
         {
+            RefreshLanguagePackSupportInstalled();
             await ScanLanguagePacks();
             // Fire-and-forget first-run default English download so it never blocks the UI.
             _ = EnsureDefaultLanguagePackAsync();
@@ -749,7 +791,6 @@ public partial class SettingsViewModel : ObservableObject
             DirectLogin              = DirectLogin,
             DirectLoginAccountNumber = SelectedAccount?.Number ?? 0,
             Theme                    = SelectedTheme,
-            LanguagePackSupport      = LanguagePackSupport,
             ActiveLanguagePacks      = GetActiveLanguagePackFileNames(),
         };
         var translation = new TranslationConfig
@@ -762,6 +803,10 @@ public partial class SettingsViewModel : ObservableObject
             LibreTranslateUrl  = LibreTranslateUrl,
         };
         try { _cfg.Save(launcherCfg, translation); } catch { }
+
+        // Re-apply the active packs to Game\mods so the current selection is live at launch.
+        // version.dll itself is added/removed manually via the Language tab Install/Remove buttons.
+        ApplyActiveLanguagePacks();
 
         if (DirectLogin)
         {
@@ -801,13 +846,10 @@ public partial class SettingsViewModel : ObservableObject
 
                 try
                 {
-                    if (!PrepareLanguagePackRuntime())
-                        return;
                     new GameLaunchService().Launch(DqxDir, tr.SessionId!, 99);
                 }
                 catch (Exception ex)
                 {
-                    CleanupLanguagePackRuntime();
                     if (ShowInfoRequested != null)
                         await ShowInfoRequested("Launch failed", ex.Message);
                     return;
@@ -849,14 +891,11 @@ public partial class SettingsViewModel : ObservableObject
 
                 try
                 {
-                    if (!PrepareLanguagePackRuntime())
-                        return;
                     var gameLauncher = new GameLaunchService();
                     gameLauncher.Launch(DqxDir, finalResult.SessionId!, SelectedAccount.Number);
                 }
                 catch (Exception ex)
                 {
-                    CleanupLanguagePackRuntime();
                     if (ShowInfoRequested != null)
                         await ShowInfoRequested("Launch failed", ex.Message);
                     return;
@@ -865,17 +904,8 @@ public partial class SettingsViewModel : ObservableObject
         }
         else if (SimultaneousLaunch && !string.IsNullOrEmpty(DqxDir))
         {
-            if (!PrepareLanguagePackRuntime())
-                return;
             try { _cfg.LaunchDqx(DqxDir); }
-            catch
-            {
-                CleanupLanguagePackRuntime();
-            }
-        }
-        else if (!PrepareLanguagePackRuntime())
-        {
-            return;
+            catch { }
         }
 
         var args = new List<string>();
@@ -1088,9 +1118,10 @@ public partial class SettingsViewModel : ObservableObject
         try
         {
             _languagePacks.EnsureFolders(DqxDir);
-            SetLanguagePackStatus(LanguagePackSupport
-                ? "Language pack support enabled. version.dll will be installed when you click Run."
-                : "Language pack folders ready.");
+            RefreshLanguagePackSupportInstalled();
+            SetLanguagePackStatus(LanguagePackSupportInstalled
+                ? "Language pack support is installed."
+                : "Language pack folders ready. Add DragonHook on the Game tab to load packs in-game.");
         }
         catch (Exception ex)
         {
@@ -1098,47 +1129,18 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
-    public void CleanupLanguagePackRuntime()
+    /// <summary>Best-effort: re-extracts the active packs into Game\mods so the current selection is
+    /// live at launch. No-op without a valid game folder or when support (version.dll) isn't installed.</summary>
+    private void ApplyActiveLanguagePacks()
     {
-        if (!DqxDirValid) return;
-
+        if (!DqxDirValid || !LanguagePackSupportInstalled) return;
         try
         {
-            _languagePacks.CleanupRuntime(DqxDir);
-            if (!LanguagePackSupport)
-                SetLanguagePackStatus("Language pack support disabled.");
-        }
-        catch (Exception ex)
-        {
-            SetLanguagePackStatus($"Could not remove version.dll: {ex.Message}", true);
-        }
-    }
-
-    private bool PrepareLanguagePackRuntime()
-    {
-        if (!DqxDirValid)
-        {
-            if (LanguagePackSupport)
-                SetLanguagePackStatus("Set a valid DQX folder path before using language pack support.", true);
-            return !LanguagePackSupport;
-        }
-
-        try
-        {
-            _languagePacks.PrepareRuntime(DqxDir, LanguagePackSupport);
-            // Unpack the saved active packs into Game\mods now (applies any selection made before
-            // the game folder existed). Reads from the source folder, independent of the UI list.
-            if (LanguagePackSupport)
-                _languagePacks.RebuildGameModsFromActive(DqxDir, GetActiveLanguagePackFileNames());
-            SetLanguagePackStatus(LanguagePackSupport
-                ? "Language pack support active for this run."
-                : "Language pack support disabled.");
-            return true;
+            _languagePacks.RebuildGameModsFromActive(DqxDir, GetActiveLanguagePackFileNames());
         }
         catch (Exception ex)
         {
             SetLanguagePackStatus(ex.Message, true);
-            return false;
         }
     }
 

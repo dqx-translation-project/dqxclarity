@@ -75,17 +75,11 @@ public class LanguagePackService
         EnsureGameModsFolder(installDir);
     }
 
-    public void PrepareRuntime(string installDir, bool enabled)
-    {
-        EnsureFolders(installDir);
-        if (enabled)
-            EnableSupport(installDir);
-        else
-            DisableSupport(installDir);
-    }
+    /// <summary>True when version.dll (the language pack loader) is present in the game folder.</summary>
+    public bool IsSupportInstalled(string installDir) =>
+        !string.IsNullOrWhiteSpace(installDir) && File.Exists(TargetDll(installDir));
 
-    public void CleanupRuntime(string installDir) => DisableSupport(installDir);
-
+    /// <summary>Copies the embedded version.dll into the game folder so active packs load in-game.</summary>
     public void EnableSupport(string installDir)
     {
         EnsureSourceLanguagePacksFolder();
@@ -97,6 +91,7 @@ public class LanguagePackService
         stream.CopyTo(target);
     }
 
+    /// <summary>Removes version.dll from the game folder.</summary>
     public void DisableSupport(string installDir)
     {
         var target = TargetDll(installDir);
