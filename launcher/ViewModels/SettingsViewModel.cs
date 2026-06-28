@@ -791,6 +791,7 @@ public partial class SettingsViewModel : ObservableObject
             DirectLogin              = DirectLogin,
             DirectLoginAccountNumber = SelectedAccount?.Number ?? 0,
             Theme                    = SelectedTheme,
+            AutomaticLanguagePackUpdates = AutomaticUpdates,
             ActiveLanguagePacks      = GetActiveLanguagePackFileNames(),
         };
         var translation = new TranslationConfig
