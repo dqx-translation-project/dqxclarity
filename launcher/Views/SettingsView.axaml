@@ -120,10 +120,12 @@
             <Grid Grid.Row="1">
 
                 <!-- ── Scrollable panels (General / Advanced / Game) ──── -->
+                <!-- Padding lives on the inner content (as Margin), NOT on the ScrollViewer:
+                     ScrollViewer.Padding is subtracted from the scroll extent, which clips the
+                     bottom of taller tabs (e.g. Advanced) by the padding amount. -->
                 <ScrollViewer x:Name="TabScroll"
-                              HorizontalScrollBarVisibility="Disabled"
-                              Padding="14,12">
-                    <StackPanel MaxWidth="504">
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel MaxWidth="504" Margin="14,12">
 
                         <!-- ══ GENERAL TAB ══════════════════════════════ -->
                         <StackPanel x:Name="PanelGeneral" Spacing="14">
