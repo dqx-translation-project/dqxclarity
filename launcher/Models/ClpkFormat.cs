@@ -26,9 +26,9 @@ public record ClpkMetadata
     [JsonPropertyName("builtAt")]
     public long BuiltAt { get; init; }
 
-    /// <summary>Optional self-describing update URL. Omitted by the official packs (the launcher
-    /// gets the update URL from the catalog by language instead); honored if a pack does set it.</summary>
-    [JsonPropertyName("downloadUrl")]
+    /// <summary>Self-describing update URL (field name "download_url" per the pack format). The
+    /// launcher also falls back to the catalog's URL for the language if a pack omits it.</summary>
+    [JsonPropertyName("download_url")]
     public string DownloadUrl { get; init; } = "";
 }
 

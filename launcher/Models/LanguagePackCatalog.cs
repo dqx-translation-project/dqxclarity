@@ -15,10 +15,9 @@ public record LanguagePackCatalogEntry
 
 public static class LanguagePackCatalog
 {
-    // Always-latest release asset. NOTE: the asset is currently named "common.zip"; it is being
-    // renamed to "english.clpk" — update this to .../download/english.clpk once that lands.
+    // Always-latest release asset (a CLPK whose header self-describes this same URL).
     public const string EnglishPackUrl =
-        "https://github.com/dqx-translation-project/dqxclarity/releases/latest/download/common.zip";
+        "https://github.com/dqx-translation-project/dqxclarity/releases/latest/download/english.clpk";
 
     public static readonly IReadOnlyList<LanguagePackCatalogEntry> Entries =
     [
