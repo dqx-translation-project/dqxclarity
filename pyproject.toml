@@ -12,7 +12,7 @@ dependencies = [
     "deepl==1.29.0",
     "frida==17.5.2",
     "google-api-core==2.30.3",
-    "google-api-python-client==2.196.0",
+    "google-api-python-client==2.198.0",
     "loguru==0.7.3",
     "openpyxl==3.1.5",
     "pykakasi==2.3.0",
