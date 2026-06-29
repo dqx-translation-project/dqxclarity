@@ -16,7 +16,7 @@ dependencies = [
     "loguru==0.7.3",
     "openpyxl==3.1.5",
     "pykakasi==2.3.0",
-    "regex==2026.4.4",
+    "regex==2026.6.28",
     "requests==2.34.2",
 ]
 
