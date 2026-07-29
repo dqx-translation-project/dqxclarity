@@ -156,7 +156,7 @@ def main():
     temp_dir = tempfile.mkdtemp(prefix="dqxclarity_update_")
 
     ignored_files = ["user_settings.ini"]
-    ignored_directories = ["misc_files", "logs", "venv"]
+    ignored_directories = ["misc_files", "logs", "venv", "language-packs"]
 
     try:
         new_file_set = set()
