@@ -253,7 +253,8 @@ class Translator:
         return en_bytes > jp_bytes
 
     def __api_translate(self, text: list) -> list:
-        """Translates a list of strings using the cached translation service."""  # Consolidated if-elif list to class-level _SERVICE_API Dict
+        """Translates a list of strings using the cached translation service."""
+        # Consolidated if-elif list to class-level _SERVICE_API Dict
         for i, phrase in enumerate(text):
             text[i] = self.__glossify(phrase)
 
@@ -265,7 +266,8 @@ class Translator:
             return []
 
     def _get_translator_instance(self):
-        """Retrieve or initialize the translation instance from the class-level cache."""  # New helper function for instance caching
+        """Retrieve or initialize the translation instance from the class-level cache."""
+        # New helper function for instance caching
 
         if Translator.service not in Translator._SERVICE_API:  # 1. Check if service is supported
             log.error(f"Service '{Translator.service}' is not supported.")
@@ -281,10 +283,7 @@ class Translator:
             module = importlib.import_module(module_path)
             translator_class = getattr(module, class_name)
 
-            if Translator.api_key:  # Instantiate the class (passing api_key if it exists)
-                instance = translator_class(Translator.api_key)
-            else:
-                instance = translator_class()
+            instance = translator_class(Translator.api_key) if Translator.api_key else translator_class()
 
             Translator._instance_cache[Translator.service] = instance  # Store in cache and return
             return instance
