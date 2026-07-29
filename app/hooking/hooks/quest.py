@@ -34,6 +34,8 @@ def _translate_quest_desc(text: str) -> str:
     if db_quest_text := sql_read(text=text, table="quests"):
         return db_quest_text
 
+    # translate() returns a falsy value if translation was skipped (e.g. majority
+    # English text) or failed. Don't cache those cases to the database.
     if translation := _translator.translate(text, wrap_width=49, max_lines=6, add_brs=False):
         sql_write(source_text=text, translated_text=translation, table="quests")
         return translation

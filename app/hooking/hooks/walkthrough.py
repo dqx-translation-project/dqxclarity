@@ -39,10 +39,13 @@ def walkthrough_replacement(original_text: str) -> str:
         translator = _init_translator()
         translated_text = translator.translate(text=original_text, wrap_width=31, max_lines=3, add_brs=False)
 
-        # save to database for future lookups
-        sql_write(source_text=original_text, translated_text=translated_text, table="walkthrough")
+        # translate() returns a falsy value if translation was skipped (e.g. majority
+        # English text) or failed. Don't cache those cases to the database.
+        if translated_text:
+            sql_write(source_text=original_text, translated_text=translated_text, table="walkthrough")
+            return translated_text
 
-        return translated_text
+        return original_text
 
 
 def on_message(message, data, script):
