@@ -40,6 +40,8 @@ def dialogue_replacement(original_text: str, npc_name: str = "No_NPC") -> str:
     # translate the text
     translated_text = _translator.translate(text=original_text, wrap_width=46)
 
+    # translate() returns a falsy value if translation was skipped (e.g. majority
+    # English text) or failed. Don't cache those cases to the database.
     if translated_text:
         # write to database for future lookups
         try:

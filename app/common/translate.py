@@ -302,12 +302,16 @@ class Translator:
                 lines are truncated with "..."
         :param add_brs: Whether to inject "<br>" every three lines to
                 break up text. Used for dialog mainly.
+        :returns: The translated string, or None if translation was
+                skipped (majority English) or failed. Callers should
+                treat a falsy return as "do not cache this result" and
+                fall back to displaying the original text.
         """
         log.debug(f"[Original]\n{text}")
 
         if self.__is_majority_english(text):
-            log.debug("[Skip] Text is majority English (by byte weight), returning as-is.")
-            return text
+            log.debug("[Skip] Text is majority English (by byte weight), skipping translation.")
+            return None
 
         # manage our own line endings later
         output = text.replace("<br>", "　")
