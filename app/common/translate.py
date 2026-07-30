@@ -229,8 +229,8 @@ class Translator:
         """Returns True if the text contains more English/Latin content than Japanese
         script, meaning it can skip glossification and translation.
 
-        The check is based on the ratio of Japanese characters to total non-tag 
-        characters. If Japanese script makes up a small percentage (e.g., < 15%), 
+        The check is based on the ratio of Japanese characters to total non-tag
+        characters. If Japanese script makes up a small percentage (e.g., < 15%),
         the string is treated as English/Names and processing is skipped.
 
         :param text: Raw pre-glossary text string to evaluate.
@@ -242,7 +242,7 @@ class Translator:
 
         jp_count = len(_JP_REGEX.findall(combined))
         total_len = len(combined)
-        
+
         # 1. If no Japanese script is present, it's already "English" enough to skip
         if jp_count == 0:
             return True
@@ -252,7 +252,7 @@ class Translator:
         if total_len < 5:
             return True
 
-        # 3. Ratio Check: If Japanese makes up less than 15% of the string, 
+        # 3. Ratio Check: If Japanese makes up less than 15% of the string,
         # it's likely a name or a technical term (e.g., "The hero [Name] arrived").
         return (jp_count / total_len) < 0.15
 
