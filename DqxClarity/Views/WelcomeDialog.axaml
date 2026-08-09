@@ -1,0 +1,31 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="DqxClarity.Views.WelcomeDialog"
+             Width="460">
+    <Border Background="{DynamicResource AppBg}"
+            CornerRadius="8"
+            Padding="20,18,20,20">
+        <StackPanel Spacing="14">
+            <TextBlock Text="Welcome to dqxclarity"
+                       FontSize="14"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource AppAccent}"
+                       TextWrapping="Wrap"/>
+            <TextBlock FontSize="12"
+                       Foreground="{DynamicResource AppText}"
+                       TextWrapping="Wrap"
+                       LineHeight="18">
+                Hi there! Make sure you click on the "Game" tab, configure your DQX game path and click "Patch Game Files" both on first install and after each game update to ensure you've installed the latest English game files.
+            </TextBlock>
+            <CheckBox x:Name="AgreementCheck"
+                      FontSize="12"
+                      Foreground="{DynamicResource AppText}"
+                      Content="I'll do that."/>
+            <Button Classes="accent"
+                    HorizontalAlignment="Right"
+                    Padding="16,5"
+                    IsEnabled="{Binding #AgreementCheck.IsChecked}"
+                    Click="OnOk">OK</Button>
+        </StackPanel>
+    </Border>
+</UserControl>

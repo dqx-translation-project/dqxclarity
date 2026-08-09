@@ -20,7 +20,7 @@ jobs:
         uses: xt0rted/pull-request-comment-branch@v3
 
       - name: Checkout PR branch (${{ steps.fetch-branch-name.outputs.head_ref }})
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           ref: ${{ steps.fetch-branch-name.outputs.head_ref }}
 
@@ -34,9 +34,9 @@ jobs:
 
       - name: Build package
         run: |
-          rsync -av --exclude="imgs/" --exclude="launcher/" --exclude="tests/" app/* dqxclarity/;
-          cp version.update pyproject.toml user_settings.ini dqxclarity.exe dqxclarity/;
-          cp clarity_dialog.db dqxclarity/misc_files;
+          mkdir -p dqxclarity/misc_files
+          cp version.update dqxclarity.exe dqxclarity/
+          cp clarity_dialog.db dqxclarity/misc_files/
 
           zip -r dqxclarity-dev-${SHORT_SHA}.zip dqxclarity
 

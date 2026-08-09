@@ -1,6 +1,6 @@
 # dqxclarity
 
-A translation utility for the game "Dragon Quest X".
+A translation utility for the game "Dragon Quest X". Written in C# (Avalonia) and shipped as a single self-contained Windows executable — no Python, no venv.
 
 See the [wiki](https://dqx-translation-project.github.io/dqxclarity/) for how to get started!
 
