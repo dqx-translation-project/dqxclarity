@@ -8,8 +8,7 @@
   ],
   "prConcurrentLimit": 0,
   "enabledManagers": [
-    "nuget",
-    "cargo",
+    "pep621",
     "github-actions"
   ],
   "rebaseWhen": "conflicted",
