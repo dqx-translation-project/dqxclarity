@@ -1,0 +1,119 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:DqxClarity.ViewModels"
+        xmlns:v="using:DqxClarity.Views"
+        x:Class="DqxClarity.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="dqxclarity"
+        Width="680" Height="580"
+        MaxWidth="680" MaxHeight="960"
+        MinWidth="400" MinHeight="300"
+        SizeToContent="Manual"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource AppBg}">
+
+    <!-- The active view is swapped by MainWindow.axaml.cs -->
+    <Panel>
+        <Grid RowDefinitions="Auto,580">
+
+            <!-- Rotation banner — only shown on the settings/main view -->
+            <Border Grid.Row="0"
+                    IsVisible="{Binding ShowBanner}"
+                    Background="{DynamicResource AppBg}">
+                <!-- Content hidden when collapsed; border height collapses to 0 automatically -->
+                <StackPanel IsVisible="{Binding !IsBannerCollapsed}">
+                    <!-- Banner image (clickable → opens event URL) + nav arrows overlay -->
+                    <Panel>
+                        <Image Source="{Binding BannerImage}"
+                               Opacity="{Binding BannerOpacity}"
+                               Stretch="Uniform"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Center"
+                               MaxHeight="350"
+                               Cursor="Hand"
+                               Tapped="OnBannerTapped">
+                            <Image.Transitions>
+                                <Transitions>
+                                    <DoubleTransition Property="Opacity" Duration="0:0:0.35"/>
+                                </Transitions>
+                            </Image.Transitions>
+                        </Image>
+
+                        <Button Classes="bannerArrow"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Stretch"
+                                IsVisible="{Binding BannerDots.Count,
+                                            Converter={x:Static v:CountToBoolConverter.Instance}}"
+                                Click="OnBannerPrevClick">
+                            <TextBlock Text="&#x276E;" FontSize="28" FontWeight="Bold"
+                                       Foreground="White" VerticalAlignment="Center"/>
+                        </Button>
+
+                        <Button Classes="bannerArrow"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Stretch"
+                                IsVisible="{Binding BannerDots.Count,
+                                            Converter={x:Static v:CountToBoolConverter.Instance}}"
+                                Click="OnBannerNextClick">
+                            <TextBlock Text="&#x276F;" FontSize="28" FontWeight="Bold"
+                                       Foreground="White" VerticalAlignment="Center"/>
+                        </Button>
+                    </Panel>
+
+                    <!-- Dot navigation — only rendered when multiple banners are loaded -->
+                    <ItemsControl HorizontalAlignment="Center"
+                                  Margin="0,6,0,6"
+                                  IsVisible="{Binding BannerDots.Count,
+                                              Converter={x:Static v:CountToBoolConverter.Instance}}"
+                                  ItemsSource="{Binding BannerDots}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="6"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:BannerDotItem">
+                                <Ellipse Width="8" Height="8"
+                                         Cursor="Hand"
+                                         Fill="{DynamicResource AppText}"
+                                         Opacity="{Binding IsActive,
+                                                   Converter={x:Static v:BoolToOpacityConverter.DotInstance}}"
+                                         Tapped="OnBannerDotTapped"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <TransitioningContentControl Grid.Row="1" x:Name="MainContent">
+                <TransitioningContentControl.PageTransition>
+                    <CrossFade Duration="0:0:0.25"/>
+                </TransitioningContentControl.PageTransition>
+            </TransitioningContentControl>
+
+            <!-- Toggle button overlaid at the top-right of the content row,
+                 aligned with the settings tab strip (same padding as .tab buttons) -->
+            <Button Grid.Row="1"
+                    IsVisible="{Binding ShowBanner}"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    Classes="tab"
+                    Click="OnBannerToggleClick"
+                    Content="{Binding IsBannerCollapsed,
+                              Converter={x:Static v:BoolToStringConverter.BannerCollapse}}"
+                    ToolTip.Tip="Toggle rotation banner"/>
+        </Grid>
+
+        <!-- Full-window overlay for in-app dialogs -->
+        <Grid x:Name="OverlayPanel"
+              IsVisible="False"
+              Background="#B2000000"
+              PointerPressed="OnOverlayBackdropPressed">
+            <ContentControl x:Name="OverlayContent"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"/>
+        </Grid>
+    </Panel>
+
+</Window>

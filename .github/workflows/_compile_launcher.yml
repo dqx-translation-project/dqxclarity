@@ -14,30 +14,31 @@ jobs:
         uses: xt0rted/pull-request-comment-branch@v3
 
       - name: Checkout branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
-          ref: ${{ steps.fetch-branch-name.outputs.head_ref || 'main' }}
+          ref: ${{ steps.fetch-branch-name.outputs.head_ref || '' }}
 
-      - name: Compile launcher into exe
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Build native DLL
+        run: pwsh -ExecutionPolicy Bypass -File native/build.ps1
+        working-directory: DqxClarity
+
+      - name: Publish
         run: |
-          cd app\launcher;
-          Invoke-WebRequest "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.01c1/Ahk2Exe1.1.37.01c1.zip" -OutFile "$cwd\ahk2exe.zip";
-          Invoke-WebRequest "https://github.com/AutoHotkey/AutoHotkey/releases/download/v2.0.18/AutoHotkey_2.0.18.zip" -OutFile "$cwd\ahk.zip";
-          Expand-Archive -Path "$cwd\ahk2exe.zip" -DestinationPath . -Force;
-          Expand-Archive -Path "$cwd\ahk.zip" -DestinationPath . -Force;
-          & .\Ahk2Exe.exe /in "dqxclarity.ahk" /base "AutoHotkey64.exe" /icon "img/rosie.ico";
+          $ref = "${{ github.ref_name }}"
+          $v = if ($ref -match '^\d+\.\d+\.\d+') { $ref } elseif ($ref -match '^v\d+\.\d+\.\d+') { $ref -replace '^v', '' } else { '0.0.0' }
+          dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:Version=$v
+        working-directory: DqxClarity
 
       - name: Upload exe artifact
         uses: actions/upload-artifact@v7
         with:
           name: dqxclarity.exe
-          path: app\launcher\dqxclarity.exe
+          path: DqxClarity/bin/Release/net9.0-windows/win-x64/publish/dqxclarity.exe
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 7
           overwrite: true
-
-      # when we upload the exe artifact, it can take a few moments for github to realize it's been uploaded.
-      # if subsequent jobs try to download this artifact too quickly, the step will fail. this is just an
-      # arbitrary amount of time to wait before letting any other steps continue.
-      - name: Sleep for 3 seconds
-        run: Start-Sleep -Seconds 3

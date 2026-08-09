@@ -1,0 +1,42 @@
+version: "3"
+
+tasks:
+  native:
+    desc: build LocaleHook.dll and ClarityHook.dll (x86) via CMake
+    sources:
+      - native/LocaleHook.c
+      - native/ClarityHook.cpp
+      - native/CMakeLists.txt
+    generates:
+      - native/LocaleHook.dll
+      - native/ClarityHook.dll
+    cmds:
+      - pwsh -ExecutionPolicy Bypass -File native/build.ps1
+
+  wanakana:
+    desc: build wanakana.dll (x86_64) from the rust crate
+    sources:
+      - native/wanakana/Cargo.toml
+      - native/wanakana/src/lib.rs
+    generates:
+      - native/wanakana.dll
+    cmds:
+      - pwsh -ExecutionPolicy Bypass -File native/wanakana/build.ps1
+
+  build:
+    desc: build (debug)
+    deps: [native, wanakana]
+    cmds:
+      - dotnet build
+
+  publish:
+    desc: publish a self-contained single-file exe for win-x64
+    deps: [native, wanakana]
+    cmds:
+      - dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+      - cp bin/Release/net9.0-windows/win-x64/publish/dqxclarity.exe "C:/Users/joey/Downloads/dqxclarity-dev-e088ccb8/dqxclarity/"
+
+  clean:
+    desc: remove build artifacts
+    cmds:
+      - rm -rf bin obj native/build native/LocaleHook.dll native/ClarityHook.dll native/wanakana.dll native/wanakana/target
