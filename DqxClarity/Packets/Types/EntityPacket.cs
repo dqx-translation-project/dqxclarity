@@ -5,7 +5,12 @@ namespace DqxClarity.Packets.Types;
 
 // One packet wire-format with a type discriminator at offset 11. Type byte
 // dictates two things: (1) what header_offset to use before the name field
-// (NPC/Player/Party/Fellow=574, Monster=401), (2) how the name is resolved:
+// (NPC/Player/Party/Fellow=575, Monster=402 — a game update inserted one
+// byte somewhere in each kind's header, shifting these +1 from the original
+// 574/401. Confirmed independently via captured packets for Player and
+// Monster; Npc/Party/Fellow are inferred to share Player's shift since they
+// use the same 574-origin offset, but haven't been captured post-update),
+// (2) how the name is resolved:
 //   Player  — local_player_names m00 dict → romanizer fallback, \x04 prefix
 //   Party   — romanizer, \x04 prefix
 //   NPC     — npc name dict, pass-through on miss
@@ -47,13 +52,13 @@ public sealed class EntityPacket : IPacket
 
         (_kind, _headerOffset) = typeByte switch
         {
-            0x01 => (EntityKind.Player,  574),
-            0x02 => (EntityKind.Monster, 401),
-            0x04 => (EntityKind.Npc,     574),
-            0x81 => (EntityKind.Party,   574),
-            0x82 => (EntityKind.Party,   574),
-            0x83 => (EntityKind.Party,   574),
-            0x85 => (EntityKind.Fellow,  574),
+            0x01 => (EntityKind.Player,  575),   // confirmed via player captures
+            0x02 => (EntityKind.Monster, 402),   // confirmed via monster_5 capture
+            0x04 => (EntityKind.Npc,     575),   // inferred, shares Player's shift
+            0x81 => (EntityKind.Party,   575),   // inferred, shares Player's shift
+            0x82 => (EntityKind.Party,   575),
+            0x83 => (EntityKind.Party,   575),
+            0x85 => (EntityKind.Fellow,  575),   // inferred, shares Player's shift
             _    => (EntityKind.None,    0),
         };
 

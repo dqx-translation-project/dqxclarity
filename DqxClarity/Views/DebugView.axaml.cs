@@ -50,7 +50,10 @@ public partial class DebugView : UserControl
         else return;
 
         if (string.IsNullOrEmpty(_typeBuffer)) return;
-        var match = _vm.Filters.FirstOrDefault(
+        // Search FilterOptions (what's actually shown in the dropdown), not the
+        // unfiltered Filters master list -- jumping to a type the byte filter
+        // has hidden would select something not visible in the ComboBox.
+        var match = _vm.FilterOptions.FirstOrDefault(
             f => f.StartsWith(_typeBuffer, StringComparison.OrdinalIgnoreCase));
         if (match != null) _vm.SelectedFilter = match;
     }

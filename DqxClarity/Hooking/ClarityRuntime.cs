@@ -23,7 +23,7 @@ public sealed class ClarityRuntime : IDisposable
     private NativeLogTail? _logTail;
     private readonly bool _debugLogging;
     private Action<string, bool>? _log;
-    private Action<string, int, string, int, string?>? _debugPacket;
+    private Action<string, byte[], string, byte[]?, string?>? _debugPacket;
 
     public ClarityRuntime(ITranslationBackend backend, bool debugLogging = false)
     {
@@ -51,7 +51,7 @@ public sealed class ClarityRuntime : IDisposable
         _hook = new PacketWardenService(HandlePacket);
     }
 
-    public void SetDebugCallback(Action<string, int, string, int, string?> callback) => _debugPacket = callback;
+    public void SetDebugCallback(Action<string, byte[], string, byte[]?, string?> callback) => _debugPacket = callback;
 
     public void Start()
     {
@@ -221,7 +221,7 @@ public sealed class ClarityRuntime : IDisposable
 
                 var typeName = ExtractPacketTypeName(raw);
                 var modifiedHex = modSlice != null ? FormatHexDump(modSlice) : null;
-                _debugPacket(typeName, rawSize, FormatHexDump(rawSlice), modSize, modifiedHex);
+                _debugPacket(typeName, rawSlice, FormatHexDump(rawSlice), modSlice, modifiedHex);
             }
 
             return result;

@@ -15,25 +15,49 @@ namespace DqxClarity.Packets.Types;
 //   unknown_3            u32  (looks like npc_name length, unused)
 //   npc_name             cstring (utf-8, null-terminated)
 //   unknown_4            7 bytes
-//   bitwise              u32  (masks the crc)
-//   crc_value            u32  (zlib.crc32(text utf-8) & bitwise)
+//   bitwise              u32  (purpose unknown -- NOT a crc mask, see below)
+//   crc_value            u32  (zlib.crc32(text utf-8), full, unmasked)
 public sealed class NpcDialoguePacket : IPacket
 {
-    // Two known marker variants share this layout with three small deltas:
+    // Two known marker variants share this layout with two small deltas:
     //
     //   variant                     | WithName (0xa83c) | NoName (0x9804)
     //   ────────────────────────────|───────────────────|──────────────────
     //   header bytes before tlen    | 12                | 13 (extra 0 byte)
     //   unknown_4 length            | 7 bytes           | 1 byte
-    //   stored crc strategy         | crc32(text) & bw  | crc32(text) (full)
     //
-    // In WithName captures the `bitwise` field equals 0xFFFFFFFF, so the mask
-    // is a no-op. The NoName capture has the
-    // field at 0x00000001 — clearly a flag, not a mask — so we treat it as
-    // opaque and emit the full crc32 on rewrite.
+    // crc_value is always the plain, unmasked crc32(text) for both variants.
+    // This used to be implemented as `crc32(text) & bitwise`, on the theory
+    // that `bitwise` was a crc mask -- every WithName capture on hand had
+    // bitwise=0xFFFFFFFF, so masking was indistinguishable from not masking
+    // and the theory went untested. It broke on system-generated WithName
+    // messages that reuse this same packet shape (e.g. the "I accepted the
+    // quest ..." notification shown right after QuestAccept), which carry
+    // bitwise=0x15 instead. Captured a same-message Japanese-original /
+    // English-modified pair for one of these and the proof is direct: the
+    // ORIGINAL packet's crc_value is 0x9E3DE2DB, which is exactly
+    // crc32(original japanese text) -- the FULL unmasked value, not
+    // crc32(text)&0x15 (that would be 0x11). So `bitwise` was never a crc
+    // mask at all; it's some other unrelated field we don't understand yet,
+    // and crc_value is unconditionally the full crc32 of the text. The old
+    // masking logic silently truncated the crc to a handful of bits for any
+    // WithName packet where bitwise wasn't 0xFFFFFFFF, which is what was
+    // actually corrupting this notification and crashing the client.
     //
-    // Samples: docs/packets/references/npc_dialogue (WithName),
-    //          docs/packets/NpcDialogue_NoName.txt (NoName).
+    // Samples: docs/packets/references/npc_dialogue (WithName, ordinary
+    //          dialogue, bitwise=0xFFFFFFFF),
+    //          docs/packets/NpcDialogue_NoName.txt (NoName),
+    //          docs/packets/references/npc_dialogue_quest_notice (WithName,
+    //          quest-accepted system notification, bitwise=0x15, rendered
+    //          fine under the old buggy masking -- coincidence, not proof),
+    //          docs/packets/references/npc_dialogue_quest_notice_crash
+    //          (same shape/bitwise, crashed the client -- the masked crc
+    //          didn't match what the client independently recomputes),
+    //          docs/packets/references/npc_dialogue_quest_notice_original and
+    //          npc_dialogue_quest_notice_modified (same message captured both
+    //          pre- and post-translation -- crc_value is byte-identical to
+    //          crc32(original text) in the pre-translation capture, proving
+    //          no masking is applied).
     public enum Variant { WithName, NoName }
 
     private readonly byte[] _raw;
@@ -50,7 +74,7 @@ public sealed class NpcDialoguePacket : IPacket
     private uint _unknown3;
     private string _npcName = "";
     private byte[] _unknown4 = Array.Empty<byte>();
-    private uint _bitwise;           // mask (WithName) / flag (NoName)
+    private uint _bitwise;           // purpose unknown, passed through untouched
     private uint _crcValue;
 
     public byte[]? ModifiedData { get; private set; }
@@ -127,14 +151,13 @@ public sealed class NpcDialoguePacket : IPacket
         return _deps.Romanizer.ToRomaji(japanese);
     }
 
-    private uint CalculateCrc(string text)
+    // crc_value is always the full, unmasked crc32(text) -- see the class
+    // doc comment for the direct proof that `bitwise` isn't a mask on this.
+    private static uint CalculateCrc(string text)
     {
         var crc = new Crc32();
         crc.Append(Encoding.UTF8.GetBytes(text));
-        var full = BitConverter.ToUInt32(crc.GetHashAndReset());
-        // NoName treats `_bitwise` as a flag, not a mask — emit the full crc.
-        // WithName ANDs with `_bitwise` (in observed captures it's 0xFFFFFFFF, so this is a no-op).
-        return _variant == Variant.NoName ? full : (full & _bitwise);
+        return BitConverter.ToUInt32(crc.GetHashAndReset());
     }
 
     private string? TranslateText(string original, string npcName)

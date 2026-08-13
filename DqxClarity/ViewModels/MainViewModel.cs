@@ -260,9 +260,9 @@ public partial class MainViewModel : ObservableObject
             if (_config.Launcher.DebugLogging)
             {
                 Log.EnableDebug();
-                _runtime.SetDebugCallback((typeName, rawLen, hexDump, modLen, modifiedHex) =>
+                _runtime.SetDebugCallback((typeName, rawBytes, hexDump, modifiedBytes, modifiedHex) =>
                     Avalonia.Threading.Dispatcher.UIThread.Post(
-                        () => Log.Debug?.AddPacket(typeName, rawLen, hexDump, modLen, modifiedHex)));
+                        () => Log.Debug?.AddPacket(typeName, rawBytes, hexDump, modifiedBytes, modifiedHex)));
             }
             _runtime.Start();
             Settings.PostInjectCallback = hProc => _runtime.InjectInto(hProc);

@@ -9,33 +9,47 @@
         <Border Grid.Row="0"
                 Background="{DynamicResource AppSurface2}"
                 Padding="10,6">
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                <TextBlock Grid.Column="0"
+            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*,Auto,Auto">
+                <TextBlock Grid.Row="0" Grid.Column="0"
                            Text="Filter:"
                            FontSize="12"
                            VerticalAlignment="Center"
                            Margin="0,0,8,0"
                            Foreground="{DynamicResource AppMuted}"/>
-                <ComboBox Grid.Column="1"
-                          ItemsSource="{Binding Filters}"
+                <ComboBox Grid.Row="0" Grid.Column="1"
+                          ItemsSource="{Binding FilterOptions}"
                           SelectedItem="{Binding SelectedFilter}"
                           FontSize="11"
                           MinWidth="200"
                           MaxWidth="350"
                           KeyDown="OnFilterKeyDown"
                           ToolTip.Tip="Focus and type to jump to a matching packet type"/>
-                <Button Grid.Column="2"
+                <Button Grid.Row="0" Grid.Column="2"
                         Padding="8,3"
                         FontSize="11"
                         Margin="8,0,0,0"
                         ToolTip.Tip="Remove the current filter and its packets"
                         Command="{Binding ClearCommand}">Clear</Button>
-                <Button Grid.Column="3"
+                <Button Grid.Row="0" Grid.Column="3"
                         Padding="8,3"
                         FontSize="11"
                         Margin="8,0,0,0"
                         ToolTip.Tip="Remove all filters and packets"
                         Command="{Binding ClearAllCommand}">Clear All</Button>
+
+                <TextBlock Grid.Row="1" Grid.Column="0"
+                           Text="Bytes:"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           Margin="0,6,8,0"
+                           Foreground="{DynamicResource AppMuted}"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3"
+                         Text="{Binding ByteFilter}"
+                         Watermark="e.g. E3 81 95 E3 81 99 — only show packets whose bytes contain this sequence"
+                         FontFamily="Cascadia Code,Consolas,Courier New,monospace"
+                         FontSize="11"
+                         Margin="0,6,0,0"
+                         ToolTip.Tip="Filters both the dropdown above and the packet list below to only packets whose raw or modified bytes contain this byte sequence"/>
             </Grid>
         </Border>
 

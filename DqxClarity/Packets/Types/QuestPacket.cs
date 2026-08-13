@@ -3,31 +3,48 @@ using System.Text;
 
 namespace DqxClarity.Packets.Types;
 
-// Two packet variants share this class:
+// Three packet variants share this class:
 //
-//   Variant.Log    (0x5d 0xcc51) — quest log screen (viewing an existing quest)
-//   Variant.Accept (0x5d 0x2b15) — accepting a new quest from an NPC
+//   Variant.Log     (0x5d 0xcc51) — quest log screen (viewing an existing quest)
+//   Variant.Accept  (0x5d 0x2b15) — accepting a new quest from an NPC
+//   Variant.MapOpen (0x5c 0xde02) — opening/previewing a quest marker from the map
 //
-// Both variants have identical fields and translation logic. The only structural
-// difference is that Log includes an extra `unknown_1` u16 field in the header
-// that Accept omits, shifting every subsequent field offset by 2 bytes.
+// All three variants carry the exact same tail structure (chapter/name/
+// description/rewards/remainder) and the exact same translation logic; only
+// the header in front of that tail differs in length between variants. None
+// of the header's individual sub-fields (num_times_opened, a quest number,
+// a handful of "unknown" counters) are ever read or transformed by Build()
+// — they're written back byte-for-byte regardless of variant — so rather
+// than name each one out (and have to re-derive field boundaries by hand
+// every time a new variant shows up with a differently-sized header), the
+// whole header is read and rewritten as one opaque blob, sized per variant:
+//
+//   Log     30 bytes: num_times_opened(4) + padding(4) + unknown(2) + quest_number(4) + 4x unknown u32(16)
+//   Accept  28 bytes: num_times_opened(4) + padding(4) + quest_number(4) + 4x unknown u32(16)
+//   MapOpen 48 bytes: num_times_opened(4) + padding(4) + quest_number(4) + 9x unknown u32(36)
+//
+// MapOpen's first 12 bytes (num_times_opened/padding/quest_number) line up
+// with Accept's; the remaining 36 bytes hold 9 opaque u32s where Accept only
+// has 4 — confirmed by capturing a MapOpen packet for the exact same quest
+// as an existing Accept reference and finding the tail (chapter through
+// remainder, including the 8-byte remainder itself) byte-for-byte identical
+// once the 48-byte header is skipped. Three of MapOpen's unknown u32s
+// (values 501 / 63700 / 7940) also happen to match Accept's unknown_2-4 from
+// that same session — plausibly some shared session/tick counters rather
+// than anything quest-specific — but nothing here depends on that, it's
+// just passed through untouched either way.
 //
 // Layout (after opcode + marker):
-//   num_times_opened     u32
-//   padding              4 bytes
-//   unknown_1            u16   ← Log variant only; absent in Accept
-//   quest_number         u32
-//   unknown_2            u32
-//   unknown_3            u32
-//   unknown_4            u32
-//   unknown_5            u32   ← absence caused 4-byte offset shift corrupting
-//                               chapter/name lookups and description writes
-//   subquest_name        56-byte fixed cstring   (called "chapter" historically)
-//   quest_name           56-byte fixed cstring
-//   quest_description    508-byte fixed cstring
-//   quest_rewards        104-byte fixed cstring  (one-shot rewards)
-//   quest_repeat_rewards 104-byte fixed cstring  (repeat-completion rewards)
-//   remainder            (passthrough)
+//   header                variant-sized, see above (passthrough)
+//   subquest_name         56-byte fixed cstring   (called "chapter" historically)
+//   quest_name            56-byte fixed cstring
+//   quest_description     508-byte fixed cstring
+//   quest_rewards         104-byte fixed cstring  (one-shot rewards)
+//   quest_repeat_rewards  104-byte fixed cstring  (repeat-completion rewards)
+//   remainder             (passthrough)
+//
+// Samples: docs/packets/references/quest (Log), quest_accept (Accept),
+//          quest_map_open (MapOpen).
 //
 // Translation strategy — do not machine-translate any of these fields blindly:
 //
@@ -47,24 +64,25 @@ namespace DqxClarity.Packets.Types;
 // touch anything else either.
 public sealed class QuestPacket : IPacket
 {
-    public enum Variant { Log, Accept }
+    public enum Variant { Log, Accept, MapOpen }
     private const int ChapterBytes     = 56;
     private const int NameBytes        = 56;
     private const int DescriptionBytes = 508;
     private const int RewardBytes      = 104;
 
+    private static int HeaderBytes(Variant variant) => variant switch
+    {
+        Variant.Log     => 30,
+        Variant.Accept  => 28,
+        Variant.MapOpen => 48,
+        _ => throw new ArgumentOutOfRangeException(nameof(variant)),
+    };
+
     private readonly byte[] _raw;
     private readonly PacketDependencies _deps;
     private readonly Variant _variant;
 
-    private uint _numTimesOpened;
-    private byte[] _padding = Array.Empty<byte>();
-    private ushort _unknown1; // Log variant only
-    private uint _questNumber;
-    private uint _unknown2;
-    private uint _unknown3;
-    private uint _unknown4;
-    private uint _unknown5;
+    private byte[] _header = Array.Empty<byte>();
     private string _chapter = "";
     private string _name = "";
     private string _description = "";
@@ -94,14 +112,7 @@ public sealed class QuestPacket : IPacket
     private void Parse()
     {
         var reader = new PacketReader(_raw);
-        _numTimesOpened = reader.ReadU32();
-        _padding = reader.ReadBytes(4).ToArray();
-        if (_variant == Variant.Log) _unknown1 = reader.ReadU16();
-        _questNumber = reader.ReadU32();
-        _unknown2 = reader.ReadU32();
-        _unknown3 = reader.ReadU32();
-        _unknown4 = reader.ReadU32();
-        _unknown5 = reader.ReadU32();
+        _header      = reader.ReadBytes(HeaderBytes(_variant)).ToArray();
         _chapter     = ReadFixedString(ref reader, ChapterBytes);
         _name        = ReadFixedString(ref reader, NameBytes);
         _description = ReadFixedString(ref reader, DescriptionBytes);
@@ -126,14 +137,7 @@ public sealed class QuestPacket : IPacket
             && newReward1 == null && newReward2 == null) return;
 
         var writer = new PacketWriter();
-        writer.WriteU32(_numTimesOpened);
-        writer.WriteBytes(new byte[4]);
-        if (_variant == Variant.Log) writer.WriteU16(_unknown1);
-        writer.WriteU32(_questNumber);
-        writer.WriteU32(_unknown2);
-        writer.WriteU32(_unknown3);
-        writer.WriteU32(_unknown4);
-        writer.WriteU32(_unknown5);
+        writer.WriteBytes(_header);
 
         WritePadded(writer, newChapter     ?? _chapter,     ChapterBytes);
         WritePadded(writer, newName        ?? _name,        NameBytes);

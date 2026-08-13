@@ -88,6 +88,8 @@ public sealed class ServerListPacket : IPacket
         ("訓練場エリア", "Training"),
         ("アスタルジア", "Astalgia"),
         ("劇場\x00\x00\x00", "Theatre"),
+        ("シアター", "Theater"),
+        ("博士の実験場", "Dr.'s Lab")
     };
 
     private readonly byte[] _raw;
