@@ -14,6 +14,22 @@ namespace DqxClarity.Packets.Types;
 // All strings are looked up in m00 'custom_master_quests'; misses pass through.
 // Trailing nulls between strings are preserved verbatim to keep packet structure
 // identical for unmapped users.
+//
+// The quest NAME (not the objectives) is capped at 34 UTF-8 bytes -- per
+// the user, this is a real client-side UI limitation, but only for
+// rendering English text. The original code applied the cap unconditionally,
+// including when the dict had no translation and the original Japanese was
+// passed through untouched -- that's wrong on two counts: Japanese doesn't
+// have this limitation (a 71-byte untranslated capture renders fine, since
+// that's literally what the live server already sends), and character-by-
+// character truncation on multi-byte Japanese text chops the name mid-word
+// with no ellipsis or indication anything was cut. Fixed by only applying
+// TruncateUtf8 when an actual translation was found in the dict.
+//
+// Sample: docs/packets/references/master_quest_untranslated (the 71-byte
+//         untranslated name -- 踊り子と行く！\n　迅速な魔人エンラージャ強討伐！\n --
+//         that exposed the truncation bug: byte 34 lands right after な,
+//         chopping off everything from 魔人エンラージャ強討伐！ onward)
 public sealed class MasterQuestPacket : IPacket
 {
     private const int HeaderBytes = 52;
@@ -74,7 +90,11 @@ public sealed class MasterQuestPacket : IPacket
         var writer = new PacketWriter();
         writer.WriteBytes(_header);
 
-        var name = TruncateUtf8(dict.GetValueOrDefault(_questName, _questName), 34);
+        // Only cap when an actual translation was applied -- the 34-byte
+        // limit is a UI constraint for rendering English text, it doesn't
+        // apply to the original Japanese (see class doc comment).
+        var resolvedName = dict.GetValueOrDefault(_questName, _questName);
+        var name = resolvedName == _questName ? resolvedName : TruncateUtf8(resolvedName, 34);
         writer.WriteCString(name);
         foreach (var obj in _objectives)
             writer.WriteCString(dict.GetValueOrDefault(obj, obj));

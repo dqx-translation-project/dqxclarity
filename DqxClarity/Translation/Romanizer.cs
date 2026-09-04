@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -10,6 +11,14 @@ namespace DqxClarity.Translation;
 //
 // Kana-only: kanji passes through unromanized. That's the trade-off documented
 // in the plan; covers ~all dqx player names which are kana-restricted.
+//
+// A name made up ENTIRELY of ・ (U+30FB) and/or ～ (U+FF5E) -- no kana, no ー
+// -- is left completely untouched rather than romanized. This isn't just a
+// preference: StripPunctuation below drops ・ silently (it's not a letter,
+// digit, whitespace, or the special-cased ～) and folds ～ into a bare "~"
+// suffix, so an all-punctuation name like "・～・" was collapsing to a
+// near-empty/garbled result like "~" instead of anything resembling the
+// original name.
 public sealed class WanaKanaRomanizer : IRomanizer
 {
     private const string Dll = "wanakana";
@@ -66,6 +75,7 @@ public sealed class WanaKanaRomanizer : IRomanizer
     public string ToRomaji(string text, int maxLength = 10)
     {
         if (string.IsNullOrEmpty(text)) return text;
+        if (IsPunctuationOnlyName(text)) return text;
         if (!_available) return Fallback(text, maxLength);
 
         try
@@ -100,6 +110,13 @@ public sealed class WanaKanaRomanizer : IRomanizer
         catch (DllNotFoundException) { return false; }
         catch { return false; }
     }
+
+    // A name made up entirely of ・ (U+30FB) and/or ～ (U+FF5E) -- and
+    // nothing else, no kana, no ー -- carries no linguistic content to
+    // romanize. See the class doc comment for why leaving it untouched
+    // (rather than running it through StripPunctuation/wanakana) matters.
+    private static bool IsPunctuationOnlyName(string s) =>
+        s.Length > 0 && s.All(c => c is '・' or '～');
 
     // Strip punctuation before romanizing so wanakana doesn't mangle symbols
     // into unexpected ascii. ～ is collected into a suffix appended after

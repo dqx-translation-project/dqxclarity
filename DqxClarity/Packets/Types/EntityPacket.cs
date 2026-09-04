@@ -5,30 +5,45 @@ namespace DqxClarity.Packets.Types;
 
 // One packet wire-format with a type discriminator at offset 11. Type byte
 // dictates two things: (1) what header_offset to use before the name field
-// (NPC/Player/Party/Fellow=575, Monster=402 — a game update inserted one
-// byte somewhere in each kind's header, shifting these +1 from the original
-// 574/401. Confirmed independently via captured packets for Player and
-// Monster; Npc/Party/Fellow are inferred to share Player's shift since they
-// use the same 574-origin offset, but haven't been captured post-update),
-// (2) how the name is resolved:
-//   Player  — local_player_names m00 dict → romanizer fallback, \x04 prefix
-//   Party   — romanizer, \x04 prefix
-//   NPC     — npc name dict, pass-through on miss
-//   Monster — monsters m00 dict, pass-through on miss (no romanizer fallback)
-//   Fellow  — pass-through
+// (NPC/Player/Party/Fellow=575, Monster/ScoutableMonster=402 — a game update
+// inserted one byte somewhere in each kind's header, shifting these +1 from
+// the original 574/401. Confirmed independently via captured packets for
+// Player and Monster; Npc/Party/Fellow are inferred to share Player's shift
+// since they use the same 574-origin offset, but haven't been captured
+// post-update), (2) how the name is resolved:
+//   Player           — local_player_names m00 dict → romanizer fallback, \x04 prefix
+//   Party            — romanizer, \x04 prefix
+//   NPC              — npc name dict, pass-through on miss
+//   Monster          — monsters m00 dict, pass-through on miss (no romanizer fallback)
+//   ScoutableMonster — same as Monster (see type byte 0x24 below)
+//   Fellow           — local_player_names m00 dict, then custom_npc_name_overrides
+//                      m00 dict, romanizer fallback on miss in both, \x04 prefix
+//                      (confirmed via a ガヴァ capture that stayed untranslated
+//                      with no dict match, and a hired フェロー whose translated
+//                      name rendered without the GM-face-icon prevention prefix)
 //
 // Layout:
 //   header_data           header_offset bytes
 //   entity_length         u32  (utf-8 byte length of entity_name including null)
 //   entity_name           cstring
 //   remainder             rest of payload
+//
+// Sample: docs/packets/references/scoutable_monster (type byte 0x24,
+//         previously logged as unhandled "Entity (0x24)" -- a monster on
+//         the field that can be scouted to join your party, distinct from
+//         the plain Monster kind (0x02) despite sharing its layout exactly)
+//         docs/packets/references/entity_fellow_gava (type byte 0x85,
+//         ガヴァ -- a hired fellow with no match in either Fellow dict,
+//         exposing the missing romanizer fallback: it was passing through
+//         untranslated instead of falling back to romaji like every other
+//         entity kind with a dict-miss path does)
 public sealed class EntityPacket : IPacket
 {
     private const int TypeByteOffset = 11;
 
     private enum EntityKind
     {
-        None, Player, Monster, Npc, Party, Fellow,
+        None, Player, Monster, Npc, Party, Fellow, ScoutableMonster,
     }
 
     private readonly byte[] _raw;
@@ -59,6 +74,10 @@ public sealed class EntityPacket : IPacket
             0x82 => (EntityKind.Party,   575),
             0x83 => (EntityKind.Party,   575),
             0x85 => (EntityKind.Fellow,  575),   // inferred, shares Player's shift
+            0x24 => (EntityKind.ScoutableMonster, 402), // confirmed via a scoutable
+                                                          // field monster's capture
+                                                          // (name landed at the exact
+                                                          // same offset as Monster's)
             _    => (EntityKind.None,    0),
         };
 
@@ -113,6 +132,7 @@ public sealed class EntityPacket : IPacket
                 break;
 
             case EntityKind.Monster:
+            case EntityKind.ScoutableMonster:
             {
                 // already translated — hook re-intercepted its own modified write.
                 if (!Translator.IsTextJapanese(_entityName)) return;
@@ -123,7 +143,21 @@ public sealed class EntityPacket : IPacket
             }
 
             case EntityKind.Fellow:
-                return;
+            {
+                // \x04 prefix on the written name means we already processed this
+                // packet — the hook re-intercepted its own modified write. Bail out
+                // to avoid an infinite loop (same guard as Player/Party).
+                if (_entityName.StartsWith('\x04')) return;
+                var fellowPlayerDict = _deps.M00Dict("local_player_names");
+                var fellowOverrideDict = _deps.M00Dict("custom_npc_name_overrides");
+                if (fellowPlayerDict.TryGetValue(_entityName, out var fellowPlayerName) && !string.IsNullOrEmpty(fellowPlayerName))
+                    newName = "\x04" + fellowPlayerName;
+                else if (fellowOverrideDict.TryGetValue(_entityName, out var fellowOverrideName) && !string.IsNullOrEmpty(fellowOverrideName))
+                    newName = "\x04" + fellowOverrideName;
+                else
+                    newName = "\x04" + _deps.Romanizer.ToRomaji(_entityName);
+                break;
+            }
 
             default:
                 return;

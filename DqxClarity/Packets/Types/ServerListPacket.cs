@@ -65,7 +65,7 @@ public sealed class ServerListPacket : IPacket
         ("コロシアム",   "Coliseum"),
         ("カジノ",        "Casino"),
         ("特殊エリア",   "Special"),
-        ("強戦士の間",   "Boss Book"),
+        ("強戦士の間",   "Boss Area"),
         ("王家の迷宮",   "Roy. Maze"),
         ("クイズエリア", "Quiz Area"),
         ("バトルロード", "Btl. Road"),

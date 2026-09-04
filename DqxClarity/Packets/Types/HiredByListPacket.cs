@@ -41,6 +41,14 @@ namespace DqxClarity.Packets.Types;
 // stride, so it should hold regardless of how many of the 5 slots are
 // populated.
 //
+// Character names can only ever contain hiragana, katakana, and (confirmed
+// by the user) the fullwidth tilde (～, U+FF5E) as punctuation -- ー
+// (U+30FC) and ・ (U+30FB) are already inside the hiragana/katakana range.
+// No kanji range is scanned for, and IsJapaneseCodepoint recognizes U+FF5E
+// explicitly, so a name like "あ～にゃ" (see AllianceMemberDetailPacket's
+// doc comment for the bug this avoids) scans as ONE run instead of being
+// split into pieces that would each get independently zero-padded.
+//
 // Names are resolved the same way TeamJoinNotificationPacket resolves an
 // arbitrary player name: m00 'local_player_names' first, romaji fallback on
 // miss -- these are player-chosen character names, not curated dialogue, so
@@ -128,8 +136,8 @@ public sealed class HiredByListPacket : IPacket
     }
 
     private static bool IsJapaneseCodepoint(int codepoint) =>
-        (codepoint >= 0x3040 && codepoint <= 0x30FF) || // hiragana + katakana
-        (codepoint >= 0x4E00 && codepoint <= 0x9FFF);   // common kanji
+        (codepoint >= 0x3040 && codepoint <= 0x30FF) || // hiragana + katakana (includes ー U+30FC, ・ U+30FB) -- no kanji range: character names can never contain kanji
+        codepoint == 0xFF5E;                            // ～ fullwidth tilde -- confirmed the only other punctuation mark that can appear in a player name
 
     // `text` is already confirmed to be a clean run of Japanese characters
     // (see JapaneseRunLength) -- this only decides whether we have a

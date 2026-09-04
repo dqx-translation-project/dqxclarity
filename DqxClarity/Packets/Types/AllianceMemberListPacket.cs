@@ -45,6 +45,21 @@ namespace DqxClarity.Packets.Types;
 // total length or shift anything after it -- only the alliance member
 // count itself (which this never touches) changes the packet's size.
 //
+// BUG FOUND + FIXED (via AllianceMemberDetailPacket's あ～にゃ capture):
+// JapaneseRunLength originally only recognized the hiragana/katakana/kanji
+// codepoint ranges, so a name containing the fullwidth tilde (～, U+FF5E --
+// confirmed the only punctuation besides ー/・, both already in the
+// hiragana/katakana range, that can appear in a player name) would get
+// split into multiple separate runs. Each run was then independently
+// truncated/zero-padded to its OWN width -- if an earlier run's
+// translation was shorter than the original, the zero-padding landed a
+// NUL byte in the MIDDLE of the name, which the game's cstring reader
+// reads as an early terminator, silently dropping everything after it.
+// Fixed by adding U+FF5E to IsJapaneseCodepoint so such a name scans as
+// ONE run and is translated/padded as a single unit. IsJapaneseCodepoint
+// also does NOT scan for kanji -- confirmed by the user, character names
+// can only ever contain hiragana and katakana.
+//
 // Names are resolved the same way TeamJoinNotificationPacket resolves an
 // arbitrary player name: m00 'local_player_names' first, romaji fallback
 // on miss -- these are player-chosen character names, not curated
@@ -140,8 +155,8 @@ public sealed class AllianceMemberListPacket : IPacket
     }
 
     private static bool IsJapaneseCodepoint(int codepoint) =>
-        (codepoint >= 0x3040 && codepoint <= 0x30FF) || // hiragana + katakana
-        (codepoint >= 0x4E00 && codepoint <= 0x9FFF);   // common kanji
+        (codepoint >= 0x3040 && codepoint <= 0x30FF) || // hiragana + katakana (includes ー U+30FC, ・ U+30FB) -- no kanji range: character names can never contain kanji
+        codepoint == 0xFF5E;                            // ～ fullwidth tilde -- confirmed the only other punctuation mark that can appear in a player name
 
     // `text` is already confirmed to be a clean run of Japanese characters
     // (see JapaneseRunLength) -- this only decides whether we have a
