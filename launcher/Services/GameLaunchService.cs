@@ -29,6 +29,10 @@ public class GameLaunchService
 
         var workDir = Path.Combine(installDir, "Game");
 
+        // LocaleEmulatorService.Launch() creates the game process itself and injects into it.
+        // If injection fails it guarantees the process it started is torn down before returning
+        // false, so it's always safe to fall back to a plain launch below without risking two
+        // DQXGame.exe instances ending up alive at once.
         if (LocaleEmulatorService.IsAvailable() && LocaleEmulatorService.Launch(gamePath, args, workDir))
             return;
 
