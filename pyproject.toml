@@ -18,6 +18,7 @@ dependencies = [
     "pykakasi==2.3.0",
     "regex==2026.4.4",
     "requests==2.34.2",
+	"openai==3.3.1",
 ]
 
 [project.optional-dependencies]
