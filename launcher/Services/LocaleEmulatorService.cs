@@ -36,7 +36,19 @@ internal static class LocaleEmulatorService
                             false, 0, IntPtr.Zero, workingDirectory, ref si, out var pi))
             return false;
 
-        try   { return InjectWithRetry(pi.hProcess, dllPath); }
+        try
+        {
+            if (InjectWithRetry(pi.hProcess, dllPath))
+                return true;
+
+            // CreateProcessW above already started the game even though injection failed
+            // (e.g. AV/EDR interference or a slow WOW64 init blowing the retry budget), so
+            // the caller falling back to a plain launch would otherwise leave this half-started,
+            // un-hooked copy running alongside a second instance. Kill it so exactly one
+            // DQXGame.exe survives.
+            try { TerminateProcess(pi.hProcess, 1); } catch { /* best-effort cleanup */ }
+            return false;
+        }
         finally
         {
             CloseHandle(pi.hProcess);
@@ -46,9 +58,17 @@ internal static class LocaleEmulatorService
 
     private static bool InjectWithRetry(IntPtr hProcess, string dllPath)
     {
-        for (int i = 0; i < 20; i++)
+        // Poll for up to 5s waiting for the target's WOW64 kernel32 to become enumerable.
+        // 1s (the old budget) is frequently not enough once antivirus/EDR is scanning a
+        // freshly-launched game exe or CreateRemoteThread injection specifically, which was
+        // causing this to time out, report failure, and trigger a duplicate launch.
+        const int pollIntervalMs = 50;
+        const int maxWaitMs      = 5000;
+        var attempts = maxWaitMs / pollIntervalMs;
+
+        for (int i = 0; i < attempts; i++)
         {
-            Thread.Sleep(50);
+            Thread.Sleep(pollIntervalMs);
             var loadLibW = GetWow64LoadLibraryW(hProcess);
             if (loadLibW != 0 && TryInject(hProcess, dllPath, (IntPtr)(long)loadLibW))
                 return true;
@@ -160,6 +180,9 @@ internal static class LocaleEmulatorService
         ref STARTUPINFOW lpStartupInfo, out PROCESS_INFORMATION lpProcessInformation);
 
     [DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr h);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool TerminateProcess(IntPtr hProcess, uint uExitCode);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress,
