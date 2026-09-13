@@ -234,6 +234,18 @@ public partial class MainViewModel : ObservableObject
         SwitchTo("log");
         Log.UpdateTitle(Version);
         EnsureNativeRuntime();
+
+        // The runtime was already constructed (possibly long before this Run
+        // click, in the constructor's eager EnsureNativeRuntime() call) with
+        // whatever nameplate settings were on disk at launcher startup, and
+        // it never gets rebuilt. Push the CURRENT checkbox state into it here
+        // -- read from Settings directly rather than _config.Launcher, since
+        // Settings.Run() saves a fresh LauncherConfig straight to disk
+        // without ever updating _config.Launcher -- so a toggle takes effect
+        // immediately instead of requiring a full launcher restart.
+        _runtime?.UpdateNameplateSettings(
+            Settings.NameplatesPlayer, Settings.NameplatesNpc, Settings.NameplatesMonster);
+
         Log.AppendLine("Translation runtime active. Pipe waiting for PacketWarden.dll.");
     }
 
@@ -256,7 +268,12 @@ public partial class MainViewModel : ObservableObject
                 _config.Launcher.DebugLogging ? "1" : null);
 
             var backend = BackendFactory.Create(_config.Translation);
-            _runtime = new ClarityRuntime(backend, _config.Launcher.DebugLogging);
+            _runtime = new ClarityRuntime(
+                backend,
+                _config.Launcher.DebugLogging,
+                _config.Launcher.NameplatesPlayer,
+                _config.Launcher.NameplatesNpc,
+                _config.Launcher.NameplatesMonster);
             if (_config.Launcher.DebugLogging)
             {
                 Log.EnableDebug();

@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Text;
 using DqxClarity.Translation;
 
@@ -12,7 +13,11 @@ namespace DqxClarity.Packets.Types;
 // since they use the same 574-origin offset, but haven't been captured
 // post-update), (2) how the name is resolved:
 //   Player           — local_player_names m00 dict → romanizer fallback, \x04 prefix
-//   Party            — romanizer, \x04 prefix
+//   Party            — local_player_names m00 dict → romanizer fallback, \x04 prefix
+//                      (same resolution as Player -- a party member entity is
+//                      still a player, so a name override set for that player
+//                      elsewhere should apply here too, not just the romaji
+//                      fallback)
 //   NPC              — npc name dict, pass-through on miss
 //   Monster          — monsters m00 dict, pass-through on miss (no romanizer fallback)
 //   ScoutableMonster — same as Monster (see type byte 0x24 below)
@@ -37,9 +42,42 @@ namespace DqxClarity.Packets.Types;
 //         exposing the missing romanizer fallback: it was passing through
 //         untranslated instead of falling back to romaji like every other
 //         entity kind with a dict-miss path does)
+//
+// A Player-kind entity also carries, at fixed Data offset 390 (inside the
+// otherwise-opaque 575-byte header), a persistent u32 character id --
+// confirmed to be the exact same id CharacterLogListPacket reports per
+// roster slot, by capturing both packet types for the same known character
+// (ショウブ, one week apart) and finding an identical, high-entropy value in
+// both. That correlation is how PlayerContext identifies which character is
+// currently logged in without a login hook -- see its doc comment. This
+// class doesn't otherwise care about the id; it just reports it whenever a
+// Player-kind entity comes through, including entities that turn out to
+// belong to someone else's account entirely (PlayerContext silently ignores
+// any id that isn't in its own roster).
+//
+// NAMEPLATE TOGGLES: the [launcher] "Nameplates" checkbox is split three
+// ways (PacketDependencies.TranslatePlayerNameplates/NpcNameplates/
+// MonsterNameplates) so a user can turn off translation for one entity
+// category without affecting the others:
+//   Player nameplates  -> gates EntityKind.Player only
+//   NPC nameplates     -> gates EntityKind.Npc, Party, AND Fellow (a party
+//                         member is still rendered as a name-tagged
+//                         character the same way an NPC is, and a Fellow is
+//                         the same kind of "non-monster companion" nameplate)
+//   Monster nameplates -> gates EntityKind.Monster and ScoutableMonster
+//
+// These checks live ONLY in Build(), each as the very first line of its
+// case, before any dict lookup -- Parse() above (including the
+// PlayerContext.NotifyEntityId call) runs unconditionally regardless of any
+// toggle. That separation is deliberate: turning off Player nameplates must
+// not stop PlayerContext from identifying the logged-in character, since
+// other packets (dialogue's <pnplacehold>/<snplacehold> substitution, for
+// one) depend on that identification having happened even when the
+// player's own nameplate text is left untranslated.
 public sealed class EntityPacket : IPacket
 {
     private const int TypeByteOffset = 11;
+    private const int CharacterIdOffset = 390; // only meaningful for EntityKind.Player
 
     private enum EntityKind
     {
@@ -93,6 +131,12 @@ public sealed class EntityPacket : IPacket
         _ = reader.ReadU32(); // entity_length — recomputed on write
         _entityName = reader.ReadCString();
         _remainder = reader.RemainingBytes().ToArray();
+
+        if (_kind == EntityKind.Player && _raw.Length >= CharacterIdOffset + 4)
+        {
+            var characterId = BinaryPrimitives.ReadUInt32LittleEndian(_raw.AsSpan(CharacterIdOffset, 4));
+            _deps.PlayerContext.NotifyEntityId(characterId, _deps);
+        }
     }
 
     public void Build()
@@ -104,6 +148,7 @@ public sealed class EntityPacket : IPacket
         {
             case EntityKind.Player:
             {
+                if (!_deps.TranslatePlayerNameplates) return;
                 // \x04 prefix on the written name means we already processed this
                 // packet — the hook re-intercepted its own modified write. bail out
                 // to avoid an infinite loop.
@@ -117,13 +162,23 @@ public sealed class EntityPacket : IPacket
             }
 
             case EntityKind.Party:
+            {
+                if (!_deps.TranslateNpcNameplates) return;
                 // \x04 prefix keeps the game from showing the GM-face icon.
                 // same re-interception guard as Player.
                 if (_entityName.StartsWith('\x04')) return;
-                newName = "\x04" + _deps.Romanizer.ToRomaji(_entityName);
+                // Same resolution as Player: name override dict first, romaji
+                // fallback only when the party member isn't in it.
+                var partyDict = _deps.M00Dict("local_player_names");
+                if (partyDict.TryGetValue(_entityName, out var knownPartyName) && !string.IsNullOrEmpty(knownPartyName))
+                    newName = "\x04" + knownPartyName;
+                else
+                    newName = "\x04" + _deps.Romanizer.ToRomaji(_entityName);
                 break;
+            }
 
             case EntityKind.Npc:
+                if (!_deps.TranslateNpcNameplates) return;
                 // already translated — hook re-intercepted its own modified write.
                 if (!Translator.IsTextJapanese(_entityName)) return;
                 var npcDict = _deps.NpcNameDict();
@@ -134,6 +189,7 @@ public sealed class EntityPacket : IPacket
             case EntityKind.Monster:
             case EntityKind.ScoutableMonster:
             {
+                if (!_deps.TranslateMonsterNameplates) return;
                 // already translated — hook re-intercepted its own modified write.
                 if (!Translator.IsTextJapanese(_entityName)) return;
                 var monsterDict = _deps.M00Dict("monsters");
@@ -144,6 +200,7 @@ public sealed class EntityPacket : IPacket
 
             case EntityKind.Fellow:
             {
+                if (!_deps.TranslateNpcNameplates) return;
                 // \x04 prefix on the written name means we already processed this
                 // packet — the hook re-intercepted its own modified write. Bail out
                 // to avoid an infinite loop (same guard as Player/Party).

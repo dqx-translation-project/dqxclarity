@@ -67,15 +67,22 @@ public sealed class DataPacketRouter
             (0x87, 0xdb19) => "LoginLoginStatus",
             (0x87, 0x0eb8) => "LoginAssistantAi",
             (0x05, 0x2b66) => "Concierge",
+            (0x05, 0x131e) => "HouseSignpost",
             (0x4b, 0x4569) => "MyTownAmenity",
             (0x79, 0x994b) => "MasterQuest",
+            (0x79, 0x2b15) => "MailInboxView",
             (0x3d, 0x16b6) => "TeamQuest",
             (0x3d, 0x31dc) => "TeamQuestNotification",
+            (0x3d, 0x760c) => "TeamQuestNotification",
             (0x46, 0x6bb8) => "WeeklyRequest",
             (0x46, 0x2562) => "TowerAnswer",
             (0x1f, 0x19be) => "CornerText",
+            (0x95, 0xc9e3) => "SugorokuItemNotification",
             (0x97, 0x732b) => "MailSenderName",
             (0x97, 0x2352) => "MailMessage",
+            (0x97, 0xcc51) => "MailReceivedNotification",
+            (0x97, 0xedec) => "MemoryMailList",
+            (0x97, 0x5816) => "MemoryMailContent",
             (0x0d, 0x9804) => "TeamJoinNotification",
             (0x0d, 0x11c1) => "TeamJoinMessage",
             (0x0d, 0x9393) => "FriendInvitation",
@@ -99,6 +106,8 @@ public sealed class DataPacketRouter
             (0xaa, 0x7a64) => "SupportPartyList",
             (0xaa, 0xc462) => "HiredByList",
             (0xaa, 0xde02) => "TavernRecruitmentList",
+            (0xaa, 0xe535) => "TavernRecruitmentDetail",
+            (0x4e, 0x7e96) => "CasinoPlayerList", // Bingo, Poker, and (presumably) other casino minigames -- see CasinoPlayerListPacket's doc comment
             (0x66, 0x4cc2) => "MemoryListMain",
             (0x66, 0xda30) => "MemoryListChapters",
             (0x66, 0x4569) => "MemoryListSubChapters",
@@ -137,15 +146,22 @@ public sealed class DataPacketRouter
             (0x87, 0x8408) => new ServerListPacket(data, deps),
             (0x87, 0x6185) => new ImportantNoticePacket(data, deps),
             (0x05, 0x2b66) => new ConciergePacket(data, deps),
+            (0x05, 0x131e) => new HouseSignpostPacket(data, deps),
             (0x4b, 0x4569) => new MyTownAmenityPacket(data, deps),
             (0x79, 0x994b) => new MasterQuestPacket(data, deps),
+            (0x79, 0x2b15) => new MailInboxViewPacket(data, deps),
             (0x3d, 0x16b6) => new TeamQuestPacket(data, deps),
             (0x3d, 0x31dc) => new TeamQuestNotificationPacket(data, deps),
+            (0x3d, 0x760c) => new TeamQuestNotificationPacket(data, deps),
             (0x46, 0x6bb8) => new WeeklyRequestPacket(data, deps),
             (0x46, 0x2562) => new TowerAnswerPacket(data, deps),
             (0x1f, 0x19be) => new CornerTextPacket(data, deps),
+            (0x95, 0xc9e3) => new SugorokuItemNotificationPacket(data, deps),
             (0x97, 0x732b) => new MailSenderNamePacket(data, deps),
             (0x97, 0x2352) => new MailMessagePacket(data, deps),
+            (0x97, 0xcc51) => new MailReceivedNotificationPacket(data, deps),
+            (0x97, 0xedec) => new MemoryMailListPacket(data, deps),
+            (0x97, 0x5816) => new MemoryMailContentPacket(data, deps),
             (0x0d, 0x9804) => new TeamJoinNotificationPacket(data, deps),
             (0x0d, 0x11c1) => new TeamJoinMessagePacket(data, deps),
             (0x0d, 0x9393) => new FriendInvitationPacket(data, deps),
@@ -164,6 +180,8 @@ public sealed class DataPacketRouter
             (0xaa, 0x7a64) => new SupportPartyListPacket(data, deps),
             (0xaa, 0xc462) => new HiredByListPacket(data, deps),
             (0xaa, 0xde02) => new TavernRecruitmentListPacket(data, deps),
+            (0xaa, 0xe535) => new TavernRecruitmentDetailPacket(data, deps),
+            (0x4e, 0x7e96) => new CasinoPlayerListPacket(data, deps),
             (0x66, 0x4cc2) => new MemoryListMainPacket(data, deps),
             (0x66, 0xda30) => new MemoryListChaptersPacket(data, deps),
             (0x66, 0x4569) => new MemoryListSubChaptersPacket(data, deps),
@@ -179,6 +197,33 @@ public sealed class PacketDependencies
     public required Translation.Translator Translator { get; init; }
     public required Translation.IRomanizer Romanizer { get; init; }
 
+    // Per-category nameplate toggles from [launcher] nameplates_player/npc/
+    // monster. Consulted ONLY by EntityPacket.Build() to decide whether to
+    // rewrite a given entity kind's name -- see that class's doc comment.
+    // Nothing else (packet parsing, PlayerContext id correlation, etc.)
+    // reads these, so turning a category off can't affect anything besides
+    // that category's own in-world nameplate text. Default true so any
+    // caller that doesn't set these explicitly (tests, etc.) keeps the
+    // previous always-translate behavior.
+    //
+    // Mutable (not init-only) because ClarityRuntime.UpdateNameplateSettings
+    // patches these on the live instance every time Settings.Run() fires --
+    // this object is built once and lives for the whole process, so without
+    // a settable property a checkbox toggle would need a full launcher
+    // restart to take effect. Everything else on this class stays
+    // constructed-once/init-only; only these three are designed to change
+    // after construction.
+    public bool TranslatePlayerNameplates { get; set; } = true;
+    public bool TranslateNpcNameplates { get; set; } = true;
+    public bool TranslateMonsterNameplates { get; set; } = true;
+
+    // Session-scoped: who's logged in, resolved without a login hook by
+    // correlating CharacterLogListPacket and EntityPacket. See PlayerContext's
+    // doc comment for the mechanism and PlayerDataMaterializer for what it
+    // triggers once resolved.
+    public PlayerRoster PlayerRoster { get; } = new();
+    public PlayerContext PlayerContext { get; } = new();
+
     // Cache of m00_strings lookups, keyed by the comma-separated `files` filter. Lazy-load on first access.
     private readonly Dictionary<string, Dictionary<string, string>> _m00Cache = new();
     public Dictionary<string, string> M00Dict(params string[] files)
@@ -187,9 +232,63 @@ public sealed class PacketDependencies
         if (!_m00Cache.TryGetValue(key, out var dict))
         {
             dict = Db.LoadM00Strings(files);
+            ApplyPlayerPlaceholders(dict);
             _m00Cache[key] = dict;
         }
         return dict;
+    }
+
+    // Substitutes <pnplacehold>/<snplacehold> for the currently-active player's
+    // names in both the key (ja, so lookups match the literal wire text, which
+    // embeds the player's actual Japanese name) and the value (en) of any row
+    // that contains either token -- everything else passes through untouched.
+    //
+    // Deliberately done here, in memory, on every dict load, rather than by
+    // mutating m00_strings on disk the way PlayerDataMaterializer's other
+    // targets (story_so_far/dialog/bad_strings) get rewritten: a one-way SQL
+    // replace() against the token would destroy it on the first substitution,
+    // leaving nothing for a second character (switching characters without
+    // restarting the app) to match against on a re-run. Substituting fresh
+    // from the untouched db row every time sidesteps that entirely -- there's
+    // nothing to reverse because the source data is never modified.
+    private void ApplyPlayerPlaceholders(Dictionary<string, string> dict)
+    {
+        if (PlayerContext.JaPlayerName is not { } jaPlayer) return; // no active character resolved yet this session
+
+        var jaSibling = PlayerContext.JaSiblingName ?? "";
+        var enPlayer = PlayerContext.EnPlayerName ?? "";
+        var enSibling = PlayerContext.EnSiblingName ?? "";
+
+        List<(string OldKey, string NewKey, string NewValue)>? substitutions = null;
+        foreach (var (ja, en) in dict)
+        {
+            if (!ja.Contains("<pnplacehold>", StringComparison.Ordinal) &&
+                !ja.Contains("<snplacehold>", StringComparison.Ordinal) &&
+                !en.Contains("<pnplacehold>", StringComparison.Ordinal) &&
+                !en.Contains("<snplacehold>", StringComparison.Ordinal))
+                continue;
+
+            var newKey = ja.Replace("<pnplacehold>", jaPlayer).Replace("<snplacehold>", jaSibling);
+            var newValue = en.Replace("<pnplacehold>", enPlayer).Replace("<snplacehold>", enSibling);
+            (substitutions ??= new()).Add((ja, newKey, newValue));
+        }
+
+        if (substitutions == null) return;
+        foreach (var (oldKey, newKey, newValue) in substitutions)
+        {
+            dict.Remove(oldKey);
+            dict[newKey] = newValue;
+        }
+    }
+
+    // Called by PlayerContext whenever it (re-)resolves the active character --
+    // any dict already cached above was built against the previous character's
+    // (or no character's) placeholder substitution, so drop everything and let
+    // the next M00Dict/NpcNameDict call rebuild from the current one.
+    public void InvalidateM00Cache()
+    {
+        _m00Cache.Clear();
+        _npcNameCache = null;
     }
 
     // NPC name lookup: base names from 'npcs', then custom overrides layered on top.
@@ -202,6 +301,7 @@ public sealed class PacketDependencies
         var dict = Db.LoadM00Strings(new[] { "npcs" });
         foreach (var kv in Db.LoadM00Strings(new[] { "custom_npc_name_overrides" }))
             dict[kv.Key] = kv.Value;
+        ApplyPlayerPlaceholders(dict);
         _npcNameCache = dict;
         return dict;
     }

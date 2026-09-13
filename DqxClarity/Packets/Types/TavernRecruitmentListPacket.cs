@@ -3,14 +3,40 @@ using DqxClarity.Translation;
 
 namespace DqxClarity.Packets.Types;
 
-// The Tavern's "looking for party" board -- up to 20 recruitment listings,
-// each with a player name and (optionally) a free-text recruitment message.
+// The Tavern's "looking for party" board -- up to 5 pages of up to 20
+// recruitment listings, 20 total, each with a player name and (optionally)
+// a free-text recruitment message. The server always sends all 20 in one
+// packet regardless of which page the client is showing.
 //
-// Fixed layout, reverse-engineered from a full 20-listing capture (4654
-// bytes total):
-//   header    0x22 (34) bytes -- passthrough
+// HEADER SIZE BUG (found and fixed): this file previously had
+// HeaderBytes = 0x22 (34), which is 6 bytes too many. Every record's real
+// index marker sits exactly 6 bytes before where that put it -- confirmed
+// by scanning a live capture for the u32(1)/u32(index)/u32(0) marker
+// pattern directly: all 20 markers landed at a constant -6 offset from the
+// old assumed recordStart. Using HeaderBytes = 0x1C (28) instead makes
+// every record boundary line up exactly, with (packet length - 0x1C)
+// dividing evenly by the 0xE7 stride for the first time (it never had
+// before, with 0x22). With the old, too-large header, EVERY record's
+// name/index-marker window was quietly shifted 6 bytes into what should
+// have been the tail end of the previous field -- for most records this
+// still decoded as some plausible-looking (but wrong) run of kana, which
+// is why it went unnoticed; it only became obviously visible for names
+// where the shift happened to land exactly on a 2-character (6-byte)
+// boundary, dropping precisely "the first two characters" and translating
+// only the remainder -- e.g. "ぷそヤスーー" reading as "ヤスーー", with the
+// dropped "ぷそ" bytes then getting copied through untouched as if they
+// were still part of the (mis-sized) previous record's trailing bytes.
+// The same off-by-6 also undercounted how many full records fit in the
+// packet ((length - 34) / 231 truncated to 19 instead of the true 20),
+// silently dropping the 20th listing into the untranslated leftover-bytes
+// passthrough at the bottom of Build() every time.
+//
+// Fixed layout, reverse-engineered from a 20-listing capture (4654 bytes
+// total):
+//   header    0x1C (28) bytes -- passthrough
 //   record[0..20)  0xE7 (231) bytes each, back to back, no gap, filling the
-//                  rest of the packet exactly (34 + 20*231 = 4654)
+//                  rest of the packet exactly (28 + 20*231 = 4648, matching
+//                  a live capture's _raw length exactly)
 //
 // Each 231-byte record:
 //   index_marker  12 bytes -- u32(1), u32(record index, 1-based), u32(0).
@@ -51,7 +77,7 @@ namespace DqxClarity.Packets.Types;
 // Sample: docs/packets/references/tavern_recruitment_list (20/20 listings)
 public sealed class TavernRecruitmentListPacket : IPacket
 {
-    private const int HeaderBytes = 0x22;
+    private const int HeaderBytes = 0x1C;
     private const int RecordStride = 0xE7;
     private const int RecordCount = 20;
     private const int NameFieldOffset = 0x0C;

@@ -32,7 +32,9 @@ public partial class SettingsViewModel : ObservableObject
     public Action<IntPtr>? PostInjectCallback { get; set; }
 
     // ── Launcher settings ────────────────────────────────────────────────────
-    [ObservableProperty] private bool _nameplates;
+    [ObservableProperty] private bool _nameplatesPlayer;
+    [ObservableProperty] private bool _nameplatesNpc;
+    [ObservableProperty] private bool _nameplatesMonster;
     [ObservableProperty] private bool _debugLogging;
     [ObservableProperty] private bool _communityLogging;
 
@@ -449,7 +451,9 @@ public partial class SettingsViewModel : ObservableObject
         Version    = version;
         _updateInfo = updateInfo;
 
-        _nameplates        = config.Launcher.Nameplates;
+        _nameplatesPlayer  = config.Launcher.NameplatesPlayer;
+        _nameplatesNpc     = config.Launcher.NameplatesNpc;
+        _nameplatesMonster = config.Launcher.NameplatesMonster;
         _debugLogging      = config.Launcher.DebugLogging;
         _communityLogging  = config.Launcher.CommunityLogging;
         _selectedTheme     = config.Launcher.Theme;
@@ -604,7 +608,9 @@ public partial class SettingsViewModel : ObservableObject
 
         var launcherCfg = new LauncherConfig
         {
-            Nameplates               = Nameplates,
+            NameplatesPlayer         = NameplatesPlayer,
+            NameplatesNpc            = NameplatesNpc,
+            NameplatesMonster        = NameplatesMonster,
             DebugLogging             = DebugLogging,
             CommunityLogging         = CommunityLogging,
             SimultaneousLaunch       = SimultaneousLaunch,
@@ -726,7 +732,9 @@ public partial class SettingsViewModel : ObservableObject
         }
 
         var args = new List<string>();
-        if (Nameplates)       args.Add("--nameplates");
+        if (NameplatesPlayer)  args.Add("--nameplates-player");
+        if (NameplatesNpc)     args.Add("--nameplates-npc");
+        if (NameplatesMonster) args.Add("--nameplates-monster");
         if (DebugLogging)     args.Add("--debug");
         if (CommunityLogging) args.Add("--community-logging");
         if (!string.IsNullOrEmpty(svc) && svc != "none") args.Add("--communication-window");

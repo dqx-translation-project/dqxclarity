@@ -72,6 +72,34 @@ public sealed class WanaKanaRomanizer : IRomanizer
         return IntPtr.Zero;
     }
 
+    // INVESTIGATION NOTE (leaving this here so nobody re-chases the same
+    // dead end): TavernRecruitmentListPacket names were showing up with
+    // their first two characters left as raw, untranslated kana -- e.g.
+    // "みーあ" as literal "みー" + "A". This looked like a wanakana bug, but
+    // wasn't -- direct reproduction ruled out this entire dll/crate:
+    //   1. The exact pinned wana_kana crate version (v4.0.0, matching the
+    //      `wana_kana = "4"` pin in native/wanakana/Cargo.toml) called
+    //      directly in Rust on every reported-broken name produces fully
+    //      correct romaji every time, no dropped characters.
+    //   2. native/wanakana/src/lib.rs compiled as a real cdylib and driven
+    //      through the identical P/Invoke calling convention this file
+    //      uses -- same fully correct results.
+    //   3. A live debug log at this exact call site (temporarily added,
+    //      since removed) confirmed it end to end: every single call this
+    //      method made in the live game process returned correct romaji,
+    //      with zero exceptions across hundreds of names.
+    //
+    // The real bug was in TavernRecruitmentListPacket.cs's own record
+    // layout: HeaderBytes was off by 6 bytes, so the code was reading each
+    // record's name starting 6 bytes late (usually still decoding into
+    // some plausible-but-wrong run of kana, which is why it wasn't caught
+    // sooner) -- for names where that shift landed on a clean 2-character
+    // boundary it looked exactly like "wanakana drops the first two
+    // characters," because the real first two characters got left behind
+    // in what the code thought was still the previous field, and only the
+    // (correctly romanized) remainder made it through. See that file's own
+    // header comment for the full explanation. Nothing in this file was
+    // ever the cause.
     public string ToRomaji(string text, int maxLength = 10)
     {
         if (string.IsNullOrEmpty(text)) return text;
@@ -81,7 +109,8 @@ public sealed class WanaKanaRomanizer : IRomanizer
         try
         {
             var (cleaned, suffix) = StripPunctuation(text);
-            // utf-8 expands at most ~3x for japanese; allow generous headroom plus the null terminator
+            if (string.IsNullOrEmpty(cleaned)) return Cap(suffix, maxLength);
+
             var inputBytes = Encoding.UTF8.GetBytes(cleaned + "\0");
             var capacity = Math.Max(64, cleaned.Length * 4 + 1);
             var output = new byte[capacity];

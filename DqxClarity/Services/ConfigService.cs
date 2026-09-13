@@ -42,6 +42,13 @@ public class ConfigService
     private static bool ToBool(string? val) =>
         val is "True" or "true" or "1";
 
+    // Same as ToBool, but a MISSING key defaults to true rather than false --
+    // for settings that need to come back enabled for anyone upgrading from
+    // before the key existed (see LauncherConfig.NameplatesPlayer/Npc/Monster).
+    // Only an explicitly-written "False"/"0" turns it off.
+    private static bool ToBoolDefaultTrue(Dictionary<string, string> section, string key) =>
+        section.TryGetValue(key, out var val) ? ToBool(val) : true;
+
     private static string BoolToIni(bool b) => b ? "True" : "False";
 
     private static void WriteKv(System.Text.StringBuilder sb, string key, string value)
@@ -171,7 +178,9 @@ public class ConfigService
         {
             Launcher = new LauncherConfig
             {
-                Nameplates               = ToBool(l.GetValueOrDefault("nameplates")),
+                NameplatesPlayer         = ToBoolDefaultTrue(l, "nameplates_player"),
+                NameplatesNpc            = ToBoolDefaultTrue(l, "nameplates_npc"),
+                NameplatesMonster        = ToBoolDefaultTrue(l, "nameplates_monster"),
                 DebugLogging             = ToBool(l.GetValueOrDefault("debuglogging")),
                 CommunityLogging         = ToBool(l.GetValueOrDefault("communitylogging")),
                 SimultaneousLaunch       = ToBool(l.GetValueOrDefault("simultaneouslaunch")),
@@ -234,7 +243,9 @@ public class ConfigService
         sb.AppendLine();
         sb.AppendLine("[launcher]");
         WriteKv(sb, "communitylogging",         BoolToIni(launcher.CommunityLogging));
-        WriteKv(sb, "nameplates",               BoolToIni(launcher.Nameplates));
+        WriteKv(sb, "nameplates_player",        BoolToIni(launcher.NameplatesPlayer));
+        WriteKv(sb, "nameplates_npc",           BoolToIni(launcher.NameplatesNpc));
+        WriteKv(sb, "nameplates_monster",       BoolToIni(launcher.NameplatesMonster));
         WriteKv(sb, "debuglogging",             BoolToIni(launcher.DebugLogging));
         WriteKv(sb, "simultaneouslaunch",       BoolToIni(launcher.SimultaneousLaunch));
         WriteKv(sb, "directlogin",              BoolToIni(launcher.DirectLogin));

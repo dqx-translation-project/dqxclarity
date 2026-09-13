@@ -48,8 +48,12 @@ public partial class SettingsView : UserControl
 
     private const string GeneralConfigHelpText =
         "Nameplates\n" +
-        "Translates the floating name tags that appear above players' and NPCs' heads from Japanese to English. " +
-        "This only affects the in-world name display, not dialog boxes or menus.";
+        "Translates the floating nameplates that appear above characters' heads from Japanese to English. " +
+        "This only affects the in-world name display, not dialog boxes or menus. These are split into three separate " +
+        "categories, so you can leave any of them untranslated:\n\n" +
+        "Player Nameplates - nameplates of you and other players.\n" +
+        "NPC Nameplates - nameplates of NPCs, AI party members, and fellow monsters.\n" +
+        "Monster Nameplates - nameplates of monsters, including scoutable monsters.";
 
     private const string GeneralApiHelpText =
         "Translation Service\n" +

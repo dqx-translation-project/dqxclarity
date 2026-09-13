@@ -2,7 +2,23 @@ namespace DqxClarity.Models;
 
 public class LauncherConfig
 {
-    public bool Nameplates { get; set; }
+    // Split out from a single "Nameplates" checkbox so each entity category
+    // can be turned off independently. Gates ONLY whether EntityPacket
+    // rewrites that category's nameplate text -- it never affects packet
+    // parsing itself (see EntityPacket's doc comment), so turning off e.g.
+    // Player nameplates can't break PlayerContext's <pnplacehold> character
+    // identification, which reads the untranslated packet regardless.
+    // Default true for all three so an existing user upgrading (whose ini
+    // has none of these keys yet) keeps getting nameplates translated. The
+    // old single "Nameplates" checkbox never actually gated anything -- the
+    // --nameplates arg it produced was read into an explicitly-discarded
+    // parameter in MainViewModel.OnRunRequested -- so nameplate translation
+    // was unconditionally on before this split either way; defaulting to
+    // true just keeps that same effective behavior for anyone who hasn't
+    // touched these settings yet.
+    public bool NameplatesPlayer { get; set; } = true;
+    public bool NameplatesNpc { get; set; } = true;
+    public bool NameplatesMonster { get; set; } = true;
     public bool DebugLogging { get; set; }
     public bool CommunityLogging { get; set; }
     public bool SimultaneousLaunch { get; set; }

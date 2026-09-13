@@ -18,6 +18,7 @@ public sealed class ClarityRuntime : IDisposable
 {
     private readonly ClarityDb _db;
     private readonly Translator _translator;
+    private readonly PacketDependencies _deps;
     private readonly DataPacketRouter.Dispatcher _dispatcher;
     private readonly PacketWardenService _hook;
     private NativeLogTail? _logTail;
@@ -25,7 +26,12 @@ public sealed class ClarityRuntime : IDisposable
     private Action<string, bool>? _log;
     private Action<string, byte[], string, byte[]?, string?>? _debugPacket;
 
-    public ClarityRuntime(ITranslationBackend backend, bool debugLogging = false)
+    public ClarityRuntime(
+        ITranslationBackend backend,
+        bool debugLogging = false,
+        bool translatePlayerNameplates = true,
+        bool translateNpcNameplates = true,
+        bool translateMonsterNameplates = true)
     {
         _debugLogging = debugLogging;
         _db = new ClarityDb(ClarityDb.DefaultDbPath());
@@ -40,18 +46,42 @@ public sealed class ClarityRuntime : IDisposable
         // closure reads it at invocation time, so wiring this here is safe.
         backend.OnError = msg => _log?.Invoke("[translate] " + msg, true);
 
-        var deps = new PacketDependencies
+        _deps = new PacketDependencies
         {
             Db = _db,
             Translator = _translator,
             Romanizer = new WanaKanaRomanizer(),  // p/invokes wanakana.dll; falls back to passthrough if missing
+            TranslatePlayerNameplates = translatePlayerNameplates,
+            TranslateNpcNameplates = translateNpcNameplates,
+            TranslateMonsterNameplates = translateMonsterNameplates,
         };
-        _dispatcher = DataPacketRouter.BuildDefaultDispatcher(deps);
+        _dispatcher = DataPacketRouter.BuildDefaultDispatcher(_deps);
 
         _hook = new PacketWardenService(HandlePacket);
     }
 
     public void SetDebugCallback(Action<string, byte[], string, byte[]?, string?> callback) => _debugPacket = callback;
+
+    // The runtime is constructed once (EnsureNativeRuntime's guard means it's
+    // never rebuilt) and stays alive for the rest of the process, so the
+    // constructor's translatePlayerNameplates/etc. args only ever reflect
+    // whatever the ini said at launcher startup. Settings.Run() saves a fresh
+    // config to disk but never touches this already-running instance -- so
+    // without this method, toggling a nameplate checkbox and hitting Run
+    // would silently do nothing until the whole launcher app was restarted,
+    // which is not what "hit Run" should feel like. Called from
+    // MainViewModel.OnRunRequested with the live checkbox values every time
+    // Run fires, so a toggle takes effect on the very next translated packet
+    // -- no restart needed. (DebugLogging and the other constructor-time
+    // settings don't get this treatment; only these three were reported as
+    // silently not applying and are cheap/safe to patch live since nothing
+    // else reads them except EntityPacket.Build().)
+    public void UpdateNameplateSettings(bool translatePlayerNameplates, bool translateNpcNameplates, bool translateMonsterNameplates)
+    {
+        _deps.TranslatePlayerNameplates = translatePlayerNameplates;
+        _deps.TranslateNpcNameplates = translateNpcNameplates;
+        _deps.TranslateMonsterNameplates = translateMonsterNameplates;
+    }
 
     public void Start()
     {

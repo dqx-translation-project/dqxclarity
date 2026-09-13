@@ -187,6 +187,164 @@ public sealed class ClarityDb
         return (player, sibling);
     }
 
+    // Reads every (ja, en) row from a template-shaped table — story_so_far_template
+    // or any other two-column ja/en table. Used by PlayerDataMaterializer to pull
+    // the generic, placeholder-bearing rows before substituting the current
+    // player's specific names/relationship into them.
+    public List<(string Ja, string En)> ReadTemplateRows(string table)
+    {
+        ValidateIdentifier(table);
+        var rows = new List<(string, string)>();
+        using var conn = Open(readOnly: true);
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT ja, en FROM \"{table}\"";
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            var ja = reader.GetString(0);
+            var en = reader.IsDBNull(1) ? "" : reader.GetString(1);
+            rows.Add((ja, en));
+        }
+        return rows;
+    }
+
+    // fixed_dialog_template carries a third column marking which rows belong in
+    // bad_strings (substring-match overrides) instead of dialog (exact-match cache).
+    public List<(string Ja, string En, bool BadString)> ReadFixedDialogTemplate()
+    {
+        var rows = new List<(string, string, bool)>();
+        using var conn = Open(readOnly: true);
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT ja, en, bad_string FROM fixed_dialog_template";
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            var ja = reader.GetString(0);
+            var en = reader.IsDBNull(1) ? "" : reader.GetString(1);
+            var bad = !reader.IsDBNull(2) && reader.GetInt32(2) != 0;
+            rows.Add((ja, en, bad));
+        }
+        return rows;
+    }
+
+    // Wholesale-replaces story_so_far with the given (already placeholder-substituted)
+    // rows, in one transaction — mirrors main's "DELETE FROM story_so_far" + bulk
+    // INSERT. story_so_far has no upsert story (no unique-key conflict handling
+    // needed here) because we're always replacing the entire table for the
+    // currently-identified player, not merging into what a previous character left.
+    public void ReplaceStorySoFar(IEnumerable<(string Ja, string En)> rows)
+    {
+        using var conn = Open();
+        using var tx = conn.BeginTransaction();
+        using (var del = conn.CreateCommand())
+        {
+            del.Transaction = tx;
+            del.CommandText = "DELETE FROM story_so_far";
+            del.ExecuteNonQuery();
+        }
+        using (var ins = conn.CreateCommand())
+        {
+            ins.Transaction = tx;
+            ins.CommandText = "INSERT INTO story_so_far (ja, en) VALUES (@ja, @en)";
+            var jaParam = ins.Parameters.Add("@ja", SqliteType.Text);
+            var enParam = ins.Parameters.Add("@en", SqliteType.Text);
+            foreach (var (ja, en) in rows)
+            {
+                jaParam.Value = ja;
+                enParam.Value = en;
+                ins.ExecuteNonQuery();
+            }
+        }
+        tx.Commit();
+    }
+
+    // Rebuilds bad_strings from scratch and upserts dialog, from the (already
+    // placeholder-substituted) fixed_dialog_template rows split by the bad_string
+    // flag — mirrors main's "DELETE FROM bad_strings" + "INSERT OR REPLACE INTO
+    // dialog/bad_strings". dialog keeps whatever npc_name a previous WriteDialog
+    // call set (ON CONFLICT only touches en), same as main leaving that column alone.
+    public void ReplaceFixedDialog(IEnumerable<(string Ja, string En, bool BadString)> rows)
+    {
+        using var conn = Open();
+        using var tx = conn.BeginTransaction();
+        using (var del = conn.CreateCommand())
+        {
+            del.Transaction = tx;
+            del.CommandText = "DELETE FROM bad_strings";
+            del.ExecuteNonQuery();
+        }
+        using var dialogCmd = conn.CreateCommand();
+        using var badCmd = conn.CreateCommand();
+        dialogCmd.Transaction = tx;
+        dialogCmd.CommandText =
+            "INSERT INTO dialog (ja, en) VALUES (@ja, @en) " +
+            "ON CONFLICT(ja) DO UPDATE SET en = excluded.en";
+        var dialogJa = dialogCmd.Parameters.Add("@ja", SqliteType.Text);
+        var dialogEn = dialogCmd.Parameters.Add("@en", SqliteType.Text);
+
+        badCmd.Transaction = tx;
+        badCmd.CommandText =
+            "INSERT INTO bad_strings (ja, en) VALUES (@ja, @en) " +
+            "ON CONFLICT(ja) DO UPDATE SET en = excluded.en";
+        var badJa = badCmd.Parameters.Add("@ja", SqliteType.Text);
+        var badEn = badCmd.Parameters.Add("@en", SqliteType.Text);
+
+        foreach (var (ja, en, bad) in rows)
+        {
+            if (bad)
+            {
+                badJa.Value = ja;
+                badEn.Value = en;
+                badCmd.ExecuteNonQuery();
+            }
+            else
+            {
+                dialogJa.Value = ja;
+                dialogEn.Value = en;
+                dialogCmd.ExecuteNonQuery();
+            }
+        }
+        tx.Commit();
+    }
+
+    // Note: there is deliberately no ClarityDb method that rewrites
+    // <pnplacehold>/<snplacehold> directly inside m00_strings on disk (main's
+    // _update_m00_table does this with a one-way UPDATE ... replace()). That
+    // approach is irreversible -- once a token is replaced with one
+    // character's name, there's nothing left for a second character
+    // (switching mid-session without restarting) to match and replace in
+    // turn. See PacketDependencies.ApplyPlayerPlaceholders, which substitutes
+    // those two tokens in memory at dict-load time instead, against the
+    // never-mutated db row, so every character switch gets a clean pass.
+
+    // Mirrors main's _write_player: replaces the player/sibling/relationship rows
+    // for whichever character is now identified as active. Nothing currently reads
+    // this table back (see GetPlayerNames' doc note), but we keep it in sync with
+    // the schema's intent in case that changes.
+    public void WritePlayerRecord(string jaPlayerName, string jaSiblingName, string relationshipKey)
+    {
+        using var conn = Open();
+        using var tx = conn.BeginTransaction();
+        using (var del = conn.CreateCommand())
+        {
+            del.Transaction = tx;
+            del.CommandText = "DELETE FROM player";
+            del.ExecuteNonQuery();
+        }
+        using (var ins = conn.CreateCommand())
+        {
+            ins.Transaction = tx;
+            ins.CommandText =
+                "INSERT INTO player (type, name) VALUES " +
+                "('player', @p), ('sibling', @s), ('sibling_relationship', @r)";
+            ins.Parameters.AddWithValue("@p", jaPlayerName);
+            ins.Parameters.AddWithValue("@s", jaSiblingName);
+            ins.Parameters.AddWithValue("@r", relationshipKey);
+            ins.ExecuteNonQuery();
+        }
+        tx.Commit();
+    }
+
     private static void ValidateIdentifier(string name)
     {
         // mirrors DatabaseService.ValidateIdentifier — guard the small set of table
