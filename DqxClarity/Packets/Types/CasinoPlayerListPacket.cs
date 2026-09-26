@@ -4,10 +4,9 @@ using DqxClarity.Translation;
 namespace DqxClarity.Packets.Types;
 
 // A casino-minigame player list -- opcode 0x4E, marker 0x7E96. Originally
-// found via Bingo (hence the class was first named BingoPlayerListPacket --
-// see the NAMING note below), but confirmed via two further live captures to
-// also be what a Poker table sends: byte-for-byte the exact same header/
-// record layout, right down to
+// found via Bingo (hence the class name -- see the NAMING note below), but
+// confirmed via two further live captures to also be what a Poker table
+// sends: byte-for-byte the exact same header/record layout, right down to
 // the same 68-byte stats width and the same length-prefixed name shape.
 // Almost certainly shared by every casino minigame with a seated-player
 // list (Slots, Roulette presumably included), not a Bingo-specific packet
@@ -33,10 +32,6 @@ namespace DqxClarity.Packets.Types;
 // is included. Not confirmed against a 3rd-party account to be certain it's
 // specifically "your own name" rather than e.g. "first player to join,"
 // but it's consistent with every capture on file so far.
-//
-// NAMING: renamed from BingoPlayerListPacket to CasinoPlayerListPacket once
-// the Poker captures confirmed this isn't Bingo-specific -- nothing about
-// the implementation ever was, it's just where the packet was first found.
 //
 // Layout, confirmed identical (down to the byte) across all four captures:
 //   header   12 bytes -- passthrough. First u32 varies per capture (0, 1, 4,

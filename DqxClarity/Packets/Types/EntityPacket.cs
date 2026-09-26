@@ -26,6 +26,24 @@ namespace DqxClarity.Packets.Types;
 //                      (confirmed via a ガヴァ capture that stayed untranslated
 //                      with no dict match, and a hired フェロー whose translated
 //                      name rendered without the GM-face-icon prevention prefix)
+//   PartyNpc         — custom_npc_name_overrides m00 dict, romanizer fallback on
+//                      miss, \x04 prefix (type bytes 0x86, 0x87, 0x89, AND
+//                      0x8B; confirmed via five captures -- エステラ and
+//                      ギルガラン on 0x87, ドルタム on 0x86, ユーライザ on
+//                      0x89, ラダ・ガート on 0x8B -- all NPC companions
+//                      occupying a party slot in NPC-party content, all
+//                      sharing the identical 575-byte header/
+//                      entity_length+cstring layout as Player/Npc/Party/
+//                      Fellow, differing only in that discriminator byte. No
+//                      confirmed behavioral difference between
+//                      0x86/0x87/0x89/0x8B has turned up, so all four are
+//                      grouped under one EntityKind/resolution path here
+//                      rather than kept as separate cases; split them apart
+//                      later if a real difference surfaces. Unlike Fellow
+//                      this has no player-name-dict tier: these are
+//                      quest/event NPCs added directly to the party, not
+//                      hired player characters, so there's no player name
+//                      they could ever match)
 //
 // Layout:
 //   header_data           header_offset bytes
@@ -42,6 +60,15 @@ namespace DqxClarity.Packets.Types;
 //         exposing the missing romanizer fallback: it was passing through
 //         untranslated instead of falling back to romaji like every other
 //         entity kind with a dict-miss path does)
+//         docs/packets/references/entity_party_npc_yuraiza (type byte 0x89,
+//         ユーライザ -- previously logged as unhandled "Entity (0x89)";
+//         decoded cleanly against the existing 575-byte PartyNpc layout with
+//         no changes needed, confirming 0x89 is a third PartyNpc type byte
+//         alongside 0x86/0x87)
+//         docs/packets/references/entity_party_npc_rada_gart (type byte 0x8B,
+//         ラダ・ガート -- previously logged as unhandled "Entity (0x8B)";
+//         same story as 0x89, a fourth PartyNpc type byte with the identical
+//         575-byte layout)
 //
 // A Player-kind entity also carries, at fixed Data offset 390 (inside the
 // otherwise-opaque 575-byte header), a persistent u32 character id --
@@ -60,10 +87,11 @@ namespace DqxClarity.Packets.Types;
 // MonsterNameplates) so a user can turn off translation for one entity
 // category without affecting the others:
 //   Player nameplates  -> gates EntityKind.Player only
-//   NPC nameplates     -> gates EntityKind.Npc, Party, AND Fellow (a party
-//                         member is still rendered as a name-tagged
-//                         character the same way an NPC is, and a Fellow is
-//                         the same kind of "non-monster companion" nameplate)
+//   NPC nameplates     -> gates EntityKind.Npc, Party, Fellow, AND PartyNpc
+//                         (a party member is still rendered as a name-tagged
+//                         character the same way an NPC is, and Fellow/
+//                         PartyNpc are both the same kind of "non-monster
+//                         companion" nameplate)
 //   Monster nameplates -> gates EntityKind.Monster and ScoutableMonster
 //
 // These checks live ONLY in Build(), each as the very first line of its
@@ -81,7 +109,7 @@ public sealed class EntityPacket : IPacket
 
     private enum EntityKind
     {
-        None, Player, Monster, Npc, Party, Fellow, ScoutableMonster,
+        None, Player, Monster, Npc, Party, Fellow, ScoutableMonster, PartyNpc,
     }
 
     private readonly byte[] _raw;
@@ -112,6 +140,10 @@ public sealed class EntityPacket : IPacket
             0x82 => (EntityKind.Party,   575),
             0x83 => (EntityKind.Party,   575),
             0x85 => (EntityKind.Fellow,  575),   // inferred, shares Player's shift
+            0x86 => (EntityKind.PartyNpc, 575),  // confirmed via ドルタム capture
+            0x87 => (EntityKind.PartyNpc, 575),  // confirmed via エステラ/ギルガラン captures
+            0x89 => (EntityKind.PartyNpc, 575),  // confirmed via ユーライザ capture
+            0x8B => (EntityKind.PartyNpc, 575),  // confirmed via ラダ・ガート capture
             0x24 => (EntityKind.ScoutableMonster, 402), // confirmed via a scoutable
                                                           // field monster's capture
                                                           // (name landed at the exact
@@ -211,6 +243,24 @@ public sealed class EntityPacket : IPacket
                     newName = "\x04" + fellowPlayerName;
                 else if (fellowOverrideDict.TryGetValue(_entityName, out var fellowOverrideName) && !string.IsNullOrEmpty(fellowOverrideName))
                     newName = "\x04" + fellowOverrideName;
+                else
+                    newName = "\x04" + _deps.Romanizer.ToRomaji(_entityName);
+                break;
+            }
+
+            case EntityKind.PartyNpc:
+            {
+                if (!_deps.TranslateNpcNameplates) return;
+                // \x04 prefix on the written name means we already processed this
+                // packet — the hook re-intercepted its own modified write. Bail out
+                // to avoid an infinite loop (same guard as Player/Party/Fellow).
+                if (_entityName.StartsWith('\x04')) return;
+                // No player-name-dict tier here (unlike Fellow) -- these are
+                // quest/event NPCs added directly to the party, never a hired
+                // player character, so there's no player name they could match.
+                var partyNpcDict = _deps.M00Dict("custom_npc_name_overrides");
+                if (partyNpcDict.TryGetValue(_entityName, out var partyNpcName) && !string.IsNullOrEmpty(partyNpcName))
+                    newName = "\x04" + partyNpcName;
                 else
                     newName = "\x04" + _deps.Romanizer.ToRomaji(_entityName);
                 break;

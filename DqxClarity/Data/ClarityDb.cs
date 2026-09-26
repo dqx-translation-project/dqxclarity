@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
 
 namespace DqxClarity.Data;
@@ -20,6 +21,13 @@ public sealed class ClarityDb
         var exe = Environment.ProcessPath ?? AppContext.BaseDirectory;
         var dir = Path.GetDirectoryName(exe) ?? AppContext.BaseDirectory;
         return Path.Combine(dir, "misc_files", "clarity_dialog.db");
+    }
+
+    public static string DefaultNameOverridesPath()
+    {
+        var exe = Environment.ProcessPath ?? AppContext.BaseDirectory;
+        var dir = Path.GetDirectoryName(exe) ?? AppContext.BaseDirectory;
+        return Path.Combine(dir, "misc_files", "name_overrides.json");
     }
 
     private SqliteConnection Open(bool readOnly = false)
@@ -342,6 +350,95 @@ public sealed class ClarityDb
             ins.Parameters.AddWithValue("@r", relationshipKey);
             ins.ExecuteNonQuery();
         }
+        tx.Commit();
+    }
+
+    // Re-syncs the user's custom player/MyTown name overrides (misc_files/name_overrides.json,
+    // edited via Settings > Overrides -- see ConfigService.ReadNameOverrides/SaveNameOverrides)
+    // into glossary + m00_strings. Port of update.py's import_name_overrides(). Player names go
+    // into both glossary (so GlossaryCache substitutes them generically, e.g. in dialog/nameplates)
+    // and m00_strings under 'local_player_names' (what PlayerContext.ResolveName reads via
+    // PacketDependencies.M00Dict); MyTown names go only into m00_strings under 'local_mytown_names'.
+    // Matches main exactly, including requiring BOTH "player_names" and "mytown_names" keys to be
+    // present (main aborts the whole import if either key is missing from the json) and silently
+    // no-op'ing if the file doesn't exist or isn't valid json -- same as main, which only logs.
+    public void ImportNameOverrides()
+    {
+        var path = DefaultNameOverridesPath();
+        if (!File.Exists(path)) return;
+
+        Dictionary<string, string> playerNames;
+        Dictionary<string, string> mytownNames;
+        try
+        {
+            using var stream = File.OpenRead(path);
+            using var doc = JsonDocument.Parse(stream);
+            if (!doc.RootElement.TryGetProperty("player_names", out var pnEl) ||
+                !doc.RootElement.TryGetProperty("mytown_names", out var mnEl))
+                return;
+
+            playerNames = pnEl.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString() ?? "");
+            mytownNames = mnEl.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString() ?? "");
+        }
+        catch (JsonException)
+        {
+            return;
+        }
+
+        using var conn = Open();
+        using var tx = conn.BeginTransaction();
+
+        if (playerNames.Count > 0)
+        {
+            using (var del = conn.CreateCommand())
+            {
+                del.Transaction = tx;
+                del.CommandText = "DELETE FROM m00_strings WHERE file = 'local_player_names'";
+                del.ExecuteNonQuery();
+            }
+
+            using var glossCmd = conn.CreateCommand();
+            glossCmd.Transaction = tx;
+            glossCmd.CommandText =
+                "INSERT INTO glossary (ja, en) VALUES (@ja, @en) " +
+                "ON CONFLICT(ja) DO UPDATE SET en = excluded.en";
+            var gJa = glossCmd.Parameters.Add("@ja", SqliteType.Text);
+            var gEn = glossCmd.Parameters.Add("@en", SqliteType.Text);
+
+            using var m00Cmd = conn.CreateCommand();
+            m00Cmd.Transaction = tx;
+            m00Cmd.CommandText = "INSERT INTO m00_strings (ja, en, file) VALUES (@ja, @en, 'local_player_names')";
+            var mJa = m00Cmd.Parameters.Add("@ja", SqliteType.Text);
+            var mEn = m00Cmd.Parameters.Add("@en", SqliteType.Text);
+
+            foreach (var (ja, en) in playerNames)
+            {
+                gJa.Value = ja; gEn.Value = en; glossCmd.ExecuteNonQuery();
+                mJa.Value = ja; mEn.Value = en; m00Cmd.ExecuteNonQuery();
+            }
+        }
+
+        if (mytownNames.Count > 0)
+        {
+            using (var del = conn.CreateCommand())
+            {
+                del.Transaction = tx;
+                del.CommandText = "DELETE FROM m00_strings WHERE file = 'local_mytown_names'";
+                del.ExecuteNonQuery();
+            }
+
+            using var m00Cmd = conn.CreateCommand();
+            m00Cmd.Transaction = tx;
+            m00Cmd.CommandText = "INSERT INTO m00_strings (ja, en, file) VALUES (@ja, @en, 'local_mytown_names')";
+            var mJa = m00Cmd.Parameters.Add("@ja", SqliteType.Text);
+            var mEn = m00Cmd.Parameters.Add("@en", SqliteType.Text);
+
+            foreach (var (ja, en) in mytownNames)
+            {
+                mJa.Value = ja; mEn.Value = en; m00Cmd.ExecuteNonQuery();
+            }
+        }
+
         tx.Commit();
     }
 

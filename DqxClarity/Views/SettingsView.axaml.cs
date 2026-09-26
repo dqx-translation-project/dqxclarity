@@ -17,14 +17,6 @@ public partial class SettingsView : UserControl
 
     public event Func<Task>? BrowseFolderRequested;
 
-    private const string CommunityApiInfoText =
-        "The Community API submits your translation strings to a shared remote database. " +
-        "These strings are pooled across all contributors and help improve translations for the entire project.\n\n" +
-        "To participate, you must meet the following requirement:\n\n" +
-        "  • Both your player name and sibling name must be unique - not a common Japanese word, name, or in-game name.\n\n" +
-        "If you meet this requirement and want to contribute, reach out to Serany (mebo) on Discord. " +
-        "They'll verify your names and provide you with an API key to paste here.";
-
     private const string NameOverridesHelpText =
         "This tab lets you override how Japanese player and MyTown names are displayed.\n\n" +
         "If you encounter a player or MyTown name that dqxclarity mistranslates or renders incorrectly, " +
@@ -66,7 +58,7 @@ public partial class SettingsView : UserControl
 
     private const string AdvancedConfigHelpText =
         "Community Logging\n" +
-        "Records untranslated or unknown in-game strings to a local text file. " +
+         "Records untranslated or unknown in-game strings to a local text file. " +
         "Enabling this helps the translation team identify missing strings - " +
         "if you report a missing translation, they may ask you to share this log file.";
 
@@ -77,13 +69,6 @@ public partial class SettingsView : UserControl
         "Open Log Folder\n" +
         "Opens the folder where dqxclarity stores its log files in your file explorer, " +
         "so you can quickly find and attach them when reporting issues.";
-
-    private const string AdvancedApiHelpText =
-        "Community API\n" +
-        "Submits untranslated strings encountered during your session to the dqxclarity team's server " +
-        "so they can be reviewed and added to the translation database. " +
-        "This is a contributor feature - you will need a Community API key from the team. " +
-        "Reach out to Serany (mebo) on Discord if you would like one.";
 
     private const string InstallationHelpText =
         "DQX Folder Path\n" +
@@ -117,13 +102,9 @@ public partial class SettingsView : UserControl
         "This only affects the launcher window's UI text and has no impact on gameplay.\n\n" +
         "Patch Config / Restore Config\n" +
         "Same as above but for DQXConfig.exe - patches or restores the configuration tool's interface text.\n\n" +
-        "Patch Game Files\n" +
-        "Downloads and applies the latest DAT/IDX translation mod to your game directory. " +
-        "This is the main translation patch that enables in-game text translation. " +
-        "Requires administrator rights and DQX must be fully closed before running.\n\n" +
-        "Restore Game Files\n" +
-        "Removes the DAT/IDX translation mod and restores the original untranslated game files. " +
-        "Requires administrator rights and DQX must be fully closed before running.";
+        "Add DragonHook / Remove DragonHook\n" +
+        "Adds or removes the language pack loader (DragonHook) in your game folder. It stays in place until you remove it - " +
+        "active language packs only load in-game while it's present.";
 
     public SettingsView()
     {
@@ -256,13 +237,14 @@ public partial class SettingsView : UserControl
         PanelOverrides.IsVisible = tab == "nameoverrides";
         PanelDatabase.IsVisible  = tab == "database";
         PanelGame.IsVisible      = tab == "game";
+        PanelLanguagePacks.IsVisible = tab == "languagepacks";
         PanelText2Clipboard.IsVisible = tab == "text2clipboard";
         UpdateTabStyles(tab);
     }
 
     private void UpdateTabStyles(string active)
     {
-        foreach (var btn in new[] { TabGeneral, TabAdvanced, TabOverrides, TabDatabase, TabGame, TabText2Clipboard })
+        foreach (var btn in new[] { TabGeneral, TabAdvanced, TabOverrides, TabDatabase, TabGame, TabLanguagePacks, TabText2Clipboard })
         {
             if (btn == null) continue;
             btn.Classes.Set("tab-active", btn.Tag as string == active);
@@ -321,14 +303,6 @@ public partial class SettingsView : UserControl
     {
         if (BrowseFolderRequested != null)
             await BrowseFolderRequested.Invoke();
-    }
-
-    private async void OnCommunityApiChanged(object? sender, RoutedEventArgs e)
-    {
-        if (sender is not CheckBox cb || cb.IsChecked != true) return;
-        var win = TopLevel.GetTopLevel(this) as MainWindow;
-        if (win == null) return;
-        await win.ShowInfoAsync("Community API", CommunityApiInfoText);
     }
 
     private void OnDbTableSelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -647,6 +621,118 @@ public partial class SettingsView : UserControl
             await _vm.PurgeDialogCacheCommand.ExecuteAsync(null);
     }
 
+    private async void OnLanguagePackActiveClick(object? sender, RoutedEventArgs e)
+    {
+        if (_vm == null) return;
+        if (sender is CheckBox cb && cb.DataContext is LanguagePack pack)
+        {
+            await _vm.SetLanguagePackActive(pack, cb.IsChecked == true);
+            cb.IsChecked = pack.IsActive;
+        }
+    }
+
+    private async void OnLanguagePackUpdateClick(object? sender, RoutedEventArgs e)
+    {
+        if (_vm == null) return;
+        if (sender is Button btn && btn.DataContext is LanguagePack pack)
+            await _vm.DownloadLanguagePackUpdate(pack);
+    }
+
+    private void OnDownloadCatalogPackClick(object? sender, RoutedEventArgs e)
+    {
+        if (_vm == null) return;
+        if (sender is Button btn && btn.DataContext is LanguagePackCatalogEntry entry)
+            _vm.DownloadCatalogPackCommand.Execute(entry);
+    }
+
+    // ── Drag-to-reorder installed language packs ──────────────────────────
+    private LanguagePack? _draggingPack;
+    private bool _dragActive;
+    private bool _dragMoved;
+
+    private void OnLanguagePackHandlePressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (LanguagePackList == null) return;
+        if (sender is not Control handle || handle.DataContext is not LanguagePack pack) return;
+        if (!e.GetCurrentPoint(handle).Properties.IsLeftButtonPressed) return;
+
+        _draggingPack = pack;
+        _dragActive   = true;
+        _dragMoved    = false;
+
+        // Capture on the stable ItemsControl rather than the row handle: reordering recycles the
+        // dragged row's container, which would drop capture on the handle and end the drag after a
+        // single swap. The ItemsControl persists across reorders, so the drag continues.
+        e.Pointer.Capture(LanguagePackList);
+        LanguagePackList.PointerMoved       += OnLanguagePackHandleMoved;
+        LanguagePackList.PointerReleased    += OnLanguagePackHandleReleased;
+        LanguagePackList.PointerCaptureLost += OnLanguagePackHandleCaptureLost;
+        e.Handled = true;
+    }
+
+    private void OnLanguagePackHandleMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_dragActive || _draggingPack == null || _vm == null) return;
+
+        var target = HitTestLanguagePackRow(e.GetPosition(this));
+        if (target == null || ReferenceEquals(target, _draggingPack)) return;
+
+        var newIndex = _vm.LanguagePacks.IndexOf(target);
+        if (newIndex < 0) return;
+
+        // Cheap visual move only — persistence + Game\mods rebuild happen once on drop.
+        if (_vm.MoveLanguagePack(_draggingPack, newIndex))
+            _dragMoved = true;
+    }
+
+    private void OnLanguagePackHandleReleased(object? sender, PointerReleasedEventArgs e) =>
+        EndLanguagePackDrag(sender as Control, e.Pointer);
+
+    private void OnLanguagePackHandleCaptureLost(object? sender, PointerCaptureLostEventArgs e) =>
+        EndLanguagePackDrag(sender as Control, null);
+
+    private void EndLanguagePackDrag(Control? handle, IPointer? pointer)
+    {
+        var moved = _dragMoved;
+        _dragActive   = false;
+        _dragMoved    = false;
+        _draggingPack = null;
+        pointer?.Capture(null);
+        if (handle != null)
+        {
+            handle.PointerMoved       -= OnLanguagePackHandleMoved;
+            handle.PointerReleased    -= OnLanguagePackHandleReleased;
+            handle.PointerCaptureLost -= OnLanguagePackHandleCaptureLost;
+        }
+
+        // Persist the final order and rebuild once, only if the order actually changed.
+        if (moved) _ = _vm?.CommitLanguagePackOrderAsync();
+    }
+
+    // Finds the LanguagePack whose realized row Border contains the given point (in this control's coords).
+    private LanguagePack? HitTestLanguagePackRow(Point point)
+    {
+        if (LanguagePackList == null) return null;
+
+        LanguagePack? best = null;
+        foreach (var pack in _vm?.LanguagePacks ?? Enumerable.Empty<LanguagePack>())
+        {
+            var container = LanguagePackList.ContainerFromItem(pack) as Control;
+            if (container == null) continue;
+
+            var topLeft = container.TranslatePoint(new Point(0, 0), this);
+            if (topLeft == null) continue;
+
+            var bounds = new Rect(topLeft.Value, container.Bounds.Size);
+            if (point.Y >= bounds.Top && point.Y <= bounds.Bottom)
+            {
+                best = pack;
+                break;
+            }
+        }
+        return best;
+    }
+
     private async void OnNameOverridesHelpClick(object? sender, RoutedEventArgs e)
     {
         var win = TopLevel.GetTopLevel(this) as MainWindow;
@@ -689,13 +775,6 @@ public partial class SettingsView : UserControl
         var win = TopLevel.GetTopLevel(this) as MainWindow;
         if (win == null) return;
         await win.ShowInfoAsync("Logging", LoggingHelpText);
-    }
-
-    private async void OnAdvancedApiHelpClick(object? sender, RoutedEventArgs e)
-    {
-        var win = TopLevel.GetTopLevel(this) as MainWindow;
-        if (win == null) return;
-        await win.ShowInfoAsync("API Settings", AdvancedApiHelpText);
     }
 
     private async void OnInstallationHelpClick(object? sender, RoutedEventArgs e)

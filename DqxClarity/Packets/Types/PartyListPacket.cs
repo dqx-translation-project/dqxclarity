@@ -9,7 +9,14 @@ namespace DqxClarity.Packets.Types;
 //   offset 0x64 (100): first member name (cstring inside an 18-byte slot)
 //   subsequent members at +0x2FC stride
 //
-// Names looked up in m00 'local_player_names' first; romanizer fallback on miss.
+// Names looked up in m00 'local_player_names' first, then
+// 'custom_npc_name_overrides', romanizer fallback on miss in both --
+// same resolution order as EntityPacket's Fellow case (type byte 0x85).
+// Most party members are real players, but some quests/events add an NPC
+// companion directly to the active party (a "fellow"-style slot, not a
+// hired one specifically) with no player-name-dict entry to match, so
+// without the override dict here they'd fall through to a bare romaji
+// transliteration instead of their curated translated name.
 public sealed class PartyListPacket : IPacket
 {
     private const int PartyCountOffset    = 0x20;
@@ -36,7 +43,8 @@ public sealed class PartyListPacket : IPacket
         if (partyCount == 0) return;
 
         var buf = (byte[])_raw.Clone();
-        var dict = _deps.M00Dict("local_player_names");
+        var playerDict = _deps.M00Dict("local_player_names");
+        var npcOverrideDict = _deps.M00Dict("custom_npc_name_overrides");
         var changed = false;
 
         for (var i = 0; i < partyCount; i++)
@@ -51,9 +59,11 @@ public sealed class PartyListPacket : IPacket
             var jpName = Encoding.UTF8.GetString(buf, nameOff, end - nameOff);
             if (string.IsNullOrEmpty(jpName)) continue;
 
-            var translated = dict.TryGetValue(jpName, out var en) && !string.IsNullOrEmpty(en)
+            var translated = playerDict.TryGetValue(jpName, out var en) && !string.IsNullOrEmpty(en)
                 ? en
-                : _deps.Romanizer.ToRomaji(jpName, MaxNameLength);
+                : npcOverrideDict.TryGetValue(jpName, out var npcEn) && !string.IsNullOrEmpty(npcEn)
+                    ? npcEn
+                    : _deps.Romanizer.ToRomaji(jpName, MaxNameLength);
             if (translated == jpName) continue;
             if (translated.Length > MaxNameLength) translated = translated[..MaxNameLength];
 

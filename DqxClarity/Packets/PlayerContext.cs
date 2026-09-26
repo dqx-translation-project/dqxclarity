@@ -133,6 +133,27 @@ public sealed class PlayerContext
     // an EntityPacket id was seen before the roster was known.
     public void NotifyRosterUpdated(PacketDependencies deps) => TryActivate(deps);
 
+    // Re-runs name resolution + materialization for the CURRENTLY active
+    // character against a freshly reloaded m00 dict, without waiting for the
+    // player to relog or switch characters -- normally the only other trigger
+    // that gets past TryActivate's `if (CharacterId == id) return;` guard
+    // below. Called by ClarityRuntime.RefreshNameOverrides() after
+    // re-importing name_overrides.json mid-session (see that method's doc
+    // comment): without this, a character that already activated earlier in
+    // this session -- which happens almost immediately after login, since
+    // EntityPacket fires for the player's own entity on its own -- would keep
+    // showing whatever EnPlayerName/EnSiblingName it resolved BEFORE the
+    // override refresh, no matter how many times the user edits overrides and
+    // hits Run, until the game process fully exits and the launcher rebuilds
+    // the whole runtime from scratch.
+    public void ForceReactivate(PacketDependencies deps)
+    {
+        if (CharacterId is not { } id) return; // nobody's activated yet this session; the next natural activation already sees fresh data
+        _pendingEntityId = id;
+        CharacterId = null; // clear so TryActivate's early-return guard below doesn't skip the redo
+        TryActivate(deps);
+    }
+
     private void TryActivate(PacketDependencies deps)
     {
         if (_pendingEntityId is not { } id) return;

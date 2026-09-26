@@ -43,6 +43,9 @@
     <EmbeddedResource Include="native\wanakana.dll" Condition="Exists('native\wanakana.dll')">
       <LogicalName>wanakana.dll</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="native\version.dll" Condition="Exists('native\version.dll')">
+      <LogicalName>version.dll</LogicalName>
+    </EmbeddedResource>
     <EmbeddedResource Include="Data\schema.sql">
       <LogicalName>DqxClarity.Data.schema.sql</LogicalName>
     </EmbeddedResource>

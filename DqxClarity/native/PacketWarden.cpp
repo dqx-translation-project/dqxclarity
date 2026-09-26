@@ -404,6 +404,62 @@ static void* InstallHook(BYTE* fn, void* hookFn)
     return tramp;
 }
 
+// ── Generic wildcard byte-signature scanner ──────────────────────────────────
+//
+// Port of Frida's Memory.scanSync, used by the community-logging hooks below
+// (their signatures come straight from the original Python project's
+// hash_logger.ts / blowfish_logger.ts). Parses a space-separated hex string
+// where each token is either two hex digits or "??" for a wildcard byte, and
+// returns every exact match in [base, base+size). Callers are expected to
+// require exactly one match before trusting the result -- same as those
+// scripts' `if (results.length != 1)` guard.
+
+struct SigByte { BYTE value; BOOL wildcard; };
+
+static BYTE HexNibble(char c)
+{
+    if (c >= '0' && c <= '9') return (BYTE)(c - '0');
+    if (c >= 'A' && c <= 'F') return (BYTE)(c - 'A' + 10);
+    if (c >= 'a' && c <= 'f') return (BYTE)(c - 'a' + 10);
+    return 0;
+}
+
+static int ParseSignature(const char* sig, SigByte* out, int maxLen)
+{
+    int n = 0;
+    const char* p = sig;
+    while (*p && n < maxLen) {
+        while (*p == ' ') p++;
+        if (!*p) break;
+        if (p[0] == '?') {
+            out[n].wildcard = TRUE;
+            out[n].value = 0;
+            p += (p[1] == '?') ? 2 : 1;
+        } else {
+            out[n].wildcard = FALSE;
+            out[n].value = (BYTE)((HexNibble(p[0]) << 4) | HexNibble(p[1]));
+            p += 2;
+        }
+        n++;
+    }
+    return n;
+}
+
+static void FindSignature(BYTE* base, SIZE_T size, const char* sigStr, std::vector<BYTE*>& outMatches)
+{
+    SigByte sig[64];
+    int sigLen = ParseSignature(sigStr, sig, 64);
+    if (sigLen == 0 || (SIZE_T)sigLen > size) return;
+
+    for (SIZE_T i = 0; i + (SIZE_T)sigLen <= size; i++) {
+        BOOL match = TRUE;
+        for (int j = 0; j < sigLen; j++) {
+            if (!sig[j].wildcard && base[i + j] != sig[j].value) { match = FALSE; break; }
+        }
+        if (match) outMatches.push_back(base + i);
+    }
+}
+
 // ── KNOWN_PACKETS table ──────────────────────────────────────────────────────
 //
 // Allowlist of packet routing keys that contain translatable content (quest names,
@@ -750,6 +806,195 @@ static int __stdcall H_ParseNetworkPacket(BYTE* packet_data, unsigned int packet
     return (int)(original_size != 0 ? original_size : packet_length);
 }
 
+// ── Community logging (opt-in diagnostic hooks) ──────────────────────────────
+//
+// Port of the original Python project's `community_logging` hooks
+// (hash_logger.ts / blowfish_logger.ts, both Frida scripts). These are NOT
+// translation hooks -- they don't touch anything the player sees. When a user
+// opts in (the "Community Logging" checkbox), they capture two things the
+// dqxclarity dev team uses to keep the DAT/IDX translation patch working
+// across game updates:
+//   - hash_lookup:  the real filename/dirname the game hashed, paired with
+//                   the hash it computed -- lets the devs map hashes back to
+//                   real paths in the game's idx lookup tables.
+//   - blowfish_key: the per-file Blowfish decryption key the game used to
+//                   open a DAT file -- lets the devs decrypt/re-encrypt that
+//                   file when building a patch.
+// Both are opt-in only, installed only when DQXCLARITY_COMMUNITY_LOGGING=1
+// (read once at install time, same as DQXCLARITY_FORWARD_ALL), and write
+// directly to logs\hashlog.csv / logs\blowfish_log.csv -- no pipe round-trip
+// to the c# host, so a c# host that isn't running yet doesn't block this.
+//
+// Every read here is wrapped in SEH (__try/__except): community logging is
+// best-effort diagnostics, and a wrong offset must degrade to "nothing
+// logged", never to a crashed game.
+
+static BOOL g_communityLogging = FALSE;
+
+static const char* SIG_HASH_LOOKUP      = "55 8B EC 8B 55 08 85 D2 75 04 33 C0 5D C3 53";
+static const char* SIG_BLOWFISH_DECRYPT = "55 8B EC 53 57 8B 79 24 85 FF 74 ?? 83 7D 08 00";
+
+// Same directory-walk Log() uses (dll's own folder, one level up, "logs\").
+static void GetModuleRelativePath(const WCHAR* relPath, WCHAR* outPath)
+{
+    GetModuleFileNameW(g_hInst, outPath, MAX_PATH);
+    WCHAR* sl = wcsrchr(outPath, L'\\');
+    if (sl) { *sl = L'\0'; sl = wcsrchr(outPath, L'\\'); }
+    if (sl) sl[1] = L'\0'; else outPath[0] = L'\0';
+    lstrcatW(outPath, relPath);
+}
+
+static void WriteCsvHeaderIfNew(HANDLE h, const char* header)
+{
+    LARGE_INTEGER size = { 0 };
+    if (GetFileSizeEx(h, &size) && size.QuadPart == 0) {
+        DWORD written;
+        WriteFile(h, header, lstrlenA(header), &written, NULL);
+    }
+}
+
+// Bounded copy from a possibly-invalid pointer -- relies on the caller
+// wrapping this (transitively, via lstrcpynA's own reads) in SEH.
+static void CopyBoundedString(char* dst, int dstSize, const char* src)
+{
+    if (!src) { dst[0] = 0; return; }
+    lstrcpynA(dst, src, dstSize);
+}
+
+static void WriteHashLog(const char* hashType, const char* hashInput, unsigned int hashOutput)
+{
+    WCHAR path[MAX_PATH];
+    GetModuleRelativePath(L"logs\\hashlog.csv", path);
+    HANDLE h = CreateFileW(path, FILE_APPEND_DATA | GENERIC_READ, FILE_SHARE_READ, NULL,
+                           OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE) return;
+    WriteCsvHeaderIfNew(h, "hash_type,hash_input,hash_output\r\n");
+
+    // The original python writer doesn't escape embedded quotes either --
+    // this game's archive filenames don't contain quote characters.
+    char line[1600];
+    wsprintfA(line, "\"%s\",\"%s\",0x%x\r\n", hashType, hashInput ? hashInput : "", hashOutput);
+    DWORD written;
+    WriteFile(h, line, lstrlenA(line), &written, NULL);
+    CloseHandle(h);
+}
+
+static void WriteBlowfishLog(const char* filename, int fileSize, const char* blowfishKey)
+{
+    WCHAR path[MAX_PATH];
+    GetModuleRelativePath(L"logs\\blowfish_log.csv", path);
+    HANDLE h = CreateFileW(path, FILE_APPEND_DATA | GENERIC_READ, FILE_SHARE_READ, NULL,
+                           OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE) return;
+    WriteCsvHeaderIfNew(h, "filepath,file_size,blowfish_key\r\n");
+
+    char line[600];
+    wsprintfA(line, "\"%s\",%d,\"%s\"\r\n", filename ? filename : "", fileSize, blowfishKey ? blowfishKey : "");
+    DWORD written;
+    WriteFile(h, line, lstrlenA(line), &written, NULL);
+    CloseHandle(h);
+}
+
+// ── blowfish_key hook (onEnter-style -- same pattern as H_ParseNetworkPacket) ─
+//
+// Original signature (IDA, __thiscall):
+//   bool sub_BD4200(this, int a2, const char *a3 /*blowfish_key*/,
+//                    int a4 /*total_size*/, int a5 /*filename, despite the
+//                    IDA "int" -- the original Frida script reads it as a
+//                    pointer*/)
+// We only need to read args at entry and log them -- no return-value or
+// stack-remnant trickery needed here, unlike hash_lookup below.
+
+typedef unsigned char (__thiscall *PFN_BlowfishDecrypt)(void* thisptr, int a2, const char* a3, int a4, const char* a5);
+static PFN_BlowfishDecrypt Orig_BlowfishDecrypt = NULL;
+
+// Confirmed against the live game: this hook only fires for files the game
+// actually decrypts itself. Files already sideloaded pre-decrypted (via the
+// version.dll ETP swap) never reach the real decrypt function at all, so no
+// call happens for those -- that's expected, not a bug. Deleting a sideloaded
+// ETP file and triggering its content forces a real decrypt and logs
+// correctly, confirming the hook and signature are both right. This will
+// naturally catch any new/updated file the game introduces that we don't
+// have a pre-decrypted copy of yet, which is the whole point.
+
+static unsigned char __stdcall H_BlowfishDecrypt(int a2, const char* a3, int a4, const char* a5)
+{
+    void* thisptr;
+    __asm mov thisptr, ecx
+
+    if (g_communityLogging) {
+        __try {
+            char keyBuf[128];
+            char nameBuf[512];
+            CopyBoundedString(keyBuf, sizeof(keyBuf), a3);
+            CopyBoundedString(nameBuf, sizeof(nameBuf), a5);
+            WriteBlowfishLog(nameBuf, a4, keyBuf);
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            Log("blowfish_logger: exception while reading hook args");
+        }
+    }
+
+    return Orig_BlowfishDecrypt(thisptr, a2, a3, a4, a5);
+}
+
+// ── hash_lookup hook ──────────────────────────────────────────────────────
+//
+// Original signature (IDA, __cdecl, args at [ebp+8]=a1, [ebp+0Ch]=a2):
+//   unsigned int PathHashLookup(void* a1, unsigned int a2)
+//
+// Confirmed against the live game via logs\hashlog_debug.txt: this hook
+// fires exactly twice per resource load -- once hashing the containing
+// directory, once hashing the bare filename -- and in THIS game build the
+// two are not distinguished by `a2` the way the original, older-build
+// Python/dqxclarity project assumed (a2==0xFFFFFFFF meant "dir" there; here
+// a2 stays some other, non-discriminating value across both calls). `a1` is
+// always readable as a null-terminated string, but for the directory call it
+// isn't independently terminated at the directory boundary -- it's a pointer
+// into the SAME underlying "dir/file" buffer as the filename call, so
+// reading it naively runs straight through into the filename too. The hash
+// VALUE the game computes for that call is still correct proof of what it
+// really hashed: two different full paths sharing a directory produce the
+// identical hash for that row. So instead of hunting for a length field, we
+// split on the last '/' ourselves -- filenames can never contain one, so its
+// presence reliably means "this was the directory call."
+//
+// (This also means we no longer need the onLeave-style stack-remnant math
+// the original Frida script relied on -- `a1` alone is enough for both
+// cases, since it's a parameter local to *our* hook, never touched by the
+// call through to the real implementation.)
+
+typedef unsigned int (__cdecl *PFN_HashLookup)(void* a1, unsigned int a2);
+static PFN_HashLookup Orig_HashLookup = NULL;
+
+static void LogHashResult(void* a1, unsigned int hashOutput)
+{
+    char full[1024];
+    CopyBoundedString(full, sizeof(full), (const char*)a1);
+
+    char* lastSlash = strrchr(full, '/');
+    if (lastSlash) {
+        *lastSlash = 0;  // "dir/file" -> "dir"
+        WriteHashLog("dir", full, hashOutput);
+    } else {
+        WriteHashLog("file", full, hashOutput);
+    }
+}
+
+static unsigned int __cdecl H_HashLookup(void* a1, unsigned int a2)
+{
+    unsigned int result = Orig_HashLookup(a1, a2);
+
+    if (g_communityLogging) {
+        __try {
+            LogHashResult(a1, result);
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            Log("hash_logger: exception while reading hook args");
+        }
+    }
+
+    return result;
+}
+
 // ── Install thread ───────────────────────────────────────────────────────────
 //
 // Runs on a background thread (not DllMain) because DllMain runs under the
@@ -806,6 +1051,41 @@ static DWORD WINAPI InstallThread(LPVOID arg)
     void* trampoline = InstallHook(entry, (void*)H_ParseNetworkPacket);
     if (!trampoline) { Log("InstallHook failed"); return 1; }
     Orig_ParseNet = (PFN_ParseNet)trampoline;
+
+    // Community logging: independent, best-effort hooks -- installed after
+    // the main translation hook so a failure here never affects it. Each of
+    // the two is installed separately; one failing doesn't block the other.
+    char communityEnvVal[8] = {0};
+    DWORD communityEnvLen = GetEnvironmentVariableA("DQXCLARITY_COMMUNITY_LOGGING", communityEnvVal, sizeof(communityEnvVal));
+    if (communityEnvLen > 0 && communityEnvVal[0] == '1') {
+        g_communityLogging = TRUE;
+        Log("DQXCLARITY_COMMUNITY_LOGGING=1 - installing hash/blowfish key logging hooks");
+
+        std::vector<BYTE*> hashMatches;
+        FindSignature((BYTE*)mi.lpBaseOfDll, mi.SizeOfImage, SIG_HASH_LOOKUP, hashMatches);
+        if (hashMatches.size() == 1) {
+            void* hashTramp = InstallHook(hashMatches[0], (void*)H_HashLookup);
+            if (hashTramp) { Orig_HashLookup = (PFN_HashLookup)hashTramp; Log("hash_lookup hook installed"); }
+            else Log("hash_lookup InstallHook failed");
+        } else {
+            char buf[80];
+            wsprintfA(buf, "hash_lookup signature matched %u times (expected 1) - skipping", (unsigned)hashMatches.size());
+            Log(buf);
+        }
+
+        std::vector<BYTE*> blowfishMatches;
+        FindSignature((BYTE*)mi.lpBaseOfDll, mi.SizeOfImage, SIG_BLOWFISH_DECRYPT, blowfishMatches);
+        if (blowfishMatches.size() == 1) {
+            void* blowfishTramp = InstallHook(blowfishMatches[0], (void*)H_BlowfishDecrypt);
+            if (blowfishTramp) { Orig_BlowfishDecrypt = (PFN_BlowfishDecrypt)blowfishTramp; Log("blowfish_decrypt hook installed"); }
+            else Log("blowfish_decrypt InstallHook failed");
+        } else {
+            char buf[80];
+            wsprintfA(buf, "blowfish_decrypt signature matched %u times (expected 1) - skipping", (unsigned)blowfishMatches.size());
+            Log(buf);
+        }
+    }
+
     return 0;
 }
 

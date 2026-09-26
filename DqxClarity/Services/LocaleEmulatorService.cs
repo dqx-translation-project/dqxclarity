@@ -41,10 +41,24 @@ internal static class LocaleEmulatorService
 
         try
         {
-            var ok = InjectWithRetry(pi.hProcess, dllPath);
-            // postInject runs even if locale inject failed — clarity hook is independent.
-            postInject?.Invoke(pi.hProcess);
-            return ok;
+            if (InjectWithRetry(pi.hProcess, dllPath))
+            {
+                // Locale hook is in — this is the process that's going to survive, so
+                // run the translation-runtime postInject (independent of the locale
+                // hook) on it now rather than waiting on ClarityRuntime's background watcher.
+                postInject?.Invoke(pi.hProcess);
+                return true;
+            }
+
+            // CreateProcessW above already started the game even though injection failed
+            // (e.g. AV/EDR interference or a slow WOW64 init blowing the retry budget), so
+            // the caller falling back to a plain launch would otherwise leave this half-started,
+            // un-hooked copy running alongside a second instance. Kill it so exactly one
+            // DQXGame.exe survives (mirrors main's fix for the same bug). The fallback-started
+            // process still gets PacketWarden injected via ClarityRuntime's background watcher,
+            // so no postInject call is lost here — just deferred by a couple seconds.
+            try { TerminateProcess(pi.hProcess, 1); } catch { /* best-effort cleanup */ }
+            return false;
         }
         finally
         {
@@ -196,6 +210,9 @@ internal static class LocaleEmulatorService
         ref STARTUPINFOW lpStartupInfo, out PROCESS_INFORMATION lpProcessInformation);
 
     [DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr h);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool TerminateProcess(IntPtr hProcess, uint uExitCode);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress,

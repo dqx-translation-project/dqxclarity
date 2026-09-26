@@ -4,6 +4,7 @@ using DqxClarity.Data;
 using DqxClarity.Packets;
 using DqxClarity.Services;
 using DqxClarity.Translation;
+using DqxClarity.Updates;
 
 namespace DqxClarity.Hooking;
 
@@ -36,6 +37,12 @@ public sealed class ClarityRuntime : IDisposable
         _debugLogging = debugLogging;
         _db = new ClarityDb(ClarityDb.DefaultDbPath());
         _db.CreateSchema();
+
+        // Local file + db I/O only (no network), so this runs synchronously here --
+        // mirrors main.py calling import_name_overrides() before anything else uses
+        // the db, so the glossary loaded right below already reflects the user's
+        // current name_overrides.json instead of needing a restart to pick it up.
+        _db.ImportNameOverrides();
 
         var glossary = GlossaryCache.Load(_db);
         _translator = new Translator(backend, glossary);
@@ -83,10 +90,82 @@ public sealed class ClarityRuntime : IDisposable
         _deps.TranslateMonsterNameplates = translateMonsterNameplates;
     }
 
+    // Same problem as UpdateNameplateSettings above, for name_overrides.json: this
+    // runtime -- and the ImportNameOverrides() call in its constructor -- is built
+    // once, up front, before the user has necessarily even opened the Overrides tab.
+    // In main, every Run spawns a brand new python process that always re-imports
+    // the file fresh; here, without this, the normal "edit overrides, click Save,
+    // click Run" flow would silently keep using whatever the db looked like at
+    // launcher startup until a full app restart. Called from
+    // MainViewModel.OnRunRequested every time Run fires, alongside
+    // UpdateNameplateSettings, so freshly-saved overrides take effect on the very
+    // next translated packet -- no restart needed.
+    public void RefreshNameOverrides()
+    {
+        _db.ImportNameOverrides();
+        _translator.UpdateGlossary(GlossaryCache.Load(_db));
+
+        // The player/MyTown name lookup dict is ALSO cached lazily, separately
+        // from the glossary (PacketDependencies._m00Cache, populated the first
+        // time PlayerContext resolves the active character) -- and unlike the
+        // glossary reload above, re-importing the db does nothing to that
+        // cache or to the EnPlayerName/EnSiblingName PlayerContext already
+        // resolved. Without these two calls, a character that already
+        // activated earlier in this session (the common case -- it happens
+        // almost immediately after login, automatically) would keep showing
+        // whatever name resolution happened BEFORE this refresh no matter how
+        // many times overrides are edited and Run is clicked, until the game
+        // process fully exits and the launcher rebuilds the whole runtime
+        // from scratch. See PlayerContext.ForceReactivate's doc comment.
+        _deps.InvalidateM00Cache();
+        _deps.PlayerContext.ForceReactivate(_deps);
+    }
+
     public void Start()
     {
         PacketWardenService.EnsureExtracted();
         _hook.StartPipe();
+        _ = UpdateTranslationDataAsync();
+    }
+
+    // Refreshes clarity_dialog.db (m00_strings, glossary, fixed_dialog_template, walkthrough,
+    // quests, story_so_far_template) from the two upstream translation-data sources —
+    // port of update.py's download_custom_files(). Main's python engine ran this
+    // synchronously before anything else on every run; here it's fire-and-forget so
+    // launcher/game startup isn't blocked on a network round-trip. Safe to race against
+    // early gameplay: m00_strings/npc lookups in DataPacketRouter are cached lazily per-key
+    // on first use, well after the game has finished booting, and the glossary — the one
+    // piece loaded eagerly in this constructor — is explicitly reloaded into the live
+    // Translator below so this session doesn't need a restart to pick up fresh data.
+    private async Task UpdateTranslationDataAsync()
+    {
+        try
+        {
+            await new TranslationUpdater(_db, ClarityDb.DefaultDbPath()).RunAsync().ConfigureAwait(false);
+
+            // TranslationUpdater's custom-zip import (ImportCustomZipAsync) does an
+            // unconditional, unscoped "DELETE FROM m00_strings" before re-ingesting
+            // its own categories -- mirroring main's download_custom_files(), which
+            // does the exact same wholesale wipe+rebuild. That wipe also destroys
+            // whatever ImportNameOverrides() wrote into m00_strings (the
+            // 'local_player_names'/'local_mytown_names' rows) at construction time,
+            // every single time this update runs -- which is basically every
+            // launch. main.py never hits this because it always calls
+            // download_custom_files() BEFORE import_name_overrides(), in that exact
+            // order, in main() (see app/main.py) -- the wipe always happens first,
+            // then overrides get layered back on top. Re-running the import here,
+            // right after the wipe-capable update finishes, restores that same
+            // ordering so name overrides actually survive instead of silently
+            // vanishing on every launch (the constructor's own ImportNameOverrides()
+            // call only protects the window before this update finishes running).
+            _db.ImportNameOverrides();
+            _translator.UpdateGlossary(GlossaryCache.Load(_db));
+            _log?.Invoke("Translation data updated.", false);
+        }
+        catch (Exception ex)
+        {
+            _log?.Invoke($"Failed to update translation data: {ex.Message}", true);
+        }
     }
 
     public bool InjectInto(IntPtr hProcess) => PacketWardenService.InjectInto(hProcess);

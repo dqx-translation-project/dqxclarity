@@ -46,13 +46,18 @@ public sealed class Translator
     private static readonly string[] Honorifics = { "さま", "君", "どの", "ちゃん", "くん", "様", "さーん", "殿", "さん" };
 
     private readonly ITranslationBackend _backend;
-    private readonly GlossaryCache _glossary;
+    private GlossaryCache _glossary;
 
     public Translator(ITranslationBackend backend, GlossaryCache glossary)
     {
         _backend = backend;
         _glossary = glossary;
     }
+
+    // Lets ClarityRuntime swap in a freshly-reloaded glossary after the background
+    // translation-data update finishes, so a running session picks up new custom
+    // translations without needing a launcher restart.
+    public void UpdateGlossary(GlossaryCache glossary) => _glossary = glossary;
 
     public static bool IsTextJapanese(string text)
     {

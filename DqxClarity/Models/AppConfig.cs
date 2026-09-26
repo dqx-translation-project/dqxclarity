@@ -1,3 +1,5 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace DqxClarity.Models;
 
 public class LauncherConfig
@@ -27,6 +29,34 @@ public class LauncherConfig
     public string Theme { get; set; } = "rosie";
     public bool SeenWelcomeMessage { get; set; }
     public bool BannerCollapsed { get; set; }
+
+    // ── Language packs (CLPK / DragonHook) ─────────────────────────────
+    public bool LanguagePackFirstRunDone { get; set; }
+    // Default true so a fresh install (no ini key yet) gets automatic updates
+    // on, matching the main branch's default for this same setting.
+    public bool AutomaticLanguagePackUpdates { get; set; } = true;
+    public List<string> ActiveLanguagePacks { get; set; } = [];
+}
+
+/// <summary>A scanned language pack (.clpk) entry shown in the Language tab's list. Observable so
+/// the list UI (active checkbox, update status, etc.) updates live as scans/downloads/updates run.</summary>
+public partial class LanguagePack : ObservableObject
+{
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LanguageDisplay))]
+    private string _language = "";
+
+    /// <summary>Human-readable language name (e.g. "English"); this is the pack's display identity.</summary>
+    public string LanguageDisplay => LanguageNames.DisplayName(Language);
+
+    [ObservableProperty] private string _author = "";
+    [ObservableProperty] private string _updated = "";   // display form of the CLPK builtAt timestamp
+    [ObservableProperty] private string _status = "";
+    [ObservableProperty] private string _path = "";
+    [ObservableProperty] private string _downloadUrl = "";
+    [ObservableProperty] private bool _hasUpdate;
+    [ObservableProperty] private bool _isActive;
+    [ObservableProperty] private bool _canActivate;
 }
 
 public class TranslationConfig

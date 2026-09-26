@@ -9,7 +9,10 @@ namespace DqxClarity.Packets.Types;
 //   variant 3 (0xa1 / 0x2711): header 78 bytes, length u32 then cstring
 //   variant 4 (0xa1 / 0x8a6a): header 326 bytes, length u32 then cstring
 //
-// Names looked up in m00 'local_player_names' first; romanizer fallback on miss.
+// Names looked up in m00 'local_player_names' first, then
+// 'custom_npc_name_overrides', romanizer fallback on miss in both -- see
+// PartyListPacket's doc comment for why (an NPC companion can occupy a
+// party slot with no player-name-dict entry to match).
 public sealed class PartyList2Packet : IPacket
 {
     private const int HeaderBytes = 80;
@@ -36,10 +39,13 @@ public sealed class PartyList2Packet : IPacket
         var jpName = Encoding.UTF8.GetString(nameBytes[..nameLen]);
         if (string.IsNullOrEmpty(jpName)) return;
 
-        var dict = _deps.M00Dict("local_player_names");
-        var translated = dict.TryGetValue(jpName, out var en2) && !string.IsNullOrEmpty(en2)
+        var playerDict = _deps.M00Dict("local_player_names");
+        var npcOverrideDict = _deps.M00Dict("custom_npc_name_overrides");
+        var translated = playerDict.TryGetValue(jpName, out var en2) && !string.IsNullOrEmpty(en2)
             ? en2
-            : _deps.Romanizer.ToRomaji(jpName, 11);
+            : npcOverrideDict.TryGetValue(jpName, out var npcEn2) && !string.IsNullOrEmpty(npcEn2)
+                ? npcEn2
+                : _deps.Romanizer.ToRomaji(jpName, 11);
         if (translated == jpName) return;
 
         var writer = new PacketWriter();
@@ -104,10 +110,13 @@ internal static class PartyListVariantsCommon
         var jpName = reader.ReadCString();
         var remainder = reader.RemainingBytes().ToArray();
 
-        var dict = deps.M00Dict("local_player_names");
-        var translated = dict.TryGetValue(jpName, out var en) && !string.IsNullOrEmpty(en)
+        var playerDict = deps.M00Dict("local_player_names");
+        var npcOverrideDict = deps.M00Dict("custom_npc_name_overrides");
+        var translated = playerDict.TryGetValue(jpName, out var en) && !string.IsNullOrEmpty(en)
             ? en
-            : deps.Romanizer.ToRomaji(jpName, 11);
+            : npcOverrideDict.TryGetValue(jpName, out var npcEn) && !string.IsNullOrEmpty(npcEn)
+                ? npcEn
+                : deps.Romanizer.ToRomaji(jpName, 11);
         if (string.IsNullOrEmpty(translated) || translated == jpName) return;
 
         var bytes = Encoding.UTF8.GetBytes(translated);

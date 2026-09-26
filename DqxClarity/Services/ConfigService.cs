@@ -189,6 +189,12 @@ public class ConfigService
                 Theme                    = l.GetValueOrDefault("theme") ?? "rosie",
                 SeenWelcomeMessage       = ToBool(l.GetValueOrDefault("seenwelcomemessage")),
                 BannerCollapsed          = ToBool(l.GetValueOrDefault("bannercollapsed")),
+                LanguagePackFirstRunDone = ToBool(l.GetValueOrDefault("languagepackfirstrundone")),
+                AutomaticLanguagePackUpdates = ToBoolDefaultTrue(l, "automaticlanguagepackupdates"),
+                ActiveLanguagePacks      = (l.GetValueOrDefault("activelanguagepacks") ?? "")
+                    .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList(),
             },
             Translation = LoadTranslationConfig(t),
             Game = new GameConfig
@@ -210,6 +216,13 @@ public class ConfigService
         var existingLauncher = existing.GetValueOrDefault("launcher") ?? [];
         var seenWelcome      = existingLauncher.GetValueOrDefault("seenwelcomemessage") ?? BoolToIni(launcher.SeenWelcomeMessage);
         var bannerCollapsed  = existingLauncher.GetValueOrDefault("bannercollapsed")    ?? BoolToIni(launcher.BannerCollapsed);
+        var langPackFirstRun = existingLauncher.GetValueOrDefault("languagepackfirstrundone") ?? BoolToIni(launcher.LanguagePackFirstRunDone);
+
+        // Preserve the runtime translation target (written separately from the active language
+        // packs, via SaveTargetLanguage) rather than clobbering it on every settings save.
+        var existingTranslation = existing.GetValueOrDefault("translation") ?? [];
+        var targetLanguage     = existingTranslation.GetValueOrDefault("target_language") ?? "";
+        var targetLanguageName = existingTranslation.GetValueOrDefault("target_language_name") ?? "";
 
         var sb = new System.Text.StringBuilder();
 
@@ -223,6 +236,8 @@ public class ConfigService
         WriteKv(sb, "libretranslate_url",  translation.LibreTranslateUrl);
         WriteKv(sb, "enablecommunityapi",  BoolToIni(translation.EnableCommunityApi));
         WriteKv(sb, "communityapikey",     translation.CommunityApiKey);
+        WriteKv(sb, "target_language",      targetLanguage);
+        WriteKv(sb, "target_language_name", targetLanguageName);
 
         if (configPairs.Count > 0)
         {
@@ -253,6 +268,9 @@ public class ConfigService
         WriteKv(sb, "theme",                    launcher.Theme);
         WriteKv(sb, "seenwelcomemessage",       seenWelcome);
         WriteKv(sb, "bannercollapsed",          bannerCollapsed);
+        WriteKv(sb, "languagepackfirstrundone", langPackFirstRun);
+        WriteKv(sb, "automaticlanguagepackupdates", BoolToIni(launcher.AutomaticLanguagePackUpdates));
+        WriteKv(sb, "activelanguagepacks",       string.Join('|', launcher.ActiveLanguagePacks));
 
         var dir = Path.GetDirectoryName(path)!;
         Directory.CreateDirectory(dir);
@@ -332,6 +350,28 @@ public class ConfigService
 
     public void SaveBannerCollapsed(bool value) =>
         UpdateIniValue(ConfigPath(), "launcher", "bannercollapsed", BoolToIni(value));
+
+    public void SaveLanguagePackFirstRunDone(bool value) =>
+        UpdateIniValue(ConfigPath(), "launcher", "languagepackfirstrundone", BoolToIni(value));
+
+    public void SaveAutomaticLanguagePackUpdates(bool value) =>
+        UpdateIniValue(ConfigPath(), "launcher", "automaticlanguagepackupdates", BoolToIni(value));
+
+    /// <summary>Writes the runtime translation target (highest-priority active language pack) into
+    /// the [translation] section.</summary>
+    public void SaveTargetLanguage(string code, string name)
+    {
+        var path = ConfigPath();
+        UpdateIniValue(path, "translation", "target_language", code);
+        UpdateIniValue(path, "translation", "target_language_name", name);
+    }
+
+    public void SaveActiveLanguagePacks(IEnumerable<string> fileNames) =>
+        UpdateIniValue(
+            ConfigPath(),
+            "launcher",
+            "activelanguagepacks",
+            string.Join('|', fileNames.Distinct(StringComparer.OrdinalIgnoreCase)));
 
     public string GetVersion()
     {
