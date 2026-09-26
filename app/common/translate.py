@@ -226,31 +226,35 @@ class Translator:
             return output
 
     def __is_majority_english(self, text: str) -> bool:
-        """Returns True if the text contains more English/Latin bytes than Japanese
-        script bytes, meaning it can skip glossification and translation.
+        """Returns True if the text contains more English/Latin content than Japanese
+        script, meaning it can skip glossification and translation.
 
-        Comparison is done in UTF-8 bytes rather than character count so that
-        multi-byte Japanese characters (hiragana, katakana, kanji — each 3 bytes)
-        are not underweighted against long runs of single-byte ASCII letters such
-        as English proper nouns that appear verbatim in the source text.
-
-        Tags (<...>) are stripped before counting so they don't skew the ratio.
-        When no meaningful script bytes are found the text is treated as English
-        and processing is skipped.
+        The check is based on the ratio of Japanese characters to total non-tag
+        characters. If Japanese script makes up a small percentage (e.g., < 15%),
+        the string is treated as English/Names and processing is skipped.
 
         :param text: Raw pre-glossary text string to evaluate.
         :returns: True if glossification and translation should be skipped.
         """
         combined = re.sub(r"<[^>]+>", "", text)
-
-        jp_bytes = len(_JP_REGEX.findall(combined)) * 3  # every JP char is 3 bytes in UTF-8
-        en_bytes = sum(1 for ch in combined if ch.isascii() and ch.isalpha())
-
-        total = jp_bytes + en_bytes
-        if total == 0:
+        if not combined:
             return True
 
-        return en_bytes > jp_bytes
+        jp_count = len(_JP_REGEX.findall(combined))
+        total_len = len(combined)
+
+        # 1. If no Japanese script is present, it's already "English" enough to skip
+        if jp_count == 0:
+            return True
+
+        # 2. Very short strings (under 5 chars) are often UI elements or names.
+        # Machine translation on these is risky and usually unnecessary.
+        if total_len < 5:
+            return True
+
+        # 3. Ratio Check: If Japanese makes up less than 15% of the string,
+        # it's likely a name or a technical term (e.g., "The hero [Name] arrived").
+        return (jp_count / total_len) < 0.15
 
     def __api_translate(self, text: list) -> list:
         """Translates a list of strings using the cached translation service."""
