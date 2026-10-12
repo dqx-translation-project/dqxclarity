@@ -28,14 +28,14 @@ repos:
   - id: detect-secrets
     name: Checking for potential passwords
 - repo: https://github.com/asottile/pyupgrade
-  rev: v3.21.2
+  rev: v3.22.0
   hooks:
   - id: pyupgrade
     name: Upgrade previous versioned Python syntax to newer version
     args: ['--py311-plus']
     exclude: ^app/pymem  # forked module
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.15.13
+  rev: v0.17.0
   hooks:
     - id: ruff-check
       args: ['--fix']
