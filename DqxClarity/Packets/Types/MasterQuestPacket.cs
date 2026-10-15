@@ -15,9 +15,12 @@ namespace DqxClarity.Packets.Types;
 // Trailing nulls between strings are preserved verbatim to keep packet structure
 // identical for unmapped users.
 //
-// The quest NAME (not the objectives) is capped at 34 UTF-8 bytes -- per
-// the user, this is a real client-side UI limitation, but only for
-// rendering English text. The original code applied the cap unconditionally,
+// The quest NAME (not the objectives) is capped at 34 UTF-8 bytes PER LINE --
+// per the user, this is a real client-side UI limitation, but only for
+// rendering English text, and it applies to a single line of the name: when
+// the name contains a newline, each line is capped on its own (neither line
+// of a two-line name ever reaches the limit), so the cap is applied line by
+// line rather than to the whole string. The original code applied the cap unconditionally,
 // including when the dict had no translation and the original Japanese was
 // passed through untouched -- that's wrong on two counts: Japanese doesn't
 // have this limitation (a 71-byte untranslated capture renders fine, since
@@ -25,6 +28,9 @@ namespace DqxClarity.Packets.Types;
 // character truncation on multi-byte Japanese text chops the name mid-word
 // with no ellipsis or indication anything was cut. Fixed by only applying
 // TruncateUtf8 when an actual translation was found in the dict.
+//
+// The name lookup also tolerates a missing trailing newline in the dictionary
+// key -- see ResolveQuestName.
 //
 // Sample: docs/packets/references/master_quest_untranslated (the 71-byte
 //         untranslated name -- 踊り子と行く！\n　迅速な魔人エンラージャ強討伐！\n --
@@ -93,8 +99,8 @@ public sealed class MasterQuestPacket : IPacket
         // Only cap when an actual translation was applied -- the 34-byte
         // limit is a UI constraint for rendering English text, it doesn't
         // apply to the original Japanese (see class doc comment).
-        var resolvedName = dict.GetValueOrDefault(_questName, _questName);
-        var name = resolvedName == _questName ? resolvedName : TruncateUtf8(resolvedName, 34);
+        var resolvedName = ResolveQuestName(dict, _questName);
+        var name = resolvedName == _questName ? resolvedName : TruncatePerLine(resolvedName, 34);
         writer.WriteCString(name);
         foreach (var obj in _objectives)
             writer.WriteCString(dict.GetValueOrDefault(obj, obj));
@@ -119,6 +125,30 @@ public sealed class MasterQuestPacket : IPacket
         if (start <= data.Length) parts.Add(data.AsSpan(start).ToArray());
         return parts;
     }
+
+    // Looks the quest name up in the dictionary. The name the server sends
+    // ends in a newline (e.g. "...強討伐！\n"), but dictionary keys are often
+    // written without it, which used to make the lookup miss and leave the
+    // Japanese name in place. So: exact match first, then retry with the
+    // trailing newlines stripped, and put the same trailing newlines back on
+    // the translation so the name keeps the shape the client expects. A
+    // translation that already ends in a newline isn't given extras.
+    private static string ResolveQuestName(Dictionary<string, string> dict, string name)
+    {
+        if (dict.TryGetValue(name, out var exact)) return exact;
+
+        var trimmed = name.TrimEnd('\n');
+        if (trimmed.Length == name.Length || trimmed.Length == 0) return name;
+
+        if (!dict.TryGetValue(trimmed, out var found) || string.IsNullOrEmpty(found)) return name;
+
+        var suffix = name[trimmed.Length..];
+        return found.EndsWith('\n') ? found : found + suffix;
+    }
+
+    // Applies the byte cap to each newline-separated line independently.
+    private static string TruncatePerLine(string s, int maxBytesPerLine) =>
+        string.Join("\n", s.Split('\n').Select(line => TruncateUtf8(line, maxBytesPerLine)));
 
     private static string TruncateUtf8(string s, int maxBytes)
     {

@@ -56,6 +56,12 @@ public partial class SettingsView : UserControl
         "Validate Key\n" +
         "Sends a quick test request to confirm the key works. Available for DeepL and Google Translate.";
 
+    private const string FreeApiWarningText =
+        "You've chosen to use a free API.\n\n" +
+        "These APIs are notoriously terrible, with poor translation quality and will often run into time outs, which may cause the game to lock up, for Japanese text to appear instead of English text, or both.\n\n" +
+        "Please do not report any issues with translations if you are using one of these free APIs. Their reliability is not guaranteed and their inclusion as options here is mainly a courtesy.\n\n" +
+        "If you've read and understand these caveats, please click OK.";
+
     private const string AdvancedConfigHelpText =
         "Community Logging\n" +
          "Records untranslated or unknown in-game strings to a local text file. " +
@@ -280,15 +286,32 @@ public partial class SettingsView : UserControl
         }
     }
 
-    private void OnTranslateServiceChanged(object? sender, SelectionChangedEventArgs e)
+    private async void OnTranslateServiceChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (sender is ComboBox combo && combo.SelectedItem is ComboBoxItem item
             && item.Tag is string value && _vm != null)
         {
-            _vm.SelectedTranslateService = SettingsViewModel.TranslateServiceOptions
+            var previous = _vm.SelectedTranslateService;
+            var selected = SettingsViewModel.TranslateServiceOptions
                 .FirstOrDefault(o => o.Value == value);
+            _vm.SelectedTranslateService = selected;
+
+            // Warn when moving from a non-free service (including "None") to a
+            // free one. Switching between free services doesn't re-warn, and
+            // populating the combo from the saved setting never warns either:
+            // there, `previous` is already the same free service.
+            if (IsFreeService(selected) && !IsFreeService(previous)
+                && TopLevel.GetTopLevel(this) is MainWindow win)
+            {
+                await win.ShowInfoAsync("Free API Warning", FreeApiWarningText);
+            }
         }
     }
+
+    // Free services are the ones whose display name carries "(free)" -- the
+    // same marker the combo uses to group them under the second separator.
+    private static bool IsFreeService(SettingsViewModel.TranslateServiceOption? option) =>
+        option?.Display.Contains("(free)") == true;
 
     private void OnThemeSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {

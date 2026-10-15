@@ -82,7 +82,7 @@ public sealed class ServerListPacket : IPacket
         ("謎の遺跡島内", "Zelmea"),
         ("プレイエリア", "Play Area"),
         ("マイタウン",   "My Town"),
-        ("万魔の塔",     "Banma"),
+        ("万魔の塔",     "T of T"),
         ("源世庫エリア", "Panigalm"),
         ("咎人エリア",   "Criminals"),
         ("訓練場エリア", "Training"),

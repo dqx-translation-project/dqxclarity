@@ -13,7 +13,7 @@
 
             <StackPanel Spacing="4">
                 <StackPanel Orientation="Horizontal" Spacing="6">
-                    <TextBlock Text="Made by:"
+                    <TextBlock Text="Originally Developed by:"
                                FontSize="12"
                                Foreground="{DynamicResource AppMuted}"
                                VerticalAlignment="Center"/>
@@ -23,29 +23,18 @@
                                VerticalAlignment="Center"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="6">
-                    <TextBlock Text="Discord:"
+                    <TextBlock Text="Maintained by:"
                                FontSize="12"
                                Foreground="{DynamicResource AppMuted}"
                                VerticalAlignment="Center"/>
-                    <TextBlock Text="mebo"
+                    <TextBlock Text="Shobu, Emma"
                                FontSize="12"
                                Foreground="{DynamicResource AppText}"
                                VerticalAlignment="Center"/>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <TextBlock Text="Ko-fi:"
-                               FontSize="12"
-                               Foreground="{DynamicResource AppMuted}"
-                               VerticalAlignment="Center"/>
-                    <Button Classes="ghost"
-                            FontSize="12"
-                            Foreground="{DynamicResource AppAccent}"
-                            x:Name="KofiBtn"
-                            Click="OnKofiClick">https://ko-fi.com/serany</Button>
-                </StackPanel>
             </StackPanel>
 
-            <TextBlock Text="Thanks for stopping by."
+            <TextBlock xml:space="preserve" Text="Thank you Serany, for the hours upon hours you&#x0a;put into this project."
                        FontSize="12"
                        Foreground="{DynamicResource AppMuted}"/>
 

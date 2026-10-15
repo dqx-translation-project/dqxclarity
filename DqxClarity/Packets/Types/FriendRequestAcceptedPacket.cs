@@ -3,6 +3,23 @@ using DqxClarity.Translation;
 
 namespace DqxClarity.Packets.Types;
 
+// TRANSLATION CURRENTLY DISABLED -- CONFIRMED CRASH. A live test of this
+// packet's name translation crashed the DQX client (reported on a capture of
+// ヴァイス rewritten to "Voaisu"). The rewrite was exactly what this class
+// intends: same 29-byte Data length, same header, the name pinned to its
+// original 13-byte slot and zero-padded, nothing after it to shift. So this is
+// NOT the usual "translation changed the length or moved a later field" crash
+// -- the same situation as SlimeRaceNameListPacket and ChatRoomJoinPacket
+// (same opcode 0x0D, same header shape; its pinned-width "Ebina" rewrite
+// crashed too), where the content landing in the name field, not its position
+// or width, is what the client rejects. Leading theory, unconfirmed: the client
+// may treat a name that starts with an ASCII letter specially (EntityPacket
+// needs a \x04 prefix on translated names so the game doesn't show the GM-face
+// icon), or may look the player up by the original name. Build() is a
+// deliberate no-op until the real cause is known, so the packet passes through
+// untouched. The old rewrite is kept (commented out) for whatever fix comes
+// next; do not re-enable without new evidence of what is safe here.
+//
 // The "you are now friends with <player>" notification shown when someone
 // accepts (or you accept) a friend request. Same opcode family (0x0d) as
 // FriendInvitationPacket (marker 0x9393) and TeamJoinMessagePacket (marker
@@ -32,7 +49,9 @@ namespace DqxClarity.Packets.Types;
 // nothing follows the name in this packet, this also means the packet's
 // total length never changes at all.
 //
-// Sample: docs/packets/references/friend_request_accepted
+// Samples: docs/packets/references/friend_request_accepted,
+//          docs/packets/references/friend_request_accepted_crash_modified
+//          (the "Voaisu" rewrite that crashed the client)
 public sealed class FriendRequestAcceptedPacket : IPacket
 {
     private const int HeaderBytes = 16;
@@ -64,25 +83,29 @@ public sealed class FriendRequestAcceptedPacket : IPacket
 
     public void Build()
     {
-        var newName = ResolveName(_playerName);
-        if (newName == _playerName) return;
-
-        // Fixed-width slot: original name's byte length + 1 (null
-        // terminator). See the class doc comment — this packet family
-        // crashes/corrupts if the name field is allowed to change the
-        // overall packet length or shift what follows it.
-        var nameSlotBytes = Encoding.UTF8.GetByteCount(_playerName) + 1;
-        var newNameBytes = Encoding.UTF8.GetBytes(newName);
-        if (newNameBytes.Length > nameSlotBytes - 1)
-            newNameBytes = newNameBytes[..(nameSlotBytes - 1)];
-
-        var writer = new PacketWriter();
-        writer.WriteBytes(_header);
-        writer.WriteBytes(newNameBytes);
-        writer.WriteBytes(new byte[nameSlotBytes - newNameBytes.Length]); // null terminator + padding
-        writer.WriteBytes(_remainder);
-
-        ModifiedData = writer.Build();
+        // DISABLED -- see the class doc comment. ModifiedData stays null so
+        // the packet passes through untouched.
+        //
+        // var newName = ResolveName(_playerName);
+        // if (newName == _playerName) return;
+        //
+        // // Fixed-width slot: original name's byte length + 1 (null
+        // // terminator). See the class doc comment — this packet family
+        // // crashes/corrupts if the name field is allowed to change the
+        // // overall packet length or shift what follows it.
+        // var nameSlotBytes = Encoding.UTF8.GetByteCount(_playerName) + 1;
+        // var newNameBytes = Encoding.UTF8.GetBytes(newName);
+        // if (newNameBytes.Length > nameSlotBytes - 1)
+        //     newNameBytes = newNameBytes[..(nameSlotBytes - 1)];
+        //
+        // var writer = new PacketWriter();
+        // writer.WriteBytes(_header);
+        // writer.WriteBytes(newNameBytes);
+        // writer.WriteBytes(new byte[nameSlotBytes - newNameBytes.Length]); // null terminator + padding
+        // writer.WriteBytes(_remainder);
+        //
+        // ModifiedData = writer.Build();
+        //
     }
 
     private string ResolveName(string japanese)

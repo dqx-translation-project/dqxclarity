@@ -51,6 +51,11 @@ namespace DqxClarity.Packets.Types;
 //   subquest_name / quest_name        : M00 `quests` lookup only. Null on miss
 //                                       so we leave the original japanese in
 //                                       place rather than emit garbled MT.
+//                                       The one addition: quest_name also
+//                                       tries the Strike Force pattern
+//                                       (<monster>討伐！ -> "Hunt <monster>!",
+//                                       see StrikeForceQuestName) when the
+//                                       `quests` lookup misses.
 //   quest_description                 : bad_strings -> db cache -> MT against
 //                                       the `quests` table, with the quest-
 //                                       specific wrap settings (49 wide, 6
@@ -128,7 +133,7 @@ public sealed class QuestPacket : IPacket
         if (!Translator.IsTextJapanese(_description)) return;
 
         var newChapter     = LookupQuestName(_chapter);
-        var newName        = LookupQuestName(_name);
+        var newName        = LookupQuestName(_name) ?? LookupStrikeForceName(_name);
         var newDescription = TranslateDescription(_description);
         var newReward1     = FormatRewards(_reward1);
         var newReward2     = FormatRewards(_reward2);
@@ -155,6 +160,17 @@ public sealed class QuestPacket : IPacket
         if (string.IsNullOrEmpty(original)) return null;
         var dict = _deps.M00Dict("quests");
         return dict.TryGetValue(original, out var en) && !string.IsNullOrEmpty(en) ? en : null;
+    }
+
+    // Strike Force quests ("<monster>討伐！") come from the server, so they have
+    // no 'quests' entry; the name is built from the monster instead --
+    // "Hunt <english monster>!". Only tried after the 'quests' lookup misses
+    // and only matches that exact pattern, so no other name is ever affected.
+    // Null on a miss. See StrikeForceQuestName.
+    private string? LookupStrikeForceName(string original)
+    {
+        if (string.IsNullOrEmpty(original)) return null;
+        return StrikeForceQuestName.Translate(original, _deps.M00Dict("monsters"));
     }
 
     // Description path: bad_strings -> db cache -> MT with quest-specific

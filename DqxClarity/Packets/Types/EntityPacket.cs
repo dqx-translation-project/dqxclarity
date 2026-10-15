@@ -13,11 +13,13 @@ namespace DqxClarity.Packets.Types;
 // since they use the same 574-origin offset, but haven't been captured
 // post-update), (2) how the name is resolved:
 //   Player           — local_player_names m00 dict → romanizer fallback, \x04 prefix
-//   Party            — local_player_names m00 dict → romanizer fallback, \x04 prefix
-//                      (same resolution as Player -- a party member entity is
-//                      still a player, so a name override set for that player
-//                      elsewhere should apply here too, not just the romaji
-//                      fallback)
+//   Party            — local_player_names m00 dict, then custom_npc_name_overrides
+//                      m00 dict, romanizer fallback on miss in both, \x04 prefix
+//                      (a party member entity is still a player, so a name
+//                      override set for that player elsewhere should apply here
+//                      too, not just the romaji fallback; custom_npc_name_overrides
+//                      is also checked, same two tiers in the same order as
+//                      Fellow)
 //   NPC              — npc name dict, pass-through on miss
 //   Monster          — monsters m00 dict, pass-through on miss (no romanizer fallback)
 //   ScoutableMonster — same as Monster (see type byte 0x24 below)
@@ -27,17 +29,17 @@ namespace DqxClarity.Packets.Types;
 //                      with no dict match, and a hired フェロー whose translated
 //                      name rendered without the GM-face-icon prevention prefix)
 //   PartyNpc         — custom_npc_name_overrides m00 dict, romanizer fallback on
-//                      miss, \x04 prefix (type bytes 0x86, 0x87, 0x89, AND
-//                      0x8B; confirmed via five captures -- エステラ and
+//                      miss, \x04 prefix (type bytes 0x86, 0x87, 0x89, 0x8A,
+//                      AND 0x8B; confirmed via six captures -- エステラ and
 //                      ギルガラン on 0x87, ドルタム on 0x86, ユーライザ on
-//                      0x89, ラダ・ガート on 0x8B -- all NPC companions
-//                      occupying a party slot in NPC-party content, all
-//                      sharing the identical 575-byte header/
-//                      entity_length+cstring layout as Player/Npc/Party/
-//                      Fellow, differing only in that discriminator byte. No
-//                      confirmed behavioral difference between
-//                      0x86/0x87/0x89/0x8B has turned up, so all four are
-//                      grouped under one EntityKind/resolution path here
+//                      0x89, アンルシア on 0x8A, ラダ・ガート on 0x8B -- all
+//                      NPC companions occupying a party slot in NPC-party
+//                      content, all sharing the identical 575-byte
+//                      header/entity_length+cstring layout as Player/Npc/
+//                      Party/Fellow, differing only in that discriminator
+//                      byte. No confirmed behavioral difference between
+//                      0x86/0x87/0x89/0x8A/0x8B has turned up, so all five
+//                      are grouped under one EntityKind/resolution path here
 //                      rather than kept as separate cases; split them apart
 //                      later if a real difference surfaces. Unlike Fellow
 //                      this has no player-name-dict tier: these are
@@ -68,6 +70,10 @@ namespace DqxClarity.Packets.Types;
 //         docs/packets/references/entity_party_npc_rada_gart (type byte 0x8B,
 //         ラダ・ガート -- previously logged as unhandled "Entity (0x8B)";
 //         same story as 0x89, a fourth PartyNpc type byte with the identical
+//         575-byte layout)
+//         docs/packets/references/entity_party_npc_anrushia (type byte 0x8A,
+//         アンルシア -- previously logged as unhandled "Entity (0x8A)"; same
+//         story again, a fifth PartyNpc type byte with the identical
 //         575-byte layout)
 //
 // A Player-kind entity also carries, at fixed Data offset 390 (inside the
@@ -143,6 +149,7 @@ public sealed class EntityPacket : IPacket
             0x86 => (EntityKind.PartyNpc, 575),  // confirmed via ドルタム capture
             0x87 => (EntityKind.PartyNpc, 575),  // confirmed via エステラ/ギルガラン captures
             0x89 => (EntityKind.PartyNpc, 575),  // confirmed via ユーライザ capture
+            0x8A => (EntityKind.PartyNpc, 575),  // confirmed via アンルシア capture
             0x8B => (EntityKind.PartyNpc, 575),  // confirmed via ラダ・ガート capture
             0x24 => (EntityKind.ScoutableMonster, 402), // confirmed via a scoutable
                                                           // field monster's capture
@@ -199,11 +206,15 @@ public sealed class EntityPacket : IPacket
                 // \x04 prefix keeps the game from showing the GM-face icon.
                 // same re-interception guard as Player.
                 if (_entityName.StartsWith('\x04')) return;
-                // Same resolution as Player: name override dict first, romaji
-                // fallback only when the party member isn't in it.
+                // Player-name dict first, then the custom NPC name overrides
+                // (same order as Fellow), romaji fallback only when the party
+                // member isn't in either.
                 var partyDict = _deps.M00Dict("local_player_names");
+                var partyOverrideDict = _deps.M00Dict("custom_npc_name_overrides");
                 if (partyDict.TryGetValue(_entityName, out var knownPartyName) && !string.IsNullOrEmpty(knownPartyName))
                     newName = "\x04" + knownPartyName;
+                else if (partyOverrideDict.TryGetValue(_entityName, out var partyOverrideName) && !string.IsNullOrEmpty(partyOverrideName))
+                    newName = "\x04" + partyOverrideName;
                 else
                     newName = "\x04" + _deps.Romanizer.ToRomaji(_entityName);
                 break;
