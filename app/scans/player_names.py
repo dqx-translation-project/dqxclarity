@@ -14,7 +14,7 @@ def scan_for_menu_ai_names(players: dict):
     writer = MemWriter()
     if addresses := writer.pattern_scan(pattern=menu_ai_name_pattern, return_multiple=True, data_only=True):
         for address in addresses:
-            name_address = address + 57
+            name_address = address + 16
             try:
                 ja_name = writer.read_string(name_address)
                 en_name = players.get(ja_name)
