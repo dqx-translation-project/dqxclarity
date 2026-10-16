@@ -122,7 +122,7 @@ HOOKS = {
         ),
         FridaHook(
             name="player",
-            signature="55 8B EC 56 8B F1 57 8B 46 58 85 C0",
+            signature="55 8B EC 53 8B D9 56 57 8B 43 58 85 C0 74 ?? 50 E8 ?? ?? ?? ?? 83 C4 04 C7 43 58 00 00 00 00 6A 02 68",
             script_file="player.ts",
             message_handler=player_on_message,
             enabled=True,
