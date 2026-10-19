@@ -214,7 +214,7 @@ class Translator:
         :param text: Text to add the <br> tags to.
         :returns: A new string with the text broken up by <br> tags.
         """
-        count_list = [i for i in range(3, 500, 4)]  # 500 is arbitrary, but we should never hit this.
+        count_list = [*range(3, 500, 4)]  # 500 is arbitrary, but we should never hit this.
         split_text = text.split("\n")
         try:
             for i in count_list:
