@@ -11,3 +11,11 @@
 *.png binary
 *.db binary
 *.dll binary
+
+# packet reference captures are raw bytes: any 0x0A in them must not be turned
+# into 0x0D 0x0A on checkout (that corrupted record sizes in the samples). The
+# hex-dump .txt companions stay normal text. Later lines override earlier ones.
+docs/packets/references/* binary
+docs/packets/references/*.txt text eol=crlf
+docs/packets/references/entities/* binary
+docs/packets/references/entities/*.txt text eol=crlf

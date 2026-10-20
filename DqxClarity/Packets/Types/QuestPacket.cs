@@ -3,11 +3,12 @@ using System.Text;
 
 namespace DqxClarity.Packets.Types;
 
-// Three packet variants share this class:
+// Four packet variants share this class:
 //
 //   Variant.Log     (0x5d 0xcc51) — quest log screen (viewing an existing quest)
 //   Variant.Accept  (0x5d 0x2b15) — accepting a new quest from an NPC
 //   Variant.MapOpen (0x5c 0xde02) — opening/previewing a quest marker from the map
+//   Variant.Synopsis (0x5d 0x0ca1) — the quest synopsis; same shape as MapOpen
 //
 // All three variants carry the exact same tail structure (chapter/name/
 // description/rewards/remainder) and the exact same translation logic; only
@@ -22,6 +23,9 @@ namespace DqxClarity.Packets.Types;
 //   Log     30 bytes: num_times_opened(4) + padding(4) + unknown(2) + quest_number(4) + 4x unknown u32(16)
 //   Accept  28 bytes: num_times_opened(4) + padding(4) + quest_number(4) + 4x unknown u32(16)
 //   MapOpen 48 bytes: num_times_opened(4) + padding(4) + quest_number(4) + 9x unknown u32(36)
+//   Synopsis 48 bytes: opaque. Confirmed from two captures (885 bytes of Data each):
+//           48 + 56 (chapter, empty in both) + 56 + 508 + 104 + 104 + 9 = 885, with
+//           the name at Data offset 104 -- the same tail as the other variants.
 //
 // MapOpen's first 12 bytes (num_times_opened/padding/quest_number) line up
 // with Accept's; the remaining 36 bytes hold 9 opaque u32s where Accept only
@@ -44,7 +48,7 @@ namespace DqxClarity.Packets.Types;
 //   remainder             (passthrough)
 //
 // Samples: docs/packets/references/quest (Log), quest_accept (Accept),
-//          quest_map_open (MapOpen).
+//          quest_map_open (MapOpen). Synopsis has no reference file yet.
 //
 // Translation strategy — do not machine-translate any of these fields blindly:
 //
@@ -69,7 +73,7 @@ namespace DqxClarity.Packets.Types;
 // touch anything else either.
 public sealed class QuestPacket : IPacket
 {
-    public enum Variant { Log, Accept, MapOpen }
+    public enum Variant { Log, Accept, MapOpen, Synopsis }
     private const int ChapterBytes     = 56;
     private const int NameBytes        = 56;
     private const int DescriptionBytes = 508;
@@ -80,6 +84,7 @@ public sealed class QuestPacket : IPacket
         Variant.Log     => 30,
         Variant.Accept  => 28,
         Variant.MapOpen => 48,
+        Variant.Synopsis => 48,
         _ => throw new ArgumentOutOfRangeException(nameof(variant)),
     };
 

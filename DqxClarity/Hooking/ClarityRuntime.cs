@@ -21,6 +21,7 @@ public sealed class ClarityRuntime : IDisposable
     private readonly Translator _translator;
     private readonly PacketDependencies _deps;
     private readonly DataPacketRouter.Dispatcher _dispatcher;
+    private readonly MismatchReporter _mismatches;
     private readonly PacketWardenService _hook;
     private NativeLogTail? _logTail;
     private readonly bool _debugLogging;
@@ -62,7 +63,19 @@ public sealed class ClarityRuntime : IDisposable
             TranslateNpcNameplates = translateNpcNameplates,
             TranslateMonsterNameplates = translateMonsterNameplates,
         };
-        _dispatcher = DataPacketRouter.BuildDefaultDispatcher(_deps);
+
+        // A packet class that can't make sense of its bytes (e.g. the layout
+        // changed in a game update) is left untouched and reported rather than
+        // rewritten at wrong offsets -- see PacketGuard / MismatchReporter.
+        // Reports land in <exe dir>/logs/packet_mismatches/; _log is read when a
+        // report is filed, so it's fine that it isn't set yet.
+        var exePath = Environment.ProcessPath ?? AppContext.BaseDirectory;
+        var exeDir = Path.GetDirectoryName(exePath) ?? AppContext.BaseDirectory;
+        _mismatches = new MismatchReporter(Path.Combine(exeDir, "logs", "packet_mismatches"))
+        {
+            Log = (message, isError) => _log?.Invoke(message, isError),
+        };
+        _dispatcher = PacketGuard.Wrap(DataPacketRouter.BuildDefaultDispatcher(_deps), _mismatches);
 
         _hook = new PacketWardenService(HandlePacket);
     }

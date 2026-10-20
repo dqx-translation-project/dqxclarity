@@ -5,7 +5,8 @@ namespace DqxClarity.Packets.Types;
 //
 
 // Each variant is the same shape with different header sizes / slot widths:
-//   variant 2 (0x03 / 0x5408): header 80 bytes, name in a fixed 41-byte slot (no length prefix)
+//   variant 2 (0x03 / 0x5408): header 84 bytes (80 before the 8.1 update), name in a fixed
+//                              41-byte slot (no length prefix)
 //   variant 3 (0xa1 / 0x2711): header 78 bytes, length u32 then cstring
 //   variant 4 (0xa1 / 0x8a6a): header 326 bytes, length u32 then cstring
 //
@@ -15,8 +16,15 @@ namespace DqxClarity.Packets.Types;
 // party slot with no player-name-dict entry to match).
 public sealed class PartyList2Packet : IPacket
 {
-    private const int HeaderBytes = 80;
+    private const int HeaderBytes = 84;
     private const int NameSlotBytes = 41;
+
+    // The slot is read up to its first null, but a character id sits at +36
+    // inside it (D9 AF 11 0D in a capture of the player's own entry). Only the
+    // old name's bytes are cleared and the new name written over them, so
+    // nothing else in the slot is touched, and a name is cut at 35 bytes so it
+    // can never run into the id.
+    private const int MaxNameBytes = 35;
 
     private readonly byte[] _raw;
     private readonly PacketDependencies _deps;
@@ -33,10 +41,10 @@ public sealed class PartyList2Packet : IPacket
     {
         if (_raw.Length < HeaderBytes + NameSlotBytes) return;
 
-        var nameBytes = _raw.AsSpan(HeaderBytes, NameSlotBytes);
-        var nullIdx = nameBytes.IndexOf((byte)0);
-        var nameLen = nullIdx >= 0 ? nullIdx : NameSlotBytes;
-        var jpName = Encoding.UTF8.GetString(nameBytes[..nameLen]);
+        if (!PacketText.TryReadSlot(_raw.AsSpan(HeaderBytes, NameSlotBytes), out var jpName))
+            throw new PacketLayoutException(
+                $"the {NameSlotBytes}-byte name slot at offset {HeaderBytes} does not hold text; the layout has probably changed",
+                HeaderBytes);
         if (string.IsNullOrEmpty(jpName)) return;
 
         var playerDict = _deps.M00Dict("local_player_names");
@@ -48,14 +56,18 @@ public sealed class PartyList2Packet : IPacket
                 : _deps.Romanizer.ToRomaji(jpName, 11);
         if (translated == jpName) return;
 
-        var writer = new PacketWriter();
-        writer.WriteBytes(_raw.AsSpan(0, HeaderBytes).ToArray());
         var en = Encoding.UTF8.GetBytes(translated);
-        if (en.Length > NameSlotBytes - 1) en = en[..(NameSlotBytes - 1)];
-        writer.WriteBytes(en);
-        writer.WriteBytes(new byte[NameSlotBytes - en.Length]);
-        writer.WriteBytes(_raw.AsSpan(HeaderBytes + NameSlotBytes).ToArray());
-        ModifiedData = writer.Build();
+        if (en.Length > MaxNameBytes) en = en[..MaxNameBytes];
+
+        // Same length as the original: clear the old name (and its null), write
+        // the new one, leave every other byte alone.
+        var result = (byte[])_raw.Clone();
+        var oldLength = Encoding.UTF8.GetByteCount(jpName);
+        Array.Clear(result, HeaderBytes, Math.Min(oldLength + 1, MaxNameBytes + 1));
+        Buffer.BlockCopy(en, 0, result, HeaderBytes, en.Length);
+        result[HeaderBytes + en.Length] = 0;
+
+        ModifiedData = result;
     }
 }
 
