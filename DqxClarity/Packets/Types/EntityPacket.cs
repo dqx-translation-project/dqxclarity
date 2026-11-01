@@ -50,6 +50,25 @@ namespace DqxClarity.Packets.Types;
 //                      hired player characters, so there's no player name
 //                      they could ever match)
 //
+// A mismatch report from another player (captured within 20 seconds of each
+// other) had the name 4 bytes later in BOTH a Monster and a Player entity:
+// Monster 402 -> 406, Player 609 -> 613, with the character id moving along
+// with the name (394 -> 398, still 215 bytes before the length field). The
+// cause is not known. It is not simply "being in combat" (the packet
+// author's own client, and another tester who fought dozens of times, never
+// saw it) and it is not a client update (that player's client version had not
+// changed). Something on the server side or specific to that player/session is
+// the remaining guess. (The extra bytes in the captures look like entity ids,
+// which first suggested a combat list, but that did not hold up.) The id
+// position is matched against the 609 capture, not confirmed -- that capture
+// belongs to another player, so it could not be checked against a roster.
+//
+// Because the shift keeps changing (575 -> 605 -> 609 -> 613, 402 -> 406),
+// the listed offsets are now only the first things tried: when none of them
+// fits, the header is searched in 4-byte steps beyond each of them (see
+// ScanForName). The old offsets stay first so a client that has not updated
+// still parses exactly as before.
+//
 // Header offsets are a candidate LIST per kind, not a single number: each
 // candidate is checked against the data (entity_length is 2..255, the name
 // ends in a null exactly entity_length bytes later, and it is valid UTF-8
@@ -129,14 +148,35 @@ namespace DqxClarity.Packets.Types;
 public sealed class EntityPacket : IPacket
 {
     private const int TypeByteOffset = 11;
-    private const int CharacterIdOffset = 390; // only meaningful for EntityKind.Player
+    private const int CharacterIdOffset = 390; // only meaningful for EntityKind.Player (575/605 layouts)
+    // In the 605, 609 and 613 layouts the character id sits 215 bytes before the
+    // name's length field (390 for 605, 394 for 609, 398 for 613): the extra
+    // bytes of the later layouts come BEFORE the id, so the id moved with the
+    // name.
+    private const int CharacterIdBeforeName = 215;
     private const int MaxNameBytes = 255;       // entity_length sanity cap (incl. null)
+    private const int ScanStepBytes = 4;        // the header grows in whole u32s
+    private const int ScanMaxBytes = 64;        // how far past a listed offset to look
 
     // Candidate header offsets (Data offset of entity_length), tried in order.
-    private static readonly int[] PlayerOffsets    = { 605, 575 };
-    private static readonly int[] PartyOffsets     = { 575, 605 };
-    private static readonly int[] CharacterOffsets = { 575, 605 };
-    private static readonly int[] MonsterOffsets   = { 402 };
+    private static readonly int[] PlayerOffsets    = { 605, 609, 613, 575 };
+    private static readonly int[] PartyOffsets     = { 575, 605, 609, 613 };
+    private static readonly int[] CharacterOffsets = { 575, 605, 609, 613 };
+    private static readonly int[] MonsterOffsets   = { 402, 406 };
+
+    // Job abbreviations a player's nameplate shows instead of their name when
+    // they hide it in auto-matched content (WAR = Warrior, PRI = Priest, ...).
+    // They are English from the start, so there is nothing to translate and
+    // the normal path would never mark them; without the \x04 prefix the
+    // client treats an unprefixed ASCII name as a GM and shows the red name /
+    // GM face. Matched exactly (upper case) against the whole name, for Player
+    // and Party entities only, and written back unchanged apart from the prefix.
+    private static readonly HashSet<string> ClassAbbreviations = new(StringComparer.Ordinal)
+    {
+        "WAR", "PRI", "MGE", "THF", "MRT", "MIN", "GLA", "PLD", "ARM", "RNG",
+        "SGE", "STA", "MON", "ITM", "DNC", "FOR", "DRU", "GAD", "DTH", "DMN",
+        "PIR", "GRD", "DGM", "HRM", "STK",
+    };
 
     private enum EntityKind
     {
@@ -167,8 +207,12 @@ public sealed class EntityPacket : IPacket
         {
             // Player moved 575 -> 605 in a later update (confirmed via a
             // capture of ショウブ: name length field at Data offset 605, the
-            // character id still at 390). 575 stays as the second candidate
-            // so a client that hasn't updated still parses.
+            // character id still at 390). A capture of あこ～ from another
+            // player has it at 609 with the id at 394 (4 bytes added before
+            // the id); it is not known yet whether that is a newer client
+            // version or something that varies per character, so all three
+            // are tried. 575 stays last so a client that hasn't updated still
+            // parses.
             0x01 => (EntityKind.Player,  PlayerOffsets),
             0x02 => (EntityKind.Monster, MonsterOffsets),   // confirmed via monster_5 capture
             0x04 => (EntityKind.Npc,     CharacterOffsets), // inferred, shares Player's shift
@@ -194,20 +238,30 @@ public sealed class EntityPacket : IPacket
 
     private void Parse()
     {
-        // The character id is read first and independently of the name, so
-        // PlayerContext still identifies the logged-in character even if the
-        // name can't be located (see the nameplate-toggle note above).
-        if (_kind == EntityKind.Player && _raw.Length >= CharacterIdOffset + 4)
-        {
-            var characterId = BinaryPrimitives.ReadUInt32LittleEndian(_raw.AsSpan(CharacterIdOffset, 4));
-            _deps.PlayerContext.NotifyEntityId(characterId, _deps);
-        }
-
         _headerOffset = -1;
         foreach (var candidate in _headerOffsets)
         {
             if (NameFitsAt(candidate)) { _headerOffset = candidate; break; }
         }
+
+        // None of the known offsets fit: the header may have grown again.
+        if (_headerOffset < 0) _headerOffset = ScanForName();
+
+        // The character id is reported independently of whether the name can
+        // be translated, so PlayerContext still identifies the logged-in
+        // character even if the name can't be located (see the nameplate-
+        // toggle note above). Its offset follows the name's layout: it is
+        // read at 390 for the 575 layout and 215 bytes before the name for 605 and up.
+        if (_kind == EntityKind.Player)
+        {
+            var idOffset = _headerOffset >= 605 ? _headerOffset - CharacterIdBeforeName : CharacterIdOffset;
+            if (_raw.Length >= idOffset + 4)
+            {
+                var characterId = BinaryPrimitives.ReadUInt32LittleEndian(_raw.AsSpan(idOffset, 4));
+                _deps.PlayerContext.NotifyEntityId(characterId, _deps);
+            }
+        }
+
         if (_headerOffset < 0)
         {
             var kind = _kind;
@@ -221,7 +275,8 @@ public sealed class EntityPacket : IPacket
             var elsewhere = LayoutDiagnostics.FindStrings(_raw, 3);
             if (elsewhere.Count > 0)
                 throw new PacketLayoutException(
-                    $"{kind} entity: no name at the expected offsets ({string.Join("/", _headerOffsets)}), " +
+                    $"{kind} entity: no name at the expected offsets ({string.Join("/", _headerOffsets)}) " +
+                    $"or up to {ScanMaxBytes} bytes past them, " +
                     $"but text \"{elsewhere[0].Text}\" is at offset {elsewhere[0].Offset}",
                     elsewhere[0].Offset);
             return;
@@ -234,12 +289,31 @@ public sealed class EntityPacket : IPacket
         _remainder = reader.RemainingBytes().ToArray();
     }
 
+    // Last resort when none of the listed offsets fits: try each listed offset
+    // plus 4, 8, ... up to ScanMaxBytes (the header has so far only ever grown, in
+    // whole u32s), nearest first, and take the first spot where a name fits. A
+    // name found this way must contain Japanese text -- looser matching than the
+    // listed offsets, so it is held to a stricter test, and an already-translated
+    // (English) packet falls through to "no name", as it always has. -1 if none.
+    private int ScanForName()
+    {
+        var tried = new HashSet<int>(_headerOffsets);
+        var candidates = new SortedSet<int>();
+        foreach (var baseOffset in _headerOffsets)
+            for (var extra = ScanStepBytes; extra <= ScanMaxBytes; extra += ScanStepBytes)
+                if (!tried.Contains(baseOffset + extra)) candidates.Add(baseOffset + extra);
+
+        foreach (var candidate in candidates)
+            if (NameFitsAt(candidate, requireJapanese: true)) return candidate;
+        return -1;
+    }
+
     // True when a plausible entity_length + name starts at headerOffset: the
     // length is 2..MaxNameBytes (at least one character plus the null), the
     // byte at the end of that span is the null terminator and the only one,
     // and the bytes before it are valid UTF-8 with no control characters
     // (other than the \x04 prefix a translated name carries).
-    private bool NameFitsAt(int headerOffset)
+    private bool NameFitsAt(int headerOffset, bool requireJapanese = false)
     {
         if (_raw.Length < headerOffset + 4 + 2) return false;
 
@@ -257,6 +331,7 @@ public sealed class EntityPacket : IPacket
             var name = new UTF8Encoding(false, true).GetString(text);
             foreach (var c in name)
                 if (c < ' ' && c != '\x04') return false;
+            if (requireJapanese && !PacketText.HasJapanese(name)) return false;
         }
         catch (DecoderFallbackException) { return false; }
 
@@ -266,6 +341,19 @@ public sealed class EntityPacket : IPacket
     public void Build()
     {
         if (_kind == EntityKind.None) return;
+
+        // A hidden-name job abbreviation: just add the \x04 prefix. Done before
+        // the nameplate toggles and the dictionary/romaji lookups -- it isn't a
+        // translation (the toggles are about those), and romaji would turn
+        // "WAR" into "War". A name that already carries the prefix is not in
+        // the set, so the hook re-reading its own write falls through to the
+        // per-kind guards below and is left alone.
+        if ((_kind == EntityKind.Player || _kind == EntityKind.Party) &&
+            ClassAbbreviations.Contains(_entityName))
+        {
+            WriteName("\x04" + _entityName);
+            return;
+        }
 
         string newName;
         switch (_kind)
@@ -368,6 +456,11 @@ public sealed class EntityPacket : IPacket
 
         if (newName == _entityName) return;
 
+        WriteName(newName);
+    }
+
+    private void WriteName(string newName)
+    {
         var writer = new PacketWriter();
         writer.WriteBytes(_header);
         var bytes = Encoding.UTF8.GetBytes(newName);

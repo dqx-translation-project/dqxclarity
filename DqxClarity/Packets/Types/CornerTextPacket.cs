@@ -1,4 +1,5 @@
 using System.Text;
+using DqxClarity.Translation;
 
 namespace DqxClarity.Packets.Types;
 
@@ -8,7 +9,9 @@ namespace DqxClarity.Packets.Types;
 // The original two captures line up with entries in custom_corner_text.json
 // (a "push the pedal, thread right" instruction and a "ran out of time,
 // failed" status line — matches the thread-and-pedal sequence minigame);
-// combat lines instead live in custom_combat_chat.json.
+// combat lines instead live in custom_combat_chat.json, and NPC party chat
+// (lines spoken by the NPC companions in your party) in
+// custom_npc_party_chat.json.
 //
 // Layout (after opcode + marker):
 //   header        12 bytes (passthrough — Data[0:4] looks like an
@@ -23,14 +26,20 @@ namespace DqxClarity.Packets.Types;
 //   text          cstring (utf-8, null-terminated)
 //   tail          4 bytes (passthrough — "00 00 00 00" in both captures)
 //
-// Looked up verbatim in m00 'custom_corner_text' then 'custom_combat_chat'
-// (first hit wins); misses pass through as the original Japanese — NOT
+// Looked up verbatim in m00 'custom_corner_text', then 'custom_combat_chat',
+// then 'custom_npc_party_chat' (first hit wins); misses pass through as the original Japanese — NOT
 // machine translated, same handling as custom_mail: both sources are fixed,
 // curated sets (292 + 175 entries), not freeform prose, so a miss shouldn't
 // get MT'd into something the curators didn't sign off on. Both files are
 // ingested automatically by TranslationUpdater's generic /json/*.json ->
 // m00_strings routing (each entry there is `{ id: { ja: en } }`, which the
 // importer already unwraps) — no updater changes needed for either.
+//
+// A japanese line with no translation (no entry, or an empty one) is added to
+// <exe dir>/logs/corner_text.log, formatted as a json entry ready to paste into
+// the custom json file -- see UntranslatedTextLog. Combat chat lines arrive
+// in this same packet, so the log can hold ones that belong in
+// custom_combat_chat.json or custom_npc_party_chat.json instead.
 //
 // Samples: docs/packets/references/corner_text,
 //          docs/packets/references/corner_text_2 (confirms header/length
@@ -67,8 +76,12 @@ public sealed class CornerTextPacket : IPacket
 
     public void Build()
     {
-        var dict = _deps.M00Dict("custom_corner_text", "custom_combat_chat");
-        if (!dict.TryGetValue(_text, out var newText) || string.IsNullOrEmpty(newText)) return;
+        var dict = _deps.M00Dict("custom_corner_text", "custom_combat_chat", "custom_npc_party_chat");
+        if (!dict.TryGetValue(_text, out var newText) || string.IsNullOrEmpty(newText))
+        {
+            if (Translator.IsTextJapanese(_text)) _deps.CornerTextLog?.Record(_text);
+            return;
+        }
         if (newText == _text) return;
 
         var writer = new PacketWriter();

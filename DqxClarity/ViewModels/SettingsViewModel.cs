@@ -769,6 +769,20 @@ public partial class SettingsViewModel : ObservableObject
 
     // ── Run ───────────────────────────────────────────────────────────────
 
+    // The translation settings as they currently stand on screen. Run() saves this,
+    // and MainViewModel uses it to rebuild the translation backend on every Run.
+    public TranslationConfig BuildTranslationConfig() => new()
+    {
+        TranslateService   = SelectedTranslateService?.Value ?? "",
+        TranslateKey       = TranslateKey,
+        ChatGptModel       = ChatGptModel,
+        OllamaUrl          = OllamaUrl,
+        OllamaModel        = OllamaModel,
+        LibreTranslateUrl  = LibreTranslateUrl,
+        EnableCommunityApi = UseCommunityApi,
+        CommunityApiKey    = CommunityApiKey,
+    };
+
     [RelayCommand]
     public async Task Run()
     {
@@ -811,18 +825,25 @@ public partial class SettingsViewModel : ObservableObject
             // SettingsViewModel.Run() always populates this the same way.
             ActiveLanguagePacks      = GetActiveLanguagePackFileNames(),
         };
-        var translation = new TranslationConfig
-        {
-            TranslateService   = svc ?? "",
-            TranslateKey       = TranslateKey,
-            ChatGptModel       = ChatGptModel,
-            OllamaUrl          = OllamaUrl,
-            OllamaModel        = OllamaModel,
-            LibreTranslateUrl  = LibreTranslateUrl,
-            EnableCommunityApi = UseCommunityApi,
-            CommunityApiKey    = CommunityApiKey,
-        };
+        var translation = BuildTranslationConfig();
         try { _cfg.Save(launcherCfg, translation); } catch { }
+
+        // Community logging is handed to PacketWarden.dll through an env var that
+        // the game inherits when it is created -- so it has to reflect THIS Run's
+        // checkbox before the game is launched below. Direct login and
+        // simultaneous launch both start the game from here, before RunRequested
+        // fires, so refreshing it only in the RunRequested handler left the value
+        // from the previous Run in place (unchecking the box had no effect).
+        Environment.SetEnvironmentVariable(
+            "DQXCLARITY_COMMUNITY_LOGGING",
+            CommunityLogging ? "1" : null);
+
+        // Same for debug logging: DQXCLARITY_FORWARD_ALL is read by PacketWarden.dll
+        // when it hooks the game, so it must match this Run's checkbox before the
+        // game is created below.
+        Environment.SetEnvironmentVariable(
+            "DQXCLARITY_FORWARD_ALL",
+            DebugLogging ? "1" : null);
 
         if (DirectLogin)
         {
@@ -1200,8 +1221,32 @@ public partial class SettingsViewModel : ObservableObject
             }
 
             await _languagePacks.CheckUpdatesAsync(checkable);
-            var updates = checkable.Count(m => m.Status.StartsWith("Update available:", StringComparison.OrdinalIgnoreCase));
-            SetLanguagePackStatus(updates == 0 ? "No language pack updates found." : $"{updates} language pack update(s) available.");
+
+            // HasUpdate is what the check sets (its Status text is just "Update available",
+            // which the old StartsWith("Update available:") test never matched -- so this
+            // used to report "no updates" while the Download button was showing).
+            var pending = checkable.Where(m => m.HasUpdate).ToList();
+
+            // With Automatic updates on there is no reason to leave a Download button
+            // waiting: this check runs every time the tab is opened (and the daily pack
+            // may have been published since the launcher started), so apply what it found.
+            if (AutomaticUpdates && pending.Count > 0)
+            {
+                var applied = 0;
+                foreach (var pack in pending)
+                {
+                    await DownloadLanguagePackUpdate(pack);
+                    if (!pack.HasUpdate) applied++;
+                }
+                // On a failure DownloadLanguagePackUpdate has already set the error status.
+                if (applied == pending.Count)
+                    SetLanguagePackStatus($"{applied} language pack update(s) installed automatically.");
+                return;
+            }
+
+            SetLanguagePackStatus(pending.Count == 0
+                ? "No language pack updates found."
+                : $"{pending.Count} language pack update(s) available.");
         }
         catch (Exception ex)
         {

@@ -51,7 +51,9 @@ public sealed class DataPacketRouter
         {
             (0x21, 0xa83c) => "NpcDialogue",
             (0x21, 0x9804) => "NpcDialogueNoName",
+            (0x21, 0x757c) => "NpcDialogueTextOnly",
             (0x21, 0xbe01) => "StorySoFarText",
+            (0x5c, 0x131e) => "StorySoFarTextMap",
             (0x21, 0x5878) => "Walkthrough",
             (0x21, 0x8f8f) => "QuestAcceptDialogue",
             (0x21, 0x1305) => "QuestProgress",
@@ -116,6 +118,9 @@ public sealed class DataPacketRouter
             (0xa1, 0x8a6a) => "PartyList4",
             (0xa1, 0x16b6) => "MonsterTavernList",
             (0xa1, 0xac0b) => "MonsterFarmList",
+            (0xa1, 0x3bd0) => "SupportMonster",
+            (0xa1, 0x7e96) => "SupportMonster",
+            (0x1d, 0xa83c) => "Announcement",
             (0xaa, 0x7a64) => "SupportPartyList",
             (0xaa, 0xc462) => "HiredByList",
             (0xaa, 0xde02) => "TavernRecruitmentList",
@@ -155,7 +160,9 @@ public sealed class DataPacketRouter
         {
             (0x21, 0xa83c) => new NpcDialoguePacket(data, deps, NpcDialoguePacket.Variant.WithName),
             (0x21, 0x9804) => new NpcDialoguePacket(data, deps, NpcDialoguePacket.Variant.NoName),
+            (0x21, 0x757c) => new NpcDialoguePacket(data, deps, NpcDialoguePacket.Variant.TextOnly),
             (0x21, 0xbe01) => new StorySoFarTextPacket(data, deps),
+            (0x5c, 0x131e) => new StorySoFarTextPacket(data, deps, StorySoFarTextPacket.Variant.Map),
             (0x21, 0x5878) => new WalkthroughPacket(data, deps),
             (0x21, 0x8f8f) => new QuestAcceptDialoguePacket(data, deps),
             (0x21, 0x1305) => new QuestProgressPacket(data, deps),
@@ -211,6 +218,9 @@ public sealed class DataPacketRouter
             (0xa1, 0x8a6a) => new PartyList4Packet(data, deps),
             (0xa1, 0x16b6) => new MonsterTavernListPacket(data, deps),
             (0xa1, 0xac0b) => new MonsterFarmListPacket(data, deps),
+            (0xa1, 0x3bd0) => new SupportMonsterPacket(data, deps),
+            (0xa1, 0x7e96) => new SupportMonsterPacket(data, deps),
+            (0x1d, 0xa83c) => new AnnouncementPacket(data, deps),
             (0xaa, 0x7a64) => new SupportPartyListPacket(data, deps),
             (0xaa, 0xc462) => new HiredByListPacket(data, deps),
             (0xaa, 0xde02) => new TavernRecruitmentListPacket(data, deps),
@@ -257,6 +267,13 @@ public sealed class PacketDependencies
     public bool TranslatePlayerNameplates { get; set; } = true;
     public bool TranslateNpcNameplates { get; set; } = true;
     public bool TranslateMonsterNameplates { get; set; } = true;
+
+    // Where corner-text lines with no translation get written (as ready-to-
+    // paste json entries). Null when logging isn't wanted, e.g. in tests.
+    public UntranslatedTextLog? CornerTextLog { get; set; }
+
+    // Same idea for orange announcements with no custom_announcements entry.
+    public UntranslatedTextLog? AnnouncementLog { get; set; }
 
     // Session-scoped: who's logged in, resolved without a login hook by
     // correlating CharacterLogListPacket and EntityPacket. See PlayerContext's

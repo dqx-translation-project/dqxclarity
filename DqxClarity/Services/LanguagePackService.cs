@@ -14,6 +14,12 @@ public record PackUpdateRecord
     [JsonPropertyName("etag")]         public string? Etag { get; init; }
     [JsonPropertyName("lastModified")] public string? LastModified { get; init; }
     [JsonPropertyName("checkedAt")]    public string? CheckedAt { get; init; }
+
+    // Payload sha of the LOCAL pack these validators were recorded against. The
+    // ETag/Last-Modified only mean "unchanged" relative to the file on disk at
+    // that moment, so they are trusted only while the local pack still has this
+    // sha. Records without it (written before this field existed) are ignored.
+    [JsonPropertyName("localSha")]     public string? LocalSha { get; init; }
 }
 
 /// <summary>Outcome of an update check. When <see cref="DownloadedBytes"/> is non-null the new pack
@@ -220,7 +226,12 @@ public class LanguagePackService
         catch { /* sidecar is a cache; failing to persist only costs a redundant check next time */ }
     }
 
-    private void RecordValidators(Dictionary<string, PackUpdateRecord> state, string fileName, HttpResponseMessage resp)
+    // Only call this when the local pack is known to match what the server has
+    // (an "up to date" outcome). Recording validators for a newer remote that has
+    // NOT been applied makes the next check's conditional GET answer 304 "not
+    // modified" -- i.e. a pending update would be reported as "up to date" and
+    // hidden until the server's file changed again.
+    private void RecordValidators(Dictionary<string, PackUpdateRecord> state, string fileName, HttpResponseMessage resp, string localSha)
     {
         var etag = resp.Headers.ETag?.ToString();
         var lastMod = resp.Content.Headers.LastModified?.ToString("o");
@@ -229,6 +240,7 @@ public class LanguagePackService
             Etag         = string.IsNullOrEmpty(etag) ? null : etag,
             LastModified = lastMod,
             CheckedAt    = DateTimeOffset.UtcNow.ToString("o"),
+            LocalSha     = string.IsNullOrEmpty(localSha) ? null : localSha.ToLowerInvariant(),
         };
         SaveUpdateState(state);
     }
@@ -269,7 +281,12 @@ public class LanguagePackService
         try { localSha = ComputeLocalPayloadSha(pack.Path); } catch { localSha = ""; }
 
         using var http = NewHttp();
-        var haveValidators = rec != null && (!string.IsNullOrEmpty(rec.Etag) || !string.IsNullOrEmpty(rec.LastModified));
+        // Validators only count while they were recorded against the pack that is on disk now
+        // (see PackUpdateRecord.LocalSha); otherwise fall through to the sha-based check.
+        var haveValidators = rec != null
+            && !string.IsNullOrEmpty(localSha)
+            && string.Equals(rec.LocalSha, localSha, StringComparison.OrdinalIgnoreCase)
+            && (!string.IsNullOrEmpty(rec.Etag) || !string.IsNullOrEmpty(rec.LastModified));
 
         if (haveValidators)
         {
@@ -283,14 +300,13 @@ public class LanguagePackService
             using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
             if (resp.StatusCode == HttpStatusCode.NotModified)
             {
-                RecordValidators(state, fileName, resp);
+                RecordValidators(state, fileName, resp, localSha);
                 result.Message = "Up to date";
                 return result;
             }
             if (resp.IsSuccessStatusCode)
             {
                 var bytes = await resp.Content.ReadAsByteArrayAsync();
-                RecordValidators(state, fileName, resp);
                 var remoteSha = RemoteShaFromBytes(bytes);
                 if (!string.IsNullOrEmpty(remoteSha) && !remoteSha.Equals(localSha, StringComparison.OrdinalIgnoreCase))
                 {
@@ -299,7 +315,11 @@ public class LanguagePackService
                     result.RemoteSha = remoteSha;
                     result.Message = "Update available";
                 }
-                else result.Message = "Up to date";
+                else
+                {
+                    RecordValidators(state, fileName, resp, localSha);
+                    result.Message = "Up to date";
+                }
                 return result;
             }
             result.Message = $"Update check failed: HTTP {(int)resp.StatusCode}";
@@ -316,7 +336,6 @@ public class LanguagePackService
             if (resp.StatusCode == HttpStatusCode.PartialContent)
             {
                 var headBytes = await resp.Content.ReadAsByteArrayAsync();
-                RecordValidators(state, fileName, resp);
                 string remoteSha = "";
                 using (var ms = new MemoryStream(headBytes))
                     if (ClpkFormat.TryReadHeader(ms, out var meta, out _, out _) && !string.IsNullOrEmpty(meta!.Sha))
@@ -338,6 +357,7 @@ public class LanguagePackService
                     result.UpdateAvailable = !remoteSha.Equals(localSha, StringComparison.OrdinalIgnoreCase);
                 }
                 result.RemoteSha = remoteSha;
+                if (!result.UpdateAvailable) RecordValidators(state, fileName, resp, localSha);
                 result.Message = result.UpdateAvailable ? "Update available" : "Up to date";
                 return result;
             }
@@ -345,7 +365,6 @@ public class LanguagePackService
             if (resp.IsSuccessStatusCode) // server ignored Range; full body returned
             {
                 var bytes = await resp.Content.ReadAsByteArrayAsync();
-                RecordValidators(state, fileName, resp);
                 var remoteSha = RemoteShaFromBytes(bytes);
                 if (!string.IsNullOrEmpty(remoteSha) && !remoteSha.Equals(localSha, StringComparison.OrdinalIgnoreCase))
                 {
@@ -354,7 +373,11 @@ public class LanguagePackService
                     result.RemoteSha = remoteSha;
                     result.Message = "Update available";
                 }
-                else result.Message = "Up to date";
+                else
+                {
+                    RecordValidators(state, fileName, resp, localSha);
+                    result.Message = "Up to date";
+                }
                 return result;
             }
 

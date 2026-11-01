@@ -240,6 +240,34 @@ public partial class MainViewModel : ObservableObject
         _runtime?.UpdateNameplateSettings(
             Settings.NameplatesPlayer, Settings.NameplatesNpc, Settings.NameplatesMonster);
 
+        // Community logging: the env var was set once, when the runtime was built
+        // at launcher startup, from whatever was saved on disk back then. A
+        // checkbox change made since (before this Run click) never reached it, so
+        // logging silently stayed off until the launcher was restarted. The game
+        // has not been launched yet at this point (and a game started later
+        // inherits this process's environment), so refresh it from the live
+        // setting here. PacketWarden.dll reads it once, when it injects.
+        Environment.SetEnvironmentVariable(
+            "DQXCLARITY_COMMUNITY_LOGGING",
+            Settings.CommunityLogging ? "1" : null);
+
+        // Debug logging has the same two problems: the DQXCLARITY_FORWARD_ALL env
+        // var was only set when the runtime was built, and the runtime's own debug
+        // switch and the Debug tab were only created if the box was checked then.
+        ApplyDebugLogging(Settings.DebugLogging);
+
+        // Translation service, api key and model: the backend was built once from
+        // the settings on disk at startup. Rebuild it from what is on screen now.
+        try { _runtime?.UpdateBackend(BackendFactory.Create(Settings.BuildTranslationConfig())); }
+        catch (Exception ex) { Log.AppendLine($"Could not apply translation settings: {ex.Message}", "error"); }
+
+        // Name overrides: re-import name_overrides.json (saved by Settings.Run()
+        // just before this) and drop the cached player/sibling lookups so edited
+        // overrides apply to the running game. The runtime's doc comment has said
+        // this is called from here, but it never was.
+        try { _runtime?.RefreshNameOverrides(); }
+        catch (Exception ex) { Log.AppendLine($"Could not refresh name overrides: {ex.Message}", "error"); }
+
         Log.AppendLine("Translation runtime active. Pipe waiting for PacketWarden.dll.");
     }
 
@@ -282,13 +310,7 @@ public partial class MainViewModel : ObservableObject
                 _config.Launcher.NameplatesPlayer,
                 _config.Launcher.NameplatesNpc,
                 _config.Launcher.NameplatesMonster);
-            if (_config.Launcher.DebugLogging)
-            {
-                Log.EnableDebug();
-                _runtime.SetDebugCallback((typeName, rawBytes, hexDump, modifiedBytes, modifiedHex) =>
-                    Avalonia.Threading.Dispatcher.UIThread.Post(
-                        () => Log.Debug?.AddPacket(typeName, rawBytes, hexDump, modifiedBytes, modifiedHex)));
-            }
+            ApplyDebugLogging(_config.Launcher.DebugLogging);
             _runtime.Start();
             Settings.PostInjectCallback = hProc => _runtime.InjectInto(hProc);
 
@@ -314,6 +336,33 @@ public partial class MainViewModel : ObservableObject
             Log.AppendLine($"Failed to start translation runtime: {ex.Message}", "error");
             _runtime = null;
             Settings.PostInjectCallback = null;
+        }
+    }
+
+    // Applies the debug-logging checkbox to everything it controls: the env var
+    // PacketWarden.dll reads when it hooks a freshly launched game (forward all
+    // packets), the runtime's own debug switch and packet callback, and the Log
+    // view's Debug tab. Safe to call before the runtime exists (env var only) and
+    // on every Run, so checking OR unchecking the box takes effect on the next Run
+    // without restarting the launcher. A game that is already running keeps the
+    // forwarding mode it was hooked with.
+    private void ApplyDebugLogging(bool enabled)
+    {
+        Environment.SetEnvironmentVariable("DQXCLARITY_FORWARD_ALL", enabled ? "1" : null);
+
+        if (_runtime == null) return;
+        _runtime.SetDebugLogging(enabled);
+
+        if (enabled)
+        {
+            if (!Log.DebugEnabled) Log.EnableDebug();
+            _runtime.SetDebugCallback((typeName, rawBytes, hexDump, modifiedBytes, modifiedHex) =>
+                Avalonia.Threading.Dispatcher.UIThread.Post(
+                    () => Log.Debug?.AddPacket(typeName, rawBytes, hexDump, modifiedBytes, modifiedHex)));
+        }
+        else if (Log.DebugEnabled)
+        {
+            Log.DisableDebug();
         }
     }
 

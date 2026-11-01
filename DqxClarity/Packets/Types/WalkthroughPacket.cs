@@ -1,4 +1,5 @@
 using System.Text;
+using DqxClarity.Translation;
 
 namespace DqxClarity.Packets.Types;
 
@@ -14,9 +15,20 @@ namespace DqxClarity.Packets.Types;
 //   remainder            (rest of payload)
 //
 // Translates against the `walkthrough` table.
+//
+// Fit to the walkthrough box: wrapped at 31 characters, at most 3 lines, and
+// cut with " [...]" when the English runs over -- the same limits the live
+// (main branch) dqxclarity uses for this text. Machine translations are made
+// to that shape directly. Text that comes out of the `walkthrough` table is
+// re-fitted only if it breaks those limits (see FitToBox): earlier versions of
+// this class wrapped machine translations at 46 wide with no line limit and
+// cached them, and those old rows would otherwise keep their old shape
+// forever; curated rows that already fit are left exactly as they are.
 public sealed class WalkthroughPacket : IPacket
 {
     private const int FixedBufferBytes = 276; // text bytes + the null terminator
+    private const int WrapWidth = 31;
+    private const int MaxLines = 3;
 
     private readonly byte[] _raw;
     private readonly PacketDependencies _deps;
@@ -84,13 +96,26 @@ public sealed class WalkthroughPacket : IPacket
         if (bad != null) return bad;
 
         var cached = _deps.Db.Read(original, "walkthrough");
-        if (cached != null) return cached;
+        if (cached != null) return FitToBox(cached);
 
-        var translated = _deps.Translator.Translate(original, wrapWidth: 46);
+        var translated = _deps.Translator.Translate(original, wrapWidth: WrapWidth, maxLines: MaxLines, addBrs: false);
         if (string.IsNullOrEmpty(translated)) return original;
 
         _deps.Db.Write(original, translated, "walkthrough");
         return translated;
+    }
+
+    // Text that already fits (<= 3 lines, none longer than 31 characters) is returned
+    // untouched. Otherwise it is re-flowed -- line breaks turned into spaces, then
+    // wrapped at 31 with the 3-line limit and " [...]" -- which is what turns a row
+    // cached by the old 46-wide wrapping into the right shape.
+    private static string FitToBox(string text)
+    {
+        var lines = text.Split('\n');
+        if (lines.Length <= MaxLines && lines.All(l => l.Length <= WrapWidth)) return text;
+
+        var flowed = string.Join(' ', lines.Where(l => l.Length > 0));
+        return TextWrapping.Fill(flowed, WrapWidth, MaxLines);
     }
 
     private static string TrimToByteLength(string s, int maxBytes)

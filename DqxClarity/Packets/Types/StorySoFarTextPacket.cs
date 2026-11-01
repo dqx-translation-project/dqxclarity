@@ -3,13 +3,36 @@ using DqxClarity.Translation;
 
 namespace DqxClarity.Packets.Types;
 
+// The "story so far" recap text. Two packets carry it, with the same text and
+// the same translation, shown in the same recap window:
 //
-
-// Layout (after opcode + marker):
+//   Variant.Window  (0x21 0xbe01) -- opened normally
+//   Variant.Map     (0x5c 0x131e) -- opened from the map
+//
+// Layout of the Window variant (after opcode + marker):
 //   num_times_opened     u32
 //   padding              4 bytes
 //   text                 cstring (utf-8) — must fit in a 517-byte slot
 //   remainder            (discarded on rewrite)
+//
+// Layout of the Map variant (after opcode + marker), from one capture (423
+// bytes of Data):
+//   header               28 bytes -- passthrough (8 zero bytes, a u32 7C, a
+//                        constant-looking 62 22 20 01, then 03 07 00 00;
+//                        meaning unknown, probably a story/chapter id). There
+//                        is no length field in it.
+//   text                 cstring (utf-8, lines separated by 0A) running to
+//                        the end of the packet: unlike the Window variant it
+//                        is NOT padded out to a fixed slot (the capture ends
+//                        at the null terminator), so the translation is
+//                        written as a plain cstring, with no padding.
+//   remainder            (kept, empty in the capture)
+// The text is capped at the same 516 bytes (the recap window's buffer), and a
+// header or text that is not what this expects is left untouched and reported
+// (PacketLayoutException).
+//
+// Samples: docs/packets/references/storysofar (Window),
+//          storysofar_map (Map)
 //
 // The total packet must not exceed 531 bytes (including the opcode+marker+size
 // header added by outer layers). We cap the translated text at 516 bytes; the
@@ -27,27 +50,55 @@ public sealed class StorySoFarTextPacket : IPacket
     private const int WrapWidth = 43; // characters per line
     private const int MaxLines = 8;
 
+    public enum Variant { Window, Map }
+    private const int MapHeaderBytes = 28;
+
     private readonly byte[] _raw;
     private readonly PacketDependencies _deps;
 
+    private readonly Variant _variant;
     private uint _numTimesOpened;
     private string _text = "";
+    private byte[] _mapHeader = Array.Empty<byte>();
+    private byte[] _mapRemainder = Array.Empty<byte>();
 
     public byte[]? ModifiedData { get; private set; }
 
-    public StorySoFarTextPacket(byte[] payloadData, PacketDependencies deps)
+    public StorySoFarTextPacket(byte[] payloadData, PacketDependencies deps, Variant variant = Variant.Window)
     {
         _raw = payloadData;
         _deps = deps;
+        _variant = variant;
         Parse();
     }
 
     private void Parse()
     {
+        if (_variant == Variant.Map)
+        {
+            ParseMap();
+            return;
+        }
+
         var reader = new PacketReader(_raw);
         _numTimesOpened = reader.ReadU32();
         reader.ReadBytes(4); // padding
         _text = reader.ReadCString();
+    }
+
+    private void ParseMap()
+    {
+        var nul = _raw.Length > MapHeaderBytes ? Array.IndexOf(_raw, (byte)0, MapHeaderBytes) : -1;
+        if (nul < 0)
+            throw new PacketLayoutException(
+                $"Story so far (map) packet is {_raw.Length} bytes; no text string after the {MapHeaderBytes}-byte header",
+                MapHeaderBytes);
+
+        if (!PacketText.TryDecode(_raw.AsSpan(MapHeaderBytes, nul - MapHeaderBytes), out _text, allowLineBreaks: true))
+            throw new PacketLayoutException("Story so far (map) text does not hold text", MapHeaderBytes);
+
+        _mapHeader = _raw[..MapHeaderBytes];
+        _mapRemainder = _raw[(nul + 1)..];
     }
 
     public void Build()
@@ -62,6 +113,17 @@ public sealed class StorySoFarTextPacket : IPacket
 
         var clipped = TrimToByteLength(translated, MaxTextBytes);
         var byteLen = Encoding.UTF8.GetByteCount(clipped);
+
+        if (_variant == Variant.Map)
+        {
+            // Plain cstring, no padding: the original has none either.
+            var mapWriter = new PacketWriter();
+            mapWriter.WriteBytes(_mapHeader);
+            mapWriter.WriteCString(clipped);
+            mapWriter.WriteBytes(_mapRemainder);
+            ModifiedData = mapWriter.Build();
+            return;
+        }
 
         var writer = new PacketWriter();
         writer.WriteU32(_numTimesOpened);

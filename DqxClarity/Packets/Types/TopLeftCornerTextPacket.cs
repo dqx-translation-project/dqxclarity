@@ -1,4 +1,5 @@
 using System.Text;
+using DqxClarity.Translation;
 
 namespace DqxClarity.Packets.Types;
 
@@ -30,6 +31,10 @@ namespace DqxClarity.Packets.Types;
 // text is replaced, on a miss the packet is left completely alone (no
 // machine translation, no romaji, no bad_strings). These are short, fixed
 // system strings, so every one is expected to have a hand-written entry.
+//
+// A japanese line with no translation is added to <exe dir>/logs/corner_text.log
+// as a json entry ready to paste into custom_corner_text.json -- see
+// UntranslatedTextLog.
 //
 // Samples: docs/packets/references/top_left_corner_text_1 (真のセレドット
 //          山道に行け！), top_left_corner_text_2 (精神浸食中) and
@@ -74,7 +79,11 @@ public sealed class TopLeftCornerTextPacket : IPacket
         if (!_parsed || _text.Length == 0) return;
 
         var dict = _deps.M00Dict("custom_corner_text");
-        if (!dict.TryGetValue(_text, out var english) || string.IsNullOrEmpty(english)) return;
+        if (!dict.TryGetValue(_text, out var english) || string.IsNullOrEmpty(english))
+        {
+            if (Translator.IsTextJapanese(_text)) _deps.CornerTextLog?.Record(_text);
+            return;
+        }
         if (english == _text) return;
 
         var textBytes = Encoding.UTF8.GetBytes(english);

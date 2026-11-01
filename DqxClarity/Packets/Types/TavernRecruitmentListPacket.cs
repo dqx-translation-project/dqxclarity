@@ -18,10 +18,21 @@ namespace DqxClarity.Packets.Types;
 // (Data length - header) / record count, so a future patch that only grows or
 // shrinks the records keeps working. The record count comes from the u32 at
 // header offset 0x18 (always 20 so far; the constant is the fallback). Every
-// record is then checked against its index marker -- u32(1), u32(index),
-// u32(0) -- and a packet whose records do not line up is left completely
-// untouched and reported (PacketLayoutException -> MismatchReporter) instead
-// of being rewritten at the wrong offsets.
+// record is then checked against its index marker -- u32(any), u32(index),
+// u32(0), with the index running up by one per record -- and a packet whose
+// records do not line up is left completely untouched and reported
+// (PacketLayoutException -> MismatchReporter) instead of being rewritten at
+// the wrong offsets.
+//
+// The index does NOT always start at 1. A later capture (same 235-byte
+// records, name still at record offset 12) numbers its 20 listings 21..40, and
+// has kind = 1 where the first 8.1 capture had 2 -- so the index looks like a
+// listing number on the board (a second page of 20?) rather than a position in
+// this packet. That is a guess; what the data shows is that it counts up by
+// one per record from some starting value, so that is what is checked: the
+// first populated record sets the starting value and every later record must
+// then be exactly one more than the one before it. Checking for 1..20 made the
+// whole packet get rejected as a layout mismatch.
 //
 // Note on the old reference sample (docs/packets/references/
 // tavern_recruitment_list): it was stored with LF -> CRLF conversion applied
@@ -31,12 +42,19 @@ namespace DqxClarity.Packets.Types;
 //
 // Layout (post-8.1, reverse-engineered from a 20-listing capture):
 //   header    0x1C (28) bytes -- passthrough. u32 at 0x18 = record count (20).
+//                 An empty board is sent as the header alone (record count 0,
+//                 28 bytes of Data) and is left alone.
 //   record[0..20)  stride bytes each, back to back, no gap, filling the rest
 //                  of the packet exactly.
 //
 // Each record:
-//   index_marker  12 bytes -- u32(1), u32(record index, 1-based), u32(0).
-//                 Passthrough; used to verify the record boundaries.
+//   index_marker  12 bytes -- u32(kind), u32(listing index), u32(0).
+//                 Passthrough; used to verify the record boundaries. The
+//                 first number was 1 in the pre-8.1 capture, 2 in every
+//                 listing of the first 8.1 capture and 1 again in the next
+//                 one, so it is NOT checked. The index was 1..20 in the first
+//                 two captures and 21..40 in the third (see above), so it is
+//                 only checked to count up by one per record.
 //   name          cstring (utf-8, null-terminated) starting at record
 //                 offset 0x0C. May start with a decorative "~", so the whole
 //                 null-terminated string is read.
@@ -63,7 +81,9 @@ namespace DqxClarity.Packets.Types;
 // present but none has a readable name the packet is reported as a layout
 // mismatch.
 //
-// Sample: docs/packets/references/tavern_recruitment_list (20/20 listings)
+// Samples: docs/packets/references/tavern_recruitment_list (pre-8.1, 231-byte records),
+//          tavern_recruitment_list_2 (8.1, 235-byte records, index 1..20),
+//          tavern_recruitment_list_3 (8.1, 235-byte records, index 21..40)
 public sealed class TavernRecruitmentListPacket : IPacket
 {
     private const int HeaderBytes = 0x1C;
@@ -90,6 +110,10 @@ public sealed class TavernRecruitmentListPacket : IPacket
     {
         if (_raw.Length < HeaderBytes) return;
 
+        // An empty board: just the 28-byte header with a record count of 0. Nothing to
+        // translate, and not a layout problem.
+        if (_raw.Length == HeaderBytes && BitConverter.ToUInt32(_raw, CountOffset) == 0) return;
+
         var (recordCount, stride) = ResolveShape();
 
         var dict = _deps.M00Dict("local_player_names");
@@ -97,13 +121,14 @@ public sealed class TavernRecruitmentListPacket : IPacket
         var changed = false;
         var populated = 0;
         var readable = 0;
+        long? indexBase = null; // listing index of record 0, worked out from the first populated record
 
         for (var r = 0; r < recordCount; r++)
         {
             var recordStart = HeaderBytes + r * stride;
             var recordEnd = recordStart + stride;
 
-            if (!MarkerMatches(recordStart, r + 1))
+            if (!MarkerMatches(recordStart, r, indexBase))
             {
                 // An unused slot is all zeros; anything else means the records
                 // are not where we think they are.
@@ -113,6 +138,7 @@ public sealed class TavernRecruitmentListPacket : IPacket
                     recordStart);
             }
 
+            indexBase ??= (long)BitConverter.ToUInt32(_raw, recordStart + 4) - r;
             populated++;
 
             var nameStart = recordStart + NameFieldOffset;
@@ -168,12 +194,18 @@ public sealed class TavernRecruitmentListPacket : IPacket
 
     private static bool StrideOk(int stride) => stride >= MinRecordStride && stride <= MaxRecordStride;
 
-    private bool MarkerMatches(int offset, int index)
+    // `indexBase` is the listing index record 0 has (or would have), known once a populated
+    // record has been seen. The first populated record may start anywhere (other than 0);
+    // after that, record r must carry exactly indexBase + r, even across an unused slot.
+    private bool MarkerMatches(int offset, int recordNumber, long? indexBase)
     {
         if (offset + MarkerBytes > _raw.Length) return false;
-        return BitConverter.ToUInt32(_raw, offset) == 1
-            && BitConverter.ToUInt32(_raw, offset + 4) == (uint)index
-            && BitConverter.ToUInt32(_raw, offset + 8) == 0;
+        if (BitConverter.ToUInt32(_raw, offset + 8) != 0) return false;
+
+        // The first u32 is a kind/flag (1 and 2 both seen), so only the listing index
+        // and the trailing zero identify a record.
+        var index = BitConverter.ToUInt32(_raw, offset + 4);
+        return indexBase is null ? index != 0 : index == indexBase.Value + recordNumber;
     }
 
     private bool IsZero(int offset, int count)

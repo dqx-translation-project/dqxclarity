@@ -17,7 +17,8 @@ public static class BackendFactory
             "libretranslate"    => new LibreTranslateBackend(config.LibreTranslateUrl, config.TranslateKey),
             "googletranslatepa" => new GoogleTranslatePaBackend(),
             "googlefree"        => new GoogleFreeBackend(),
-            "echo" or "none"    => new EchoBackend(),
+            "echo"              => new EchoBackend(),
+            "none"              => new NoneBackend(),
             _                   => new GoogleFreeBackend(),
         };
 }

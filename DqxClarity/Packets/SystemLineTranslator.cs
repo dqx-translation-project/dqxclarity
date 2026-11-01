@@ -90,6 +90,28 @@ namespace DqxClarity.Packets;
 //     en: Ran out of <item>!
 //         item from m00 'items', then 'key_items', then the main glossary
 //
+//   Removed from the Key Items
+//     ja: <item>が だいじなものから なくなった。
+//         アストルニウムが だいじなものから なくなった。
+//     en: <item> is removed from your Key Items.
+//         note the japanese ends in a full stop (。), not the ！ of the line
+//         above. item from m00 'key_items' first (it is a key item), then
+//         'items', then the main glossary
+//
+//   Points gained
+//     ja: <number>Pゲット！
+//         500 Pゲット！
+//     en: Got <number> P!
+//
+//   Points total
+//     ja: <player>　<number> P
+//         ショウブ　10500 P
+//     en: <player>:  <number> P
+//         (two spaces after the colon, as in the template given for it)
+//         player from m00 'local_player_names', then 'custom_npc_name_overrides',
+//         then romaji, as in "Use an item" below. The japanese side is a
+//         full-width space between player and number, matched loosely.
+//
 //   Use items (with a number)
 //     ja: <player>は <item>を <number>個 使った！
 //         ショウブは 海神のうろこを １個 使った！
@@ -173,6 +195,21 @@ public sealed class SystemLineTranslator
 
     private static readonly Regex RanOutRe = new(
         @"^(?<item>.+?)が\s*なくなった！$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // Ends in an ideographic full stop (。), unlike RanOutRe's ！.
+    private static readonly Regex KeyItemRemovedRe = new(
+        @"^(?<item>.+?)が\s*だいじなものから\s*なくなった。$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // "500 Pゲット！" -- the P is matched as half- or full-width.
+    private static readonly Regex PointsGainedRe = new(
+        @"^(?<amount>" + Num + @")\s*[PＰ]ゲット！$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // "ショウブ　10500 P" -- full-width space between name and number.
+    private static readonly Regex PointsTotalRe = new(
+        @"^(?<player>\S.*?)\s+(?<amount>" + Num + @")\s*[PＰ]$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex ItemRe = new(
@@ -293,6 +330,26 @@ public sealed class SystemLineTranslator
         {
             var item = LookupItem(m.Groups["item"].Value) ?? LookupGlossary(m.Groups["item"].Value);
             if (item != null) return $"Ran out of {item}!";
+        }
+
+        m = KeyItemRemovedRe.Match(text);
+        if (m.Success)
+        {
+            var ja = m.Groups["item"].Value;
+            var item = Lookup(_deps.M00Dict("key_items"), ja) ?? LookupItem(ja) ?? LookupGlossary(ja);
+            if (item != null) return $"{item} is removed from your Key Items.";
+        }
+
+        m = PointsGainedRe.Match(text);
+        if (m.Success)
+            return $"Got {Digits(m, "amount")} P!";
+
+        m = PointsTotalRe.Match(text);
+        if (m.Success)
+        {
+            var player = ResolvePlayerName(m.Groups["player"].Value.Trim());
+            if (!string.IsNullOrEmpty(player))
+                return $"{player}:  {Digits(m, "amount")} P";
         }
 
         return TryUseItem(text);

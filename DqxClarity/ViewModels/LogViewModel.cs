@@ -38,6 +38,16 @@ public partial class LogViewModel : ObservableObject
         OnPropertyChanged(nameof(Debug));
     }
 
+    // Counterpart to EnableDebug: hides the Debug tab and drops its packet list
+    // when debug logging is switched off between runs.
+    public void DisableDebug()
+    {
+        DebugEnabled = false;
+        Debug = null;
+        OnPropertyChanged(nameof(Debug));
+        if (ActiveLogTab == "debug") ActiveLogTab = "dqxclarity";
+    }
+
     public void UpdateTitle(string version)
     {
         StatusTitle = ExitedWithError

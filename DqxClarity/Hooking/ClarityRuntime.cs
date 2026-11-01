@@ -24,7 +24,7 @@ public sealed class ClarityRuntime : IDisposable
     private readonly MismatchReporter _mismatches;
     private readonly PacketWardenService _hook;
     private NativeLogTail? _logTail;
-    private readonly bool _debugLogging;
+    private volatile bool _debugLogging; // changed live by SetDebugLogging
     private Action<string, bool>? _log;
     private Action<string, byte[], string, byte[]?, string?>? _debugPacket;
 
@@ -75,12 +75,19 @@ public sealed class ClarityRuntime : IDisposable
         {
             Log = (message, isError) => _log?.Invoke(message, isError),
         };
+        _deps.CornerTextLog = new UntranslatedTextLog(Path.Combine(exeDir, "logs", "corner_text.log"));
+        _deps.AnnouncementLog = new UntranslatedTextLog(Path.Combine(exeDir, "logs", "announcements.log"));
         _dispatcher = PacketGuard.Wrap(DataPacketRouter.BuildDefaultDispatcher(_deps), _mismatches);
 
         _hook = new PacketWardenService(HandlePacket);
     }
 
     public void SetDebugCallback(Action<string, byte[], string, byte[]?, string?> callback) => _debugPacket = callback;
+
+    // Turns packet debug reporting on or off while the runtime is running. The
+    // runtime is built once and outlives every Run click, so the value passed to
+    // the constructor would otherwise stick until the launcher was restarted.
+    public void SetDebugLogging(bool enabled) => _debugLogging = enabled;
 
     // The runtime is constructed once (EnsureNativeRuntime's guard means it's
     // never rebuilt) and stays alive for the rest of the process, so the
@@ -113,6 +120,17 @@ public sealed class ClarityRuntime : IDisposable
     // MainViewModel.OnRunRequested every time Run fires, alongside
     // UpdateNameplateSettings, so freshly-saved overrides take effect on the very
     // next translated packet -- no restart needed.
+    // Same problem for the translation service: the backend (service, api key,
+    // model, url) is built once when the runtime is, so changing it in Settings and
+    // clicking Run kept using the old one until the launcher was restarted.
+    // Called from MainViewModel.OnRunRequested with a backend built from the
+    // current Settings.
+    public void UpdateBackend(ITranslationBackend backend)
+    {
+        backend.OnError = msg => _log?.Invoke("[translate] " + msg, true);
+        _translator.UpdateBackend(backend);
+    }
+
     public void RefreshNameOverrides()
     {
         _db.ImportNameOverrides();

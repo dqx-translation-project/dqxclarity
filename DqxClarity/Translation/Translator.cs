@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using DqxClarity.Data;
+using DqxClarity.Translation.Backends;
 
 namespace DqxClarity.Translation;
 
@@ -45,7 +46,7 @@ public sealed class Translator
     private static readonly string[] NameTags = { "<pc>", "<cs_pchero>", "<kyodai>" };
     private static readonly string[] Honorifics = { "さま", "君", "どの", "ちゃん", "くん", "様", "さーん", "殿", "さん" };
 
-    private readonly ITranslationBackend _backend;
+    private volatile ITranslationBackend _backend; // swapped live by UpdateBackend
     private GlossaryCache _glossary;
 
     public Translator(ITranslationBackend backend, GlossaryCache glossary)
@@ -53,6 +54,10 @@ public sealed class Translator
         _backend = backend;
         _glossary = glossary;
     }
+
+    // Lets ClarityRuntime switch translation service/key/model between runs
+    // without rebuilding the whole runtime (see ClarityRuntime.UpdateBackend).
+    public void UpdateBackend(ITranslationBackend backend) => _backend = backend;
 
     // Lets ClarityRuntime swap in a freshly-reloaded glossary after the background
     // translation-data update finishes, so a running session picks up new custom
@@ -65,6 +70,9 @@ public sealed class Translator
         return JpRegex.IsMatch(sanitized);
     }
 
+    private static bool HasLatinLetterOrDigit(string text) =>
+        text.Any(c => c is (>= 'A' and <= 'Z') or (>= 'a' and <= 'z') or (>= '0' and <= '9'));
+
     private static string NormalizeText(string text)
     {
         var normalized = text.Normalize(NormalizationForm.FormKD);
@@ -74,8 +82,17 @@ public sealed class Translator
         return sb.ToString();
     }
 
+    // Returns "" when there is no translation to give: the "None" service is
+    // selected, the backend failed, or it handed back nothing but Japanese.
+    // Every caller treats "" as "leave the original text alone and don't cache
+    // anything".
     public string Translate(string text, int wrapWidth, int? maxLines = null, bool addBrs = true)
     {
+        // "None": curated sources only. Stop before the glossary/normalise steps,
+        // which would otherwise turn the untouched Japanese into a few stray
+        // glossary words and punctuation.
+        if (_backend is NoneBackend) return "";
+
         // Stage 1-9: prepare the source text.
         var output = text.Replace("<br>", "　");
 
@@ -176,6 +193,13 @@ public sealed class Translator
                 break;
             }
         }
+
+        // Nothing English in the backend's output for text that was Japanese
+        // means it came back untranslated (an echo, or a failed request that
+        // returned its input). Normalising that below would delete every
+        // Japanese character and leave punctuation, so give up here instead.
+        if (toTranslate.Any(IsTextJapanese) && !translated.Any(t => HasLatinLetterOrDigit(NormalizeText(t))))
+            return "";
 
         // Stage 13: post-process each fragment back into pristine.
         for (var c = 0; c < strAttrs.Count; c++)

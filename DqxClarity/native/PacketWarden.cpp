@@ -995,6 +995,60 @@ static unsigned int __cdecl H_HashLookup(void* a1, unsigned int a2)
     return result;
 }
 
+// ── Static string patches ────────────────────────────────────────────────────
+//
+// Some text is assembled entirely client-side, after packets have been parsed,
+// so the packet hook never sees it. These are one-shot, best-effort overwrites
+// of string literals in the game's .rdata: a miss just leaves the original
+// Japanese in place, never a crash.
+//
+// Self-target name (B_TARGET_RPL): the battle message builder compares actor
+// and target; when they're the same it skips the name lookup and fills
+// B_TARGET_RPL with the hardcoded literal "自分" (SJIS 8E A9 95 AA), giving
+// "Shobu uses Heal on 自分". The literal is only referenced from that one branch,
+// so overwriting it doesn't affect anything else. "self" is the same 4 bytes,
+// so it can be written in place: nothing moves, no code changes, and the
+// existing null terminator stays.
+//
+// The signature anchors on the adjacent "B_TARGET_RPL" token name so the match
+// is unique and survives relocation/patches as long as the table layout holds.
+
+static const char* SIG_SELF_TARGET_NAME =
+    "8E A9 95 AA 00 00 00 00 42 5F 54 41 52 47 45 54 5F 52 50 4C 00";   // 自分\0... B_TARGET_RPL\0
+static const char* SIG_SELF_TARGET_NAME_PATCHED =
+    "73 65 6C 66 00 00 00 00 42 5F 54 41 52 47 45 54 5F 52 50 4C 00";   // self\0... B_TARGET_RPL\0
+
+static void PatchSelfTargetName(BYTE* base, SIZE_T size)
+{
+    std::vector<BYTE*> matches;
+    FindSignature(base, size, SIG_SELF_TARGET_NAME, matches);
+    if (matches.size() != 1) {
+        // Re-injection into an already-patched process is the common benign case.
+        std::vector<BYTE*> already;
+        FindSignature(base, size, SIG_SELF_TARGET_NAME_PATCHED, already);
+        if (already.size() == 1) { Log("self_target_name: already patched"); return; }
+        char buf[96];
+        wsprintfA(buf, "self_target_name signature matched %u times (expected 1) - skipping",
+                  (unsigned)matches.size());
+        Log(buf);
+        return;
+    }
+
+    static const BYTE REPLACEMENT[4] = { 's', 'e', 'l', 'f' };
+    BYTE* p = matches[0];
+    DWORD old;
+    if (!VirtualProtect(p, sizeof(REPLACEMENT), PAGE_READWRITE, &old)) {
+        Log("self_target_name: VirtualProtect failed - skipping");
+        return;
+    }
+    memcpy(p, REPLACEMENT, sizeof(REPLACEMENT));
+    VirtualProtect(p, sizeof(REPLACEMENT), old, &old);
+
+    char buf[96];
+    wsprintfA(buf, "self_target_name patched @ %p (RVA 0x%X)", p, (unsigned)(p - base));
+    Log(buf);
+}
+
 // ── Install thread ───────────────────────────────────────────────────────────
 //
 // Runs on a background thread (not DllMain) because DllMain runs under the
@@ -1038,6 +1092,10 @@ static DWORD WINAPI InstallThread(LPVOID arg)
         if (entry) break;
         if (!last) Sleep(1000);
     }
+    // Static string patches. Done after the scan loop so the image is unpacked,
+    // and independent of whether the parser hook was found.
+    PatchSelfTargetName((BYTE*)mi.lpBaseOfDll, mi.SizeOfImage);
+
     if (!entry) {
         Log("parser body fingerprint not found - investigate; VCE base class may have changed");
         return 1;

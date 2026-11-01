@@ -5,7 +5,9 @@ using DqxClarity.Translation;
 
 namespace DqxClarity.Packets.Types;
 
-// Wire layout (after opcode + marker have been stripped by DataPacketRouter):
+// Wire layout (after opcode + marker have been stripped by DataPacketRouter).
+// This is the WithName / NoName layout; the TextOnly variant (0x21 0x757c) is
+// described under "TextOnly" in the class comment below:
 //   num_times_opened     u32
 //   padding              4 bytes
 //   unknown_1            u16
@@ -58,7 +60,29 @@ public sealed class NpcDialoguePacket : IPacket
     //          pre- and post-translation -- crc_value is byte-identical to
     //          crc32(original text) in the pre-translation capture, proving
     //          no masking is applied).
-    public enum Variant { WithName, NoName }
+    //
+    // TextOnly (0x21 0x757c) -- the same dialogue-window text with everything
+    // after the text stripped off. Confirmed from one capture (the text of a
+    // hidden-book hint, "...リストだ。アンネリゼが..."; 284 bytes of Data):
+    //
+    //   num_times_opened u32, padding 4 bytes, unknown_1 u16, unknown_2 u16
+    //       (12 bytes, all zero in the capture)
+    //   text_length      u32 -- includes the null terminator (268 = 267 + 1,
+    //                    matches the text exactly, same as the other variants)
+    //   text             cstring -- the LAST field: no speaker name, no
+    //                    unknown_3/4, no bitwise, no crc_value. The null
+    //                    terminator is the final byte of the packet.
+    //
+    // The text goes through exactly the same bad_strings -> dialog cache ->
+    // machine translation path as the other two variants (same 46-wide wrap);
+    // there is no speaker, so nothing is looked up for a name and the dialog
+    // cache row is written with an empty npc_name. Because the length field
+    // is rewritten and there is no crc to keep in sync, the new text is free
+    // to be longer or shorter than the original. Any bytes after the text
+    // (none in the capture) are passed through untouched.
+    //
+    // Sample: docs/packets/references/npc_dialogue_text_only
+    public enum Variant { WithName, NoName, TextOnly }
 
     private readonly byte[] _raw;
     private readonly PacketDependencies _deps;
@@ -76,6 +100,7 @@ public sealed class NpcDialoguePacket : IPacket
     private byte[] _unknown4 = Array.Empty<byte>();
     private uint _bitwise;           // purpose unknown, passed through untouched
     private uint _crcValue;
+    private byte[] _remainder = Array.Empty<byte>(); // TextOnly: anything after the text (none seen)
 
     public byte[]? ModifiedData { get; private set; }
 
@@ -98,6 +123,11 @@ public sealed class NpcDialoguePacket : IPacket
             _extraPad = reader.ReadU8();
         _textLength = reader.ReadU32();
         _text = reader.ReadCString();
+        if (_variant == Variant.TextOnly)
+        {
+            _remainder = reader.RemainingBytes().ToArray();
+            return;
+        }
         _unknown3 = reader.ReadU32();
         _npcName = reader.ReadCString();
         _unknown4 = reader.ReadBytes(_variant == Variant.NoName ? 1 : 7).ToArray();
@@ -107,6 +137,12 @@ public sealed class NpcDialoguePacket : IPacket
 
     public void Build()
     {
+        if (_variant == Variant.TextOnly)
+        {
+            BuildTextOnly();
+            return;
+        }
+
         // Resolve the speaker tag from m00 npcs (+ custom overrides). Falls
         // back to romaji so the player sees something readable even when the
         // dict misses. We pass the ORIGINAL japanese name to TranslateText so
@@ -136,6 +172,26 @@ public sealed class NpcDialoguePacket : IPacket
         writer.WriteBytes(_unknown4);
         writer.WriteU32(_bitwise);
         writer.WriteU32(CalculateCrc(finalText));
+        ModifiedData = writer.Build();
+    }
+
+    // TextOnly: header + length + text (+ passthrough remainder). No speaker
+    // name and no crc to maintain -- see the TextOnly notes in the class comment.
+    private void BuildTextOnly()
+    {
+        if (string.IsNullOrEmpty(_text)) return;
+
+        var modifiedText = TranslateText(_text, "");
+        if (string.IsNullOrEmpty(modifiedText) || modifiedText == _text) return;
+
+        var writer = new PacketWriter();
+        writer.WriteU32(_numTimesOpened);
+        writer.WriteBytes(_padding);
+        writer.WriteU16(_unknown1);
+        writer.WriteU16(_unknown2);
+        writer.WriteU32((uint)(Encoding.UTF8.GetByteCount(modifiedText) + 1)); // includes the null terminator
+        writer.WriteCString(modifiedText);
+        writer.WriteBytes(_remainder);
         ModifiedData = writer.Build();
     }
 
