@@ -444,7 +444,7 @@ class Translator:
         log.debug(f"[Post-translated]\n{translated_list}")
 
         if not translated_list or len(translated_list) != len(to_translate):
-            log.exception(f"{self.service} translation failed.")
+            log.error(f"{self.service} translation failed (see the error above).")
             return ""
 
         # update our str_attrs dict with the new, translated string
