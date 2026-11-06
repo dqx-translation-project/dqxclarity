@@ -23,7 +23,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "frida-tools==14.7.0",
+    "frida-tools==14.13.0",
     "pre-commit",
 ]
 
