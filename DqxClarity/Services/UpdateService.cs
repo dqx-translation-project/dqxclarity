@@ -79,6 +79,7 @@ public class UpdateService
             {
                 Path.GetFullPath(Path.Combine(exeDir, "misc_files")) + Path.DirectorySeparatorChar,
                 Path.GetFullPath(Path.Combine(exeDir, "logs")) + Path.DirectorySeparatorChar,
+                Path.GetFullPath(Path.Combine(exeDir, "language-packs")) + Path.DirectorySeparatorChar,
                 Path.GetFullPath(Path.Combine(exeDir, "user_settings.ini")),
             };
 

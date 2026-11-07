@@ -8,6 +8,7 @@ This script should live in the repo for a period of time before being removed.
 
 import json
 import os
+import shutil
 import ssl
 import sys
 import tempfile
@@ -16,8 +17,33 @@ import zipfile
 from urllib.request import Request, urlopen
 
 REPO = "dqx-translation-project/dqxclarity"
-PRESERVED_DIRS = {"misc_files", "logs"}
+PRESERVED_DIRS = {"misc_files", "logs", "language-packs"}
 PRESERVED_FILES = {"user_settings.ini"}
+
+# Leftovers of the old Python-based install that the C# build doesn't use. Only these exact
+# names are removed (after a successful update); anything else in the folder is left alone.
+OLD_PYTHON_DIRS = ["venv", "common", "hooking", "scans", "pymem", "__pycache__"]
+OLD_PYTHON_FILES = ["main.py", "__init__.py", "pyproject.toml"]
+
+
+def remove_old_python_files(install_dir):
+    print("Removing old Python files (this can take a moment)...")
+    for name in OLD_PYTHON_DIRS:
+        path = os.path.join(install_dir, name)
+        try:
+            if os.path.islink(path):
+                os.unlink(path)
+            elif os.path.isdir(path):
+                # rmtree does not follow links/junctions, so the venv's pointer to the
+                # system Python install is removed without touching that install.
+                shutil.rmtree(path, ignore_errors=True)
+        except OSError:
+            pass
+    for name in OLD_PYTHON_FILES:
+        try:
+            os.remove(os.path.join(install_dir, name))
+        except OSError:
+            pass
 
 
 def _http(url):
@@ -83,6 +109,11 @@ def main():
             os.remove(tmp)
         except OSError:
             pass
+
+    try:
+        remove_old_python_files(install_dir)
+    except Exception:
+        pass  # cleanup is optional; never block the launch
 
     print("Launching dqxclarity...")
     try:
