@@ -54,7 +54,7 @@ $publishArgs = @(
     $Project,
     "-c", $Configuration,
     "-r", "win-x64",
-    "--self-contained", "false",
+    "--self-contained", "true",
     "-p:PublishSingleFile=true"
 )
 if ($NoRestore) {

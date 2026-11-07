@@ -51,7 +51,7 @@ jobs:
         run: |
           $ref = "${{ github.ref_name }}"
           $v = if ($ref -match '^\d+\.\d+\.\d+') { $ref } elseif ($ref -match '^v\d+\.\d+\.\d+') { $ref -replace '^v', '' } else { '0.0.0' }
-          dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:Version=$v
+          dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version=$v
         working-directory: DqxClarity
 
       - name: Upload exe artifact

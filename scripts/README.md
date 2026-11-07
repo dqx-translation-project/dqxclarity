@@ -29,7 +29,7 @@ Output:
 DqxClarity\bin\Release\net9.0-windows\win-x64\publish\dqxclarity.exe
 ```
 
-This builds, in order: `LocaleHook.dll` + `PacketWarden.dll` (CMake + Visual Studio Build Tools, C++ desktop workload), `wanakana.dll` (Rust, `rustup target add x86_64-pc-windows-msvc`), then publishes the exe. The DLLs are embedded into the exe, and a missing DLL is skipped silently by the project file, so a build without them still works but loses that feature (no packet hook, no romaji names).
+This builds, in order: `LocaleHook.dll` + `PacketWarden.dll` (CMake + Visual Studio Build Tools, C++ desktop workload), `wanakana.dll` (Rust, `rustup target add x86_64-pc-windows-msvc`), then publishes a self-contained single-file exe (no .NET install needed on the user's machine). The DLLs are embedded into the exe, and a missing DLL is skipped silently by the project file, so a build without them still works but loses that feature (no packet hook, no romaji names).
 
 Switches:
 
