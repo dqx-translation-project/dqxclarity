@@ -16,4 +16,16 @@ DqxClarity/native/wanakana/target/
 DqxClarity/bin/
 DqxClarity/obj/
 
+# language packs are downloaded at runtime, not shipped in the repo
+language-packs/
+
+# local release artifacts
+local-build/
+
+# local-only configuration and tooling
+*.local.ini
+.idea/
+.vs/
+TestResults/
+
 .claude

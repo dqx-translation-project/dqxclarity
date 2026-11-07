@@ -15,7 +15,7 @@
                        Foreground="{DynamicResource AppText}"
                        TextWrapping="Wrap"
                        LineHeight="18">
-                Hi there! Make sure you click on the "Game" tab, configure your DQX game path and click "Patch Game Files" both on first install and after each game update to ensure you've installed the latest English game files.
+                Hi there! Make sure you click on the "Game" tab, configure your DQX installation path and click "Add DragonHook" to enable loading of language packs. After that, click the "Language" tab to download the dqxclarity team English language pack. This ensures you've installed the latest English game files.
             </TextBlock>
             <CheckBox x:Name="AgreementCheck"
                       FontSize="12"
