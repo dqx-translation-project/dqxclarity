@@ -1,0 +1,233 @@
+using DqxClarity.Translation;
+using System.Text;
+
+namespace DqxClarity.Packets.Types;
+
+// Four packet variants share this class:
+//
+//   Variant.Log     (0x5d 0xcc51) — quest log screen (viewing an existing quest)
+//   Variant.Accept  (0x5d 0x2b15) — accepting a new quest from an NPC
+//   Variant.MapOpen (0x5c 0xde02) — opening/previewing a quest marker from the map
+//   Variant.Synopsis (0x5d 0x0ca1) — the quest synopsis; same shape as MapOpen
+//
+// All three variants carry the exact same tail structure (chapter/name/
+// description/rewards/remainder) and the exact same translation logic; only
+// the header in front of that tail differs in length between variants. None
+// of the header's individual sub-fields (num_times_opened, a quest number,
+// a handful of "unknown" counters) are ever read or transformed by Build()
+// — they're written back byte-for-byte regardless of variant — so rather
+// than name each one out (and have to re-derive field boundaries by hand
+// every time a new variant shows up with a differently-sized header), the
+// whole header is read and rewritten as one opaque blob, sized per variant:
+//
+//   Log     30 bytes: num_times_opened(4) + padding(4) + unknown(2) + quest_number(4) + 4x unknown u32(16)
+//   Accept  28 bytes: num_times_opened(4) + padding(4) + quest_number(4) + 4x unknown u32(16)
+//   MapOpen 48 bytes: num_times_opened(4) + padding(4) + quest_number(4) + 9x unknown u32(36)
+//   Synopsis 48 bytes: opaque. Confirmed from two captures (885 bytes of Data each):
+//           48 + 56 (chapter, empty in both) + 56 + 508 + 104 + 104 + 9 = 885, with
+//           the name at Data offset 104 -- the same tail as the other variants.
+//
+// MapOpen's first 12 bytes (num_times_opened/padding/quest_number) line up
+// with Accept's; the remaining 36 bytes hold 9 opaque u32s where Accept only
+// has 4 — confirmed by capturing a MapOpen packet for the exact same quest
+// as an existing Accept reference and finding the tail (chapter through
+// remainder, including the 8-byte remainder itself) byte-for-byte identical
+// once the 48-byte header is skipped. Three of MapOpen's unknown u32s
+// (values 501 / 63700 / 7940) also happen to match Accept's unknown_2-4 from
+// that same session — plausibly some shared session/tick counters rather
+// than anything quest-specific — but nothing here depends on that, it's
+// just passed through untouched either way.
+//
+// Layout (after opcode + marker):
+//   header                variant-sized, see above (passthrough)
+//   subquest_name         56-byte fixed cstring   (called "chapter" historically)
+//   quest_name            56-byte fixed cstring
+//   quest_description     508-byte fixed cstring
+//   quest_rewards         104-byte fixed cstring  (one-shot rewards)
+//   quest_repeat_rewards  104-byte fixed cstring  (repeat-completion rewards)
+//   remainder             (passthrough)
+//
+// Samples: docs/packets/references/quest (Log), quest_accept (Accept),
+//          quest_map_open (MapOpen). Synopsis has no reference file yet.
+//
+// Translation strategy — do not machine-translate any of these fields blindly:
+//
+//   subquest_name / quest_name        : M00 `quests` lookup only. Null on miss
+//                                       so we leave the original japanese in
+//                                       place rather than emit garbled MT.
+//                                       The one addition: quest_name also
+//                                       tries the Strike Force pattern
+//                                       (<monster>討伐！ -> "Hunt <monster>!",
+//                                       see StrikeForceQuestName) when the
+//                                       `quests` lookup misses.
+//   quest_description                 : bad_strings -> db cache -> MT against
+//                                       the `quests` table, with the quest-
+//                                       specific wrap settings (49 wide, 6
+//                                       lines, no <br> injection).
+//   quest_rewards / repeat_rewards    : QuestRewardFormatter — item lookups against
+//                                       custom_quest_rewards + items + key_items,
+//                                       qty rules, 31-byte slot padding.
+//
+// Whole packet is gated on `IsTextJapanese(description)` — if the desc isn't
+// japanese (already translated this session, or a non-jp client), we don't
+// touch anything else either.
+public sealed class QuestPacket : IPacket
+{
+    public enum Variant { Log, Accept, MapOpen, Synopsis }
+    private const int ChapterBytes     = 56;
+    private const int NameBytes        = 56;
+    private const int DescriptionBytes = 508;
+    private const int RewardBytes      = 104;
+
+    private static int HeaderBytes(Variant variant) => variant switch
+    {
+        Variant.Log     => 30,
+        Variant.Accept  => 28,
+        Variant.MapOpen => 48,
+        Variant.Synopsis => 48,
+        _ => throw new ArgumentOutOfRangeException(nameof(variant)),
+    };
+
+    private readonly byte[] _raw;
+    private readonly PacketDependencies _deps;
+    private readonly Variant _variant;
+
+    private byte[] _header = Array.Empty<byte>();
+    private string _chapter = "";
+    private string _name = "";
+    private string _description = "";
+    private string _reward1 = "";
+    private string _reward2 = "";
+    private byte[] _remainder = Array.Empty<byte>();
+
+    public byte[]? ModifiedData { get; private set; }
+
+    public QuestPacket(byte[] payloadData, PacketDependencies deps, Variant variant = Variant.Log)
+    {
+        _raw = payloadData;
+        _deps = deps;
+        _variant = variant;
+        Parse();
+    }
+
+    private static string ReadFixedString(ref PacketReader reader, int byteCount)
+    {
+        var bytes = reader.ReadBytes(byteCount);
+        // strip trailing nulls
+        var len = bytes.Length;
+        while (len > 0 && bytes[len - 1] == 0) len--;
+        return Encoding.UTF8.GetString(bytes[..len]);
+    }
+
+    private void Parse()
+    {
+        var reader = new PacketReader(_raw);
+        _header      = reader.ReadBytes(HeaderBytes(_variant)).ToArray();
+        _chapter     = ReadFixedString(ref reader, ChapterBytes);
+        _name        = ReadFixedString(ref reader, NameBytes);
+        _description = ReadFixedString(ref reader, DescriptionBytes);
+        _reward1     = ReadFixedString(ref reader, RewardBytes);
+        _reward2     = ReadFixedString(ref reader, RewardBytes);
+        _remainder   = reader.RemainingBytes().ToArray();
+    }
+
+    public void Build()
+    {
+        // Gate: if the description isn't japanese (already translated this
+        // session, or a non-jp client locale), don't touch any field.
+        if (!Translator.IsTextJapanese(_description)) return;
+
+        var newChapter     = LookupQuestName(_chapter);
+        var newName        = LookupQuestName(_name) ?? LookupStrikeForceName(_name);
+        var newDescription = TranslateDescription(_description);
+        var newReward1     = FormatRewards(_reward1);
+        var newReward2     = FormatRewards(_reward2);
+
+        if (newChapter == null && newName == null && newDescription == null
+            && newReward1 == null && newReward2 == null) return;
+
+        var writer = new PacketWriter();
+        writer.WriteBytes(_header);
+
+        WritePadded(writer, newChapter     ?? _chapter,     ChapterBytes);
+        WritePadded(writer, newName        ?? _name,        NameBytes);
+        WritePadded(writer, newDescription ?? _description, DescriptionBytes);
+        WritePadded(writer, newReward1     ?? _reward1,     RewardBytes);
+        WritePadded(writer, newReward2     ?? _reward2,     RewardBytes);
+
+        writer.WriteBytes(_remainder);
+        ModifiedData = writer.Build();
+    }
+
+    // M00 `quests` lookup with NO fallback. Returns english name on hit, null on miss.
+    private string? LookupQuestName(string original)
+    {
+        if (string.IsNullOrEmpty(original)) return null;
+        var dict = _deps.M00Dict("quests");
+        return dict.TryGetValue(original, out var en) && !string.IsNullOrEmpty(en) ? en : null;
+    }
+
+    // Strike Force quests ("<monster>討伐！") come from the server, so they have
+    // no 'quests' entry; the name is built from the monster instead --
+    // "Hunt <english monster>!". Only tried after the 'quests' lookup misses
+    // and only matches that exact pattern, so no other name is ever affected.
+    // Null on a miss. See StrikeForceQuestName.
+    private string? LookupStrikeForceName(string original)
+    {
+        if (string.IsNullOrEmpty(original)) return null;
+        return StrikeForceQuestName.Translate(original, _deps.M00Dict("monsters"));
+    }
+
+    // Description path: bad_strings -> db cache -> MT with quest-specific
+    // wrap settings (49 wide, 6 max lines, no <br> injection). Writes to db on MT hit.
+    private string? TranslateDescription(string original)
+    {
+        if (string.IsNullOrEmpty(original)) return null;
+
+        var bad = _deps.Db.SearchBadStrings(original);
+        if (bad != null) return bad;
+
+        var cached = _deps.Db.Read(original, "quests");
+        if (cached != null) return cached;
+
+        var translated = _deps.Translator.Translate(original, wrapWidth: 49, maxLines: 6, addBrs: false);
+        if (string.IsNullOrEmpty(translated)) return null;
+
+        _deps.Db.Write(original, translated, "quests");
+        return translated;
+    }
+
+    // Reward fields: item lookup + qty rules + slot padding.
+    // m00 dict is `custom_quest_rewards` + `items` + `key_items` layered together.
+    private string? FormatRewards(string original)
+    {
+        if (string.IsNullOrEmpty(original)) return null;
+        var dict = _deps.M00Dict("custom_quest_rewards", "items", "key_items");
+        var formatted = new QuestRewardFormatter(dict).Format(original);
+        return formatted == original ? null : formatted;
+    }
+
+    // Writes the string + null terminator + zero-padding to a fixed total of `slot` bytes.
+    // Trims so utf-8 byte count stays within slot - 1.
+    private static void WritePadded(PacketWriter writer, string s, int slot)
+    {
+        var maxBytes = slot - 1;
+        var bytes = Encoding.UTF8.GetBytes(s);
+        if (bytes.Length > maxBytes)
+        {
+            var sb = new StringBuilder();
+            var running = 0;
+            foreach (var c in s)
+            {
+                var cb = Encoding.UTF8.GetByteCount(new[] { c });
+                if (running + cb > maxBytes) break;
+                sb.Append(c);
+                running += cb;
+            }
+            bytes = Encoding.UTF8.GetBytes(sb.ToString());
+        }
+        writer.WriteBytes(bytes);
+        var pad = slot - bytes.Length;
+        if (pad > 0) writer.WriteBytes(new byte[pad]);
+    }
+}

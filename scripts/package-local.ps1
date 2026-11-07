@@ -1,6 +1,7 @@
 param(
     [switch] $NoBuild,
-    [switch] $SkipNative
+    [switch] $SkipNative,
+    [switch] $SkipWanakana
 )
 
 $ErrorActionPreference = "Stop"
@@ -9,20 +10,18 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 $OutRoot = Join-Path $RepoRoot "local-build"
 $PackageDir = Join-Path $OutRoot "dqxclarity"
 $ZipPath = Join-Path $OutRoot "dqxclarity-mod.zip"
-$LauncherExe = Join-Path $RepoRoot "launcher\bin\Release\net9.0-windows\win-x64\publish\dqxclarity.exe"
+$Exe = Join-Path $RepoRoot "DqxClarity\bin\Release\net9.0-windows\win-x64\publish\dqxclarity.exe"
 
 if (-not $NoBuild) {
     $BuildScript = Join-Path $PSScriptRoot "build-launcher.ps1"
-    if ($SkipNative) {
-        & $BuildScript -SkipNative
-    }
-    else {
-        & $BuildScript
-    }
+    $buildArgs = @{}
+    if ($SkipNative) { $buildArgs["SkipNative"] = $true }
+    if ($SkipWanakana) { $buildArgs["SkipWanakana"] = $true }
+    & $BuildScript @buildArgs
 }
 
-if (-not (Test-Path $LauncherExe)) {
-    throw "Launcher exe not found. Run scripts\build-launcher.ps1 first."
+if (-not (Test-Path $Exe)) {
+    throw "dqxclarity.exe not found. Run scripts\build-launcher.ps1 first."
 }
 
 if (Test-Path $PackageDir) {
@@ -34,43 +33,16 @@ if (Test-Path $PackageDir) {
     Remove-Item -LiteralPath $PackageDir -Recurse -Force
 }
 
+# Same layout the release workflow zips: dqxclarity/{dqxclarity.exe, version.update, misc_files/clarity_dialog.db}.
+# user_settings.ini is created by the app on first run, so it is not packaged.
 New-Item -ItemType Directory -Force -Path $PackageDir | Out-Null
 
-$AppDir = Join-Path $RepoRoot "app"
-Get-ChildItem -LiteralPath $AppDir -Force | Where-Object {
-    $_.Name -notin @("tests", "__pycache__")
-} | ForEach-Object {
-    Copy-Item -LiteralPath $_.FullName -Destination $PackageDir -Recurse -Force
-}
-
-foreach ($file in @("version.update", "pyproject.toml", "user_settings.ini")) {
-    Copy-Item -LiteralPath (Join-Path $RepoRoot $file) -Destination $PackageDir -Force
-}
-
-Copy-Item -LiteralPath $LauncherExe -Destination (Join-Path $PackageDir "dqxclarity.exe") -Force
+Copy-Item -LiteralPath $Exe -Destination (Join-Path $PackageDir "dqxclarity.exe") -Force
+Copy-Item -LiteralPath (Join-Path $RepoRoot "version.update") -Destination $PackageDir -Force
 
 $MiscDir = Join-Path $PackageDir "misc_files"
 New-Item -ItemType Directory -Force -Path $MiscDir | Out-Null
 Copy-Item -LiteralPath (Join-Path $RepoRoot "clarity_dialog.db") -Destination $MiscDir -Force
-
-$PackageLanguagePacksDir = Join-Path $PackageDir "language-packs"
-New-Item -ItemType Directory -Force -Path $PackageLanguagePacksDir | Out-Null
-
-$SourceLanguagePacksDir = Join-Path $RepoRoot "language-packs"
-$copiedSourceLanguagePacks = $false
-if (Test-Path $SourceLanguagePacksDir) {
-    Get-ChildItem -LiteralPath $SourceLanguagePacksDir -Filter "*.zip" -File | ForEach-Object {
-        Copy-Item -LiteralPath $_.FullName -Destination $PackageLanguagePacksDir -Force
-        $copiedSourceLanguagePacks = $true
-    }
-}
-
-$BundledLanguagePacksDir = Join-Path (Split-Path -Parent $LauncherExe) "language-packs"
-if (-not $copiedSourceLanguagePacks -and (Test-Path $BundledLanguagePacksDir)) {
-    Get-ChildItem -LiteralPath $BundledLanguagePacksDir -Filter "*.zip" -File | ForEach-Object {
-        Copy-Item -LiteralPath $_.FullName -Destination $PackageLanguagePacksDir -Force
-    }
-}
 
 if (Test-Path $ZipPath) {
     Remove-Item -LiteralPath $ZipPath -Force

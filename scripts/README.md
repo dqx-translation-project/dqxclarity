@@ -1,24 +1,21 @@
-# DQXClarity local build & language pack guide
+# dqxclarity local build & language pack guide
 
-This clone is the full upstream Git repository for:
-
-https://github.com/dqx-translation-project/dqxclarity
-
-Use it as the editable source for custom launcher/UI and feature builds.
+Helper scripts for building and packaging dqxclarity locally. The application is C#/.NET 9 (Avalonia) in `DqxClarity/`; there is no Python runtime anymore.
 
 ## Main edit points
 
-- `launcher/Views/*.axaml`: launcher screens and layout.
-- `launcher/Styles/*.axaml`: shared colors, button styles, text styles.
-- `launcher/Assets/*`: bundled images and icon.
-- `launcher/ViewModels/*`: UI state, commands, tab behavior.
-- `launcher/Services/*`: setup, patching, launching, updates, database access, direct login.
-- `app/main.py`: Python entrypoint started by the launcher.
-- `app/common/*`: config, database, translation dispatch, memory helpers.
-- `app/hooking/*`: Frida hook activation and hook scripts.
-- `app/scans/*`: scanner processes.
+- `DqxClarity/Views/*.axaml`: screens and layout.
+- `DqxClarity/Styles/*.axaml`: shared colors, button styles, text styles.
+- `DqxClarity/Assets/*`: bundled images and icon.
+- `DqxClarity/ViewModels/*`: UI state, commands, tab behavior.
+- `DqxClarity/Services/*`: config, patching, launching, language packs, direct login.
+- `DqxClarity/Hooking/*`: native DLL injection, pipe IPC, log tailing.
+- `DqxClarity/Packets/*`: packet parsing, routing, and per-packet translators.
+- `DqxClarity/Translation/*`: translation pipeline, backends, glossary, romanizer.
+- `DqxClarity/native/*`: C/C++ hooks (`LocaleHook`, `PacketWarden`), the `version.dll` proxy, and the Rust `wanakana` crate.
+- `app/updater.py`: one-time migration updater fetched by old 5.x Python installs. Leave it in place.
 
-## Build the launcher exe
+## Build the exe
 
 From the repository root:
 
@@ -29,18 +26,20 @@ From the repository root:
 Output:
 
 ```text
-launcher\bin\Release\net9.0-windows\win-x64\publish\dqxclarity.exe
+DqxClarity\bin\Release\net9.0-windows\win-x64\publish\dqxclarity.exe
 ```
 
-The native `LocaleHook.dll` build needs CMake plus Visual Studio Build Tools with the C++ desktop workload. If that toolchain is missing, UI-only launcher edits can still usually be built with:
+This builds, in order: `LocaleHook.dll` + `PacketWarden.dll` (CMake + Visual Studio Build Tools, C++ desktop workload), `wanakana.dll` (Rust, `rustup target add x86_64-pc-windows-msvc`), then publishes a self-contained single-file exe (no .NET install needed on the user's machine). The DLLs are embedded into the exe, and a missing DLL is skipped silently by the project file, so a build without them still works but loses that feature (no packet hook, no romaji names).
 
-```powershell
-.\scripts\build-launcher.ps1 -SkipNative
-```
+Switches:
+
+- `-SkipNative`: don't rebuild `LocaleHook.dll` / `PacketWarden.dll` (UI-only work).
+- `-SkipWanakana`: don't rebuild `wanakana.dll`.
+- `-NoRestore`, `-Configuration Debug|Release`.
+
+Remember to rebuild `PacketWarden.dll` whenever a new packet route is added, since its `KNOWN_PACKETS` allowlist is compiled in.
 
 ## Build a local distributable folder
-
-From the repository root:
 
 ```powershell
 .\scripts\package-local.ps1
@@ -53,7 +52,7 @@ local-build\dqxclarity\
 local-build\dqxclarity-mod.zip
 ```
 
-That folder contains the Python app, config/default files, database, and the rebuilt `dqxclarity.exe`.
+The folder has the same layout as the release zip: `dqxclarity.exe`, `version.update`, and `misc_files\clarity_dialog.db`. `user_settings.ini` is created by the app on first run, next to the exe.
 
 ## Language pack format (CLPK)
 
@@ -79,23 +78,21 @@ Header metadata:
 }
 ```
 
-- `language` is an ISO code (`en`, `fr`, …). The launcher shows its display name (English, French) via `CultureInfo` and uses it as the pack's identity.
+- `language` is an ISO code (`en`, `fr`, …). dqxclarity shows its display name (English, French) via `CultureInfo` and uses it as the pack's identity.
 - `builtAt` is a Unix timestamp (seconds); shown as the pack's "updated" date.
 - `sha` is the SHA-256 of the ZIP payload, verified on download.
-- `downloadUrl` (optional) — a self-describing update URL. The official packs omit it; the launcher then uses the catalog's URL for that language to check for updates.
+- `downloadUrl` (optional) — a self-describing update URL. The official packs omit it; dqxclarity then uses the catalog's URL for that language to check for updates.
 
 The **entire ZIP payload** is extracted into the game's `Game\mods` folder. There is no per-file manifest — the dragonhook proxy serves every loose file under `Game\mods` in place of the packed DAT archives.
 
 ### Building a pack
 
-Use the launcher's **Advanced → Build language pack (CLPK)** tool: choose a plain `.zip` of your loose game files, set the author and language (and an optional download URL), and it stamps the header — computing the `sha` and `builtAt` — into a `.clpk`.
+Use dqxclarity's **Advanced → Build language pack (CLPK)** tool: choose a plain `.zip` of your loose game files, set the author and language (and an optional download URL), and it stamps the header — computing the `sha` and `builtAt` — into a `.clpk`.
 
-The launcher scans the `dqxclarity/language-packs` folder for `*.clpk` (and `*.zip` whose contents are a CLPK).
+dqxclarity scans the `dqxclarity/language-packs` folder for `*.clpk` (and `*.zip` whose contents are a CLPK).
 
 ## Notes
 
 - Keep custom helper scripts in `scripts/`.
 - Use `git status` before and after changes.
-- The launcher is C#/.NET 9 Avalonia; the in-game engine is Python plus Frida hooks.
-- The launcher expects the Python app files near the exe in the final packaged folder.
-- `launcher/native/version.dll` is the dragonhook proxy DLL, embedded in the launcher and added to / removed from the game folder on demand via the Language tab's Install/Remove support buttons (its presence on disk is what enables language packs in-game).
+- `DqxClarity/native/version.dll` is the dragonhook proxy DLL, embedded in the exe and added to / removed from the game folder on demand via the Language tab's Install/Remove support buttons (its presence on disk is what enables language packs in-game).

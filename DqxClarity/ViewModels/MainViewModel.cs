@@ -1,0 +1,402 @@
+using System.Collections.ObjectModel;
+using Avalonia.Controls;
+using Avalonia.Media.Imaging;
+using CommunityToolkit.Mvvm.ComponentModel;
+using DqxClarity.Hooking;
+using DqxClarity.Models;
+using DqxClarity.Services;
+using DqxClarity.Translation.Backends;
+
+namespace DqxClarity.ViewModels;
+
+public partial class MainViewModel : ObservableObject
+{
+    private readonly AppConfig      _config;
+    private readonly ConfigService  _cfg;
+    private readonly UpdateService  _updateSvc;
+    private readonly BannerService  _bannerSvc = new();
+
+    // Lazy in-process translation runtime — owns the named pipe + PacketWarden
+    // injection. Stays alive for the rest of the process lifetime; the pipe
+    // accepts the game's hook dll on every fresh game launch.
+    private ClarityRuntime? _runtime;
+
+    public SettingsViewModel Settings { get; }
+    public LogViewModel      Log      { get; }
+    public Text2ClipboardViewModel Text2Clipboard { get; }
+
+    public string Version { get; }
+
+    [ObservableProperty] private string  _currentView      = "settings";
+    [ObservableProperty] private Bitmap? _bannerImage;
+    [ObservableProperty] private string  _bannerUrl        = "";
+    [ObservableProperty] private double  _bannerOpacity    = 1;
+    [ObservableProperty] private bool    _isBannerCollapsed;
+
+    public bool ShowBanner => CurrentView == "settings";
+
+    partial void OnCurrentViewChanged(string value) =>
+        OnPropertyChanged(nameof(ShowBanner));
+
+    partial void OnIsBannerCollapsedChanged(bool value)
+    {
+        _cfg.SaveBannerCollapsed(value);
+    }
+
+    // Set by MainWindow after construction
+    public Window? Window { get; set; }
+
+    // Loaded banners (item + bitmap pairs, only entries where image loaded OK)
+    private List<(BannerItem Item, Bitmap Image)> _banners = [];
+    private int                                    _bannerIdx    = 0;
+    private int                                    _bannerStripH = 0;
+    private Avalonia.Threading.DispatcherTimer?    _bannerTimer;
+
+    public ObservableCollection<BannerDotItem> BannerDots { get; } = [];
+
+    public MainViewModel(
+        AppConfig config,
+        string version,
+        bool autoRun,
+        ConfigService cfg,
+        UpdateService updateSvc,
+        PatchService patchSvc,
+        DatabaseService dbSvc,
+        ValidateService validateSvc,
+        MaintenanceService maintenanceSvc,
+        LanguagePackService langPackSvc,
+        Text2ClipboardViewModel text2Clipboard)
+    {
+        _config     = config;
+        _cfg        = cfg;
+        _updateSvc  = updateSvc;
+        Version     = version;
+        _isBannerCollapsed = config.Launcher.BannerCollapsed;
+        Text2Clipboard = text2Clipboard;
+
+        Log      = new LogViewModel(text2Clipboard);
+        Settings = new SettingsViewModel(
+            config, version, null, text2Clipboard, cfg, patchSvc, dbSvc, validateSvc, maintenanceSvc, langPackSvc);
+
+        // Startup auto-update check (no-op unless the user enabled it); fire-and-forget, never blocks launch.
+        _ = Settings.RunAutomaticUpdatesIfEnabledAsync();
+
+        Log.NavigateBack    += () => SwitchTo("settings");
+        Log.StopRequested   += StopRuntime;
+        Settings.RunRequested += OnRunRequested;
+        Settings.OpenUrl      += OpenBrowser;
+
+        // Start the runtime up front so PostInjectCallback is wired before the
+        // user clicks Run — the direct-login flow calls GameLaunchService.Launch
+        // immediately and reads PostInjectCallback at that point, which is
+        // before RunRequested fires.
+        EnsureNativeRuntime();
+
+        if (autoRun)
+        {
+            // Trigger the full run flow (respects DirectLogin, SimultaneousLaunch,
+            // missing-key prompts, etc.) — same path as the Run button. Async
+            // posted on the UI thread so we don't block constructor return.
+            Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+            {
+                await Settings.Run();
+
+                if (Window != null)
+                    Window.WindowState = Avalonia.Controls.WindowState.Minimized;
+            });
+        }
+
+        // Check for updates in background (don't block startup)
+        _ = Task.Run(async () =>
+        {
+            var info = await updateSvc.CheckAsync();
+            if (info != null)
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    Settings.SetUpdateInfo(info);
+                });
+        });
+
+        // Load rotation banners in background
+        _ = Task.Run(LoadBannersAsync);
+    }
+
+    private async Task LoadBannersAsync()
+    {
+        var items = await _bannerSvc.GetAllAsync();
+        if (items.Count == 0) return;
+
+        // Load first image immediately so it shows fast
+        var first = await _bannerSvc.LoadImageAsync(items[0].ImageUrl);
+        if (first == null) return;
+
+        _banners.Add((items[0], first));
+
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            BannerUrl   = items[0].LinkUrl;
+            BannerImage = first;
+
+            // Natural display height at 680px width + dots row + toggle bar
+            var pxW = first.PixelSize.Width;
+            var pxH = first.PixelSize.Height;
+            _bannerStripH = (int)Math.Min(pxH * 680.0 / pxW, 350) + 24;
+
+            // Resize window if already sitting on settings
+            if (CurrentView == "settings")
+                SwitchTo("settings");
+
+            RefreshDots();
+        });
+
+        // Load remaining images in background
+        for (var i = 1; i < items.Count; i++)
+        {
+            var bmp = await _bannerSvc.LoadImageAsync(items[i].ImageUrl);
+            if (bmp != null) _banners.Add((items[i], bmp));
+        }
+
+        // Start rotation once we have at least two banners; refresh dots for full count
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            RefreshDots();
+
+            if (_banners.Count > 1)
+            {
+                _bannerTimer = new Avalonia.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromSeconds(6)
+                };
+                _bannerTimer.Tick += async (_, _) => await AdvanceBannerAsync();
+                _bannerTimer.Start();
+            }
+        });
+    }
+
+    private async Task AdvanceBannerAsync()
+    {
+        if (_banners.Count < 2) return;
+
+        BannerOpacity = 0;
+        await Task.Delay(420); // slightly more than transition duration
+
+        _bannerIdx  = (_bannerIdx + 1) % _banners.Count;
+        BannerImage = _banners[_bannerIdx].Image;
+        BannerUrl   = _banners[_bannerIdx].Item.LinkUrl;
+        RefreshDots();
+
+        BannerOpacity = 1;
+    }
+
+    public Task JumpToPrevBannerAsync() =>
+        JumpToBannerAsync((_bannerIdx - 1 + _banners.Count) % _banners.Count);
+
+    public Task JumpToNextBannerAsync() =>
+        JumpToBannerAsync((_bannerIdx + 1) % _banners.Count);
+
+    public async Task JumpToBannerAsync(int idx)
+    {
+        if (idx < 0 || idx >= _banners.Count || idx == _bannerIdx) return;
+
+        _bannerTimer?.Stop();
+
+        BannerOpacity = 0;
+        await Task.Delay(420);
+
+        _bannerIdx  = idx;
+        BannerImage = _banners[idx].Image;
+        BannerUrl   = _banners[idx].Item.LinkUrl;
+        RefreshDots();
+
+        BannerOpacity = 1;
+
+        _bannerTimer?.Start();
+    }
+
+    private void RefreshDots()
+    {
+        BannerDots.Clear();
+        // Only render dots when there's more than one banner to navigate
+        if (_banners.Count <= 1) return;
+        for (var i = 0; i < _banners.Count; i++)
+            BannerDots.Add(new BannerDotItem { Index = i, IsActive = i == _bannerIdx });
+    }
+
+    private void OnRunRequested(List<string> _ignored)
+    {
+        Log.Reset();
+        SwitchTo("log");
+        Log.UpdateTitle(Version);
+        EnsureNativeRuntime();
+
+        // The runtime was already constructed (possibly long before this Run
+        // click, in the constructor's eager EnsureNativeRuntime() call) with
+        // whatever nameplate settings were on disk at launcher startup, and
+        // it never gets rebuilt. Push the CURRENT checkbox state into it here
+        // -- read from Settings directly rather than _config.Launcher, since
+        // Settings.Run() saves a fresh LauncherConfig straight to disk
+        // without ever updating _config.Launcher -- so a toggle takes effect
+        // immediately instead of requiring a full launcher restart.
+        _runtime?.UpdateNameplateSettings(
+            Settings.NameplatesPlayer, Settings.NameplatesNpc, Settings.NameplatesMonster);
+
+        // Community logging: the env var was set once, when the runtime was built
+        // at launcher startup, from whatever was saved on disk back then. A
+        // checkbox change made since (before this Run click) never reached it, so
+        // logging silently stayed off until the launcher was restarted. The game
+        // has not been launched yet at this point (and a game started later
+        // inherits this process's environment), so refresh it from the live
+        // setting here. PacketWarden.dll reads it once, when it injects.
+        Environment.SetEnvironmentVariable(
+            "DQXCLARITY_COMMUNITY_LOGGING",
+            Settings.CommunityLogging ? "1" : null);
+
+        // Debug logging has the same two problems: the DQXCLARITY_FORWARD_ALL env
+        // var was only set when the runtime was built, and the runtime's own debug
+        // switch and the Debug tab were only created if the box was checked then.
+        ApplyDebugLogging(Settings.DebugLogging);
+
+        // Translation service, api key and model: the backend was built once from
+        // the settings on disk at startup. Rebuild it from what is on screen now.
+        try { _runtime?.UpdateBackend(BackendFactory.Create(Settings.BuildTranslationConfig())); }
+        catch (Exception ex) { Log.AppendLine($"Could not apply translation settings: {ex.Message}", "error"); }
+
+        // Name overrides: re-import name_overrides.json (saved by Settings.Run()
+        // just before this) and drop the cached player/sibling lookups so edited
+        // overrides apply to the running game. The runtime's doc comment has said
+        // this is called from here, but it never was.
+        try { _runtime?.RefreshNameOverrides(); }
+        catch (Exception ex) { Log.AppendLine($"Could not refresh name overrides: {ex.Message}", "error"); }
+
+        Log.AppendLine("Translation runtime active. Pipe waiting for PacketWarden.dll.");
+    }
+
+    // Lazy-construct + start the in-process translation runtime. Subsequent calls
+    // are no-ops. The runtime stays alive until the process exits; the pipe will
+    // accept the game's hook dll on every fresh game launch.
+    private void EnsureNativeRuntime()
+    {
+        if (_runtime != null) return;
+        try
+        {
+            // Debug-discovery: env var is picked up by PacketWarden.dll on
+            // hook-install (one-shot read). Setting it on this process means
+            // both Process.Start (default UseShellExecute=false) and
+            // CreateProcessW (null lpEnvironment) propagate it into DQXGame.exe.
+            // Cleared when debug is off so a re-toggle doesn't leak across
+            // restarts of the game in the same launcher session.
+            Environment.SetEnvironmentVariable(
+                "DQXCLARITY_FORWARD_ALL",
+                _config.Launcher.DebugLogging ? "1" : null);
+
+            // Community logging: same one-shot-env-var handoff as debug-discovery
+            // above. PacketWarden.dll reads this once at hook-install time and,
+            // if set, installs two additional opt-in hooks (hash_lookup,
+            // blowfish_key) that write straight to logs\hashlog.csv and
+            // logs\blowfish_log.csv -- no pipe round-trip through this process,
+            // so there's nothing further to wire up on the c# side. See
+            // PacketWarden.cpp's "Community logging" section for what these
+            // actually capture (filename/hash pairs and per-file Blowfish keys
+            // used by the dqxclarity dev team to maintain the DAT/IDX patch --
+            // not anything player-facing).
+            Environment.SetEnvironmentVariable(
+                "DQXCLARITY_COMMUNITY_LOGGING",
+                _config.Launcher.CommunityLogging ? "1" : null);
+
+            var backend = BackendFactory.Create(_config.Translation);
+            _runtime = new ClarityRuntime(
+                backend,
+                _config.Launcher.DebugLogging,
+                _config.Launcher.NameplatesPlayer,
+                _config.Launcher.NameplatesNpc,
+                _config.Launcher.NameplatesMonster);
+            ApplyDebugLogging(_config.Launcher.DebugLogging);
+            _runtime.Start();
+            Settings.PostInjectCallback = hProc => _runtime.InjectInto(hProc);
+
+            // Background watcher covers the case where the game is launched
+            // outside the launcher (DQXBoot, manual launch). The direct-login
+            // path still injects immediately via PostInjectCallback.
+            _runtime.StartWatchingForGame((msg, isError) =>
+                Avalonia.Threading.Dispatcher.UIThread.Post(
+                    () => Log.AppendLine(msg, isError ? "error" : "info")));
+
+            // When the game process exits, run the same teardown as the Stop
+            // button: dispose the runtime (closes pipe, log tail, watcher) and
+            // return to the settings view.
+            _runtime.GameExited += () =>
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    StopRuntime();
+                    SwitchTo("settings");
+                });
+        }
+        catch (Exception ex)
+        {
+            Log.AppendLine($"Failed to start translation runtime: {ex.Message}", "error");
+            _runtime = null;
+            Settings.PostInjectCallback = null;
+        }
+    }
+
+    // Applies the debug-logging checkbox to everything it controls: the env var
+    // PacketWarden.dll reads when it hooks a freshly launched game (forward all
+    // packets), the runtime's own debug switch and packet callback, and the Log
+    // view's Debug tab. Safe to call before the runtime exists (env var only) and
+    // on every Run, so checking OR unchecking the box takes effect on the next Run
+    // without restarting the launcher. A game that is already running keeps the
+    // forwarding mode it was hooked with.
+    private void ApplyDebugLogging(bool enabled)
+    {
+        Environment.SetEnvironmentVariable("DQXCLARITY_FORWARD_ALL", enabled ? "1" : null);
+
+        if (_runtime == null) return;
+        _runtime.SetDebugLogging(enabled);
+
+        if (enabled)
+        {
+            if (!Log.DebugEnabled) Log.EnableDebug();
+            _runtime.SetDebugCallback((typeName, rawBytes, hexDump, modifiedBytes, modifiedHex) =>
+                Avalonia.Threading.Dispatcher.UIThread.Post(
+                    () => Log.Debug?.AddPacket(typeName, rawBytes, hexDump, modifiedBytes, modifiedHex)));
+        }
+        else if (Log.DebugEnabled)
+        {
+            Log.DisableDebug();
+        }
+    }
+
+    private void StopRuntime()
+    {
+        _runtime?.Stop();
+        _runtime?.Dispose();
+        _runtime = null;
+        Settings.PostInjectCallback = null;
+    }
+
+    public void SwitchTo(string view)
+    {
+        CurrentView = view;
+        if (Window == null) return;
+    }
+
+    public void OpenBrowser(string url)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch { }
+    }
+
+    public bool TryClose() => Log.TryClose();
+
+    public bool IsFirstLaunch => !_config.Launcher.SeenWelcomeMessage;
+
+    public void MarkWelcomeSeen()
+    {
+        _config.Launcher.SeenWelcomeMessage = true;
+        _cfg.SaveSeenWelcomeMessage();
+    }
+}

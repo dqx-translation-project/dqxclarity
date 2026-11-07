@@ -25,22 +25,40 @@ jobs:
 
       - name: Build native DLL
         run: pwsh -ExecutionPolicy Bypass -File native/build.ps1
-        working-directory: launcher
+        working-directory: DqxClarity
 
-      - name: Publish launcher
-        run: >
-          dotnet publish
-          -c Release
-          -r win-x64
-          --self-contained false
-          -p:PublishSingleFile=true
-        working-directory: launcher
+      - name: Build wanakana.dll
+        run: |
+          rustup target add x86_64-pc-windows-msvc
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          pwsh -ExecutionPolicy Bypass -File native/wanakana/build.ps1
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+        working-directory: DqxClarity
+
+      # The project embeds each native DLL only if the file exists, so a missing
+      # one would compile fine and silently ship without it. Fail the build instead.
+      - name: Verify native DLLs
+        run: |
+          $missing = @('LocaleHook.dll', 'PacketWarden.dll', 'wanakana.dll', 'version.dll') |
+            Where-Object { -not (Test-Path "native/$_") }
+          if ($missing) {
+            Write-Error "Missing native DLLs: $($missing -join ', ')"
+            exit 1
+          }
+        working-directory: DqxClarity
+
+      - name: Publish
+        run: |
+          $ref = "${{ github.ref_name }}"
+          $v = if ($ref -match '^\d+\.\d+\.\d+') { $ref } elseif ($ref -match '^v\d+\.\d+\.\d+') { $ref -replace '^v', '' } else { '0.0.0' }
+          dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version=$v
+        working-directory: DqxClarity
 
       - name: Upload exe artifact
         uses: actions/upload-artifact@v7
         with:
           name: dqxclarity.exe
-          path: launcher/bin/Release/net9.0-windows/win-x64/publish/dqxclarity.exe
+          path: DqxClarity/bin/Release/net9.0-windows/win-x64/publish/dqxclarity.exe
           if-no-files-found: error
           retention-days: 7
           overwrite: true
