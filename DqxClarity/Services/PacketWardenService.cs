@@ -18,6 +18,13 @@ internal sealed class PacketWardenService : IDisposable
         _pipe = new PacketPipe(handler);
     }
 
+    // Raised when PacketWarden.dll (inside the game) connects to the pipe.
+    public event Action? PipeClientConnected
+    {
+        add => _pipe.ClientConnected += value;
+        remove => _pipe.ClientConnected -= value;
+    }
+
     public void StartPipe() => _pipe.Start();
     public void StopPipe() => _pipe.Stop();
     public void Dispose() => _pipe.Dispose();

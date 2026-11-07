@@ -80,6 +80,7 @@ public sealed class ClarityRuntime : IDisposable
         _dispatcher = PacketGuard.Wrap(DataPacketRouter.BuildDefaultDispatcher(_deps), _mismatches);
 
         _hook = new PacketWardenService(HandlePacket);
+        _hook.PipeClientConnected += OnPipeConnected;
     }
 
     public void SetDebugCallback(Action<string, byte[], string, byte[]?, string?> callback) => _debugPacket = callback;
@@ -197,23 +198,39 @@ public sealed class ClarityRuntime : IDisposable
         {
             _log?.Invoke($"Failed to update translation data: {ex.Message}", true);
         }
+        finally
+        {
+            // Finished either way (a failed update just means the existing data is used).
+            _translationDataDone = true;
+            TryAnnounceReady();
+        }
     }
 
-    public bool InjectInto(IntPtr hProcess)
+    public bool InjectInto(IntPtr hProcess) => PacketWardenService.InjectInto(hProcess);
+
+    // Final "all set" line: printed once, after BOTH the translation data update has finished
+    // AND the game's hook dll has connected to the pipe, whichever happens last. A runtime
+    // lives for one game session (it is rebuilt after the game exits), so "once" is enough.
+    private volatile bool _translationDataDone;
+    private volatile bool _pipeConnected;
+    private int _readyAnnounced;
+
+    private void OnPipeConnected()
     {
-        var ok = PacketWardenService.InjectInto(hProcess);
-        if (ok) AnnounceReady((int)GetProcessId(hProcess));
-        return ok;
+        _pipeConnected = true;
+        // The dll's own "pipe connected" line reaches the log through a 250 ms file tail;
+        // wait a moment so this message lands after it instead of before it.
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(750).ConfigureAwait(false);
+            TryAnnounceReady();
+        });
     }
 
-    // Final "all set" line, shown once per game process after injection succeeds. Both the
-    // direct-login path (InjectInto above, via the post-inject callback) and the background
-    // watcher can inject into the same game, so remember which pid was already announced.
-    private int _readyAnnouncedPid;
-
-    private void AnnounceReady(int pid)
+    private void TryAnnounceReady()
     {
-        if (pid == 0 || Interlocked.Exchange(ref _readyAnnouncedPid, pid) == pid) return;
+        if (!_translationDataDone || !_pipeConnected) return;
+        if (Interlocked.Exchange(ref _readyAnnounced, 1) != 0) return;
         _log?.Invoke("Done! Keep this window open (minimize it) and have fun on your adventure!", false);
     }
 
@@ -315,7 +332,6 @@ public sealed class ClarityRuntime : IDisposable
                         {
                             _lastInjectedPid = pid;
                             log("Injected successfully.", false);
-                            AnnounceReady(pid);
                         }
                         else
                         {
@@ -344,9 +360,6 @@ public sealed class ClarityRuntime : IDisposable
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool CloseHandle(IntPtr h);
-
-    [DllImport("kernel32.dll")]
-    private static extern uint GetProcessId(IntPtr hProcess);
 
     private byte[]? HandlePacket(ReadOnlyMemory<byte> packet)
     {

@@ -19,6 +19,9 @@ public sealed class PacketPipe : IDisposable
 
     public delegate byte[]? PacketHandler(ReadOnlyMemory<byte> packet);
 
+    // Raised each time the game's hook dll connects to the pipe (on a worker thread).
+    public event Action? ClientConnected;
+
     private readonly PacketHandler _handler;
     private CancellationTokenSource? _cts;
     private Task? _loop;
@@ -59,6 +62,7 @@ public sealed class PacketPipe : IDisposable
                     PipeOptions.Asynchronous);
 
                 await server.WaitForConnectionAsync(ct).ConfigureAwait(false);
+                try { ClientConnected?.Invoke(); } catch { /* a listener must never break the pipe */ }
                 await ServeClientAsync(server, ct).ConfigureAwait(false);
             }
             catch (OperationCanceledException) { }
