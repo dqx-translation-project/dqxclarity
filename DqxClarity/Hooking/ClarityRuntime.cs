@@ -199,7 +199,23 @@ public sealed class ClarityRuntime : IDisposable
         }
     }
 
-    public bool InjectInto(IntPtr hProcess) => PacketWardenService.InjectInto(hProcess);
+    public bool InjectInto(IntPtr hProcess)
+    {
+        var ok = PacketWardenService.InjectInto(hProcess);
+        if (ok) AnnounceReady((int)GetProcessId(hProcess));
+        return ok;
+    }
+
+    // Final "all set" line, shown once per game process after injection succeeds. Both the
+    // direct-login path (InjectInto above, via the post-inject callback) and the background
+    // watcher can inject into the same game, so remember which pid was already announced.
+    private int _readyAnnouncedPid;
+
+    private void AnnounceReady(int pid)
+    {
+        if (pid == 0 || Interlocked.Exchange(ref _readyAnnouncedPid, pid) == pid) return;
+        _log?.Invoke("Done! Keep this window open (minimize it) and have fun on your adventure!", false);
+    }
 
     // Fired by the watcher loop when the previously-injected DQXGame.exe pid
     // disappears. Owners (MainViewModel) hook this to run the same teardown
@@ -299,6 +315,7 @@ public sealed class ClarityRuntime : IDisposable
                         {
                             _lastInjectedPid = pid;
                             log("Injected successfully.", false);
+                            AnnounceReady(pid);
                         }
                         else
                         {
@@ -327,6 +344,9 @@ public sealed class ClarityRuntime : IDisposable
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool CloseHandle(IntPtr h);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetProcessId(IntPtr hProcess);
 
     private byte[]? HandlePacket(ReadOnlyMemory<byte> packet)
     {
