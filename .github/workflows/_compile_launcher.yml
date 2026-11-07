@@ -26,6 +26,26 @@ jobs:
       - name: Build native DLL
         run: pwsh -ExecutionPolicy Bypass -File native/build.ps1
         working-directory: DqxClarity
+        
+      - name: Build wanakana.dll
+        run: |
+          rustup target add x86_64-pc-windows-msvc
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          pwsh -ExecutionPolicy Bypass -File native/wanakana/build.ps1
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+        working-directory: DqxClarity
+
+      # The project embeds each native DLL only if the file exists, so a missing
+      # one would compile fine and silently ship without it. Fail the build instead.
+      - name: Verify native DLLs
+        run: |
+          $missing = @('LocaleHook.dll', 'PacketWarden.dll', 'wanakana.dll', 'version.dll') |
+            Where-Object { -not (Test-Path "native/$_") }
+          if ($missing) {
+            Write-Error "Missing native DLLs: $($missing -join ', ')"
+            exit 1
+          }
+        working-directory: DqxClarity
 
       - name: Publish
         run: |

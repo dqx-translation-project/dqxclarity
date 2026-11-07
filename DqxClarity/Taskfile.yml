@@ -2,14 +2,14 @@ version: "3"
 
 tasks:
   native:
-    desc: build LocaleHook.dll and ClarityHook.dll (x86) via CMake
+    desc: build LocaleHook.dll and PacketWarden.dll (x86) via CMake
     sources:
       - native/LocaleHook.c
-      - native/ClarityHook.cpp
+      - native/PacketWarden.cpp
       - native/CMakeLists.txt
     generates:
       - native/LocaleHook.dll
-      - native/ClarityHook.dll
+      - native/PacketWarden.dll
     cmds:
       - pwsh -ExecutionPolicy Bypass -File native/build.ps1
 
@@ -39,4 +39,4 @@ tasks:
   clean:
     desc: remove build artifacts
     cmds:
-      - rm -rf bin obj native/build native/LocaleHook.dll native/ClarityHook.dll native/wanakana.dll native/wanakana/target
+      - rm -rf bin obj native/build native/LocaleHook.dll native/PacketWarden.dll native/wanakana.dll native/wanakana/target
