@@ -173,9 +173,9 @@
 
                                     <!-- None service info -->
                                     <TextBlock IsVisible="{Binding IsNoneService}"
-                                               Text="No server-side text translation will be performed."
+                                               Text="No server-side text translation will be performed - this includes a majority of NPC dialogue!"
                                                FontSize="11"
-                                               Foreground="{DynamicResource AppMuted}"
+                                               Foreground="{DynamicResource AppDanger}"
                                                TextWrapping="Wrap"/>
 
                                     <!-- Free service warning -->

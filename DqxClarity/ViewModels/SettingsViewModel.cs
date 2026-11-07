@@ -627,7 +627,7 @@ public partial class SettingsViewModel : ObservableObject
 
         var savedService = config.Translation.TranslateService;
         _selectedTranslateService = TranslateServiceOptions.FirstOrDefault(o => o.Value == savedService)
-                                    ?? TranslateServiceOptions.First(o => o.Value == "googlefree");
+                                    ?? TranslateServiceOptions.First(o => o.Value == "none");
         _translateKey       = config.Translation.TranslateKey;
         _chatGptModel      = config.Translation.ChatGptModel;
         _ollamaUrl          = config.Translation.OllamaUrl;

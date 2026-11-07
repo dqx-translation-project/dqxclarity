@@ -61,7 +61,7 @@ public partial class LanguagePack : ObservableObject
 
 public class TranslationConfig
 {
-    public string TranslateService   { get; set; } = "googlefree";
+    public string TranslateService   { get; set; } = "none";
     public string TranslateKey       { get; set; } = "";
     public string ChatGptModel       { get; set; } = "gpt-4o-mini";
     public string OllamaUrl          { get; set; } = "http://localhost:11434";

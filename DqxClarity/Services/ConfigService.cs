@@ -142,7 +142,8 @@ public class ConfigService
             }
             else
             {
-                service = "googlefree";
+                // Nothing selected (e.g. a fresh or very old settings file): no translation service.
+                service = "none";
             }
         }
 
