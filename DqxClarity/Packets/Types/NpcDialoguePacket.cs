@@ -226,6 +226,12 @@ public sealed class NpcDialoguePacket : IPacket
         var cached = _deps.Db.Read(original, "dialog");
         if (cached != null) return cached;
 
+        // Nothing to machine-translate: empty text, or text with no Japanese in it
+        // (only tags/whitespace, or already english). Sending that to the service
+        // gets an error back (Google: 400 "Required Text"). Checked here, after the
+        // curated lookups above, so a curated row for such a line still applies.
+        if (string.IsNullOrWhiteSpace(original) || !Translator.IsTextJapanese(original)) return original;
+
         // Machine-translate, then cache the result.
         var translated = _deps.Translator.Translate(original, wrapWidth: 46);
         if (string.IsNullOrEmpty(translated)) return original;

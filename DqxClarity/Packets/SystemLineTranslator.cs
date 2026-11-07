@@ -112,6 +112,38 @@ namespace DqxClarity.Packets;
 //         then romaji, as in "Use an item" below. The japanese side is a
 //         full-width space between player and number, matched loosely.
 //
+//   Disguise (race costume)
+//     ja: <player>は <race>の姿に 仮装した。
+//         ショウブは エルフの姿に 仮装した。
+//     en: <player> disguises as a(n) <race>.
+//         ショウブ disguises as an Elf. -- "a" or "an" to suit the race.
+//         race is one of ウェディ (Weddie), エルフ (Elf), プクリポ (Pukulipo),
+//         ドワーフ (Dwarf), オーガ (Ogre); any other race leaves the line
+//         untouched. player as in "Use an item" below. The line ends in a full
+//         stop (。).
+//
+//   Use an item (no "！")
+//     ja: <player>は <item>を使った
+//         ショウブは ふしぎな小箱を使った
+//     en: <player> uses the <item>.
+//         The same line as "Use an item" below, but with no ！ at the end and
+//         a different english ("the", and a full stop). item from m00 'items',
+//         then 'key_items'; player and the は split exactly as in "Use an item".
+//
+//   Transformation
+//     ja: <player>は <race>の姿になった！
+//         ショウブは 魔族の姿になった！
+//     en: <player> transforms into a(n) <race>!
+//         ショウブ transforms into a demon! -- "a" or "an" to suit the race.
+//         race is one of ウェディ (Weddie), エルフ (Elf), プクリポ (Pukulipo),
+//         ドワーフ (Dwarf), オーガ (Ogre), 人間 (human), 魔族 (demon); any other
+//         race leaves the line untouched. player as in "Use an item" below.
+//
+//   Disguise make-up duration
+//     ja: 仮装メイクの有効期間は <days>日 <hr>時間 <min>分です。
+//         仮装メイクの有効期間は 1日 0時間 0分です。
+//     en: The race disguise will last <days> d., <hr> hr., <min> min.
+//
 //   Use items (with a number)
 //     ja: <player>は <item>を <number>個 使った！
 //         ショウブは 海神のうろこを １個 使った！
@@ -210,6 +242,40 @@ public sealed class SystemLineTranslator
     // "ショウブ　10500 P" -- full-width space between name and number.
     private static readonly Regex PointsTotalRe = new(
         @"^(?<player>\S.*?)\s+(?<amount>" + Num + @")\s*[PＰ]$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // "ショウブは エルフの姿に 仮装した。" -- the race is one of the five
+    // playable ones; the lazy player part lets a name containing は still match.
+    private static readonly Regex DisguiseRe = new(
+        @"^(?<player>.+?)は\s*(?<race>ウェディ|エルフ|プクリポ|ドワーフ|オーガ)の姿に\s*仮装した。$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Dictionary<string, string> Races = new()
+    {
+        ["ウェディ"] = "a Weddie",
+        ["エルフ"]   = "an Elf",
+        ["プクリポ"] = "a Pukulipo",
+        ["ドワーフ"] = "a Dwarf",
+        ["オーガ"]   = "an Ogre",
+    };
+
+    // "ショウブは 魔族の姿になった！" -- the five playable races plus human and demon.
+    private static readonly Regex TransformRe = new(
+        @"^(?<player>.+?)は\s*(?<race>ウェディ|エルフ|プクリポ|ドワーフ|オーガ|人間|魔族)の姿になった！$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Dictionary<string, string> TransformRaces = new(Races)
+    {
+        ["人間"] = "a human",
+        ["魔族"] = "a demon",
+    };
+
+    // "<player>は <item>を使った" -- no ！ (see TryUseTheItem).
+    private const string UsedNoBangSuffix = "を使った";
+
+    // "仮装メイクの有効期間は 1日 0時間 0分です。"
+    private static readonly Regex DisguiseDurationRe = new(
+        @"^仮装メイクの有効期間は\s*(?<days>" + Num + @")日\s*(?<hr>" + Num + @")時間\s*(?<min>" + Num + @")分です。$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex ItemRe = new(
@@ -352,7 +418,27 @@ public sealed class SystemLineTranslator
                 return $"{player}:  {Digits(m, "amount")} P";
         }
 
-        return TryUseItem(text);
+        m = DisguiseRe.Match(text);
+        if (m.Success && Races.TryGetValue(m.Groups["race"].Value, out var race))
+        {
+            var player = ResolvePlayerName(m.Groups["player"].Value.Trim());
+            if (!string.IsNullOrEmpty(player))
+                return $"{player} disguises as {race}.";
+        }
+
+        m = DisguiseDurationRe.Match(text);
+        if (m.Success)
+            return $"The race disguise will last {Digits(m, "days")} d., {Digits(m, "hr")} hr., {Digits(m, "min")} min.";
+
+        m = TransformRe.Match(text);
+        if (m.Success && TransformRaces.TryGetValue(m.Groups["race"].Value, out var transformRace))
+        {
+            var player = ResolvePlayerName(m.Groups["player"].Value.Trim());
+            if (!string.IsNullOrEmpty(player))
+                return $"{player} transforms into {transformRace}!";
+        }
+
+        return TryUseItem(text) ?? TryUseTheItem(text);
     }
 
     // "<player>は <item>" + a verb and an amount -> "<player> <verb> <amount>
@@ -395,6 +481,28 @@ public sealed class SystemLineTranslator
             var player = ResolvePlayerName(body[..i].Trim());
             if (string.IsNullOrEmpty(player)) continue;
             return $"{player} uses {item}!";
+        }
+        return null;
+    }
+
+    // "<player>は <item>を使った" (no ！) -> "<player> uses the <item>.". Split the
+    // same way as TryUseItem: every は is tried left to right, and the first one
+    // whose right-hand side is a known item (items, then key_items) wins.
+    private string? TryUseTheItem(string text)
+    {
+        if (!text.EndsWith(UsedNoBangSuffix, StringComparison.Ordinal)) return null;
+        var body = text[..^UsedNoBangSuffix.Length];
+
+        for (var i = 1; i < body.Length - 1; i++)
+        {
+            if (body[i] != 'は') continue;
+
+            var item = LookupItem(body[(i + 1)..].Trim());
+            if (item == null) continue;
+
+            var player = ResolvePlayerName(body[..i].Trim());
+            if (string.IsNullOrEmpty(player)) continue;
+            return $"{player} uses the {item}.";
         }
         return null;
     }

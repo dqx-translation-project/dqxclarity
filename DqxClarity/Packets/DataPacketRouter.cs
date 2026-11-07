@@ -151,6 +151,7 @@ public sealed class DataPacketRouter
             0x85 => "Entity (Fellow)",
             0x86 or 0x87 or 0x89 or 0x8a or 0x8b => "Entity (Party NPC)",
             0x24 => "Entity (Monster, Scoutable)",
+            0x1A => "Entity (Capture Point)",
             var b => $"Entity (0x{b:X2})",
         };
     }

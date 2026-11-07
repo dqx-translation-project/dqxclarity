@@ -173,9 +173,28 @@ public sealed class Translator
                         toTranslate.Add(line);
         }
 
-        var translated = _backend.Translate(toTranslate);
-        if (translated == null || translated.Count != toTranslate.Count)
+        // Only real text goes to the backend. A fragment that is empty or just
+        // whitespace (a line that was only a full-width space, say) has nothing to
+        // translate, and an empty list is worse: Google answers 400 "Required Text"
+        // and other services reject it too. If there is nothing at all to send
+        // (text made only of tags and whitespace) there is no translation to give,
+        // so return "" without calling the backend; otherwise the blanks are put
+        // back in their places afterwards.
+        var sendIndexes = new List<int>();
+        for (var i = 0; i < toTranslate.Count; i++)
+            if (!string.IsNullOrWhiteSpace(toTranslate[i])) sendIndexes.Add(i);
+        if (sendIndexes.Count == 0)
             return "";
+
+        var sent = _backend.Translate(sendIndexes.Select(i => toTranslate[i]).ToList());
+        if (sent == null || sent.Count != sendIndexes.Count)
+            return "";
+
+        var translatedFull = new string[toTranslate.Count];
+        Array.Fill(translatedFull, "");
+        for (var k = 0; k < sendIndexes.Count; k++)
+            translatedFull[sendIndexes[k]] = sent[k];
+        IReadOnlyList<string> translated = translatedFull;
 
         // Stage 12b: redistribute translated entries back to attrs.
         for (var c = 0; c < translated.Count; c++)

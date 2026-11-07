@@ -468,7 +468,9 @@ static void FindSignature(BYTE* base, SIZE_T size, const char* sigStr, std::vect
 // untouched, keeping overhead near zero for the vast majority of network traffic.
 //
 // Each entry is (op_code << 16) | (marker1 << 8) | marker2. These must stay in
-// sync with the c# side's DataPacketRouter.
+// sync with the c# side's DataPacketRouter -- every (opcode, marker) pair routed to a
+// packet class there needs an entry here, or the packet is only translated when
+// debug logging (DQXCLARITY_FORWARD_ALL) is on.
 
 static const uint32_t KNOWN_PACKETS[] = {
     0x21e535, 0x21be01, 0x21a83c, 0x219804, 0x216dd4, 0x5d2b15, 0x5dcc51,
@@ -480,6 +482,13 @@ static const uint32_t KNOWN_PACKETS[] = {
     0x0366be, 0x0d11c1, 0x0d9393, 0x0d6e41, 0x038f8f, 0xa116b6, 0xa1ac0b,
     0x03a7aa, 0x5c0bf6, 0x87f7f5, 0x3d31dc, 0x5dba21, 0x05131e, 0x97cc51, 0x792b15,
     0x97edec, 0x975816,
+    // Added to match the c# DataPacketRouter: these were routed there but missing here, so
+    // they were only translated when debug logging (DQXCLARITY_FORWARD_ALL) was on.
+    0x035477, 0x054a1a, 0x0dcdc7, 0x1da83c, 0x1f8c41, 0x1f9ade, 0x211305,
+    0x215878, 0x21757c, 0x218f8f, 0x3d760c, 0x4e20e7, 0x4e69ca, 0x4e6bb8,
+    0x4e7e96, 0x4e994b, 0x4ea7aa, 0x5c131e, 0x5d0ca1, 0x5d2562, 0x5d374a,
+    0x5da446, 0x5df8e1, 0x8e732b, 0x8eee25, 0x95732b, 0x95c9e3, 0xa13bd0,
+    0xa17e96, 0xaae535,
 };
 static const int KNOWN_PACKETS_COUNT = sizeof(KNOWN_PACKETS) / sizeof(KNOWN_PACKETS[0]);
 

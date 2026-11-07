@@ -26,6 +26,12 @@ namespace DqxClarity.Packets.Types;
 //   NPC              — npc name dict, pass-through on miss
 //   Monster          — monsters m00 dict, pass-through on miss (no romanizer fallback)
 //   ScoutableMonster — same as Monster (see type byte 0x24 below)
+//   CapturePoint     — same as Monster: a capture point spawned in a PvP game
+//                      (type byte 0x1A, e.g. トライロック２), named from the
+//                      monsters m00 dict, pass-through on miss. Only the name is
+//                      handled; it is not known whether this type is used for
+//                      anything else. Name at the Monster offset (402 in the
+//                      capture). Sample: docs/packets/references/entities/capture_point_1
 //   Fellow           — local_player_names m00 dict, then custom_npc_name_overrides
 //                      m00 dict, romanizer fallback on miss in both, \x04 prefix
 //                      (confirmed via a ガヴァ capture that stayed untranslated
@@ -135,7 +141,7 @@ namespace DqxClarity.Packets.Types;
 //                         character the same way an NPC is, and Fellow/
 //                         PartyNpc are both the same kind of "non-monster
 //                         companion" nameplate)
-//   Monster nameplates -> gates EntityKind.Monster and ScoutableMonster
+//   Monster nameplates -> gates EntityKind.Monster, ScoutableMonster and CapturePoint
 //
 // These checks live ONLY in Build(), each as the very first line of its
 // case, before any dict lookup -- Parse() above (including the
@@ -180,7 +186,7 @@ public sealed class EntityPacket : IPacket
 
     private enum EntityKind
     {
-        None, Player, Monster, Npc, Party, Fellow, ScoutableMonster, PartyNpc,
+        None, Player, Monster, Npc, Party, Fellow, ScoutableMonster, PartyNpc, CapturePoint,
     }
 
     private readonly byte[] _raw;
@@ -229,6 +235,7 @@ public sealed class EntityPacket : IPacket
                                                           // field monster's capture
                                                           // (name landed at the exact
                                                           // same offset as Monster's)
+            0x1A => (EntityKind.CapturePoint, MonsterOffsets), // PvP capture point (トライロック２); name at 402
             _    => (EntityKind.None,    Array.Empty<int>()),
         };
 
@@ -404,6 +411,7 @@ public sealed class EntityPacket : IPacket
 
             case EntityKind.Monster:
             case EntityKind.ScoutableMonster:
+            case EntityKind.CapturePoint:
             {
                 if (!_deps.TranslateMonsterNameplates) return;
                 // already translated — hook re-intercepted its own modified write.

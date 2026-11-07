@@ -34,6 +34,29 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        FitToScreen();
+    }
+
+    // The default size (see MainWindow.axaml) is bigger than it used to be so the
+    // banner, tab strip and settings fit without much scrolling. On a small screen
+    // (or a high display scale) that could be larger than the desktop, so shrink it
+    // to fit, never below the minimum size. Runs before the window is shown, so
+    // CenterScreen still centres the final size.
+    private void FitToScreen()
+    {
+        try
+        {
+            var screen = Screens.Primary;
+            if (screen == null) return;
+
+            var scale = screen.Scaling > 0 ? screen.Scaling : 1.0;
+            var maxWidth = screen.WorkingArea.Width / scale - 32;
+            var maxHeight = screen.WorkingArea.Height / scale - 32;
+
+            if (Width > maxWidth) Width = Math.Max(MinWidth, maxWidth);
+            if (Height > maxHeight) Height = Math.Max(MinHeight, maxHeight);
+        }
+        catch { /* sizing is a nicety; keep the default if the screen can't be read */ }
     }
 
     protected override void OnOpened(EventArgs e)

@@ -47,9 +47,9 @@ namespace DqxClarity.Packets.Types;
 // the architecture above) the length prefix is what tells the client how
 // far to advance, not a fixed slot width.
 //
-// Names are resolved the same way every other player-chosen name in this
-// codebase is: m00 'local_player_names' dict first, romaji fallback when
-// the name isn't in the dict.
+// Names are resolved the same way MonsterFarmListPacket does it: m00
+// 'local_player_names' dict first, then 'custom_npc_name_overrides' (the
+// default monster names), romaji fallback when neither has the name.
 //
 // Sample: docs/packets/references/monster_tavern_list (17/32 slots filled)
 public sealed class MonsterTavernListPacket : IPacket
@@ -71,6 +71,7 @@ public sealed class MonsterTavernListPacket : IPacket
     public void Build()
     {
         var dict = _deps.M00Dict("local_player_names");
+        var overrideDict = _deps.M00Dict("custom_npc_name_overrides");
         var changed = false;
         var writer = new PacketWriter();
 
@@ -79,7 +80,7 @@ public sealed class MonsterTavernListPacket : IPacket
         {
             if (TryReadNameField(_raw, i, out var fieldLen, out var text))
             {
-                var newName = ResolveName(text, dict);
+                var newName = ResolveName(text, dict, overrideDict);
                 if (newName != text)
                 {
                     changed = true;
@@ -161,10 +162,11 @@ public sealed class MonsterTavernListPacket : IPacket
         (codepoint >= 0x3040 && codepoint <= 0x30FF) || // hiragana + katakana
         (codepoint >= 0x4E00 && codepoint <= 0x9FFF);   // common kanji
 
-    private string ResolveName(string japanese, Dictionary<string, string> dict)
+    private string ResolveName(string japanese, Dictionary<string, string> dict, Dictionary<string, string> overrideDict)
     {
         if (string.IsNullOrEmpty(japanese) || !Translator.IsTextJapanese(japanese)) return japanese;
         if (dict.TryGetValue(japanese, out var known) && !string.IsNullOrEmpty(known)) return known;
+        if (overrideDict.TryGetValue(japanese, out var custom) && !string.IsNullOrEmpty(custom)) return custom;
         return _deps.Romanizer.ToRomaji(japanese);
     }
 }

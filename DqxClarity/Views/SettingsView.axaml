@@ -105,6 +105,11 @@
                     BorderBrush="{DynamicResource AppBorder}"
                     BorderThickness="0,0,0,1"
                     Background="{DynamicResource AppSurface}">
+                <!-- Scrolls sideways when the window is too narrow for every tab; the right
+                     margin keeps the tabs clear of the banner toggle overlaid by MainWindow. -->
+                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Disabled"
+                              Margin="0,0,48,0">
                 <StackPanel Orientation="Horizontal" Spacing="0">
                     <Button x:Name="TabGeneral"    Classes="tab" Click="OnTabClick" Tag="general">General</Button>
                     <Button x:Name="TabAdvanced"   Classes="tab" Click="OnTabClick" Tag="advanced">Advanced</Button>
@@ -114,6 +119,7 @@
                     <Button x:Name="TabLanguagePacks" Classes="tab" Click="OnTabClick" Tag="languagepacks">Language</Button>
                     <Button x:Name="TabText2Clipboard"  Classes="tab" Click="OnTabClick" Tag="text2clipboard">Text2Clipboard</Button>
                 </StackPanel>
+                </ScrollViewer>
             </Border>
 
             <!-- Tab content area — all panels overlap; SwitchTab controls visibility -->
@@ -122,8 +128,10 @@
                 <!-- ── Scrollable panels (General / Advanced / Game) ──── -->
                 <ScrollViewer x:Name="TabScroll"
                               HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto"
+                              ScrollViewer.AllowAutoHide="False"
                               Padding="14,12">
-                    <StackPanel MaxWidth="504">
+                    <StackPanel MaxWidth="620" Margin="0,0,0,12">
 
                         <!-- ══ GENERAL TAB ══════════════════════════════ -->
                         <StackPanel x:Name="PanelGeneral" Spacing="14">
