@@ -672,6 +672,23 @@ public partial class SettingsViewModel : ObservableObject
 
         _languagePackSupportInstalled = _dqxDirValid && languagePacks.IsSupportInstalled(_dqxDir);
 
+        // If version.dll was installed by an older dqxclarity, bring it up to date with the copy
+        // embedded in this build. Only touches an existing file; skipped quietly if DQX has it locked.
+        if (_languagePackSupportInstalled)
+        {
+            var supportDir = _dqxDir;
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    if (languagePacks.RefreshSupportDllIfStale(supportDir) == LanguagePackService.SupportRefreshResult.Updated)
+                        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                            SetLanguagePackStatus("Updated version.dll (language pack support) to the latest version."));
+                }
+                catch { /* best-effort; never block startup */ }
+            });
+        }
+
         _ = FetchMaintenanceStatus();
 
         _patch.Progress += (downloaded, total) =>

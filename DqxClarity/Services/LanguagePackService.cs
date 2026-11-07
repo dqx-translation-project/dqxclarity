@@ -90,6 +90,63 @@ public class LanguagePackService
         stream.CopyTo(target);
     }
 
+    /// <summary>Result of <see cref="RefreshSupportDllIfStale"/>.</summary>
+    public enum SupportRefreshResult
+    {
+        /// <summary>version.dll isn't in the game folder (user hasn't installed it, or removed it) -- left alone.</summary>
+        NotInstalled,
+        /// <summary>The installed version.dll already matches the embedded one.</summary>
+        UpToDate,
+        /// <summary>The installed version.dll was out of date and has been replaced.</summary>
+        Updated,
+        /// <summary>It's out of date but couldn't be replaced (usually DQX is running and has it loaded). Retried next launch.</summary>
+        Locked,
+    }
+
+    /// <summary>
+    /// If version.dll is already in the game folder and differs from the copy embedded in this build,
+    /// replaces it with the embedded one. Never installs it when it isn't there. The new file is written
+    /// next to the target and moved into place, so a failure (e.g. the game has the DLL loaded) leaves the
+    /// existing file untouched. Never throws for ordinary I/O problems.
+    /// </summary>
+    public SupportRefreshResult RefreshSupportDllIfStale(string installDir)
+    {
+        if (string.IsNullOrWhiteSpace(installDir)) return SupportRefreshResult.NotInstalled;
+
+        var target = TargetDll(installDir);
+        if (!File.Exists(target)) return SupportRefreshResult.NotInstalled;
+
+        var temp = target + ".new";
+        try
+        {
+            using var embedded = typeof(LanguagePackService).Assembly.GetManifestResourceStream("version.dll");
+            if (embedded == null) return SupportRefreshResult.UpToDate; // nothing to compare against
+
+            byte[] embeddedHash = SHA256.HashData(embedded);
+
+            // ReadWrite|Delete sharing so hashing still works while the game has the DLL mapped.
+            byte[] installedHash;
+            using (var installed = new FileStream(target, FileMode.Open, FileAccess.Read,
+                       FileShare.ReadWrite | FileShare.Delete))
+                installedHash = SHA256.HashData(installed);
+
+            if (embeddedHash.AsSpan().SequenceEqual(installedHash))
+                return SupportRefreshResult.UpToDate;
+
+            embedded.Position = 0;
+            using (var output = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None))
+                embedded.CopyTo(output);
+
+            File.Move(temp, target, overwrite: true);
+            return SupportRefreshResult.Updated;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            try { if (File.Exists(temp)) File.Delete(temp); } catch { }
+            return SupportRefreshResult.Locked;
+        }
+    }
+
     /// <summary>Removes version.dll from the game folder.</summary>
     public void DisableSupport(string installDir)
     {
