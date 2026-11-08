@@ -1,0 +1,24 @@
+[package]
+name        = "wanakana_ffi"
+version     = "0.1.0"
+edition     = "2021"
+publish     = false
+
+[lib]
+# cdylib produces wanakana.dll on windows. staticlib would let us link it
+# statically into a future c host; cdylib is what c# p/invoke needs.
+name        = "wanakana"
+crate-type  = ["cdylib"]
+
+[dependencies]
+# wana_kana is the rust port of the well-known js wana-kana library.
+# scope: kana <-> romaji conversion (kanji is out of scope by design).
+wana_kana   = "4"
+
+[profile.release]
+# small static binary; we ship the .dll alongside the launcher exe.
+opt-level   = "z"
+lto         = true
+codegen-units = 1
+panic       = "abort"
+strip       = true

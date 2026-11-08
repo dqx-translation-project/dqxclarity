@@ -1,0 +1,1178 @@
+// PacketWarden.dll - injected into DQXGame.exe (x86).
+//
+// ============================================================================
+// HIGH-LEVEL OVERVIEW
+// ============================================================================
+//
+// This dll acts as a transparent man-in-the-middle between DQXGame.exe's
+// network packet parser and the c# translation host (DqxClarity). When the
+// game receives a network packet, this hook intercepts it, sends it to the
+// c# side over a named pipe for translation, and feeds the translated version
+// back to the game's parser -- all before the game ever processes the contents.
+//
+// The game doesn't know its packets were swapped. It sees the same return
+// value it would have gotten from the original parser, but the data it
+// actually parsed now contains translated strings.
+//
+// ============================================================================
+// PACKET INTERCEPTION FLOW (the core loop)
+// ============================================================================
+//
+// 1. Game calls its VCE packet parser function (ParseNetworkPacket).
+//    Because we overwrote the first 5 bytes of that function with a JMP,
+//    execution lands in our hook: H_ParseNetworkPacket().
+//
+// 2. H_ParseNetworkPacket filters the packet:
+//    - Skips empty packets (length == 0).
+//    - Skips non-data packets (type != 0 and != 4). Types 1/2/3 are
+//      ping/pong/ackn control frames -- no translatable content.
+//    - Extracts the 3-byte routing key (opcode << 16 | marker1 << 8 | marker2)
+//      from the payload and checks it against KNOWN_PACKETS[]. If it's not
+//      a packet we care about, pass it through unmodified.
+//
+// 3. For packets we DO care about, we save the *original* declared packet
+//    size from the framing header via ComputeOriginalSize(). This is critical
+//    for the return value -- see step 6.
+//
+// 4. ExchangePacket() sends the raw packet bytes to the c# host over the
+//    named pipe (\\.\pipe\dqxclarity):
+//      Native -> C#:  [u32 packet_length][raw packet bytes]
+//      C# -> Native:  [u8 flag]
+//                     If flag == 0: packet was not modified, nothing else sent.
+//                     If flag == 1: [u32 new_length][modified packet bytes]
+//    The pipe is protected by a critical section since the game's parser can
+//    be called from multiple threads.
+//
+// 5. If the c# side returned a modified packet, we call the *original* parser
+//    (via trampoline) with the modified data instead of the original. If no
+//    modification was needed, we call through with the original data. Either
+//    way, the game's parser processes exactly one packet -- it just might
+//    contain translated strings now.
+//
+// 6. RETURN VALUE: We return the *original* packet's declared size, NOT the
+//    modified packet's size. This is the most important detail of the whole
+//    hook. The game's caller uses ParseNetworkPacket's return value to advance
+//    its read cursor through the network receive buffer. If we returned the
+//    modified size (which differs because translated strings are longer or
+//    shorter than the originals), the read cursor would land in the middle of
+//    the next packet and the entire network stream would desync, crashing the
+//    game. By returning original_size, the caller advances past exactly the
+//    bytes it received from the server, keeping the stream perfectly aligned.
+//
+// ============================================================================
+// HOOK INSTALLATION
+// ============================================================================
+//
+// On DLL_PROCESS_ATTACH, a background thread (InstallThread) runs the
+// following sequence:
+//
+// 1. FIND THE TARGET: ResolveParser() scans the game's .text section for a
+//    body fingerprint unique to the VCE packet parser. This is NOT a fixed
+//    address -- it survives game patches as long as the parser's structure
+//    doesn't fundamentally change. The fingerprint is:
+//      a. scan for `call [reg+0x5C]` and `call [reg+0x64]` (vtable dispatches)
+//      b. pair sites within 0x300 bytes (same function body)
+//      c. verify each pair has `push 0x16` and `push 0x1B` nearby (log codes
+//         22 and 27 -- branch markers inside the parser's switch statement)
+//      d. walk backwards through 0xCC padding to find the function prologue
+//    Port of C:\Users\joey\Desktop\test\sleep_test.js step-for-step.
+//
+// 2. INSTALL THE TRAMPOLINE: InstallHook() does a classic inline x86 hook:
+//      a. Allocate an executable trampoline buffer (VirtualAlloc RWX).
+//      b. Copy the first N bytes of the original function into the trampoline
+//         (enough to cover the 5-byte JMP we're about to write). Uses a
+//         minimal x86 length disassembler to avoid splitting instructions.
+//      c. Append a JMP from the trampoline back to original_fn + N (so
+//         calling the trampoline executes the original prologue then continues
+//         into the rest of the original function -- this is how we "call the
+//         original").
+//      d. Overwrite the first 5 bytes of the original function with
+//         JMP rel32 -> H_ParseNetworkPacket. NOP-pad any remaining bytes.
+//      e. FlushInstructionCache so the CPU picks up the new code.
+//
+//    After this, any call to the original parser function immediately jumps
+//    to our hook. Our hook can call the original via Orig_ParseNet (which
+//    points to the trampoline).
+//
+// 3. PIPE CONNECTION: The pipe is lazily connected on first packet exchange.
+//    The c# host (PacketPipe.cs) creates the named pipe server; this dll is
+//    the client. If the pipe isn't available yet (c# side hasn't started),
+//    packets pass through unmodified until it connects.
+//
+// ============================================================================
+// PACKET FRAMING
+// ============================================================================
+//
+// The low 2 bits of byte 0 encode the size-header length:
+//   bits=0: 1-byte size at offset 1, payload starts at offset 2
+//   bits=1: 2-byte size at offset 1, payload starts at offset 3
+//   bits=2: 3-byte size at offset 1, payload starts at offset 4
+//   bits=3: 4-byte size at offset 1, payload starts at offset 5
+//
+// The high 4 bits of byte 0 encode the packet type:
+//   0 = data (normal game packet)
+//   1 = ping
+//   2 = pong
+//   3 = ackn
+//   4 = data (alternate variant)
+//
+// Only types 0 and 4 carry translatable content. The 3-byte routing key
+// lives at the start of the payload (immediately after the size header).
+
+#include <Windows.h>
+#include <stdint.h>
+#include <string.h>
+#include <vector>
+#include <utility>
+
+#pragma comment(lib, "psapi.lib")
+#include <psapi.h>
+
+#define PIPE_NAME    L"\\\\.\\pipe\\dqxclarity"
+
+static HINSTANCE g_hInst = NULL;
+
+// ── Logging ──────────────────────────────────────────────────────────────────
+
+static void Log(const char* msg)
+{
+    WCHAR path[MAX_PATH];
+    GetModuleFileNameW(g_hInst, path, MAX_PATH);
+    WCHAR* sl = wcsrchr(path, L'\\');
+    if (sl) { *sl = L'\0'; sl = wcsrchr(path, L'\\'); }
+    if (sl) sl[1] = L'\0'; else path[0] = L'\0';
+    lstrcatW(path, L"logs\\packetwarden.log");
+    HANDLE h = CreateFileW(path, FILE_APPEND_DATA, FILE_SHARE_READ, NULL,
+                           OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE) return;
+    SYSTEMTIME t;
+    GetLocalTime(&t);
+    char ts[32];
+    wsprintfA(ts, "%04d-%02d-%02d %02d:%02d:%02d ", t.wYear, t.wMonth, t.wDay,
+              t.wHour, t.wMinute, t.wSecond);
+    DWORD written;
+    WriteFile(h, ts, lstrlenA(ts), &written, NULL);
+    WriteFile(h, msg, lstrlenA(msg), &written, NULL);
+    const char nl = '\n';
+    WriteFile(h, &nl, 1, &written, NULL);
+    CloseHandle(h);
+}
+
+// ── Parser resolver (port of sleep_test.js) ──────────────────────────────────
+
+static const BYTE MODRM_BYTES[] = { 0x50, 0x51, 0x52, 0x53, 0x55, 0x56, 0x57 };
+static const int  MODRM_COUNT   = sizeof(MODRM_BYTES) / sizeof(MODRM_BYTES[0]);
+
+// Finds every `FF <modrm> <disp>` where modrm encodes a `call dword ptr [reg+disp8]`
+// for the common GP registers (skips SIB-encoded base - uncommon for vtable dispatch).
+static void ScanIndirectCalls(BYTE* base, SIZE_T size, BYTE disp, std::vector<BYTE*>& out)
+{
+    if (size < 3) return;
+    for (SIZE_T i = 0; i <= size - 3; i++) {
+        if (base[i] != 0xFF) continue;
+        BYTE modrm = base[i + 1];
+        if (base[i + 2] != disp) continue;
+        for (int j = 0; j < MODRM_COUNT; j++)
+            if (MODRM_BYTES[j] == modrm) { out.push_back(base + i); break; }
+    }
+}
+
+// Returns TRUE if both 2-byte patterns appear at least once in [start, end).
+static BOOL RegionContainsBothPushes(BYTE* start, BYTE* end)
+{
+    const BYTE p16[2] = { 0x6A, 0x16 };
+    const BYTE p1B[2] = { 0x6A, 0x1B };
+    BOOL f16 = FALSE, f1B = FALSE;
+    if (end <= start || (end - start) < 2) return FALSE;
+    for (BYTE* p = start; p + 2 <= end; p++) {
+        if (!f16 && p[0] == p16[0] && p[1] == p16[1]) f16 = TRUE;
+        if (!f1B && p[0] == p1B[0] && p[1] == p1B[1]) f1B = TRUE;
+        if (f16 && f1B) return TRUE;
+    }
+    return FALSE;
+}
+
+// Walk back from a body address through CC padding to find a function prologue.
+// MSVC aligns function boundaries with 0xCC (int 3) bytes; the byte after the
+// last CC of a padding run is the function start.
+static BYTE* FindFunctionStart(BYTE* bodyAddr, BYTE* modBase)
+{
+    for (int off = 1; off < 0x800; off++) {
+        BYTE* p = bodyAddr - off;
+        if (p < modBase) return NULL;
+        if (*p != 0xCC) continue;
+        BYTE* c = p + 1;
+        BYTE b0 = c[0];
+        BYTE b1 = c[1];
+        // recognise the common x86 function prologues
+        if ((b0 == 0x55 && b1 == 0x8B) ||               // push ebp; mov ebp, esp
+            (b0 == 0x8B && b1 == 0xFF) ||               // mov edi, edi (hotpatch stub)
+            b0 == 0x53 || b0 == 0x56 || b0 == 0x57 ||   // push ebx / esi / edi
+            (b0 == 0x83 && b1 == 0xEC) ||               // sub esp, imm8
+            (b0 == 0x81 && b1 == 0xEC))                 // sub esp, imm32
+            return c;
+    }
+    return NULL;
+}
+
+static BYTE* ResolveParser(BYTE* base, SIZE_T size, bool verbose)
+{
+    char buf[128];
+
+    std::vector<BYTE*> calls5C, calls64;
+    ScanIndirectCalls(base, size, 0x5C, calls5C);
+    ScanIndirectCalls(base, size, 0x64, calls64);
+    if (verbose) {
+        wsprintfA(buf, "call [reg+5C] sites = %u, call [reg+64] sites = %u",
+                  (unsigned)calls5C.size(), (unsigned)calls64.size());
+        Log(buf);
+    }
+
+    const SIZE_T WINDOW = 0x300;
+    std::vector<std::pair<BYTE*, BYTE*>> pairs;
+    for (auto a : calls5C) {
+        for (auto b : calls64) {
+            SIZE_T diff = (a < b) ? (SIZE_T)(b - a) : (SIZE_T)(a - b);
+            if (diff < WINDOW) pairs.push_back(std::make_pair(a, b));
+        }
+    }
+    if (verbose) {
+        wsprintfA(buf, "(5C, 64) pairs within 0x%X = %u", (unsigned)WINDOW, (unsigned)pairs.size());
+        Log(buf);
+    }
+
+    BYTE* modEnd = base + size;
+    std::vector<std::pair<BYTE*, BYTE*>> verified;
+    for (auto& pr : pairs) {
+        BYTE* lo = pr.first < pr.second ? pr.first : pr.second;
+        BYTE* hi = pr.first < pr.second ? pr.second : pr.first;
+        BYTE* ws = (lo - 0x200) < base   ? base   : (lo - 0x200);
+        BYTE* we = (hi + 0x200) > modEnd ? modEnd : (hi + 0x200);
+        if (RegionContainsBothPushes(ws, we)) verified.push_back(pr);
+    }
+    if (verbose) {
+        wsprintfA(buf, "verified candidates = %u", (unsigned)verified.size());
+        Log(buf);
+    }
+
+    if (verified.empty()) return NULL;
+
+    BYTE* a = verified[0].first;
+    BYTE* b = verified[0].second;
+    BYTE* earliest = (a < b) ? a : b;
+    BYTE* entry = FindFunctionStart(earliest, base);
+    if (!entry) { Log("could not walk back to function start"); return NULL; }
+    wsprintfA(buf, "parser entry @ %p (RVA 0x%X)", entry, (unsigned)(entry - base));
+    Log(buf);
+    return entry;
+}
+
+// ── Minimal x86 length-disassembler for prologue trampolines ─────────────────
+//
+// Only needs to handle instructions we expect at the start of MSVC-compiled
+// functions: push/pop reg, mov reg-reg via modrm, sub esp imm8/imm32,
+// xor reg-reg, lea (modrm + optional disp). Returns 0 for unknown opcodes so
+// InstallHook can fail loudly and the user pastes the bytes to extend coverage.
+
+static int ModRmSize(BYTE modrm)
+{
+    int mod = modrm >> 6;
+    int rm  = modrm & 7;
+    int size = 1; // the modrm byte itself
+    int sib  = (mod != 3 && rm == 4) ? 1 : 0;
+    size += sib;
+    if (mod == 0) {
+        if (rm == 5) size += 4;             // [disp32]
+        else if (sib) {
+            // mod==00 + SIB + base==5 also has disp32; we'd need to peek SIB,
+            // which we don't here. Prologue code rarely uses these. Approximate
+            // as no-displacement; caller fails noisily if we get it wrong.
+        }
+    } else if (mod == 1) size += 1;         // disp8
+    else if (mod == 2) size += 4;           // disp32
+    return size;
+}
+
+// Length of a single instruction at `p`. Returns 0 if unknown.
+static int InstrLen(const BYTE* p)
+{
+    int off = 0;
+    // Skip operand-size / address-size prefixes
+    while (p[off] == 0x66 || p[off] == 0x67) off++;
+
+    BYTE op = p[off];
+
+    // single-byte
+    if ((op >= 0x40 && op <= 0x5F) ||       // inc/dec/push/pop reg
+        op == 0x90 ||                       // nop
+        op == 0xC3 || op == 0xCB ||         // ret near/far
+        op == 0xC9 ||                       // leave
+        op == 0xCC) return off + 1;         // int3
+
+    // modrm-only ops (opcode + modrm + optional disp)
+    static const BYTE MODRM_ONLY[] = {
+        0x00, 0x01, 0x02, 0x03,             // add
+        0x08, 0x09, 0x0A, 0x0B,             // or
+        0x10, 0x11, 0x12, 0x13,             // adc
+        0x18, 0x19, 0x1A, 0x1B,             // sbb
+        0x20, 0x21, 0x22, 0x23,             // and
+        0x28, 0x29, 0x2A, 0x2B,             // sub
+        0x30, 0x31, 0x32, 0x33,             // xor
+        0x38, 0x39, 0x3A, 0x3B,             // cmp
+        0x84, 0x85, 0x86, 0x87,             // test/xchg
+        0x88, 0x89, 0x8A, 0x8B,             // mov
+        0x8D,                               // lea
+        0x8F,                               // pop r/m
+        0xFF                                // inc/dec/call/jmp r/m
+    };
+    for (size_t k = 0; k < sizeof(MODRM_ONLY); k++) {
+        if (MODRM_ONLY[k] == op) return off + 1 + ModRmSize(p[off + 1]);
+    }
+
+    // modrm + imm8
+    if (op == 0x80 || op == 0x82 || op == 0x83 || op == 0xC0 || op == 0xC1 ||
+        op == 0x6B)
+        return off + 1 + ModRmSize(p[off + 1]) + 1;
+
+    // modrm + imm32
+    if (op == 0x81 || op == 0xC7 || op == 0x69)
+        return off + 1 + ModRmSize(p[off + 1]) + 4;
+
+    // E8/E9 rel32 call/jmp; EB rel8
+    if (op == 0xE8 || op == 0xE9) return off + 5;
+    if (op == 0xEB) return off + 2;
+
+    // mov reg, imm32 (B8+r)
+    if (op >= 0xB8 && op <= 0xBF) return off + 5;
+
+    return 0;
+}
+
+// Copy whole instructions from `src` to `dst` until at least `minBytes` covered.
+// Returns the total bytes copied, or 0 if we encountered an unknown opcode
+// before reaching the threshold.
+static int CopyPrologue(BYTE* dst, BYTE* src, int minBytes)
+{
+    int copied = 0;
+    while (copied < minBytes) {
+        int n = InstrLen(src + copied);
+        if (n == 0) return 0;
+        copied += n;
+    }
+    memcpy(dst, src, copied);
+    return copied;
+}
+
+// ── Inline hook installer ────────────────────────────────────────────────────
+// Overwrites the first instructions at fn with a 5-byte JMP rel32 to hookFn.
+// Allocates an executable trampoline that contains the original prologue
+// bytes followed by a JMP back to fn + prologue_len.
+
+static void* InstallHook(BYTE* fn, void* hookFn)
+{
+    BYTE* tramp = (BYTE*)VirtualAlloc(NULL, 32, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (!tramp) return NULL;
+
+    int prologueLen = CopyPrologue(tramp, fn, 5);
+    if (prologueLen == 0) {
+        char buf[128];
+        wsprintfA(buf, "unknown prologue bytes: %02X %02X %02X %02X %02X %02X %02X %02X",
+                  fn[0], fn[1], fn[2], fn[3], fn[4], fn[5], fn[6], fn[7]);
+        Log(buf);
+        VirtualFree(tramp, 0, MEM_RELEASE);
+        return NULL;
+    }
+
+    // Trampoline tail: JMP fn + prologueLen
+    tramp[prologueLen]     = 0xE9;
+    *(DWORD*)(tramp + prologueLen + 1) = (DWORD)(fn + prologueLen - (tramp + prologueLen + 5));
+
+    DWORD old;
+    VirtualProtect(fn, prologueLen, PAGE_EXECUTE_READWRITE, &old);
+    fn[0] = 0xE9;
+    *(DWORD*)(fn + 1) = (DWORD)((BYTE*)hookFn - (fn + 5));
+    // Fill the bytes between the JMP and the next clean boundary with NOPs so
+    // a disassembler walking from fn sees something legal; doesn't matter for
+    // execution since we jump out immediately.
+    for (int i = 5; i < prologueLen; i++) fn[i] = 0x90;
+    VirtualProtect(fn, prologueLen, old, &old);
+    FlushInstructionCache(GetCurrentProcess(), fn, prologueLen);
+
+    char buf[64];
+    wsprintfA(buf, "hook installed (copied %d prologue bytes)", prologueLen);
+    Log(buf);
+    return tramp;
+}
+
+// ── Generic wildcard byte-signature scanner ──────────────────────────────────
+//
+// Port of Frida's Memory.scanSync, used by the community-logging hooks below
+// (their signatures come straight from the original Python project's
+// hash_logger.ts / blowfish_logger.ts). Parses a space-separated hex string
+// where each token is either two hex digits or "??" for a wildcard byte, and
+// returns every exact match in [base, base+size). Callers are expected to
+// require exactly one match before trusting the result -- same as those
+// scripts' `if (results.length != 1)` guard.
+
+struct SigByte { BYTE value; BOOL wildcard; };
+
+static BYTE HexNibble(char c)
+{
+    if (c >= '0' && c <= '9') return (BYTE)(c - '0');
+    if (c >= 'A' && c <= 'F') return (BYTE)(c - 'A' + 10);
+    if (c >= 'a' && c <= 'f') return (BYTE)(c - 'a' + 10);
+    return 0;
+}
+
+static int ParseSignature(const char* sig, SigByte* out, int maxLen)
+{
+    int n = 0;
+    const char* p = sig;
+    while (*p && n < maxLen) {
+        while (*p == ' ') p++;
+        if (!*p) break;
+        if (p[0] == '?') {
+            out[n].wildcard = TRUE;
+            out[n].value = 0;
+            p += (p[1] == '?') ? 2 : 1;
+        } else {
+            out[n].wildcard = FALSE;
+            out[n].value = (BYTE)((HexNibble(p[0]) << 4) | HexNibble(p[1]));
+            p += 2;
+        }
+        n++;
+    }
+    return n;
+}
+
+static void FindSignature(BYTE* base, SIZE_T size, const char* sigStr, std::vector<BYTE*>& outMatches)
+{
+    SigByte sig[64];
+    int sigLen = ParseSignature(sigStr, sig, 64);
+    if (sigLen == 0 || (SIZE_T)sigLen > size) return;
+
+    for (SIZE_T i = 0; i + (SIZE_T)sigLen <= size; i++) {
+        BOOL match = TRUE;
+        for (int j = 0; j < sigLen; j++) {
+            if (!sig[j].wildcard && base[i + j] != sig[j].value) { match = FALSE; break; }
+        }
+        if (match) outMatches.push_back(base + i);
+    }
+}
+
+// ── KNOWN_PACKETS table ──────────────────────────────────────────────────────
+//
+// Allowlist of packet routing keys that contain translatable content (quest names,
+// NPC dialogue, party lists, etc). Only packets whose 3-byte routing key matches
+// an entry here get sent to the c# host -- everything else passes through
+// untouched, keeping overhead near zero for the vast majority of network traffic.
+//
+// Each entry is (op_code << 16) | (marker1 << 8) | marker2. These must stay in
+// sync with the c# side's DataPacketRouter -- every (opcode, marker) pair routed to a
+// packet class there needs an entry here, or the packet is only translated when
+// debug logging (DQXCLARITY_FORWARD_ALL) is on.
+
+static const uint32_t KNOWN_PACKETS[] = {
+    0x21e535, 0x21be01, 0x21a83c, 0x219804, 0x216dd4, 0x5d2b15, 0x5dcc51,
+    0x875408, 0x878408, 0x876185, 0x0d9ee1, 0x0dee25, 0x0d2711,
+    0x0d7690, 0x0d755d, 0x3d16b6, 0x52ee25, 0x664cc2, 0x66da30,
+    0x664569, 0x79994b, 0x03f7f5, 0x035408, 0xa12711, 0xa18a6a,
+    0x466bb8, 0x4b4569, 0xa1b121, 0xaade02, 0xaa7a64, 0x052b66,
+    0x462562, 0x97732b, 0x972352, 0x0d9804, 0x1f19be, 0x5cde02, 0xaac462,
+    0x0366be, 0x0d11c1, 0x0d9393, 0x0d6e41, 0x038f8f, 0xa116b6, 0xa1ac0b,
+    0x03a7aa, 0x5c0bf6, 0x87f7f5, 0x3d31dc, 0x5dba21, 0x05131e, 0x97cc51, 0x792b15,
+    0x97edec, 0x975816,
+    // Added to match the c# DataPacketRouter: these were routed there but missing here, so
+    // they were only translated when debug logging (DQXCLARITY_FORWARD_ALL) was on.
+    0x035477, 0x054a1a, 0x0dcdc7, 0x1da83c, 0x1f8c41, 0x1f9ade, 0x211305,
+    0x215878, 0x21757c, 0x218f8f, 0x3d760c, 0x4e20e7, 0x4e69ca, 0x4e6bb8,
+    0x4e7e96, 0x4e994b, 0x4ea7aa, 0x5c131e, 0x5d0ca1, 0x5d2562, 0x5d374a,
+    0x5da446, 0x5df8e1, 0x8e732b, 0x8eee25, 0x95732b, 0x95c9e3, 0xa13bd0,
+    0xa17e96, 0xaae535,
+};
+static const int KNOWN_PACKETS_COUNT = sizeof(KNOWN_PACKETS) / sizeof(KNOWN_PACKETS[0]);
+
+static BOOL IsKnownPacket(uint32_t key)
+{
+    for (int i = 0; i < KNOWN_PACKETS_COUNT; i++)
+        if (KNOWN_PACKETS[i] == key) return TRUE;
+    return FALSE;
+}
+
+// ── Packet dedup ──────────────────────────────────────────────────────────────
+//
+// Identical packets arriving at high frequency (e.g., entity/party data at
+// ~1000/s) would each block the game thread with a sync pipe round-trip even
+// though C# returns "no change" every time. The dedup cache suppresses those
+// redundant round-trips: if the same (key, len, hash) was piped within the
+// last 100ms, skip the pipe and call Orig_ParseNet directly.
+
+static uint32_t Fnv1a(const BYTE* data, uint32_t len)
+{
+    uint32_t h = 2166136261u;
+    for (uint32_t i = 0; i < len; i++)
+        h = (h ^ data[i]) * 16777619u;
+    return h;
+}
+
+#define DEDUP_SLOTS 64
+#define DEDUP_WINDOW_MS 100
+
+struct DedupEntry { uint32_t key; uint32_t len; uint32_t hash; DWORD ticks; };
+static DedupEntry       g_dedup[DEDUP_SLOTS];   // zero-initialized by default
+static int              g_dedup_pos = 0;
+static CRITICAL_SECTION g_dedup_cs;
+static BOOL             g_dedup_inited = FALSE;
+
+static void EnsureDedupLock(void)
+{
+    if (!g_dedup_inited) {
+        InitializeCriticalSection(&g_dedup_cs);
+        g_dedup_inited = TRUE;
+    }
+}
+
+// Returns TRUE if the packet is a duplicate of a recent pipe send.
+// Inserts the entry (and returns FALSE) when it's new or expired.
+static BOOL CheckDedup(uint32_t key, uint32_t len, uint32_t hash)
+{
+    DWORD now = GetTickCount();
+    EnterCriticalSection(&g_dedup_cs);
+    for (int i = 0; i < DEDUP_SLOTS; i++) {
+        DedupEntry& e = g_dedup[i];
+        if (e.key == key && e.len == len && e.hash == hash &&
+            (now - e.ticks) < DEDUP_WINDOW_MS) {
+            LeaveCriticalSection(&g_dedup_cs);
+            return TRUE;
+        }
+    }
+    g_dedup[g_dedup_pos] = { key, len, hash, now };
+    g_dedup_pos = (g_dedup_pos + 1) % DEDUP_SLOTS;
+    LeaveCriticalSection(&g_dedup_cs);
+    return FALSE;
+}
+
+
+// Debug-discovery mode: when the env var DQXCLARITY_FORWARD_ALL is "1", the
+// hook forwards EVERY type-0/type-4 data packet to the c# host instead of just
+// the KNOWN_PACKETS allowlist. The c# dispatcher returns "unchanged" for any
+// packet it doesn't recognise, so behaviour is identical for the game; the
+// only difference is the extra pipe round-trips, which let unknown packets
+// surface in the debug grid for analysis.
+//
+// Set by InstallThread once, read by H_ParseNetworkPacket on every call.
+static BOOL g_forwardAll = FALSE;
+
+// Per the new resolver (sleep_test.js), the framing's low 2 bits of byte 0 tell
+// us where the payload starts: offset = (b0 & 3) + 2.
+//   ll=0: 2  (1-byte size header)
+//   ll=1: 3  (2-byte size header)
+//   ll=2: 4  (3-byte size header)
+//   ll=3: 5  (4-byte size header)
+static uint32_t ComputeOriginalSize(const BYTE* packet, uint32_t packet_length)
+{
+    int ll = packet[0] & 3;
+    if (packet_length < (uint32_t)(ll + 2)) return 0;
+    switch (ll) {
+        case 0: return (uint32_t)packet[1] + 2;
+        case 1: return (uint32_t)(*(uint16_t*)(packet + 1)) + 3;
+        case 2: {
+            // 3-byte little-endian size (u24)
+            uint32_t v = (uint32_t)packet[1] | ((uint32_t)packet[2] << 8) | ((uint32_t)packet[3] << 16);
+            return v + 4;
+        }
+        case 3: return *(uint32_t*)(packet + 1) + 5;
+        default: return 0;
+    }
+}
+
+// ── Pipe IPC ─────────────────────────────────────────────────────────────────
+//
+// Communication channel between this dll (inside DQXGame.exe) and the c# host.
+// Uses a single named pipe instance. Thread-safe via critical section since the
+// game may call the parser from multiple threads concurrently.
+//
+// The pipe is lazily connected: if the c# host isn't listening yet, packets
+// just pass through unmodified until it comes up. If the pipe breaks (c# side
+// restarts, game alt-tabs and the host cycles), the next ExchangePacket call
+// detects the broken pipe, closes the handle, and reconnects on the following
+// attempt.
+
+static HANDLE          g_pipe = INVALID_HANDLE_VALUE;
+static CRITICAL_SECTION g_pipe_lock;
+static BOOL            g_pipe_inited = FALSE;
+
+static void EnsurePipeLock(void)
+{
+    if (!g_pipe_inited) {
+        InitializeCriticalSection(&g_pipe_lock);
+        g_pipe_inited = TRUE;
+    }
+}
+
+static BOOL TryConnectPipe(void)
+{
+    if (g_pipe != INVALID_HANDLE_VALUE) return TRUE;
+    HANDLE h = CreateFileW(PIPE_NAME, GENERIC_READ | GENERIC_WRITE, 0, NULL,
+                           OPEN_EXISTING, 0, NULL);
+    if (h == INVALID_HANDLE_VALUE) return FALSE;
+    DWORD mode = PIPE_READMODE_BYTE;
+    SetNamedPipeHandleState(h, &mode, NULL, NULL);
+    g_pipe = h;
+    Log("pipe connected");
+    return TRUE;
+}
+
+static void ClosePipe(void)
+{
+    if (g_pipe != INVALID_HANDLE_VALUE) {
+        CloseHandle(g_pipe);
+        g_pipe = INVALID_HANDLE_VALUE;
+    }
+}
+
+static BOOL WriteAll(HANDLE h, const void* buf, DWORD len)
+{
+    DWORD off = 0;
+    while (off < len) {
+        DWORD wrote = 0;
+        if (!WriteFile(h, (const BYTE*)buf + off, len - off, &wrote, NULL) || wrote == 0)
+            return FALSE;
+        off += wrote;
+    }
+    return TRUE;
+}
+
+static BOOL ReadAll(HANDLE h, void* buf, DWORD len)
+{
+    DWORD off = 0;
+    while (off < len) {
+        DWORD got = 0;
+        if (!ReadFile(h, (BYTE*)buf + off, len - off, &got, NULL) || got == 0)
+            return FALSE;
+        off += got;
+    }
+    return TRUE;
+}
+
+// Sends a raw packet to the c# host and receives the (possibly modified) result.
+//
+// Wire protocol:
+//   This dll (client) -> C# host (server):
+//     [uint32 packet_length] [packet_length bytes of raw packet data]
+//
+//   C# host -> This dll:
+//     [uint8 modified_flag]
+//     If modified_flag == 0: no modification, nothing else follows.
+//     If modified_flag == 1: [uint32 new_length] [new_length bytes of translated packet]
+//
+// Returns TRUE if the c# side sent back a modified packet (out_buf/out_len populated).
+// Returns FALSE if unmodified, pipe not connected, or any I/O error. On error the
+// pipe is closed so the next call will attempt a fresh connection.
+//
+// Caller is responsible for HeapFree'ing *out_buf when done.
+static BOOL ExchangePacket(const BYTE* in_buf, uint32_t in_len, BYTE** out_buf, uint32_t* out_len)
+{
+    *out_buf = NULL;
+    *out_len = 0;
+
+    EnterCriticalSection(&g_pipe_lock);
+    BOOL modified = FALSE;
+
+    // lazy connect -- if the c# host isn't up yet, packet passes through unmodified
+    if (!TryConnectPipe()) goto done;
+
+    // send the raw packet to c# for translation
+    if (!WriteAll(g_pipe, &in_len, 4)) { ClosePipe(); goto done; }
+    if (!WriteAll(g_pipe, in_buf, in_len)) { ClosePipe(); goto done; }
+
+    // read the response: first byte tells us if the packet was modified
+    BYTE flag = 0;
+    if (!ReadAll(g_pipe, &flag, 1)) { ClosePipe(); goto done; }
+    if (flag == 0) goto done;  // c# said "no changes", use original
+
+    // flag == 1: c# has a translated packet for us
+    uint32_t new_len = 0;
+    if (!ReadAll(g_pipe, &new_len, 4)) { ClosePipe(); goto done; }
+    if (new_len == 0 || new_len > 0x100000) { ClosePipe(); goto done; }  // sanity cap 1MB
+
+    BYTE* buf = (BYTE*)HeapAlloc(GetProcessHeap(), 0, new_len);
+    if (!buf) { ClosePipe(); goto done; }
+    if (!ReadAll(g_pipe, buf, new_len)) {
+        HeapFree(GetProcessHeap(), 0, buf);
+        ClosePipe();
+        goto done;
+    }
+    *out_buf = buf;
+    *out_len = new_len;
+    modified = TRUE;
+
+done:
+    LeaveCriticalSection(&g_pipe_lock);
+    return modified;
+}
+
+// ── ParseNetworkPacket hook ──────────────────────────────────────────────────
+//
+// Original calling convention: __thiscall (`this` in ECX, rest pushed
+// right-to-left, callee cleans the stack). MSVC won't let a free function
+// carry __thiscall - only class member functions can. We use __stdcall
+// (callee-cleans, same as __thiscall sans the ECX special-case) and capture
+// `this` from ECX with inline asm at entry. The function-pointer typedef CAN
+// be __thiscall, so we still call back through the trampoline with the correct
+// ABI.
+
+typedef int (__thiscall *PFN_ParseNet)(void* thisptr, BYTE* packet_data, unsigned int packet_length);
+static PFN_ParseNet Orig_ParseNet = NULL;
+
+// This is the hook function -- every call to the game's packet parser lands here.
+//
+// It acts as a transparent proxy: for packets we don't care about, it calls
+// straight through to the original parser. For known translatable packets, it
+// round-trips the data through the c# host (which translates the strings),
+// then feeds the translated version to the original parser instead.
+//
+// The return value is critical for stream integrity -- see "RETURN VALUE" in
+// the file header.
+static int __stdcall H_ParseNetworkPacket(BYTE* packet_data, unsigned int packet_length)
+{
+    // Capture the `this` pointer from ECX. The original function is __thiscall
+    // (this in ECX), but we're declared __stdcall because MSVC won't allow
+    // __thiscall on a free function. We grab ECX manually.
+    void* thisptr;
+    __asm mov thisptr, ecx
+
+    // ── Filter: decide if this packet needs translation ──
+
+    if (packet_length == 0)
+        return Orig_ParseNet(thisptr, packet_data, packet_length);
+
+    // High nibble of byte 0 = packet type.
+    // Only types 0 and 4 are data packets with translatable content.
+    BYTE first = packet_data[0];
+    int type = first >> 4;
+    if (type != 0 && type != 4)
+        return Orig_ParseNet(thisptr, packet_data, packet_length);
+
+    // Low 2 bits of byte 0 determine size-header length, so payload starts
+    // at (low_bits + 2). The first 3 bytes of payload form the routing key.
+    int payload_off = (first & 3) + 2;
+    if (packet_length < (unsigned int)(payload_off + 3))
+        return Orig_ParseNet(thisptr, packet_data, packet_length);
+
+    // Build the 3-byte routing key: (opcode << 16) | (marker1 << 8) | marker2.
+    // This uniquely identifies the packet type (quest data, npc dialogue, etc).
+    uint32_t key = ((uint32_t)packet_data[payload_off]     << 16)
+                 | ((uint32_t)packet_data[payload_off + 1] << 8)
+                 |  (uint32_t)packet_data[payload_off + 2];
+
+
+    // Not in our table of known translatable packets -- pass through, UNLESS
+    // debug-discovery mode is on (env var DQXCLARITY_FORWARD_ALL=1), in which
+    // case we forward everything so unknown packets surface in the c# debug
+    // grid. The c# dispatcher returns no modification for unknown packets, so
+    // game behaviour is unchanged.
+    if (!IsKnownPacket(key) && !g_forwardAll)
+        return Orig_ParseNet(thisptr, packet_data, packet_length);
+
+    // ── Dedup: skip pipe for identical packets seen within the last 100ms ──
+    uint32_t pkt_hash = Fnv1a(packet_data, packet_length);
+    if (CheckDedup(key, packet_length, pkt_hash))
+        return Orig_ParseNet(thisptr, packet_data, packet_length);
+
+    // ── Translate: round-trip through the c# host ──
+
+    // Save the original packet's declared size BEFORE any modification.
+    // We need this for the return value (stream cursor advancement).
+    uint32_t original_size = ComputeOriginalSize(packet_data, packet_length);
+
+    // Send to c# host over the named pipe; get back translated bytes (or nothing).
+    BYTE* new_buf = NULL;
+    uint32_t new_len = 0;
+    BOOL modified = ExchangePacket(packet_data, packet_length, &new_buf, &new_len);
+
+    // ── Feed the game: call the original parser with (possibly translated) data ──
+
+    if (modified && new_buf) {
+        // c# translated the packet -- feed the modified version to the game.
+        // The game's parser processes the translated strings as if they came
+        // from the server.
+        Orig_ParseNet(thisptr, new_buf, new_len);
+        HeapFree(GetProcessHeap(), 0, new_buf);
+    } else {
+        // No translation (pipe down, unknown packet, or c# returned flag=0).
+        Orig_ParseNet(thisptr, packet_data, packet_length);
+    }
+
+    // ── Return the ORIGINAL size, not the modified size ──
+    //
+    // The game's network layer uses this return value to advance its read
+    // cursor through the receive buffer. The receive buffer still contains
+    // the original (untranslated) bytes from the server. If we returned
+    // new_len (the translated size), the cursor would over- or under-shoot
+    // and land in the middle of the next packet, desyncing the entire stream
+    // and crashing the game.
+    return (int)(original_size != 0 ? original_size : packet_length);
+}
+
+// ── Community logging (opt-in diagnostic hooks) ──────────────────────────────
+//
+// Port of the original Python project's `community_logging` hooks
+// (hash_logger.ts / blowfish_logger.ts, both Frida scripts). These are NOT
+// translation hooks -- they don't touch anything the player sees. When a user
+// opts in (the "Community Logging" checkbox), they capture two things the
+// dqxclarity dev team uses to keep the DAT/IDX translation patch working
+// across game updates:
+//   - hash_lookup:  the real filename/dirname the game hashed, paired with
+//                   the hash it computed -- lets the devs map hashes back to
+//                   real paths in the game's idx lookup tables.
+//   - blowfish_key: the per-file Blowfish decryption key the game used to
+//                   open a DAT file -- lets the devs decrypt/re-encrypt that
+//                   file when building a patch.
+// Both are opt-in only, installed only when DQXCLARITY_COMMUNITY_LOGGING=1
+// (read once at install time, same as DQXCLARITY_FORWARD_ALL), and write
+// directly to logs\hashlog.csv / logs\blowfish_log.csv -- no pipe round-trip
+// to the c# host, so a c# host that isn't running yet doesn't block this.
+//
+// Every read here is wrapped in SEH (__try/__except): community logging is
+// best-effort diagnostics, and a wrong offset must degrade to "nothing
+// logged", never to a crashed game.
+
+static BOOL g_communityLogging = FALSE;
+
+static const char* SIG_HASH_LOOKUP      = "55 8B EC 8B 55 08 85 D2 75 04 33 C0 5D C3 53";
+static const char* SIG_BLOWFISH_DECRYPT = "55 8B EC 53 57 8B 79 24 85 FF 74 ?? 83 7D 08 00";
+
+// Same directory-walk Log() uses (dll's own folder, one level up, "logs\").
+static void GetModuleRelativePath(const WCHAR* relPath, WCHAR* outPath)
+{
+    GetModuleFileNameW(g_hInst, outPath, MAX_PATH);
+    WCHAR* sl = wcsrchr(outPath, L'\\');
+    if (sl) { *sl = L'\0'; sl = wcsrchr(outPath, L'\\'); }
+    if (sl) sl[1] = L'\0'; else outPath[0] = L'\0';
+    lstrcatW(outPath, relPath);
+}
+
+static void WriteCsvHeaderIfNew(HANDLE h, const char* header)
+{
+    LARGE_INTEGER size = { 0 };
+    if (GetFileSizeEx(h, &size) && size.QuadPart == 0) {
+        DWORD written;
+        WriteFile(h, header, lstrlenA(header), &written, NULL);
+    }
+}
+
+// Bounded copy from a possibly-invalid pointer -- relies on the caller
+// wrapping this (transitively, via lstrcpynA's own reads) in SEH.
+static void CopyBoundedString(char* dst, int dstSize, const char* src)
+{
+    if (!src) { dst[0] = 0; return; }
+    lstrcpynA(dst, src, dstSize);
+}
+
+static void WriteHashLog(const char* hashType, const char* hashInput, unsigned int hashOutput)
+{
+    WCHAR path[MAX_PATH];
+    GetModuleRelativePath(L"logs\\hashlog.csv", path);
+    HANDLE h = CreateFileW(path, FILE_APPEND_DATA | GENERIC_READ, FILE_SHARE_READ, NULL,
+                           OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE) return;
+    WriteCsvHeaderIfNew(h, "hash_type,hash_input,hash_output\r\n");
+
+    // The original python writer doesn't escape embedded quotes either --
+    // this game's archive filenames don't contain quote characters.
+    char line[1600];
+    wsprintfA(line, "\"%s\",\"%s\",0x%x\r\n", hashType, hashInput ? hashInput : "", hashOutput);
+    DWORD written;
+    WriteFile(h, line, lstrlenA(line), &written, NULL);
+    CloseHandle(h);
+}
+
+static void WriteBlowfishLog(const char* filename, int fileSize, const char* blowfishKey)
+{
+    WCHAR path[MAX_PATH];
+    GetModuleRelativePath(L"logs\\blowfish_log.csv", path);
+    HANDLE h = CreateFileW(path, FILE_APPEND_DATA | GENERIC_READ, FILE_SHARE_READ, NULL,
+                           OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE) return;
+    WriteCsvHeaderIfNew(h, "filepath,file_size,blowfish_key\r\n");
+
+    char line[600];
+    wsprintfA(line, "\"%s\",%d,\"%s\"\r\n", filename ? filename : "", fileSize, blowfishKey ? blowfishKey : "");
+    DWORD written;
+    WriteFile(h, line, lstrlenA(line), &written, NULL);
+    CloseHandle(h);
+}
+
+// ── blowfish_key hook (onEnter-style -- same pattern as H_ParseNetworkPacket) ─
+//
+// Original signature (IDA, __thiscall):
+//   bool sub_BD4200(this, int a2, const char *a3 /*blowfish_key*/,
+//                    int a4 /*total_size*/, int a5 /*filename, despite the
+//                    IDA "int" -- the original Frida script reads it as a
+//                    pointer*/)
+// We only need to read args at entry and log them -- no return-value or
+// stack-remnant trickery needed here, unlike hash_lookup below.
+
+typedef unsigned char (__thiscall *PFN_BlowfishDecrypt)(void* thisptr, int a2, const char* a3, int a4, const char* a5);
+static PFN_BlowfishDecrypt Orig_BlowfishDecrypt = NULL;
+
+// Confirmed against the live game: this hook only fires for files the game
+// actually decrypts itself. Files already sideloaded pre-decrypted (via the
+// version.dll ETP swap) never reach the real decrypt function at all, so no
+// call happens for those -- that's expected, not a bug. Deleting a sideloaded
+// ETP file and triggering its content forces a real decrypt and logs
+// correctly, confirming the hook and signature are both right. This will
+// naturally catch any new/updated file the game introduces that we don't
+// have a pre-decrypted copy of yet, which is the whole point.
+
+static unsigned char __stdcall H_BlowfishDecrypt(int a2, const char* a3, int a4, const char* a5)
+{
+    void* thisptr;
+    __asm mov thisptr, ecx
+
+    if (g_communityLogging) {
+        __try {
+            char keyBuf[128];
+            char nameBuf[512];
+            CopyBoundedString(keyBuf, sizeof(keyBuf), a3);
+            CopyBoundedString(nameBuf, sizeof(nameBuf), a5);
+            WriteBlowfishLog(nameBuf, a4, keyBuf);
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            Log("blowfish_logger: exception while reading hook args");
+        }
+    }
+
+    return Orig_BlowfishDecrypt(thisptr, a2, a3, a4, a5);
+}
+
+// ── hash_lookup hook ──────────────────────────────────────────────────────
+//
+// Original signature (IDA, __cdecl, args at [ebp+8]=a1, [ebp+0Ch]=a2):
+//   unsigned int PathHashLookup(void* a1, unsigned int a2)
+//
+// Confirmed against the live game via logs\hashlog_debug.txt: this hook
+// fires exactly twice per resource load -- once hashing the containing
+// directory, once hashing the bare filename -- and in THIS game build the
+// two are not distinguished by `a2` the way the original, older-build
+// Python/dqxclarity project assumed (a2==0xFFFFFFFF meant "dir" there; here
+// a2 stays some other, non-discriminating value across both calls). `a1` is
+// always readable as a null-terminated string, but for the directory call it
+// isn't independently terminated at the directory boundary -- it's a pointer
+// into the SAME underlying "dir/file" buffer as the filename call, so
+// reading it naively runs straight through into the filename too. The hash
+// VALUE the game computes for that call is still correct proof of what it
+// really hashed: two different full paths sharing a directory produce the
+// identical hash for that row. So instead of hunting for a length field, we
+// split on the last '/' ourselves -- filenames can never contain one, so its
+// presence reliably means "this was the directory call."
+//
+// (This also means we no longer need the onLeave-style stack-remnant math
+// the original Frida script relied on -- `a1` alone is enough for both
+// cases, since it's a parameter local to *our* hook, never touched by the
+// call through to the real implementation.)
+
+typedef unsigned int (__cdecl *PFN_HashLookup)(void* a1, unsigned int a2);
+static PFN_HashLookup Orig_HashLookup = NULL;
+
+static void LogHashResult(void* a1, unsigned int hashOutput)
+{
+    char full[1024];
+    CopyBoundedString(full, sizeof(full), (const char*)a1);
+
+    char* lastSlash = strrchr(full, '/');
+    if (lastSlash) {
+        *lastSlash = 0;  // "dir/file" -> "dir"
+        WriteHashLog("dir", full, hashOutput);
+    } else {
+        WriteHashLog("file", full, hashOutput);
+    }
+}
+
+static unsigned int __cdecl H_HashLookup(void* a1, unsigned int a2)
+{
+    unsigned int result = Orig_HashLookup(a1, a2);
+
+    if (g_communityLogging) {
+        __try {
+            LogHashResult(a1, result);
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            Log("hash_logger: exception while reading hook args");
+        }
+    }
+
+    return result;
+}
+
+// ── Static string patches ────────────────────────────────────────────────────
+//
+// Some text is assembled entirely client-side, after packets have been parsed,
+// so the packet hook never sees it. These are one-shot, best-effort overwrites
+// of string literals in the game's .rdata: a miss just leaves the original
+// Japanese in place, never a crash.
+//
+// Self-target name (B_TARGET_RPL): the battle message builder compares actor
+// and target; when they're the same it skips the name lookup and fills
+// B_TARGET_RPL with the hardcoded literal "自分" (SJIS 8E A9 95 AA), giving
+// "Shobu uses Heal on 自分". The literal is only referenced from that one branch,
+// so overwriting it doesn't affect anything else. "self" is the same 4 bytes,
+// so it can be written in place: nothing moves, no code changes, and the
+// existing null terminator stays.
+//
+// The signature anchors on the adjacent "B_TARGET_RPL" token name so the match
+// is unique and survives relocation/patches as long as the table layout holds.
+
+static const char* SIG_SELF_TARGET_NAME =
+    "8E A9 95 AA 00 00 00 00 42 5F 54 41 52 47 45 54 5F 52 50 4C 00";   // 自分\0... B_TARGET_RPL\0
+static const char* SIG_SELF_TARGET_NAME_PATCHED =
+    "73 65 6C 66 00 00 00 00 42 5F 54 41 52 47 45 54 5F 52 50 4C 00";   // self\0... B_TARGET_RPL\0
+
+static void PatchSelfTargetName(BYTE* base, SIZE_T size)
+{
+    std::vector<BYTE*> matches;
+    FindSignature(base, size, SIG_SELF_TARGET_NAME, matches);
+    if (matches.size() != 1) {
+        // Re-injection into an already-patched process is the common benign case.
+        std::vector<BYTE*> already;
+        FindSignature(base, size, SIG_SELF_TARGET_NAME_PATCHED, already);
+        if (already.size() == 1) { Log("self_target_name: already patched"); return; }
+        char buf[96];
+        wsprintfA(buf, "self_target_name signature matched %u times (expected 1) - skipping",
+                  (unsigned)matches.size());
+        Log(buf);
+        return;
+    }
+
+    static const BYTE REPLACEMENT[4] = { 's', 'e', 'l', 'f' };
+    BYTE* p = matches[0];
+    DWORD old;
+    if (!VirtualProtect(p, sizeof(REPLACEMENT), PAGE_READWRITE, &old)) {
+        Log("self_target_name: VirtualProtect failed - skipping");
+        return;
+    }
+    memcpy(p, REPLACEMENT, sizeof(REPLACEMENT));
+    VirtualProtect(p, sizeof(REPLACEMENT), old, &old);
+
+    char buf[96];
+    wsprintfA(buf, "self_target_name patched @ %p (RVA 0x%X)", p, (unsigned)(p - base));
+    Log(buf);
+}
+
+// ── Install thread ───────────────────────────────────────────────────────────
+//
+// Runs on a background thread (not DllMain) because DllMain runs under the
+// loader lock, where calling most Win32 APIs is unsafe. This thread does the
+// heavy lifting: finds the parser function by scanning memory, then patches it.
+//
+// Retries up to 10 times with 1s delays because the game's code section may
+// not be fully unpacked/loaded at the moment we're injected.
+
+static DWORD WINAPI InstallThread(LPVOID arg)
+{
+    (void)arg;
+
+    // Get the base address and size of the main game executable in memory.
+    HMODULE main_mod = GetModuleHandleW(NULL);
+    if (!main_mod) { Log("GetModuleHandleW(NULL) failed"); return 1; }
+
+    MODULEINFO mi = {0};
+    if (!GetModuleInformation(GetCurrentProcess(), main_mod, &mi, sizeof(mi))) {
+        Log("GetModuleInformation failed");
+        return 1;
+    }
+
+    // Pick up the debug-discovery flag once at install time. Cheaper than
+    // reading the env var on every packet (this hook is on a hot path).
+    char envVal[8] = {0};
+    DWORD envLen = GetEnvironmentVariableA("DQXCLARITY_FORWARD_ALL", envVal, sizeof(envVal));
+    if (envLen > 0 && envVal[0] == '1') {
+        g_forwardAll = TRUE;
+        Log("DQXCLARITY_FORWARD_ALL=1 - forwarding ALL data packets to c# host (debug-discovery mode)");
+    }
+
+    // Scan the game's memory for the parser function's body fingerprint.
+    // Only logs verbose details on the last attempt to avoid log spam.
+    const int MAX_ATTEMPTS = 10;
+    Log("scanning for parser body fingerprint");
+    BYTE* entry = NULL;
+    for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        bool last = (attempt == MAX_ATTEMPTS);
+        entry = ResolveParser((BYTE*)mi.lpBaseOfDll, mi.SizeOfImage, last);
+        if (entry) break;
+        if (!last) Sleep(1000);
+    }
+    // Static string patches. Done after the scan loop so the image is unpacked,
+    // and independent of whether the parser hook was found.
+    PatchSelfTargetName((BYTE*)mi.lpBaseOfDll, mi.SizeOfImage);
+
+    if (!entry) {
+        Log("parser body fingerprint not found - investigate; VCE base class may have changed");
+        return 1;
+    }
+
+    // Found the parser -- install the inline hook. After this returns,
+    // Orig_ParseNet points to the trampoline (which calls the original),
+    // and the parser's entry point now JMPs to H_ParseNetworkPacket.
+    EnsurePipeLock();
+    EnsureDedupLock();
+    void* trampoline = InstallHook(entry, (void*)H_ParseNetworkPacket);
+    if (!trampoline) { Log("InstallHook failed"); return 1; }
+    Orig_ParseNet = (PFN_ParseNet)trampoline;
+
+    // Community logging: independent, best-effort hooks -- installed after
+    // the main translation hook so a failure here never affects it. Each of
+    // the two is installed separately; one failing doesn't block the other.
+    char communityEnvVal[8] = {0};
+    DWORD communityEnvLen = GetEnvironmentVariableA("DQXCLARITY_COMMUNITY_LOGGING", communityEnvVal, sizeof(communityEnvVal));
+    if (communityEnvLen > 0 && communityEnvVal[0] == '1') {
+        g_communityLogging = TRUE;
+        Log("DQXCLARITY_COMMUNITY_LOGGING=1 - installing hash/blowfish key logging hooks");
+
+        std::vector<BYTE*> hashMatches;
+        FindSignature((BYTE*)mi.lpBaseOfDll, mi.SizeOfImage, SIG_HASH_LOOKUP, hashMatches);
+        if (hashMatches.size() == 1) {
+            void* hashTramp = InstallHook(hashMatches[0], (void*)H_HashLookup);
+            if (hashTramp) { Orig_HashLookup = (PFN_HashLookup)hashTramp; Log("hash_lookup hook installed"); }
+            else Log("hash_lookup InstallHook failed");
+        } else {
+            char buf[80];
+            wsprintfA(buf, "hash_lookup signature matched %u times (expected 1) - skipping", (unsigned)hashMatches.size());
+            Log(buf);
+        }
+
+        std::vector<BYTE*> blowfishMatches;
+        FindSignature((BYTE*)mi.lpBaseOfDll, mi.SizeOfImage, SIG_BLOWFISH_DECRYPT, blowfishMatches);
+        if (blowfishMatches.size() == 1) {
+            void* blowfishTramp = InstallHook(blowfishMatches[0], (void*)H_BlowfishDecrypt);
+            if (blowfishTramp) { Orig_BlowfishDecrypt = (PFN_BlowfishDecrypt)blowfishTramp; Log("blowfish_decrypt hook installed"); }
+            else Log("blowfish_decrypt InstallHook failed");
+        } else {
+            char buf[80];
+            wsprintfA(buf, "blowfish_decrypt signature matched %u times (expected 1) - skipping", (unsigned)blowfishMatches.size());
+            Log(buf);
+        }
+    }
+
+    return 0;
+}
+
+// ── DllMain ──────────────────────────────────────────────────────────────────
+//
+// Entry point when the dll is injected into DQXGame.exe. All real work happens
+// on a background thread (InstallThread) because DllMain runs under the loader
+// lock where most interesting Win32 calls are forbidden.
+//
+// extern "C" so MSVC doesn't mangle the export when this file builds as c++.
+
+extern "C" BOOL WINAPI DllMain(HINSTANCE hInst, DWORD reason, LPVOID reserved)
+{
+    (void)reserved;
+    if (reason == DLL_PROCESS_ATTACH) {
+        g_hInst = hInst;
+        DisableThreadLibraryCalls(hInst);
+        // Kick off the install thread -- it will find the parser and hook it.
+        HANDLE h = CreateThread(NULL, 0, InstallThread, NULL, 0, NULL);
+        if (h) CloseHandle(h);
+    }
+    return TRUE;
+}

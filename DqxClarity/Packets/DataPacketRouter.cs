@@ -1,0 +1,367 @@
+using DqxClarity.Packets.Types;
+
+namespace DqxClarity.Packets;
+
+// Payload layout (post-segment-header): [op_code:1][marker:2][data:...].
+// We dispatch on the (op_code, marker) pair to a packet-type class. The packet
+// type optionally serialises a new payload-data buffer; we then return
+// op_code + marker + new_data as the modified payload.
+public sealed class DataPacketRouter
+{
+    public delegate IPacket? Dispatcher(byte opCode, ushort marker, byte[] payloadData);
+
+    private readonly byte[] _payload;
+
+    public byte OpCode { get; }
+    public ushort Marker { get; }
+    public byte[] Data { get; }
+
+    public byte[]? ModifiedData { get; private set; }
+    public int ModifiedSize { get; private set; }
+
+    public DataPacketRouter(byte[] payload)
+    {
+        _payload = payload;
+        OpCode = payload[0];
+        Marker = (ushort)((payload[1] << 8) | payload[2]);
+        Data = new byte[payload.Length - 3];
+        Buffer.BlockCopy(payload, 3, Data, 0, Data.Length);
+    }
+
+    public void Parse(Dispatcher dispatcher)
+    {
+        IPacket? packet = dispatcher(OpCode, Marker, Data);
+        if (packet == null) return;
+
+        packet.Build();
+        if (packet.ModifiedData == null) return;
+
+        var newData = packet.ModifiedData;
+        var total = new byte[3 + newData.Length];
+        total[0] = OpCode;
+        total[1] = (byte)((Marker >> 8) & 0xFF);
+        total[2] = (byte)(Marker & 0xFF);
+        Buffer.BlockCopy(newData, 0, total, 3, newData.Length);
+        ModifiedData = total;
+        ModifiedSize = total.Length;
+    }
+
+    public static string GetPacketName(byte opCode, ushort marker, byte[]? payloadData = null) =>
+        (opCode, marker) switch
+        {
+            (0x21, 0xa83c) => "NpcDialogue",
+            (0x21, 0x9804) => "NpcDialogueNoName",
+            (0x21, 0x757c) => "NpcDialogueTextOnly",
+            (0x21, 0xbe01) => "StorySoFarText",
+            (0x5c, 0x131e) => "StorySoFarTextMap",
+            (0x21, 0x5878) => "Walkthrough",
+            (0x21, 0x8f8f) => "QuestAcceptDialogue",
+            (0x21, 0x1305) => "QuestProgress",
+            (0x5d, 0x2b15) => "QuestAccept",
+            (0x5d, 0xcc51) => "QuestLog",
+            (0x5d, 0xba21) => "StampCardQuest",
+            (0x5d, 0x2562) => "QuestPackList",
+            (0x5d, 0x374a) => "StrikeForceQuestName",
+            (0x5d, 0xf8e1) => "QuestGuide",
+            (0x5d, 0xa446) => "QuestName",
+            (0x5d, 0x0ca1) => "QuestSynopsis",
+            (0x5c, 0xde02) => "QuestMapOpen",
+            (0x5c, 0x0bf6) => "SiblingName",
+            (0x87, 0x5408) => "ServerList",
+            (0x87, 0x8408) => "ServerList",
+            (0x87, 0x6185) => "ImportantNotice",
+            (0x87, 0xf7f5) => "CharacterLogList",
+            (0x87, 0x0e23) => "DeleteAdventureLog_Check",
+            (0x87, 0x12c6) => "LoginPresentList",
+            (0x87, 0xdb19) => "LoginLoginStatus",
+            (0x87, 0x0eb8) => "LoginAssistantAi",
+            (0x05, 0x2b66) => "Concierge",
+            (0x05, 0x131e) => "HouseSignpost",
+            (0x05, 0x4a1a) => "HousingPet",
+            (0x4b, 0x4569) => "MyTownAmenity",
+            (0x79, 0x994b) => "MasterQuest",
+            (0x79, 0x2b15) => "MailInboxView",
+            (0x3d, 0x16b6) => "TeamQuest",
+            (0x3d, 0x31dc) => "TeamQuestNotification",
+            (0x3d, 0x760c) => "TeamQuestNotification",
+            (0x46, 0x6bb8) => "WeeklyRequest",
+            (0x46, 0x2562) => "TowerAnswer",
+            (0x1f, 0x19be) => "CornerText",
+            (0x1f, 0x9ade) => "NpcChatBubble",
+            (0x1f, 0x8c41) => "GreenSystemMessage",
+            (0x95, 0xc9e3) => "SugorokuItemNotification",
+            (0x95, 0x732b) => "HiredMemberExpiration",
+            (0x97, 0x732b) => "MailSenderName",
+            (0x97, 0x2352) => "MailMessage",
+            (0x97, 0xcc51) => "MailReceivedNotification",
+            (0x97, 0xedec) => "MemoryMailList",
+            (0x97, 0x5816) => "MemoryMailContent",
+            (0x0d, 0x9804) => "TeamJoinNotification",
+            (0x0d, 0x11c1) => "TeamJoinMessage",
+            (0x0d, 0x9393) => "FriendInvitation",
+            (0x0d, 0x6e41) => "FriendRequestAccepted",
+            (0x0d, 0x9ee1) => "CommWindowList",
+            (0x0d, 0x2711) => "Chat_Team",
+            (0x1d, 0x732b) => "Chat_Say",
+            (0x0d, 0x7690) => "Chat_Friends",
+            (0x0d, 0xee25) => "Chat_Party",
+            (0x0d, 0x755d) => "Chat_RoomA",
+            (0x0d, 0xcdc7) => "ChatRoomJoin",
+            (0x03, 0x5477) => "TopLeftCornerText",
+            (0x03, 0xf7f5) => "PartyList",
+            (0x03, 0x66be) => "PartyInvitation",
+            (0x03, 0x8f8f) => "AllianceMemberList",
+            (0x03, 0xa7aa) => "AllianceMemberDetail",
+            (0x52, 0xee25) => GetEntitySubType(payloadData),
+            (0x03, 0x5408) => "PartyList2",
+            (0xa1, 0x2711) => "PartyList3",
+            (0xa1, 0x8a6a) => "PartyList4",
+            (0xa1, 0x16b6) => "MonsterTavernList",
+            (0xa1, 0xac0b) => "MonsterFarmList",
+            (0xa1, 0x3bd0) => "SupportMonster",
+            (0xa1, 0x7e96) => "SupportMonster",
+            (0x1d, 0xa83c) => "Announcement",
+            (0xaa, 0x7a64) => "SupportPartyList",
+            (0xaa, 0xc462) => "HiredByList",
+            (0xaa, 0xde02) => "TavernRecruitmentList",
+            (0xaa, 0xe535) => "TavernRecruitmentDetail",
+            (0x4e, 0x7e96) => "CasinoPlayerList", // Bingo, Poker, and (presumably) other casino minigames -- see CasinoPlayerListPacket's doc comment
+            (0x4e, 0xa7aa) => "SlimeRaceNameList",
+            (0x4e, 0x6bb8) => "SlimeRaceNameList",
+            (0x4e, 0x69ca) => "SlimeRaceNameList", // no race -- just your own slimes' names; see SlimeRaceNameListPacket's doc comment
+            (0x4e, 0x20e7) => "SlimeRaceNameList", // looks like race results/standings; see SlimeRaceNameListPacket's doc comment
+            (0x4e, 0x994b) => "SlimeRaceNameList", // looks like a single-slime detail view; see SlimeRaceNameListPacket's doc comment
+            (0x8e, 0xee25) => "ItemHistoryName", // crafter/enchanter name on an equipment piece's history; see ItemHistoryNamePacket's doc comment
+            (0x8e, 0x732b) => "ItemHistoryNameList", // batched form of the above; see ItemHistoryNameListPacket
+            (0x66, 0x4cc2) => "MemoryListMain",
+            (0x66, 0xda30) => "MemoryListChapters",
+            (0x66, 0x4569) => "MemoryListSubChapters",
+            _ => $"0x{opCode:X2} 0x{marker:X4}",
+        };
+
+    private static string GetEntitySubType(byte[]? data)
+    {
+        if (data == null || data.Length <= 11) return "Entity";
+        return data[11] switch
+        {
+            0x01 => "Entity (Player)",
+            0x02 => "Entity (Monster)",
+            0x04 => "Entity (NPC)",
+            0x81 or 0x82 or 0x83 => "Entity (Party)",
+            0x85 => "Entity (Fellow)",
+            0x86 or 0x87 or 0x89 or 0x8a or 0x8b => "Entity (Party NPC)",
+            0x24 => "Entity (Monster, Scoutable)",
+            0x1A => "Entity (Capture Point)",
+            var b => $"Entity (0x{b:X2})",
+        };
+    }
+
+    public static Dispatcher BuildDefaultDispatcher(PacketDependencies deps) =>
+        (op, marker, data) => (op, marker) switch
+        {
+            (0x21, 0xa83c) => new NpcDialoguePacket(data, deps, NpcDialoguePacket.Variant.WithName),
+            (0x21, 0x9804) => new NpcDialoguePacket(data, deps, NpcDialoguePacket.Variant.NoName),
+            (0x21, 0x757c) => new NpcDialoguePacket(data, deps, NpcDialoguePacket.Variant.TextOnly),
+            (0x21, 0xbe01) => new StorySoFarTextPacket(data, deps),
+            (0x5c, 0x131e) => new StorySoFarTextPacket(data, deps, StorySoFarTextPacket.Variant.Map),
+            (0x21, 0x5878) => new WalkthroughPacket(data, deps),
+            (0x21, 0x8f8f) => new QuestAcceptDialoguePacket(data, deps),
+            (0x21, 0x1305) => new QuestProgressPacket(data, deps),
+            (0x5d, 0x2b15) => new QuestPacket(data, deps, QuestPacket.Variant.Accept),
+            (0x5d, 0xcc51) => new QuestPacket(data, deps, QuestPacket.Variant.Log),
+            (0x5d, 0xba21) => new StampCardQuestPacket(data, deps),
+            (0x5d, 0x2562) => new QuestPackListPacket(data, deps),
+            (0x5d, 0x374a) => new StrikeForceQuestNamePacket(data, deps),
+            (0x5d, 0xf8e1) => new QuestGuidePacket(data, deps),
+            (0x5d, 0xa446) => new QuestNamePacket(data, deps),
+            (0x5d, 0x0ca1) => new QuestPacket(data, deps, QuestPacket.Variant.Synopsis),
+            (0x5c, 0xde02) => new QuestPacket(data, deps, QuestPacket.Variant.MapOpen),
+            (0x5c, 0x0bf6) => new SiblingNamePacket(data, deps),
+            (0x87, 0xf7f5) => new CharacterLogListPacket(data, deps),
+            (0x87, 0x5408) => new ServerListPacket(data, deps),
+            (0x87, 0x8408) => new ServerListPacket(data, deps),
+            (0x87, 0x6185) => new ImportantNoticePacket(data, deps),
+            (0x05, 0x2b66) => new ConciergePacket(data, deps),
+            (0x05, 0x131e) => new HouseSignpostPacket(data, deps),
+            (0x05, 0x4a1a) => new HousingPetPacket(data, deps),
+            (0x4b, 0x4569) => new MyTownAmenityPacket(data, deps),
+            (0x79, 0x994b) => new MasterQuestPacket(data, deps),
+            (0x79, 0x2b15) => new MailInboxViewPacket(data, deps),
+            (0x3d, 0x16b6) => new TeamQuestPacket(data, deps),
+            (0x3d, 0x31dc) => new TeamQuestNotificationPacket(data, deps),
+            (0x3d, 0x760c) => new TeamQuestNotificationPacket(data, deps),
+            (0x46, 0x6bb8) => new WeeklyRequestPacket(data, deps),
+            (0x46, 0x2562) => new TowerAnswerPacket(data, deps),
+            (0x1f, 0x19be) => new CornerTextPacket(data, deps),
+            (0x1f, 0x9ade) => new NpcChatBubblePacket(data, deps),
+            (0x1f, 0x8c41) => new GreenSystemMessagePacket(data, deps),
+            (0x95, 0xc9e3) => new SugorokuItemNotificationPacket(data, deps),
+            (0x95, 0x732b) => new HiredMemberExpirationPacket(data, deps),
+            (0x97, 0x732b) => new MailSenderNamePacket(data, deps),
+            (0x97, 0x2352) => new MailMessagePacket(data, deps),
+            (0x97, 0xcc51) => new MailReceivedNotificationPacket(data, deps),
+            (0x97, 0xedec) => new MemoryMailListPacket(data, deps),
+            (0x97, 0x5816) => new MemoryMailContentPacket(data, deps),
+            (0x0d, 0x9804) => new TeamJoinNotificationPacket(data, deps),
+            (0x0d, 0x11c1) => new TeamJoinMessagePacket(data, deps),
+            (0x0d, 0x9393) => new FriendInvitationPacket(data, deps),
+            (0x0d, 0x6e41) => new FriendRequestAcceptedPacket(data, deps),
+            (0x0d, 0x9ee1) => new CommWindowListPacket(data, deps),
+            (0x0d, 0xcdc7) => new ChatRoomJoinPacket(data, deps),
+            (0x03, 0x5477) => new TopLeftCornerTextPacket(data, deps),
+            (0x03, 0xf7f5) => new PartyListPacket(data, deps),
+            (0x03, 0x66be) => new PartyInvitationPacket(data, deps),
+            (0x03, 0x8f8f) => new AllianceMemberListPacket(data, deps),
+            (0x03, 0xa7aa) => new AllianceMemberDetailPacket(data, deps),
+            (0x52, 0xee25) => new EntityPacket(data, deps),
+            (0x03, 0x5408) => new PartyList2Packet(data, deps),
+            (0xa1, 0x2711) => new PartyList3Packet(data, deps),
+            (0xa1, 0x8a6a) => new PartyList4Packet(data, deps),
+            (0xa1, 0x16b6) => new MonsterTavernListPacket(data, deps),
+            (0xa1, 0xac0b) => new MonsterFarmListPacket(data, deps),
+            (0xa1, 0x3bd0) => new SupportMonsterPacket(data, deps),
+            (0xa1, 0x7e96) => new SupportMonsterPacket(data, deps),
+            (0x1d, 0xa83c) => new AnnouncementPacket(data, deps),
+            (0xaa, 0x7a64) => new SupportPartyListPacket(data, deps),
+            (0xaa, 0xc462) => new HiredByListPacket(data, deps),
+            (0xaa, 0xde02) => new TavernRecruitmentListPacket(data, deps),
+            (0xaa, 0xe535) => new TavernRecruitmentDetailPacket(data, deps),
+            (0x4e, 0x7e96) => new CasinoPlayerListPacket(data, deps),
+            (0x4e, 0xa7aa) => new SlimeRaceNameListPacket(data, deps),
+            (0x4e, 0x6bb8) => new SlimeRaceNameListPacket(data, deps),
+            (0x4e, 0x69ca) => new SlimeRaceNameListPacket(data, deps),
+            (0x4e, 0x20e7) => new SlimeRaceNameListPacket(data, deps),
+            (0x4e, 0x994b) => new SlimeRaceNameListPacket(data, deps),
+            (0x8e, 0xee25) => new ItemHistoryNamePacket(data, deps),
+            (0x8e, 0x732b) => new ItemHistoryNameListPacket(data, deps),
+            (0x66, 0x4cc2) => new MemoryListMainPacket(data, deps),
+            (0x66, 0xda30) => new MemoryListChaptersPacket(data, deps),
+            (0x66, 0x4569) => new MemoryListSubChaptersPacket(data, deps),
+            _ => null,
+        };
+}
+
+// Bundle of services a packet type needs to do its job. Passed through the
+// router rather than rooted in static state so tests can substitute fakes.
+public sealed class PacketDependencies
+{
+    public required Data.ClarityDb Db { get; init; }
+    public required Translation.Translator Translator { get; init; }
+    public required Translation.IRomanizer Romanizer { get; init; }
+
+    // Per-category nameplate toggles from [launcher] nameplates_player/npc/
+    // monster. Consulted ONLY by EntityPacket.Build() to decide whether to
+    // rewrite a given entity kind's name -- see that class's doc comment.
+    // Nothing else (packet parsing, PlayerContext id correlation, etc.)
+    // reads these, so turning a category off can't affect anything besides
+    // that category's own in-world nameplate text. Default true so any
+    // caller that doesn't set these explicitly (tests, etc.) keeps the
+    // previous always-translate behavior.
+    //
+    // Mutable (not init-only) because ClarityRuntime.UpdateNameplateSettings
+    // patches these on the live instance every time Settings.Run() fires --
+    // this object is built once and lives for the whole process, so without
+    // a settable property a checkbox toggle would need a full launcher
+    // restart to take effect. Everything else on this class stays
+    // constructed-once/init-only; only these three are designed to change
+    // after construction.
+    public bool TranslatePlayerNameplates { get; set; } = true;
+    public bool TranslateNpcNameplates { get; set; } = true;
+    public bool TranslateMonsterNameplates { get; set; } = true;
+
+    // Where corner-text lines with no translation get written (as ready-to-
+    // paste json entries). Null when logging isn't wanted, e.g. in tests.
+    public UntranslatedTextLog? CornerTextLog { get; set; }
+
+    // Same idea for orange announcements with no custom_announcements entry.
+    public UntranslatedTextLog? AnnouncementLog { get; set; }
+
+    // Session-scoped: who's logged in, resolved without a login hook by
+    // correlating CharacterLogListPacket and EntityPacket. See PlayerContext's
+    // doc comment for the mechanism and PlayerDataMaterializer for what it
+    // triggers once resolved.
+    public PlayerRoster PlayerRoster { get; } = new();
+    public PlayerContext PlayerContext { get; } = new();
+
+    // Cache of m00_strings lookups, keyed by the comma-separated `files` filter. Lazy-load on first access.
+    private readonly Dictionary<string, Dictionary<string, string>> _m00Cache = new();
+    public Dictionary<string, string> M00Dict(params string[] files)
+    {
+        var key = string.Join(',', files);
+        if (!_m00Cache.TryGetValue(key, out var dict))
+        {
+            dict = Db.LoadM00Strings(files);
+            ApplyPlayerPlaceholders(dict);
+            _m00Cache[key] = dict;
+        }
+        return dict;
+    }
+
+    // Substitutes <pnplacehold>/<snplacehold> for the currently-active player's
+    // names in both the key (ja, so lookups match the literal wire text, which
+    // embeds the player's actual Japanese name) and the value (en) of any row
+    // that contains either token -- everything else passes through untouched.
+    //
+    // Deliberately done here, in memory, on every dict load, rather than by
+    // mutating m00_strings on disk the way PlayerDataMaterializer's other
+    // targets (story_so_far/dialog/bad_strings) get rewritten: a one-way SQL
+    // replace() against the token would destroy it on the first substitution,
+    // leaving nothing for a second character (switching characters without
+    // restarting the app) to match against on a re-run. Substituting fresh
+    // from the untouched db row every time sidesteps that entirely -- there's
+    // nothing to reverse because the source data is never modified.
+    private void ApplyPlayerPlaceholders(Dictionary<string, string> dict)
+    {
+        if (PlayerContext.JaPlayerName is not { } jaPlayer) return; // no active character resolved yet this session
+
+        var jaSibling = PlayerContext.JaSiblingName ?? "";
+        var enPlayer = PlayerContext.EnPlayerName ?? "";
+        var enSibling = PlayerContext.EnSiblingName ?? "";
+
+        List<(string OldKey, string NewKey, string NewValue)>? substitutions = null;
+        foreach (var (ja, en) in dict)
+        {
+            if (!ja.Contains("<pnplacehold>", StringComparison.Ordinal) &&
+                !ja.Contains("<snplacehold>", StringComparison.Ordinal) &&
+                !en.Contains("<pnplacehold>", StringComparison.Ordinal) &&
+                !en.Contains("<snplacehold>", StringComparison.Ordinal))
+                continue;
+
+            var newKey = ja.Replace("<pnplacehold>", jaPlayer).Replace("<snplacehold>", jaSibling);
+            var newValue = en.Replace("<pnplacehold>", enPlayer).Replace("<snplacehold>", enSibling);
+            (substitutions ??= new()).Add((ja, newKey, newValue));
+        }
+
+        if (substitutions == null) return;
+        foreach (var (oldKey, newKey, newValue) in substitutions)
+        {
+            dict.Remove(oldKey);
+            dict[newKey] = newValue;
+        }
+    }
+
+    // Called by PlayerContext whenever it (re-)resolves the active character --
+    // any dict already cached above was built against the previous character's
+    // (or no character's) placeholder substitution, so drop everything and let
+    // the next M00Dict/NpcNameDict call rebuild from the current one.
+    public void InvalidateM00Cache()
+    {
+        _m00Cache.Clear();
+        _npcNameCache = null;
+    }
+
+    // NPC name lookup: base names from 'npcs', then custom overrides layered on top.
+    // Loaded separately to guarantee override ordering (LoadM00Strings uses IN with
+    // no ORDER BY, so a single call can't guarantee which file's value wins).
+    private Dictionary<string, string>? _npcNameCache;
+    public Dictionary<string, string> NpcNameDict()
+    {
+        if (_npcNameCache != null) return _npcNameCache;
+        var dict = Db.LoadM00Strings(new[] { "npcs" });
+        foreach (var kv in Db.LoadM00Strings(new[] { "custom_npc_name_overrides" }))
+            dict[kv.Key] = kv.Value;
+        ApplyPlayerPlaceholders(dict);
+        _npcNameCache = dict;
+        return dict;
+    }
+}

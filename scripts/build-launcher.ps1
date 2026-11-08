@@ -1,5 +1,6 @@
 param(
     [switch] $SkipNative,
+    [switch] $SkipWanakana,
     [switch] $NoRestore,
     [ValidateSet("Debug", "Release")]
     [string] $Configuration = "Release"
@@ -8,37 +9,52 @@ param(
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
-$LauncherDir = Join-Path $RepoRoot "launcher"
-$Project = Join-Path $LauncherDir "DqxClarity.Launcher.csproj"
+$AppDir = Join-Path $RepoRoot "DqxClarity"
+$Project = Join-Path $AppDir "DqxClarity.csproj"
 
 if (-not (Test-Path $Project)) {
-    throw "Launcher project not found: $Project"
+    throw "Project not found: $Project"
 }
 
 if (-not $SkipNative) {
-    $NativeBuild = Join-Path $LauncherDir "native\build.ps1"
-    if (Test-Path $NativeBuild) {
-        Write-Host "Building native LocaleHook.dll..."
-        try {
-            & pwsh -ExecutionPolicy Bypass -File $NativeBuild
-        }
-        catch {
-            Write-Warning "Native build failed. Re-run with -SkipNative for UI-only work, or install CMake + Visual Studio Build Tools C++ workload."
-            throw
-        }
+    $NativeBuild = Join-Path $AppDir "native\build.ps1"
+    Write-Host "Building native LocaleHook.dll + PacketWarden.dll..."
+    try {
+        & pwsh -ExecutionPolicy Bypass -File $NativeBuild
+        if ($LASTEXITCODE -ne 0) { throw "native build exited with code $LASTEXITCODE" }
+    }
+    catch {
+        Write-Warning "Native build failed. Re-run with -SkipNative for UI-only work, or install CMake + Visual Studio Build Tools C++ workload."
+        throw
     }
 }
 else {
-    Write-Host "Skipping native LocaleHook.dll build."
+    Write-Host "Skipping native LocaleHook.dll / PacketWarden.dll build."
 }
 
-Write-Host "Publishing launcher..."
+if (-not $SkipWanakana) {
+    $WanakanaBuild = Join-Path $AppDir "native\wanakana\build.ps1"
+    Write-Host "Building wanakana.dll (needs Rust: rustup target add x86_64-pc-windows-msvc)..."
+    try {
+        & pwsh -ExecutionPolicy Bypass -File $WanakanaBuild
+        if ($LASTEXITCODE -ne 0) { throw "wanakana build exited with code $LASTEXITCODE" }
+    }
+    catch {
+        Write-Warning "wanakana build failed. Re-run with -SkipWanakana to build without romaji support (names will not be romanized)."
+        throw
+    }
+}
+else {
+    Write-Host "Skipping wanakana.dll build."
+}
+
+Write-Host "Publishing..."
 $publishArgs = @(
     "publish",
     $Project,
     "-c", $Configuration,
     "-r", "win-x64",
-    "--self-contained", "false",
+    "--self-contained", "true",
     "-p:PublishSingleFile=true"
 )
 if ($NoRestore) {
@@ -50,7 +66,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE"
 }
 
-$Exe = Join-Path $LauncherDir "bin\$Configuration\net9.0-windows\win-x64\publish\dqxclarity.exe"
+$Exe = Join-Path $AppDir "bin\$Configuration\net9.0-windows\win-x64\publish\dqxclarity.exe"
 if (-not (Test-Path $Exe)) {
     throw "Publish completed but exe was not found: $Exe"
 }

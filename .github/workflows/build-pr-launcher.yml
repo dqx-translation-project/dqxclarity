@@ -4,7 +4,7 @@ name: Build launcher (PR)
 on:
   pull_request:
     paths:
-      - launcher/**
+      - DqxClarity/**
 
 jobs:
   compile_launcher:
