@@ -14,6 +14,14 @@ namespace DqxClarity.Packets.Types;
 //   padding              4 bytes
 //   remainder            (rest of payload)
 //
+// NOTE: the field split above is not quite right. The game's text buffer is
+// really 280 bytes, and the u32 right after it (payload offset 0x120) is the
+// warp destination ID used by the walkthrough's warp button. With the parse
+// above, the low byte of that ID lands in unknown_1 and the upper bytes land
+// in padding2, so Build() must write every non-text byte back exactly as read.
+// Zeroing padding2 sent players to the wrong map for any destination >= 256
+// (e.g. 0x016B became 0x006B).
+//
 // Translates against the `walkthrough` table.
 //
 // Fit to the walkthrough box: wrapped at 31 characters, at most 3 lines, and
@@ -77,14 +85,14 @@ public sealed class WalkthroughPacket : IPacket
 
         var writer = new PacketWriter();
         writer.WriteU32(_numTimesOpened);
-        writer.WriteBytes(new byte[4]);
+        writer.WriteBytes(_padding1);
         writer.WriteCString(translated);
 
         var padBytes = FixedBufferBytes - Encoding.UTF8.GetByteCount(translated);
         if (padBytes > 0) writer.WriteBytes(new byte[padBytes]);
 
         writer.WriteU32(_unknown1);
-        writer.WriteBytes(new byte[4]);
+        writer.WriteBytes(_padding2); // carries the upper bytes of the warp destination ID
         writer.WriteBytes(_remainder);
 
         ModifiedData = writer.Build();
