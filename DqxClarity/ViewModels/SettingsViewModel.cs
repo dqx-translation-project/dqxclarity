@@ -282,6 +282,8 @@ public partial class SettingsViewModel : ObservableObject
 
     // ── Game tab ──────────────────────────────────────────────────────────
     [ObservableProperty] private string _dqxDir = "";
+    [NotifyPropertyChangedFor(nameof(CanInstallSupport))]
+    [NotifyPropertyChangedFor(nameof(CanRemoveSupport))]
     [ObservableProperty] private bool   _dqxDirValid;
     [ObservableProperty] private string _dqxDirError = "";
     [ObservableProperty] private bool   _simultaneousLaunch;
@@ -471,6 +473,8 @@ public partial class SettingsViewModel : ObservableObject
         SelectedAccount = Accounts.FirstOrDefault();
     }
 
+    [NotifyPropertyChangedFor(nameof(CanInstallSupport))]
+    [NotifyPropertyChangedFor(nameof(CanRemoveSupport))]
     [ObservableProperty] private bool   _patching;
     [ObservableProperty] private string _patchStatus = "";
     [ObservableProperty] private bool   _patchIsError;
