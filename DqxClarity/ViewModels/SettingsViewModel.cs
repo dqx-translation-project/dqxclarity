@@ -792,17 +792,43 @@ public partial class SettingsViewModel : ObservableObject
 
     // The translation settings as they currently stand on screen. Run() saves this,
     // and MainViewModel uses it to rebuild the translation backend on every Run.
-    public TranslationConfig BuildTranslationConfig() => new()
+    public TranslationConfig BuildTranslationConfig()
     {
-        TranslateService   = SelectedTranslateService?.Value ?? "",
-        TranslateKey       = TranslateKey,
-        ChatGptModel       = ChatGptModel,
-        OllamaUrl          = OllamaUrl,
-        OllamaModel        = OllamaModel,
-        LibreTranslateUrl  = LibreTranslateUrl,
-        EnableCommunityApi = UseCommunityApi,
-        CommunityApiKey    = CommunityApiKey,
-    };
+        var (langCode, langName) = ResolveTargetLanguage();
+        return new()
+        {
+            TranslateService   = SelectedTranslateService?.Value ?? "",
+            TranslateKey       = TranslateKey,
+            ChatGptModel       = ChatGptModel,
+            OllamaUrl          = OllamaUrl,
+            OllamaModel        = OllamaModel,
+            LibreTranslateUrl  = LibreTranslateUrl,
+            EnableCommunityApi = UseCommunityApi,
+            CommunityApiKey    = CommunityApiKey,
+            // The highest-priority active pack picks the machine-translation language,
+            // same as SaveActiveLanguagePackSelection; English when no pack is active.
+            TargetLanguage     = langCode,
+            TargetLanguageName = langName,
+        };
+    }
+
+    // Before the language-pack list has been scanned, LanguagePacks is empty, so
+    // fall back to what SaveActiveLanguagePackSelection last saved to disk.
+    private (string Code, string Name) ResolveTargetLanguage()
+    {
+        if (!_languagePacksScanned)
+        {
+            try
+            {
+                var saved = _cfg.Load().Translation;
+                return (saved.TargetLanguage, saved.TargetLanguageName);
+            }
+            catch { return ("en", "English"); }
+        }
+
+        var top = LanguagePacks.FirstOrDefault(m => m.IsActive && m.CanActivate);
+        return top is { Language.Length: > 0 } ? (top.Language, top.LanguageDisplay) : ("en", "English");
+    }
 
     [RelayCommand]
     public async Task Run()

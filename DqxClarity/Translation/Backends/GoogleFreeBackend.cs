@@ -16,9 +16,11 @@ public sealed class GoogleFreeBackend : ITranslationBackend, IDisposable
         new(@"<div class=""result-container"">(.*?)</div>", RegexOptions.Singleline | RegexOptions.Compiled);
 
     private readonly HttpClient _http;
+    private readonly string _target;
 
-    public GoogleFreeBackend()
+    public GoogleFreeBackend(string targetLanguage = "en")
     {
+        _target = Uri.EscapeDataString(targetLanguage);
         _http = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.All });
         _http.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
     }
@@ -35,7 +37,7 @@ public sealed class GoogleFreeBackend : ITranslationBackend, IDisposable
             try
             {
                 var encoded = Uri.EscapeDataString(phrase);
-                var url = $"https://translate.google.com/m?hl=en&sl=ja&tl=en&q={encoded}";
+                var url = $"https://translate.google.com/m?hl=en&sl=ja&tl={_target}&q={encoded}";
                 var resp = _http.GetAsync(url).GetAwaiter().GetResult();
                 if (!resp.IsSuccessStatusCode)
                 {

@@ -24,11 +24,21 @@ public sealed class DeepLBackend : ITranslationBackend, IDisposable
         "Preserve any game-specific jargon, spell names, or technical terms according to the official localization guidelines for Dragon Quest X.",
     };
 
+    // DeepL wants a regional code for some targets (EN-US/EN-GB rather than plain EN).
+    private static readonly Dictionary<string, string> DeepLTargets = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["en"] = "EN-US",
+        ["pt"] = "PT-BR",
+        ["zh"] = "ZH",
+    };
+
     private readonly HttpClient _http;
     private readonly string _endpoint;
+    private readonly string _targetLang;
 
-    public DeepLBackend(string apiKey)
+    public DeepLBackend(string apiKey, string targetLanguage = "en")
     {
+        _targetLang = DeepLTargets.TryGetValue(targetLanguage, out var t) ? t : targetLanguage.ToUpperInvariant();
         _endpoint = apiKey.EndsWith(":fx", StringComparison.Ordinal)
             ? "https://api-free.deepl.com/v2/translate"
             : "https://api.deepl.com/v2/translate";
@@ -47,7 +57,7 @@ public sealed class DeepLBackend : ITranslationBackend, IDisposable
             {
                 text = phrases,
                 source_lang = "ja",
-                target_lang = "en-us",
+                target_lang = _targetLang,
                 preserve_formatting = true,
                 model_type = "prefer_quality_optimized",
                 custom_instructions = CustomInstructions,

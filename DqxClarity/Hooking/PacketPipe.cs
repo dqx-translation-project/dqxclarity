@@ -1,6 +1,8 @@
 using System.Buffers.Binary;
 using System.IO.Pipes;
 using System.Reflection;
+using System.Security.AccessControl;
+using System.Security.Principal;
 
 namespace DqxClarity.Hooking;
 
@@ -21,6 +23,12 @@ public sealed class PacketPipe : IDisposable
 
     // Raised each time the game's hook dll connects to the pipe (on a worker thread).
     public event Action? ClientConnected;
+
+    // Raised (on a worker thread) when the pipe server itself can't be created --
+    // e.g. another dqxclarity instance already owns \\.\pipe\dqxclarity, in which
+    // case the game's dll would connect to THAT instance instead of this one.
+    // Reported once per distinct message, not on every retry.
+    public event Action<string>? Error;
 
     private readonly PacketHandler _handler;
     private CancellationTokenSource? _cts;
@@ -49,17 +57,38 @@ public sealed class PacketPipe : IDisposable
 
     private async Task RunAsync(CancellationToken ct)
     {
+        string? lastError = null;
         while (!ct.IsCancellationRequested)
         {
             NamedPipeServerStream? server = null;
             try
             {
-                server = new NamedPipeServerStream(
-                    PipeName,
-                    PipeDirection.InOut,
-                    maxNumberOfServerInstances: 1,
-                    PipeTransmissionMode.Byte,
-                    PipeOptions.Asynchronous);
+                try
+                {
+                    server = NamedPipeServerStreamAcl.Create(
+                        PipeName,
+                        PipeDirection.InOut,
+                        maxNumberOfServerInstances: 1,
+                        PipeTransmissionMode.Byte,
+                        PipeOptions.Asynchronous,
+                        inBufferSize: 0,
+                        outBufferSize: 0,
+                        BuildPipeSecurity());
+                    lastError = null;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    var msg = $"Could not create the translation pipe ({ex.Message}). " +
+                              "Is another copy of dqxclarity already running?";
+                    if (msg != lastError)
+                    {
+                        lastError = msg;
+                        try { Error?.Invoke(msg); } catch { }
+                    }
+                    // Back off instead of spinning a tight retry loop.
+                    await Task.Delay(1000, ct).ConfigureAwait(false);
+                    continue;
+                }
 
                 await server.WaitForConnectionAsync(ct).ConfigureAwait(false);
                 try { ClientConnected?.Invoke(); } catch { /* a listener must never break the pipe */ }
@@ -73,6 +102,25 @@ public sealed class PacketPipe : IDisposable
                 server?.Dispose();
             }
         }
+    }
+
+    // The default DACL on a pipe created by an elevated process only gives
+    // Everyone read access, so a non-elevated DQXGame.exe (the usual case when
+    // dqxclarity is "Run as administrator" but the game is started normally)
+    // gets ERROR_ACCESS_DENIED opening it read/write. Grant the current user --
+    // the same account the game runs under, elevated or not -- full access,
+    // alongside SYSTEM and Administrators.
+    private static PipeSecurity BuildPipeSecurity()
+    {
+        var security = new PipeSecurity();
+        var me = WindowsIdentity.GetCurrent().User;
+        if (me != null)
+            security.AddAccessRule(new PipeAccessRule(me, PipeAccessRights.FullControl, AccessControlType.Allow));
+        security.AddAccessRule(new PipeAccessRule(
+            new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), PipeAccessRights.FullControl, AccessControlType.Allow));
+        security.AddAccessRule(new PipeAccessRule(
+            new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), PipeAccessRights.FullControl, AccessControlType.Allow));
+        return security;
     }
 
     private async Task ServeClientAsync(NamedPipeServerStream pipe, CancellationToken ct)

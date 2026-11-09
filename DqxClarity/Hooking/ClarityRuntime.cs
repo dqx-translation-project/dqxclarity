@@ -81,6 +81,7 @@ public sealed class ClarityRuntime : IDisposable
 
         _hook = new PacketWardenService(HandlePacket);
         _hook.PipeClientConnected += OnPipeConnected;
+        _hook.PipeError += msg => _log?.Invoke(msg, true);
     }
 
     public void SetDebugCallback(Action<string, byte[], string, byte[]?, string?> callback) => _debugPacket = callback;

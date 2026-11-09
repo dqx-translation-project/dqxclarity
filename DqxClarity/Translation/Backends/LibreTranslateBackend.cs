@@ -11,9 +11,11 @@ public sealed class LibreTranslateBackend : ITranslationBackend, IDisposable
     private readonly HttpClient _http;
     private readonly string _url;
     private readonly string _apiKey;
+    private readonly string _target;
 
-    public LibreTranslateBackend(string baseUrl, string apiKey)
+    public LibreTranslateBackend(string baseUrl, string apiKey, string targetLanguage = "en")
     {
+        _target = targetLanguage;
         _url = baseUrl.TrimEnd('/') + "/translate";
         _apiKey = apiKey ?? "";
         _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
@@ -35,7 +37,7 @@ public sealed class LibreTranslateBackend : ITranslationBackend, IDisposable
                 {
                     ["q"]      = phrase,
                     ["source"] = "ja",
-                    ["target"] = "en",
+                    ["target"] = _target,
                     ["format"] = "text",
                 };
                 if (!string.IsNullOrEmpty(_apiKey)) form["api_key"] = _apiKey;

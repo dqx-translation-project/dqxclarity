@@ -610,12 +610,28 @@ static void EnsurePipeLock(void)
     }
 }
 
+// Last CreateFileW error seen, so a failing connect is logged once per distinct
+// error instead of on every packet. Common values: 2 = no pipe (c# host not
+// running), 5 = access denied (host and game at different elevation), 231 =
+// pipe busy (another client, e.g. a second game, already holds it).
+static DWORD g_last_pipe_err = 0;
+
 static BOOL TryConnectPipe(void)
 {
     if (g_pipe != INVALID_HANDLE_VALUE) return TRUE;
     HANDLE h = CreateFileW(PIPE_NAME, GENERIC_READ | GENERIC_WRITE, 0, NULL,
                            OPEN_EXISTING, 0, NULL);
-    if (h == INVALID_HANDLE_VALUE) return FALSE;
+    if (h == INVALID_HANDLE_VALUE) {
+        DWORD err = GetLastError();
+        if (err != g_last_pipe_err) {
+            g_last_pipe_err = err;
+            char buf[96];
+            wsprintfA(buf, "pipe connect failed (win32 err %lu)", err);
+            Log(buf);
+        }
+        return FALSE;
+    }
+    g_last_pipe_err = 0;
     DWORD mode = PIPE_READMODE_BYTE;
     SetNamedPipeHandleState(h, &mode, NULL, NULL);
     g_pipe = h;
