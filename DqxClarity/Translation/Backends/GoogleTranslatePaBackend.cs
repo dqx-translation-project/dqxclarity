@@ -10,9 +10,11 @@ public sealed class GoogleTranslatePaBackend : ITranslationBackend, IDisposable
 {
     private const string Url = "https://translate.googleapis.com/translate_a/single";
     private readonly HttpClient _http;
+    private readonly string _target;
 
-    public GoogleTranslatePaBackend()
+    public GoogleTranslatePaBackend(string targetLanguage = "en")
     {
+        _target = Uri.EscapeDataString(targetLanguage);
         _http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
     }
 
@@ -28,7 +30,7 @@ public sealed class GoogleTranslatePaBackend : ITranslationBackend, IDisposable
         {
             try
             {
-                var url = $"{Url}?client=gtx&sl=ja&tl=en&dt=t&q={Uri.EscapeDataString(phrase)}";
+                var url = $"{Url}?client=gtx&sl=ja&tl={_target}&dt=t&q={Uri.EscapeDataString(phrase)}";
                 var resp = _http.GetAsync(url).GetAwaiter().GetResult();
                 if (!resp.IsSuccessStatusCode)
                 {

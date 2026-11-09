@@ -8,16 +8,19 @@ namespace DqxClarity.Translation.Backends;
 // endpoint. One request per phrase, prompt-template embedding the source text.
 public sealed class OllamaBackend : ITranslationBackend, IDisposable
 {
+    // {0} = target language name, {1} = the text.
     private const string PromptTemplate =
-        "Translate the following Dragon Quest X dialogue from Japanese to English. " +
-        "Keep it localized and immersive. Return only the translated text.\n\n\"{0}\"";
+        "Translate the following Dragon Quest X dialogue from Japanese to {0}. " +
+        "Keep it localized and immersive. Return only the translated text.\n\n\"{1}\"";
 
     private readonly HttpClient _http;
     private readonly string _url;
     private readonly string _model;
+    private readonly string _lang;
 
-    public OllamaBackend(string baseUrl, string model)
+    public OllamaBackend(string baseUrl, string model, string targetLanguageName = "English")
     {
+        _lang = targetLanguageName;
         _url = baseUrl.TrimEnd('/') + "/api/generate";
         _model = string.IsNullOrEmpty(model) ? "llama3" : model;
         _http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
@@ -38,7 +41,7 @@ public sealed class OllamaBackend : ITranslationBackend, IDisposable
                 var body = new
                 {
                     model = _model,
-                    prompt = string.Format(PromptTemplate, phrase),
+                    prompt = string.Format(PromptTemplate, _lang, phrase),
                     temperature = 0.1,
                     stream = false,
                 };

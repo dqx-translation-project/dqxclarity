@@ -11,10 +11,12 @@ public sealed class GoogleBackend : ITranslationBackend, IDisposable
 {
     private readonly HttpClient _http;
     private readonly string _apiKey;
+    private readonly string _target;
 
-    public GoogleBackend(string apiKey)
+    public GoogleBackend(string apiKey, string targetLanguage = "en")
     {
         _apiKey = apiKey;
+        _target = Uri.EscapeDataString(targetLanguage);
         _http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
     }
 
@@ -27,7 +29,7 @@ public sealed class GoogleBackend : ITranslationBackend, IDisposable
         {
             // Build the q[]= multi-query, escaping each input.
             var qList = string.Join("&", phrases.Select(p => $"q={Uri.EscapeDataString(p)}"));
-            var url = $"https://translation.googleapis.com/language/translate/v2?source=ja&target=en&format=text&key={_apiKey}&{qList}";
+            var url = $"https://translation.googleapis.com/language/translate/v2?source=ja&target={_target}&format=text&key={_apiKey}&{qList}";
             var resp = _http.GetAsync(url).GetAwaiter().GetResult();
             if (!resp.IsSuccessStatusCode)
             {

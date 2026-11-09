@@ -8,19 +8,21 @@ namespace DqxClarity.Translation.Backends;
 // /v1/chat/completions endpoint. One request per phrase (keeps the system prompt small).
 public sealed class ChatGPTBackend : ITranslationBackend, IDisposable
 {
-    private const string SystemPrompt =
+    private static string BuildSystemPrompt(string lang) =>
         "You are an expert translator and cultural localization specialist with deep knowledge of " +
-        "video game localization. Translate the following Dragon Quest X dialogue from Japanese to " +
-        "English. Preserve the original tone, humor, personality, and emotional nuances. Adapt " +
-        "idioms and cultural references to resonate naturally with English speakers while maintaining " +
+        $"video game localization. Translate the following Dragon Quest X dialogue from Japanese to " +
+        $"{lang}. Preserve the original tone, humor, personality, and emotional nuances. Adapt " +
+        $"idioms and cultural references to resonate naturally with native {lang} speakers while maintaining " +
         "the fantasy RPG context. Maintain consistency in character voices and DQX-specific " +
         "terminology. Return only the translated text with no explanation or surrounding quotes.";
 
     private readonly HttpClient _http;
     private readonly string _model;
+    private readonly string _systemPrompt;
 
-    public ChatGPTBackend(string apiKey, string model)
+    public ChatGPTBackend(string apiKey, string model, string targetLanguageName = "English")
     {
+        _systemPrompt = BuildSystemPrompt(targetLanguageName);
         _model = string.IsNullOrEmpty(model) ? "gpt-4o-mini" : model;
         _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         _http.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
@@ -43,7 +45,7 @@ public sealed class ChatGPTBackend : ITranslationBackend, IDisposable
                     model = _model,
                     messages = new[]
                     {
-                        new { role = "system", content = SystemPrompt },
+                        new { role = "system", content = _systemPrompt },
                         new { role = "user",   content = phrase },
                     },
                     temperature = 0.1,

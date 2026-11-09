@@ -119,6 +119,9 @@ public class ConfigService
         File.WriteAllText(path, sb.ToString().TrimEnd('\r', '\n') + Environment.NewLine);
     }
 
+    private static string NonEmptyOr(string? value, string fallback) =>
+        string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+
     private static TranslationConfig LoadTranslationConfig(Dictionary<string, string> t)
     {
         // Migrate old per-service boolean flags to the new translate_service string.
@@ -157,6 +160,8 @@ public class ConfigService
             LibreTranslateUrl = t.GetValueOrDefault("libretranslate_url") ?? "https://libretranslate.com",
             EnableCommunityApi = ToBool(t.GetValueOrDefault("enablecommunityapi")),
             CommunityApiKey   = t.GetValueOrDefault("communityapikey")    ?? "",
+            TargetLanguage     = NonEmptyOr(t.GetValueOrDefault("target_language"), "en"),
+            TargetLanguageName = NonEmptyOr(t.GetValueOrDefault("target_language_name"), "English"),
         };
     }
 

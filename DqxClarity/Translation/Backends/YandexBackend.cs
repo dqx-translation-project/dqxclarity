@@ -14,9 +14,11 @@ public sealed class YandexBackend : ITranslationBackend, IDisposable
     private readonly HttpClient _http;
     private string? _ucid;
     private DateTime _ucidExpires;
+    private readonly string _target;
 
-    public YandexBackend()
+    public YandexBackend(string targetLanguage = "en")
     {
+        _target = targetLanguage;
         _http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
         _http.DefaultRequestHeaders.Add("User-Agent", UserAgent);
     }
@@ -46,7 +48,7 @@ public sealed class YandexBackend : ITranslationBackend, IDisposable
                 var form = new FormUrlEncodedContent(new[]
                 {
                     new KeyValuePair<string, string>("text", phrase),
-                    new KeyValuePair<string, string>("lang", "ja-en"),
+                    new KeyValuePair<string, string>("lang", $"ja-{_target}"),
                 });
                 var resp = _http.PostAsync(url, form).GetAwaiter().GetResult();
                 if (!resp.IsSuccessStatusCode)

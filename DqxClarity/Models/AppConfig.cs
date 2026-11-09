@@ -69,6 +69,14 @@ public class TranslationConfig
     public string LibreTranslateUrl  { get; set; } = "https://libretranslate.com";
     public bool   EnableCommunityApi { get; set; }
     public string CommunityApiKey    { get; set; } = "";
+
+    // Machine-translation target, taken from the highest-priority active
+    // language pack (SettingsViewModel.SaveActiveLanguagePackSelection writes
+    // it to [translation] target_language / target_language_name). Code goes
+    // to the APIs that take a language code (DeepL, Google, LibreTranslate,
+    // Yandex); the English name goes into the ChatGPT/Ollama prompts.
+    public string TargetLanguage     { get; set; } = "en";
+    public string TargetLanguageName { get; set; } = "English";
 }
 
 public class GameConfig

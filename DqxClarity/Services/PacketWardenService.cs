@@ -25,6 +25,13 @@ internal sealed class PacketWardenService : IDisposable
         remove => _pipe.ClientConnected -= value;
     }
 
+    // Raised when the pipe server can't be created (see PacketPipe.Error).
+    public event Action<string>? PipeError
+    {
+        add => _pipe.Error += value;
+        remove => _pipe.Error -= value;
+    }
+
     public void StartPipe() => _pipe.Start();
     public void StopPipe() => _pipe.Stop();
     public void Dispose() => _pipe.Dispose();
