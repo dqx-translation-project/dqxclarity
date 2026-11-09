@@ -104,6 +104,9 @@ public sealed class MailReceivedNotificationPacket : IPacket
         }
 
         if (resolved == null || resolved == senderName) return;
+        // Too long for the client's sender-name buffer -- leave the Japanese.
+        // See MailSenderNamePacket.MaxNameBytes.
+        if (!MailSenderNamePacket.FitsNameBuffer(senderName, resolved)) return;
 
         var writer = new PacketWriter();
         writer.WriteBytes(prefix);

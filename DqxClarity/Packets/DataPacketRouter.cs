@@ -217,7 +217,9 @@ public sealed class DataPacketRouter
             (0x03, 0x5408) => new PartyList2Packet(data, deps),
             (0xa1, 0x2711) => new PartyList3Packet(data, deps),
             (0xa1, 0x8a6a) => new PartyList4Packet(data, deps),
-            (0xa1, 0x16b6) => new MonsterTavernListPacket(data, deps),
+            // Currently disabled: English names in the tavern list carry
+            // over into the rename text box, and backspacing them crashes the client.
+            // (0xa1, 0x16b6) => new MonsterTavernListPacket(data, deps),
             (0xa1, 0xac0b) => new MonsterFarmListPacket(data, deps),
             (0xa1, 0x3bd0) => new SupportMonsterPacket(data, deps),
             (0xa1, 0x7e96) => new SupportMonsterPacket(data, deps),

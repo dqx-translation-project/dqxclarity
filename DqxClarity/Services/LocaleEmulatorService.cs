@@ -72,6 +72,18 @@ internal static class LocaleEmulatorService
     // so callers can surface failures.
     internal static bool InjectWithRetry(IntPtr hProcess, string dllPath, Action<string>? log = null)
     {
+        var dllName = Path.GetFileName(dllPath);
+
+        // Already loaded (e.g. the launch path injected it before ClarityRuntime's
+        // watcher got here) -- nothing to do. Injecting again would only call
+        // LoadLibraryW on a dll that's already in, and if CreateRemoteThread is
+        // being refused it turns a working session into an endless retry loop.
+        if (GetModuleBaseInProcess(hProcess, dllName) != 0)
+        {
+            log?.Invoke($"{dllName} is already loaded in the target; skipping injection.");
+            return true;
+        }
+
         for (int i = 0; i < 20; i++)
         {
             Thread.Sleep(50);
@@ -85,9 +97,30 @@ internal static class LocaleEmulatorService
             if (TryInject(hProcess, dllPath, (IntPtr)(long)loadLibW, out var err))
                 return true;
             log?.Invoke($"attempt {i + 1}: {err}");
+
+            // Some security software lets the remote thread run but refuses to hand
+            // back its handle, so CreateRemoteThread reports failure even though
+            // LoadLibraryW went ahead. Give it a moment, then check whether the dll
+            // actually landed before trying again.
+            Thread.Sleep(200);
+            if (GetModuleBaseInProcess(hProcess, dllName) != 0)
+            {
+                log?.Invoke($"{dllName} is loaded in the target despite that error; treating injection as successful.");
+                return true;
+            }
         }
+
+        var alive = GetExitCodeProcess(hProcess, out var exitCode) && exitCode == STILL_ACTIVE;
+        log?.Invoke(alive
+            ? "target process is still running, so something (likely antivirus/security software) is blocking remote thread creation."
+            : $"target process has exited (exit code {exitCode}).");
         return false;
     }
+
+    private const uint STILL_ACTIVE = 259;
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetExitCodeProcess(IntPtr hProcess, out uint lpExitCode);
 
     private static bool TryInject(IntPtr hProcess, string dllPath, IntPtr loadLibW, out string err)
     {
