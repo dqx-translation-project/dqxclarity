@@ -74,6 +74,26 @@ public sealed class MailSenderNamePacket : IPacket
     // fires on name-shaped segments, never on freeform body-preview prose.
     private const int MaxNameLength = 10;
 
+    // Hard cap on the utf-8 byte length of a rewritten sender name. DQX names
+    // top out at 6 full-width characters = 18 utf-8 bytes (e.g. "世界宿屋協会",
+    // "パルミオ博士"), so that is the longest name the client is known to
+    // handle; it appears to copy sender names into a fixed-size buffer. A
+    // longer replacement ("宿屋の娘" -> "Innkeeper's Daughter", 20 bytes)
+    // is the suspected cause of a reported crash on opening the mailbox. A replacement that doesn't fit
+    // is skipped and the original Japanese is sent instead -- add a shorter
+    // entry to the dictionary if that sender should show in English.
+    internal const int MaxNameBytes = 18;
+
+    // Shared by every mail packet that rewrites a sender name
+    // (MailReceivedNotificationPacket, MailMessagePacket): true when the
+    // replacement is safe to send -- at most MaxNameBytes, or no longer than
+    // the original the server sent (which the client evidently handles).
+    internal static bool FitsNameBuffer(string original, string replacement)
+    {
+        var bytes = Encoding.UTF8.GetByteCount(replacement);
+        return bytes <= MaxNameBytes || bytes <= Encoding.UTF8.GetByteCount(original);
+    }
+
     private readonly byte[] _raw;
     private readonly PacketDependencies _deps;
 
@@ -160,6 +180,8 @@ public sealed class MailSenderNamePacket : IPacket
             resolved = romanizer.ToRomaji(text);
 
         if (resolved == null || resolved == text) return false;
+
+        if (!FitsNameBuffer(text, resolved)) return false;
 
         newBytes = Encoding.UTF8.GetBytes(resolved);
         return true;

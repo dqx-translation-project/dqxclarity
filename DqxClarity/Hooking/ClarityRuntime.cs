@@ -206,7 +206,19 @@ public sealed class ClarityRuntime : IDisposable
         }
     }
 
-    public bool InjectInto(IntPtr hProcess) => PacketWardenService.InjectInto(hProcess);
+    // Called by the launch path (GameLaunchService's postInject) with the handle of the
+    // game it just started. On success, record the pid so the background watcher
+    // treats this game as already injected instead of injecting a second time.
+    public bool InjectInto(IntPtr hProcess)
+    {
+        var ok = PacketWardenService.InjectInto(hProcess);
+        if (ok)
+        {
+            var pid = GetProcessId(hProcess);
+            if (pid != 0) Volatile.Write(ref _lastInjectedPid, (int)pid);
+        }
+        return ok;
+    }
 
     // Final "all set" line: printed once, after BOTH the translation data update has finished
     // AND the game's hook dll has connected to the pipe, whichever happens last. A runtime
@@ -316,6 +328,9 @@ public sealed class ClarityRuntime : IDisposable
                     // let the game finish its early loader steps.
                     await Task.Delay(2000, ct).ConfigureAwait(false);
 
+                    // The launch path may have injected this game while we waited.
+                    if (Volatile.Read(ref _lastInjectedPid) == pid) continue;
+
                     var h = OpenProcess(PROCESS_ALL_ACCESS, false, (uint)pid);
                     if (h == IntPtr.Zero)
                     {
@@ -357,6 +372,9 @@ public sealed class ClarityRuntime : IDisposable
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr OpenProcess(uint access, bool inheritHandle, uint pid);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern uint GetProcessId(IntPtr hProcess);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool CloseHandle(IntPtr h);

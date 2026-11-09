@@ -129,6 +129,9 @@ public sealed class MailMessagePacket : IPacket
     public void Build()
     {
         var newName = ResolveName(_senderName);
+        // Too long for the client's sender-name buffer -- leave the Japanese.
+        // See MailSenderNamePacket.MaxNameBytes.
+        if (!MailSenderNamePacket.FitsNameBuffer(_senderName, newName)) newName = _senderName;
 
         var mailDict = _deps.M00Dict("custom_mail");
         string? newBody = null;
