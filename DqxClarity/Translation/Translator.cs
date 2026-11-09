@@ -14,15 +14,18 @@ namespace DqxClarity.Translation;
 //   4. drop ornamentals (「 ～ ♪)
 //   5. fold "。" -> "."  (and "…。" -> ".")
 //   6. drop leading full-width space on new lines
-//   7. strip honorifics that follow a name tag
-//   8. protect color tags: <color_X> -> <&color_X>
-//   9. swap placeholder tags (PlaceholderTags.Swap)
-//  10. glossary substitution (GlossaryCache.Apply)
-//  11. split on `<[^%&]*?>` tags; track per-fragment is_list / prepend_nl / append_nl
-//  12. send fragment text list to backend
-//  13. for each translated fragment, sanitize spaces, normalize NFKD, wrap, swap-back,
+//   7. protect color tags: <color_X> -> <&color_X>
+//   8. glossary substitution (GlossaryCache.Apply)
+//   9. split on `<[^%&]*?>` tags; track per-fragment is_list / prepend_nl / append_nl
+//  10. send fragment text list to backend
+//  11. for each translated fragment, sanitize spaces, normalize NFKD, wrap,
 //      restore color tags, optionally inject <br>, optionally re-prepend/append \n,
 //      and handle <voice> end-of-string rule
+//
+// There is no placeholder-tag swap (<pc> -> <&13_aaaaaae> and back) and no
+// stripping of honorifics after <pc>/<cs_pchero>/<kyodai>: the server fills name
+// tags like <pc> and <%sM_NAME> in before the text reaches us, so neither step
+// ever had anything to act on.
 public sealed class Translator
 {
     private static readonly Regex JpRegex = new(@"\p{IsHiragana}|\p{IsKatakana}|\p{IsCJKUnifiedIdeographs}", RegexOptions.Compiled);
@@ -43,8 +46,6 @@ public sealed class Translator
         "…………",         "………",              "……",
     };
     private static readonly string[] Oddities = { "「", "～", "♪" };
-    private static readonly string[] NameTags = { "<pc>", "<cs_pchero>", "<kyodai>" };
-    private static readonly string[] Honorifics = { "さま", "君", "どの", "ちゃん", "くん", "様", "さーん", "殿", "さん" };
 
     private volatile ITranslationBackend _backend; // swapped live by UpdateBackend
     private GlossaryCache _glossary;
@@ -93,7 +94,7 @@ public sealed class Translator
         // glossary words and punctuation.
         if (_backend is NoneBackend) return "";
 
-        // Stage 1-9: prepare the source text.
+        // Stage 1-8: prepare the source text.
         var output = text.Replace("<br>", "　");
 
         foreach (var a in Alignments) output = output.Replace(a, "");
@@ -104,17 +105,12 @@ public sealed class Translator
         output = output.Replace("。", ".");
         output = output.Replace("\n　", "\n");
 
-        foreach (var tag in NameTags)
-            foreach (var h in Honorifics)
-                output = output.Replace($"{tag}{h}", tag);
-
         output = ColorOpen.Replace(output, "<&color_$1>");
-        output = PlaceholderTags.Swap(output);
         output = _glossary.Apply(output);
 
         var pristine = output;
 
-        // Stage 11: split on tags; preserve captured tag separators.
+        // Stage 9: split on tags; preserve captured tag separators.
         var splits = TagRe.Split(output).Where(s => s.Length > 0).ToList();
 
         var strAttrs = new List<FragmentAttr>();
@@ -161,7 +157,7 @@ public sealed class Translator
             fragIndices.Add(i);
         }
 
-        // Stage 12: build the to-translate list, expanding list fragments line-by-line.
+        // Stage 10: build the to-translate list, expanding list fragments line-by-line.
         var toTranslate = new List<string>();
         foreach (var a in strAttrs)
         {
@@ -196,7 +192,7 @@ public sealed class Translator
             translatedFull[sendIndexes[k]] = sent[k];
         IReadOnlyList<string> translated = translatedFull;
 
-        // Stage 12b: redistribute translated entries back to attrs.
+        // Stage 10b: redistribute translated entries back to attrs.
         for (var c = 0; c < translated.Count; c++)
         {
             if (c >= strAttrs.Count) break;
@@ -220,7 +216,7 @@ public sealed class Translator
         if (toTranslate.Any(IsTextJapanese) && !translated.Any(t => HasLatinLetterOrDigit(NormalizeText(t))))
             return "";
 
-        // Stage 13: post-process each fragment back into pristine.
+        // Stage 11: post-process each fragment back into pristine.
         for (var c = 0; c < strAttrs.Count; c++)
         {
             var attr = strAttrs[c];
@@ -244,7 +240,6 @@ public sealed class Translator
 
             if (attr.IsList)
             {
-                updated = PlaceholderTags.SwapBack(updated);
                 updated = ColorOpenProtected.Replace(updated, "<color_$1>");
                 updated = ColorBareProtected.Replace(updated, "<color_$1>");
                 updated = updated.Replace("\n ", "\n");
@@ -254,7 +249,6 @@ public sealed class Translator
             else
             {
                 updated = TextWrapping.Fill(updated, wrapWidth, maxLines);
-                updated = PlaceholderTags.SwapBack(updated);
                 updated = ColorOpenProtected.Replace(updated, "<color_$1>");
                 updated = ColorBareProtected.Replace(updated, "<color_$1>");
 
