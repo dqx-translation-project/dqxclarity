@@ -269,6 +269,26 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex) { Log.AppendLine($"Could not refresh name overrides: {ex.Message}", "error"); }
 
         Log.AppendLine("Translation runtime active. Pipe waiting for PacketWarden.dll.");
+
+        // Same prompt the pre-6.0 launcher gave: when the game is started separately
+        // (official launcher, or "Simultaneous Launch" which only opens DQXBoot), tell
+        // the user what to do next. Skipped when Direct Login already launched and
+        // logged in for them, or when the game is already running (the watcher will
+        // pick it up on its own).
+        if (!Settings.DirectLogin && !IsDqxRunning())
+            Log.AppendLine("Launch DQX and log in to continue.");
+    }
+
+    private static bool IsDqxRunning()
+    {
+        try
+        {
+            var procs = System.Diagnostics.Process.GetProcessesByName("DQXGame");
+            var running = procs.Length > 0;
+            foreach (var p in procs) p.Dispose();
+            return running;
+        }
+        catch { return false; }
     }
 
     // Lazy-construct + start the in-process translation runtime. Subsequent calls
