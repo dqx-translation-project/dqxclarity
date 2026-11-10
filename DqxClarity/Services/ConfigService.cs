@@ -42,10 +42,6 @@ public class ConfigService
     private static bool ToBool(string? val) =>
         val is "True" or "true" or "1";
 
-    // Same as ToBool, but a MISSING key defaults to true rather than false --
-    // for settings that need to come back enabled for anyone upgrading from
-    // before the key existed (see LauncherConfig.NameplatesPlayer/Npc/Monster).
-    // Only an explicitly-written "False"/"0" turns it off.
     private static bool ToBoolDefaultTrue(Dictionary<string, string> section, string key) =>
         section.TryGetValue(key, out var val) ? ToBool(val) : true;
 
@@ -197,6 +193,7 @@ public class ConfigService
                 BannerCollapsed          = ToBool(l.GetValueOrDefault("bannercollapsed")),
                 LanguagePackFirstRunDone = ToBool(l.GetValueOrDefault("languagepackfirstrundone")),
                 AutomaticLanguagePackUpdates = ToBoolDefaultTrue(l, "automaticlanguagepackupdates"),
+                DisableTranslations      = ToBool(l.GetValueOrDefault("disabletranslations")?.ToLowerInvariant()),
                 ActiveLanguagePacks      = (l.GetValueOrDefault("activelanguagepacks") ?? "")
                     .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -223,9 +220,8 @@ public class ConfigService
         var seenWelcome      = existingLauncher.GetValueOrDefault("seenwelcomemessage") ?? BoolToIni(launcher.SeenWelcomeMessage);
         var bannerCollapsed  = existingLauncher.GetValueOrDefault("bannercollapsed")    ?? BoolToIni(launcher.BannerCollapsed);
         var langPackFirstRun = existingLauncher.GetValueOrDefault("languagepackfirstrundone") ?? BoolToIni(launcher.LanguagePackFirstRunDone);
+        var disableTranslations = existingLauncher.GetValueOrDefault("disabletranslations"); //Hidden from the GUI
 
-        // Preserve the runtime translation target (written separately from the active language
-        // packs, via SaveTargetLanguage) rather than clobbering it on every settings save.
         var existingTranslation = existing.GetValueOrDefault("translation") ?? [];
         var targetLanguage     = existingTranslation.GetValueOrDefault("target_language") ?? "";
         var targetLanguageName = existingTranslation.GetValueOrDefault("target_language_name") ?? "";
@@ -277,6 +273,8 @@ public class ConfigService
         WriteKv(sb, "languagepackfirstrundone", langPackFirstRun);
         WriteKv(sb, "automaticlanguagepackupdates", BoolToIni(launcher.AutomaticLanguagePackUpdates));
         WriteKv(sb, "activelanguagepacks",       string.Join('|', launcher.ActiveLanguagePacks));
+        if (disableTranslations != null)
+            WriteKv(sb, "disabletranslations",   disableTranslations);
 
         var dir = Path.GetDirectoryName(path)!;
         Directory.CreateDirectory(dir);

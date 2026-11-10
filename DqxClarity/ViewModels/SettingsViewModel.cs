@@ -607,6 +607,7 @@ public partial class SettingsViewModel : ObservableObject
         LanguagePackService languagePacks)
     {
         Text2Clipboard    = text2Clipboard;
+        TranslationsDisabled = config.Launcher.DisableTranslations;
         _cfg         = cfg;
         _patch       = patch;
         _db          = db;
@@ -676,8 +677,6 @@ public partial class SettingsViewModel : ObservableObject
 
         _languagePackSupportInstalled = _dqxDirValid && languagePacks.IsSupportInstalled(_dqxDir);
 
-        // If version.dll was installed by an older dqxclarity, bring it up to date with the copy
-        // embedded in this build. Only touches an existing file; skipped quietly if DQX has it locked.
         if (_languagePackSupportInstalled)
         {
             var supportDir = _dqxDir;
@@ -736,8 +735,6 @@ public partial class SettingsViewModel : ObservableObject
         }
         else if (tab == "game")
         {
-            // The version.dll (DragonHook) add/remove buttons live in the Patch fieldset;
-            // reflect on-disk state in case the file was changed outside the app.
             RefreshLanguagePackSupportInstalled();
         }
         else if (tab == "languagepacks")
@@ -805,7 +802,6 @@ public partial class SettingsViewModel : ObservableObject
             LibreTranslateUrl  = LibreTranslateUrl,
             EnableCommunityApi = UseCommunityApi,
             CommunityApiKey    = CommunityApiKey,
-            // From [translation] target_language in user_settings.ini -- see ResolveTargetLanguage.
             TargetLanguage     = langCode,
             TargetLanguageName = langName,
         };
@@ -826,6 +822,8 @@ public partial class SettingsViewModel : ObservableObject
         }
         catch { return ("en", "English"); }
     }
+
+    public bool TranslationsDisabled { get; }
 
     private static bool IsDqxRunning()
     {
@@ -860,11 +858,7 @@ public partial class SettingsViewModel : ObservableObject
             return;
         }
 
-        // dqxclarity has to be hooked in before character select: that's where
-        // PlayerContext identifies the logged-in character (CharacterLogListPacket),
-        // and other one-time setup happens. Attaching to a game that's already past
-        // that point leaves it half-working, so refuse instead.
-        if (IsDqxRunning())
+        if (!TranslationsDisabled && IsDqxRunning())
         {
             if (ShowInfoRequested != null)
                 await ShowInfoRequested("Dragon Quest X is already running",
