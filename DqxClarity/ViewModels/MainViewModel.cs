@@ -227,6 +227,14 @@ public partial class MainViewModel : ObservableObject
         Log.Reset();
         SwitchTo("log");
         Log.UpdateTitle(Version);
+
+        if (Settings.TranslationsDisabled)
+        {
+            Log.AppendLine("Translations are disabled. No server side text will translate.");
+            StartGameExitWatch();
+            return;
+        }
+
         EnsureNativeRuntime();
 
         // The runtime was already constructed (possibly long before this Run
@@ -279,6 +287,76 @@ public partial class MainViewModel : ObservableObject
             Log.AppendLine("Launch DQX and log in to continue.");
     }
 
+    // Used only when translations are disabled, so there's no ClarityRuntime (and
+    // no watcher) to notice the game closing. Plain process polling, no hooking:
+    // wait for DQXGame.exe to appear, then for that pid to go away, then return to
+    // the settings view -- the same thing the runtime's GameExited does.
+    private CancellationTokenSource? _exitWatchCts;
+
+    private void StartGameExitWatch()
+    {
+        StopGameExitWatch();
+        var cts = new CancellationTokenSource();
+        _exitWatchCts = cts;
+        var ct = cts.Token;
+
+        void Post(Action a) => Avalonia.Threading.Dispatcher.UIThread.Post(a);
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                int? pid = null;
+                while (!ct.IsCancellationRequested)
+                {
+                    var procs = System.Diagnostics.Process.GetProcessesByName("DQXGame");
+                    try
+                    {
+                        if (pid == null)
+                        {
+                            if (procs.Length > 0)
+                            {
+                                pid = procs[0].Id;
+                                var found = pid;
+                                Post(() => Log.AppendLine($"Found DQXGame.exe (pid {found})."));
+                            }
+                        }
+                        else if (!procs.Any(p => p.Id == pid))
+                        {
+                            var gone = pid;
+                            Post(() =>
+                            {
+                                if (ct.IsCancellationRequested) return;
+                                Log.AppendLine($"DQXGame.exe (pid {gone}) exited.");
+                                StopGameExitWatch();
+                                SwitchTo("settings");
+                            });
+                            return;
+                        }
+                    }
+                    finally
+                    {
+                        foreach (var p in procs) p.Dispose();
+                    }
+
+                    await Task.Delay(1000, ct).ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                Post(() => Log.AppendLine($"Game watch error: {ex.Message}", "error"));
+            }
+        }, ct);
+    }
+
+    private void StopGameExitWatch()
+    {
+        _exitWatchCts?.Cancel();
+        _exitWatchCts?.Dispose();
+        _exitWatchCts = null;
+    }
+
     private static bool IsDqxRunning()
     {
         try
@@ -297,6 +375,11 @@ public partial class MainViewModel : ObservableObject
     private void EnsureNativeRuntime()
     {
         if (_runtime != null) return;
+
+        // Hidden disabletranslations switch: never start the runtime, so there's no
+        // pipe, no background watcher and no PostInjectCallback -- PacketWarden.dll is
+        // never injected. A Direct Login launch still injects LocaleHook.dll.
+        if (Settings.TranslationsDisabled) return;
         try
         {
             // Debug-discovery: env var is picked up by PacketWarden.dll on
@@ -388,6 +471,7 @@ public partial class MainViewModel : ObservableObject
 
     private void StopRuntime()
     {
+        StopGameExitWatch();
         _runtime?.Stop();
         _runtime?.Dispose();
         _runtime = null;
