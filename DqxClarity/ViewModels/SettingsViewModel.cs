@@ -830,6 +830,18 @@ public partial class SettingsViewModel : ObservableObject
         return top is { Language.Length: > 0 } ? (top.Language, top.LanguageDisplay) : ("en", "English");
     }
 
+    private static bool IsDqxRunning()
+    {
+        try
+        {
+            var procs = Process.GetProcessesByName("DQXGame");
+            var running = procs.Length > 0;
+            foreach (var p in procs) p.Dispose();
+            return running;
+        }
+        catch { return false; }
+    }
+
     [RelayCommand]
     public async Task Run()
     {
@@ -848,6 +860,20 @@ public partial class SettingsViewModel : ObservableObject
             if (ShowInfoRequested != null)
                 await ShowInfoRequested("Missing API Keys",
                     $"The following enabled API services have no key entered:\n\n  • {string.Join("\n  • ", missing)}\n\nEnter the missing key(s) before running.");
+            return;
+        }
+
+        // dqxclarity has to be hooked in before character select: that's where
+        // PlayerContext identifies the logged-in character (CharacterLogListPacket),
+        // and other one-time setup happens. Attaching to a game that's already past
+        // that point leaves it half-working, so refuse instead.
+        if (IsDqxRunning())
+        {
+            if (ShowInfoRequested != null)
+                await ShowInfoRequested("Dragon Quest X is already running",
+                    "dqxclarity cannot be run while Dragon Quest X is already running. Either launch dqxclarity " +
+                    "prior to launching the game, or enable the \"Log into DQX directly with dqxclarity\" feature " +
+                    "under Game > Launch to launch the two simultaneously.");
             return;
         }
 
