@@ -805,29 +805,26 @@ public partial class SettingsViewModel : ObservableObject
             LibreTranslateUrl  = LibreTranslateUrl,
             EnableCommunityApi = UseCommunityApi,
             CommunityApiKey    = CommunityApiKey,
-            // The highest-priority active pack picks the machine-translation language,
-            // same as SaveActiveLanguagePackSelection; English when no pack is active.
+            // From [translation] target_language in user_settings.ini -- see ResolveTargetLanguage.
             TargetLanguage     = langCode,
             TargetLanguageName = langName,
         };
     }
 
-    // Before the language-pack list has been scanned, LanguagePacks is empty, so
-    // fall back to what SaveActiveLanguagePackSelection last saved to disk.
+    // The machine-translation language always comes from [translation] target_language /
+    // target_language_name in user_settings.ini, never straight from the pack list. Turning a
+    // pack on/off or reordering packs writes the top active pack's language there
+    // (SaveActiveLanguagePackSelection), so normally the two agree -- but a user who edits the
+    // ini by hand to pick a different language keeps that choice until they next change their
+    // packs, same as before 6.0. Missing/blank keys fall back to English (ConfigService).
     private (string Code, string Name) ResolveTargetLanguage()
     {
-        if (!_languagePacksScanned)
+        try
         {
-            try
-            {
-                var saved = _cfg.Load().Translation;
-                return (saved.TargetLanguage, saved.TargetLanguageName);
-            }
-            catch { return ("en", "English"); }
+            var saved = _cfg.Load().Translation;
+            return (saved.TargetLanguage, saved.TargetLanguageName);
         }
-
-        var top = LanguagePacks.FirstOrDefault(m => m.IsActive && m.CanActivate);
-        return top is { Language.Length: > 0 } ? (top.Language, top.LanguageDisplay) : ("en", "English");
+        catch { return ("en", "English"); }
     }
 
     private static bool IsDqxRunning()
