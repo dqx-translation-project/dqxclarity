@@ -24,12 +24,43 @@ public static class ReferenceCaptures
 
     public static string Directory { get; } = FindReferenceDirectory();
 
+    // Captures from before a game update changed their layout. The packet
+    // classes follow the CURRENT layout, so these can no longer be parsed and
+    // are left out. Replace them with fresh captures (debug logging, then copy
+    // the packet's bytes) and remove them from this list.
+    private static readonly Dictionary<string, string> Outdated = new(StringComparer.Ordinal)
+    {
+        // Names at 574 (NPC/Player/Party/Fellow) and 401 (Monster): the
+        // pre-update offsets. Now 575/605 and 402 -- see EntityPacket.
+        ["entity"] = "pre-update entity layout",
+        ["entities/fellow_1"] = "pre-update entity layout",
+        ["entities/monster_1"] = "pre-update entity layout",
+        ["entities/monster_2"] = "pre-update entity layout",
+        ["entities/monster_3"] = "pre-update entity layout",
+        ["entities/monster_4"] = "pre-update entity layout",
+        ["entities/npc_1"] = "pre-update entity layout",
+        ["entities/npc_2"] = "pre-update entity layout",
+        ["entities/npc_3"] = "pre-update entity layout",
+        ["entities/party_1"] = "pre-update entity layout",
+        ["entities/player_1"] = "pre-update entity layout",
+        ["entities/player_2"] = "pre-update entity layout",
+        ["entities/player_3"] = "pre-update entity layout",
+        ["entities/player_4"] = "pre-update entity layout",
+        ["entities/player_5"] = "pre-update entity layout",
+        ["entities/player_6"] = "pre-update entity layout",
+        ["entities/player_7"] = "pre-update entity layout",
+        // 764-byte member records; PartyListPacket now expects 772.
+        ["party_list"] = "pre-update party member record size",
+        ["party_list_2"] = "pre-update party list layout",
+    };
+
     // xUnit [MemberData] source: one row per capture file, by relative path.
     public static IEnumerable<object[]> All() =>
         System.IO.Directory.EnumerateFiles(Directory, "*", SearchOption.AllDirectories)
             .Where(p => Path.GetExtension(p).Length == 0)
             .Where(p => !Path.GetFileName(p).Contains("modified", StringComparison.OrdinalIgnoreCase))
             .Select(p => Path.GetRelativePath(Directory, p).Replace('\\', '/'))
+            .Where(p => !Outdated.ContainsKey(p))
             .OrderBy(p => p, StringComparer.Ordinal)
             .Select(p => new object[] { p });
 

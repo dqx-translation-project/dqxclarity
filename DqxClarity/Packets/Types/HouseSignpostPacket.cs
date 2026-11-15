@@ -94,14 +94,18 @@ public sealed class HouseSignpostPacket : IPacket
             ? known
             : _deps.Romanizer.ToRomaji(playerName);
 
+        // Nothing to do unless the owner's name actually came out English. A
+        // name the romanizer can't fully convert (kanji) stays Japanese -- and
+        // so does the house name: building "ゆめきち's House" from an
+        // untranslated name and cutting it to the slot gave "ゆめきち's Hou".
+        if (resolvedPlayerName == playerName || Translator.IsTextJapanese(resolvedPlayerName)) return;
+
         // Only translate the house name if it still exactly matches the
         // untouched default pattern -- anything else (a custom name) is
         // left completely alone.
         var newHouseName = houseName == playerName + "の家"
             ? resolvedPlayerName + "'s House"
             : houseName;
-
-        if (resolvedPlayerName == playerName && newHouseName == houseName) return;
 
         var writer = new PacketWriter();
         writer.WriteBytes(header);

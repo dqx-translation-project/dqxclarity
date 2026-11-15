@@ -29,6 +29,9 @@ public class ReferenceCaptureTests
     private static readonly (string Prefix, string Reason)[] AlwaysRewrites =
     {
         ("Entity", "player/party/fellow names always get the \\x04 prefix that stops the client showing them as GMs"),
+        ("ServerList", "server names come from a table built into the class, not the database"),
+        ("ImportantNotice", "the streaming and maintenance notices have English built into the class"),
+        ("QuestPackList", "QuestRewardFormatter has a built-in translation for the experience-point reward line"),
     };
 
     [Theory]
