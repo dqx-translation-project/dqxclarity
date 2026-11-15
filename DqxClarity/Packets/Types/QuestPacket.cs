@@ -3,12 +3,15 @@ using System.Text;
 
 namespace DqxClarity.Packets.Types;
 
-// Four packet variants share this class:
+// Five packet variants share this class:
 //
 //   Variant.Log     (0x5d 0xcc51) — quest log screen (viewing an existing quest)
 //   Variant.Accept  (0x5d 0x2b15) — accepting a new quest from an NPC
 //   Variant.MapOpen (0x5c 0xde02) — opening/previewing a quest marker from the map
 //   Variant.Synopsis (0x5d 0x0ca1) — the quest synopsis; same shape as MapOpen
+//   Variant.StampCard (0x5d 0x9daa) — viewing a quest from a Stamp Card. Also
+//                    sent for a quest not discovered yet: name "？？？", empty
+//                    chapter and description, rewards still filled in.
 //
 // All three variants carry the exact same tail structure (chapter/name/
 // description/rewards/remainder) and the exact same translation logic; only
@@ -23,6 +26,9 @@ namespace DqxClarity.Packets.Types;
 //   Log     30 bytes: num_times_opened(4) + padding(4) + unknown(2) + quest_number(4) + 4x unknown u32(16)
 //   Accept  28 bytes: num_times_opened(4) + padding(4) + quest_number(4) + 4x unknown u32(16)
 //   MapOpen 48 bytes: num_times_opened(4) + padding(4) + quest_number(4) + 9x unknown u32(36)
+//   StampCard 46 bytes: opaque. Confirmed from two captures (882 bytes of Data each,
+//           one discovered quest and one "？？？"): 46 + 56 + 56 + 508 + 104 + 104
+//           + 8 = 882, chapter at Data offset 46, name at 102, rewards at 666.
 //   Synopsis 48 bytes: opaque. Confirmed from two captures (885 bytes of Data each):
 //           48 + 56 (chapter, empty in both) + 56 + 508 + 104 + 104 + 9 = 885, with
 //           the name at Data offset 104 -- the same tail as the other variants.
@@ -48,7 +54,8 @@ namespace DqxClarity.Packets.Types;
 //   remainder             (passthrough)
 //
 // Samples: docs/packets/references/quest (Log), quest_accept (Accept),
-//          quest_map_open (MapOpen). Synopsis has no reference file yet.
+//          quest_map_open (MapOpen), quest_stamp_card and
+//          quest_stamp_card_undiscovered (StampCard). Synopsis has no reference file yet.
 //
 // Translation strategy — do not machine-translate any of these fields blindly:
 //
@@ -70,10 +77,13 @@ namespace DqxClarity.Packets.Types;
 //
 // Whole packet is gated on `IsTextJapanese(description)` — if the desc isn't
 // japanese (already translated this session, or a non-jp client), we don't
-// touch anything else either.
+// touch anything else either. Exception: a BLANK description (an undiscovered
+// "？？？" quest on a Stamp Card, whose chapter and description are a single
+// space) still lets the other fields through when any of them is Japanese, so
+// its rewards get translated too.
 public sealed class QuestPacket : IPacket
 {
-    public enum Variant { Log, Accept, MapOpen, Synopsis }
+    public enum Variant { Log, Accept, MapOpen, Synopsis, StampCard }
     private const int ChapterBytes     = 56;
     private const int NameBytes        = 56;
     private const int DescriptionBytes = 508;
@@ -85,6 +95,7 @@ public sealed class QuestPacket : IPacket
         Variant.Accept  => 28,
         Variant.MapOpen => 48,
         Variant.Synopsis => 48,
+        Variant.StampCard => 46,
         _ => throw new ArgumentOutOfRangeException(nameof(variant)),
     };
 
@@ -135,7 +146,14 @@ public sealed class QuestPacket : IPacket
     {
         // Gate: if the description isn't japanese (already translated this
         // session, or a non-jp client locale), don't touch any field.
-        if (!Translator.IsTextJapanese(_description)) return;
+        if (!Translator.IsTextJapanese(_description))
+        {
+            // The undiscovered quest's chapter and description are a single space.
+            var undiscovered = string.IsNullOrWhiteSpace(_description) &&
+                (Translator.IsTextJapanese(_chapter) || Translator.IsTextJapanese(_name) ||
+                 Translator.IsTextJapanese(_reward1) || Translator.IsTextJapanese(_reward2));
+            if (!undiscovered) return;
+        }
 
         var newChapter     = LookupQuestName(_chapter);
         var newName        = LookupQuestName(_name) ?? LookupStrikeForceName(_name);
@@ -182,7 +200,7 @@ public sealed class QuestPacket : IPacket
     // wrap settings (49 wide, 6 max lines, no <br> injection). Writes to db on MT hit.
     private string? TranslateDescription(string original)
     {
-        if (string.IsNullOrEmpty(original)) return null;
+        if (string.IsNullOrWhiteSpace(original)) return null;
 
         var bad = _deps.Db.SearchBadStrings(original);
         if (bad != null) return bad;
