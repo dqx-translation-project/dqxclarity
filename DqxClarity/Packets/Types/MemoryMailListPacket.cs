@@ -63,6 +63,14 @@ namespace DqxClarity.Packets.Types;
 // MailInboxViewPacket's fixed-slot layout) -- just name and body, so this
 // class is correspondingly simpler.
 //
+// The parse is strict: the count must be sane and the last body must end
+// exactly at the end of the packet, otherwise PacketLayoutException makes
+// PacketGuard pass the original through and file a mismatch report. Only
+// fields that are actually translated are rewritten; everything else is
+// copied byte-for-byte. A sender name that wouldn't fit the client's name
+// buffer is left in Japanese (MailSenderNamePacket.FitsNameBuffer), same as
+// the other mail packets.
+//
 // Samples: docs/packets/references/memory_mail (page 1, 10 entries: 2x
 //          ムーロン, アンルシア, 2x メリル, 2x ミローレ, 2x ムツキ, 聖天
 //          の使い)
@@ -76,6 +84,8 @@ public sealed class MemoryMailListPacket : IPacket
     private const int GlobalHeaderPrefixBytes = 22; // 26-byte global header minus the trailing u32 count
     private const int RecordHeaderBytes = 12;
     private const int MaxNameLength = 10;
+    private const int MaxRecords = 64;
+    private const int MaxTextBytes = 4096;
 
     private readonly byte[] _raw;
     private readonly PacketDependencies _deps;
@@ -90,68 +100,42 @@ public sealed class MemoryMailListPacket : IPacket
 
     public void Build()
     {
-        if (_raw.Length < GlobalHeaderPrefixBytes + 4) return;
-
         var reader = new PacketReader(_raw);
-        var headerPrefix = reader.ReadBytes(GlobalHeaderPrefixBytes).ToArray();
-        var count = (int)reader.ReadU32();
-        if (count < 0) return;
+        reader.ReadBytesStrict(GlobalHeaderPrefixBytes, "memory mail header");
+        var count = reader.ReadCountStrict("memory mail count", MaxRecords);
 
-        var recordHeaders = new byte[count][];
-        var names = new string[count];
-        var bodies = new string[count];
-
+        var records = new List<((int Start, int Length, string Text) Name, (int Start, int Length, string Text) Body)>();
         for (var i = 0; i < count; i++)
         {
-            // This packet's record count and shape are only confirmed for
-            // what's on file -- bail rather than guess at a malformed or
-            // unexpectedly-shaped payload.
-            if (reader.Remaining < RecordHeaderBytes) return;
-            recordHeaders[i] = reader.ReadBytes(RecordHeaderBytes).ToArray();
-            names[i] = reader.ReadCString();
-            bodies[i] = reader.ReadCString();
+            reader.ReadBytesStrict(RecordHeaderBytes, $"record {i + 1} header");
+            var nameStart = reader.Position;
+            var name = reader.ReadCStringStrict($"record {i + 1} name", MaxTextBytes);
+            var nameLen = reader.Position - 1 - nameStart;
+            var bodyStart = reader.Position;
+            var body = reader.ReadCStringStrict($"record {i + 1} body", MaxTextBytes);
+            records.Add(((nameStart, nameLen, name), (bodyStart, reader.Position - 1 - bodyStart, body)));
         }
+        reader.ExpectEnd("memory mail list");
 
         var conciergeDict = _deps.M00Dict("custom_concierge_mail_names");
         var npcDict = _deps.NpcNameDict();
         var playerDict = _deps.M00Dict("local_player_names");
         var mailDict = _deps.M00Dict("custom_mail");
 
-        var resolvedNames = new string[count];
-        var resolvedBodies = new string[count];
-        var changed = false;
-
-        for (var i = 0; i < count; i++)
+        var patch = new PacketPatch(_raw);
+        foreach (var (name, body) in records)
         {
-            resolvedNames[i] = ResolveMailName(names[i], conciergeDict, npcDict, playerDict, _deps.Romanizer);
+            var newName = ResolveMailName(name.Text, conciergeDict, npcDict, playerDict, _deps.Romanizer);
+            if (newName != name.Text && MailSenderNamePacket.FitsNameBuffer(name.Text, newName))
+                patch.ReplaceText(name.Start, name.Length, newName);
 
-            // Verbatim dictionary lookup only -- see class doc comment. A
-            // truncated preview just won't be a key in 'custom_mail', so
-            // this naturally no-ops on the common case.
-            resolvedBodies[i] = mailDict.TryGetValue(bodies[i], out var known) && !string.IsNullOrEmpty(known)
-                ? known
-                : bodies[i];
-
-            if (resolvedNames[i] != names[i] || resolvedBodies[i] != bodies[i])
-                changed = true;
+            if (mailDict.TryGetValue(body.Text, out var en) && !string.IsNullOrEmpty(en) && en != body.Text)
+                patch.ReplaceText(body.Start, body.Length, en);
         }
 
-        if (!changed) return;
-
-        var writer = new PacketWriter();
-        writer.WriteBytes(headerPrefix);
-        writer.WriteU32((uint)count);
-        for (var i = 0; i < count; i++)
-        {
-            writer.WriteBytes(recordHeaders[i]);
-            writer.WriteCString(resolvedNames[i]);
-            writer.WriteCString(resolvedBodies[i]);
-        }
-        ModifiedData = writer.Build();
+        if (patch.HasEdits) ModifiedData = patch.Build();
     }
 
-    // Same three-dictionary-then-gated-romaji priority as
-    // MailSenderNamePacket/MailInboxViewPacket.
     private static string ResolveMailName(
         string text,
         Dictionary<string, string> conciergeDict,

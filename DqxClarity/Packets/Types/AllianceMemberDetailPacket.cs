@@ -86,11 +86,17 @@ namespace DqxClarity.Packets.Types;
 //          docs/packets/references/alliance_member_detail_2 (くろノコ),
 //          docs/packets/references/alliance_member_detail_3 (パンジィ),
 //          docs/packets/references/alliance_member_detail_4 (あ～にゃ)
+// Hardening (2026-11): the slot is read strictly, so if a game update moves it
+// (the bytes at the expected offset aren't null-terminated text), PacketGuard
+// passes the packet through untouched and files a mismatch report instead of
+// writing a name over the wrong bytes. A translation that doesn't fit is cut
+// on a character boundary, never in the middle of a multi-byte character.
 public sealed class AllianceMemberDetailPacket : IPacket
 {
     // Confirmed across all 4 samples on file: the member's name cstring
     // always starts here.
     private const int NameFieldOffset = 0x50;
+    private const int ExpectedSize = 780; // all four captures
 
     private readonly byte[] _raw;
     private readonly PacketDependencies _deps;
@@ -108,8 +114,10 @@ public sealed class AllianceMemberDetailPacket : IPacket
         if (_raw.Length < NameFieldOffset) return;
 
         var reader = new PacketReader(_raw);
-        var header = reader.ReadBytes(NameFieldOffset).ToArray();
-        var name = reader.ReadCString();
+        PacketText.RequireSize(_raw, ExpectedSize, "alliance member detail");
+        PacketText.RequireFieldBoundary(_raw, NameFieldOffset, "name");
+        var header = reader.ReadBytesStrict(NameFieldOffset, "header").ToArray();
+        var name = reader.ReadCStringStrict("name", 256);
         // Everything after the terminator ReadCString just consumed --
         // padding out to the fixed record size, plus the rest of the
         // packet. Passed through byte-for-byte untouched.
@@ -138,7 +146,7 @@ public sealed class AllianceMemberDetailPacket : IPacket
         // re-written explicitly at its original position, so this can
         // never change the packet's total length.
         var originalNameBytes = Encoding.UTF8.GetByteCount(name);
-        if (newBytes.Length > originalNameBytes) newBytes = newBytes[..originalNameBytes];
+        newBytes = PacketPatch.TruncateUtf8Bytes(newBytes, originalNameBytes);
 
         var writer = new PacketWriter();
         writer.WriteBytes(header);

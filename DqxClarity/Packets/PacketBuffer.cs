@@ -134,6 +134,32 @@ public ref struct PacketReader
         return text;
     }
 
+    // u32 that must be present.
+    public uint ReadU32Strict(string what)
+    {
+        if (Remaining < 4)
+            throw new PacketLayoutException($"{what}: needs 4 bytes at offset {_pos}, only {Remaining} left", _pos);
+        return ReadU32();
+    }
+
+    // u32 element count, which must be present and no more than `max`.
+    public int ReadCountStrict(string what, int max)
+    {
+        var at = _pos;
+        var value = ReadU32Strict(what);
+        if (value > (uint)max)
+            throw new PacketLayoutException($"{what}: {value} at offset {at} is more than the {max} allowed", at);
+        return (int)value;
+    }
+
+    // Throws unless every byte has been consumed -- for packets whose layout
+    // is known to end exactly after the last field.
+    public void ExpectEnd(string what)
+    {
+        if (Remaining != 0)
+            throw new PacketLayoutException($"{what}: {Remaining} unexpected bytes left at offset {_pos}", _pos);
+    }
+
     public void Seek(int pos) => _pos = pos;
     public void Skip(int count) => _pos += count;
 

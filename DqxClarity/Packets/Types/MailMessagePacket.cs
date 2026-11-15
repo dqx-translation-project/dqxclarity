@@ -87,9 +87,14 @@ namespace DqxClarity.Packets.Types;
 //          docs/packets/references/mail_message_3 (player sender "かし",
 //          already-English body -- the sender name still starts at Data
 //          offset 51 and the body/tail shape is unchanged)
+// Hardening (2026-11): the text fields are read with ReadCStringStrict, so if
+// a game update moves them (the bytes at the expected offset aren't
+// null-terminated text), PacketGuard passes the packet through untouched and
+// files a mismatch report instead of translating whatever happens to be there.
 public sealed class MailMessagePacket : IPacket
 {
     private const int HeaderBytes = 51;
+    private const int TailBytes = 4; // after the body, in all three captures
 
     // Tokens for 'custom_mail' template entries (see the TEMPLATES note above).
     private const string JaNameToken = "<japanesename>";
@@ -121,8 +126,12 @@ public sealed class MailMessagePacket : IPacket
         if (_raw.Length < HeaderBytes) return;
         var reader = new PacketReader(_raw);
         _header     = reader.ReadBytes(HeaderBytes).ToArray();
-        _senderName = reader.ReadCString();
-        _body       = reader.ReadCString();
+        PacketText.RequireFieldBoundary(_raw, HeaderBytes, "sender name");
+        _senderName = reader.ReadCStringStrict("sender name", 256);
+        _body       = reader.ReadCStringStrict("letter body", 8192);
+        if (reader.Remaining != TailBytes)
+            throw new PacketLayoutException(
+                $"{reader.Remaining} bytes after the letter body, expected {TailBytes}", reader.Position);
         _tail       = reader.RemainingBytes().ToArray();
     }
 

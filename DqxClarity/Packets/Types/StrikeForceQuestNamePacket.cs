@@ -30,10 +30,14 @@ namespace DqxClarity.Packets.Types;
 // Samples: docs/packets/references/strike_force_quest_name_1
 //          (暴君バサグランデ強討伐！) and strike_force_quest_name_2
 //          (こうていタップ討伐！)
+// Hardening (2026-11): the slot must hold text, so if a game update moves it,
+// PacketGuard passes the packet through untouched and files a mismatch report
+// instead of looking up whatever bytes happen to be there.
 public sealed class StrikeForceQuestNamePacket : IPacket
 {
     private const int HeaderBytes = 14;
     private const int NameBytes   = 56;
+    private const int ExpectedSize = 72; // both captures
 
     private readonly byte[] _raw;
     private readonly PacketDependencies _deps;
@@ -54,12 +58,13 @@ public sealed class StrikeForceQuestNamePacket : IPacket
     {
         if (_raw.Length < HeaderBytes + NameBytes) return;
 
-        var len = NameBytes;
-        // Cstring inside the fixed slot: stop at the first null.
-        var nul = Array.IndexOf(_raw, (byte)0, HeaderBytes, NameBytes);
-        if (nul >= 0) len = nul - HeaderBytes;
-
-        _name = Encoding.UTF8.GetString(_raw, HeaderBytes, len);
+        // Cstring inside the fixed slot: stop at the first null. Anything that
+        // isn't text means the slot has moved -- let PacketGuard pass it through.
+        PacketText.RequireSize(_raw, ExpectedSize, "strike force quest name");
+        PacketText.RequireFieldBoundary(_raw, HeaderBytes, "quest name");
+        if (!PacketText.TryReadSlot(_raw.AsSpan(HeaderBytes, NameBytes), out var name))
+            throw new PacketLayoutException("Strike force quest name slot does not hold text", HeaderBytes);
+        _name = name;
         _parsed = true;
     }
 

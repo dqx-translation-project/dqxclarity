@@ -49,6 +49,10 @@ namespace DqxClarity.Packets.Types;
 // Samples: docs/packets/references/item_history_name_1 (アリス, index 0),
 //          docs/packets/references/item_history_name_2 (アンドレア, index 1),
 //          docs/packets/references/item_history_name_3 (まっちゃもち, index 2)
+// Hardening (2026-11): the name is read with ReadCStringStrict, so if a game
+// update moves it (the bytes at the expected offset aren't null-terminated
+// text), PacketGuard passes the packet through untouched and files a mismatch
+// report instead of romanizing whatever happens to be there.
 public sealed class ItemHistoryNamePacket : IPacket
 {
     private const int HeaderBytes = 12;
@@ -75,7 +79,9 @@ public sealed class ItemHistoryNamePacket : IPacket
         if (_raw.Length < HeaderBytes + 1) return;
         var reader = new PacketReader(_raw);
         _header     = reader.ReadBytes(HeaderBytes).ToArray();
-        _playerName = reader.ReadCString();
+        PacketText.RequireFieldBoundary(_raw, HeaderBytes, "player name");
+        _playerName = reader.ReadCStringStrict("player name", 256);
+        reader.ExpectEnd("item history name"); // the name is the last field in every capture
         _remainder  = reader.RemainingBytes().ToArray();
         _parsed = true;
     }

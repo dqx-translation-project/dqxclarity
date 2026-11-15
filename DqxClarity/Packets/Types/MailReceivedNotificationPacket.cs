@@ -55,6 +55,10 @@ namespace DqxClarity.Packets.Types;
 //          a different sender and a different len_field value, confirming
 //          the prefix/sender_id/len_field layout holds beyond the first
 //          two captures)
+// Hardening (2026-11): the text fields are read with ReadCStringStrict, so if
+// a game update moves them (the bytes at the expected offset aren't
+// null-terminated text), PacketGuard passes the packet through untouched and
+// files a mismatch report instead of translating whatever happens to be there.
 public sealed class MailReceivedNotificationPacket : IPacket
 {
     private const int PrefixBytes = 15;
@@ -78,7 +82,9 @@ public sealed class MailReceivedNotificationPacket : IPacket
         var prefix = reader.ReadBytes(PrefixBytes).ToArray();
         var senderId = reader.ReadU32();
         var lenField = reader.ReadU16();
-        var senderName = reader.ReadCString();
+        PacketText.RequireFieldBoundary(_raw, reader.Position, "sender name");
+        var senderName = reader.ReadCStringStrict("sender name", 256);
+        reader.ExpectEnd("mail notification"); // the name is the last field in every capture
         var tail = reader.RemainingBytes().ToArray();
 
         if (!Translator.IsTextJapanese(senderName)) return;

@@ -41,6 +41,10 @@ namespace DqxClarity.Packets.Types;
 // renders correctly, that would close out the one open question here.
 //
 // Sample: docs/packets/references/team_join_notification
+// Hardening (2026-11): the name is read with ReadCStringStrict, so if a game
+// update moves it (the bytes at the expected offset aren't null-terminated
+// text), PacketGuard passes the packet through untouched and files a mismatch
+// report instead of romanizing whatever happens to be there.
 public sealed class TeamJoinNotificationPacket : IPacket
 {
     private const int HeaderBytes = 12;
@@ -66,7 +70,8 @@ public sealed class TeamJoinNotificationPacket : IPacket
         if (_raw.Length < HeaderBytes) return;
         var reader = new PacketReader(_raw);
         _header     = reader.ReadBytes(HeaderBytes).ToArray();
-        _playerName = reader.ReadCString();
+        PacketText.RequireFieldBoundary(_raw, HeaderBytes, "player name");
+        _playerName = reader.ReadCStringStrict("player name", 256);
         _remainder  = reader.RemainingBytes().ToArray();
     }
 

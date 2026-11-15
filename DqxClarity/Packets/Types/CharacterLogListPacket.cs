@@ -46,7 +46,7 @@ namespace DqxClarity.Packets.Types;
 // Both the player's own name and the sibling's name are resolved with the
 // same "normal player name logic" every other player-chosen name in this
 // codebase uses: m00 'local_player_names' dict first, romaji fallback on
-// miss (see SiblingNamePacket, which resolves the same sibling name the
+// miss (see MapNpcListPacket, which resolves the same sibling name the
 // same way for the in-scene case). No leading \x04 GM-face-prevention byte
 // is applied here -- that trick has only ever been added to packets on
 // explicit request (AllianceMemberListPacket, AllianceMemberDetailPacket);

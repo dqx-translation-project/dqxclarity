@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Text;
 using DqxClarity.Translation;
 
@@ -44,10 +45,10 @@ namespace DqxClarity.Packets.Types;
 //            consumed exactly by `count` records with nothing left over.
 //
 // Each record:
-//   stats     0x44 (68) bytes -- confirmed the SAME fixed width in every
-//             record of both captures regardless of that record's own name
-//             length (an id, bingo card numbers, running totals, etc.).
-//             Unexamined, passthrough.
+//   stats     fixed width per record (an id, bingo card numbers, running
+//             totals, etc.), unexamined passthrough. 0x44 (68) bytes in the
+//             original captures, 0x48 (72) since a game update -- see
+//             StatsWidths below.
 //   name_len  u32 -- the name's utf-8 byte length INCLUDING the null
 //             terminator (the same length-prefixed shape EntityPacket uses
 //             for Player/Party names and MonsterTavernListPacket uses for
@@ -82,7 +83,19 @@ namespace DqxClarity.Packets.Types;
 // saved to docs/packets/references yet.
 public sealed class CasinoPlayerListPacket : IPacket
 {
-    private const int StatsBytes = 0x44; // 68
+    // Fixed per-record stats width, newest first. It was 68 bytes in the
+    // original Bingo/Poker captures; a 2026-11-14 capture (7 players) has 72
+    // -- a game update added 4 bytes to every record. The old code hard-coded
+    // 68 and never checked it, so it read stats bytes as name lengths and
+    // rewrote garbage all through the packet, crashing the game. Each width is
+    // now tried in turn and only one that accounts for EVERY byte of the
+    // packet (each name_len fits and ends on a null, nothing left over) is
+    // used; if none fits, PacketLayoutException makes PacketGuard pass the
+    // original through and file a mismatch report.
+    private static readonly int[] StatsWidths = { 72, 68 };
+    private const int HeaderBytes = 12;
+    private const int MaxPlayers = 64;
+    private const int MaxNameBytes = 256;
 
     private readonly byte[] _raw;
     private readonly PacketDependencies _deps;
@@ -97,44 +110,72 @@ public sealed class CasinoPlayerListPacket : IPacket
 
     public void Build()
     {
-        if (_raw.Length < 12) return;
+        if (_raw.Length < HeaderBytes)
+            throw new PacketLayoutException($"only {_raw.Length} bytes, header needs {HeaderBytes}", 0);
 
-        var reader = new PacketReader(_raw);
-        var header = reader.ReadBytes(8).ToArray(); // two leading u32s -- passthrough, meaning unconfirmed
-        var count = reader.ReadU32();
+        var count = BinaryPrimitives.ReadUInt32LittleEndian(_raw.AsSpan(8, 4));
+        if (count > MaxPlayers)
+            throw new PacketLayoutException($"player count {count} at offset 8 is more than {MaxPlayers}", 8);
+
+        List<(int LenAt, int NameAt, int NameLen, string Name)>? names = null;
+        foreach (var width in StatsWidths)
+        {
+            names = TryParse((int)count, width);
+            if (names != null) break;
+        }
+        if (names == null)
+            throw new PacketLayoutException(
+                $"{count} player records don't fit with any known stats width ({string.Join("/", StatsWidths)} bytes)", HeaderBytes);
 
         var dict = _deps.M00Dict("local_player_names");
-        var changed = false;
         var writer = new PacketWriter();
-        writer.WriteBytes(header);
-        writer.WriteU32(count);
+        var pos = 0;
+        var changed = false;
+        foreach (var (lenAt, nameAt, nameLen, name) in names)
+        {
+            var newName = ResolveName(name, dict);
+            if (newName == name) continue; // copied through below, untouched
 
+            changed = true;
+            writer.WriteBytes(_raw.AsSpan(pos, lenAt - pos)); // everything up to this name_len
+            var bytes = Encoding.UTF8.GetBytes(newName);
+            writer.WriteU32((uint)(bytes.Length + 1)); // +1 for the null terminator
+            writer.WriteBytes(bytes);
+            writer.WriteU8(0);
+            pos = nameAt + nameLen + 1;
+        }
+        if (!changed) return;
+
+        writer.WriteBytes(_raw.AsSpan(pos));
+        ModifiedData = writer.Build();
+    }
+
+    // Walks `count` records of [stats][u32 name_len][name + null] with the given
+    // stats width. Returns where each name sits, or null if the layout doesn't
+    // fit the packet exactly.
+    private List<(int LenAt, int NameAt, int NameLen, string Name)>? TryParse(int count, int statsWidth)
+    {
+        var result = new List<(int, int, int, string)>(count);
+        var pos = HeaderBytes;
         for (var r = 0; r < count; r++)
         {
-            // Not enough data left for a full record -- stop and pass
-            // through whatever remains untouched rather than risk reading
-            // past the end of a malformed/short capture.
-            if (reader.Remaining < StatsBytes + 4) break;
+            pos += statsWidth;
+            if (pos + 4 > _raw.Length) return null;
 
-            var stats = reader.ReadBytes(StatsBytes).ToArray();
-            _ = reader.ReadU32(); // name_len -- recomputed on write
-            var name = reader.ReadCString();
+            var lenAt = pos;
+            var len = BinaryPrimitives.ReadUInt32LittleEndian(_raw.AsSpan(pos, 4));
+            pos += 4;
+            if (len < 1 || len > MaxNameBytes || len > (uint)(_raw.Length - pos)) return null;
+            if (_raw[pos + (int)len - 1] != 0) return null;
 
-            var newName = ResolveName(name, dict);
-            if (newName != name) changed = true;
+            var nameBytes = _raw.AsSpan(pos, (int)len - 1);
+            if (nameBytes.IndexOf((byte)0) >= 0) return null;
+            if (!PacketText.TryDecode(nameBytes, out var name)) return null;
 
-            writer.WriteBytes(stats);
-            var newBytes = Encoding.UTF8.GetBytes(newName);
-            writer.WriteU32((uint)(newBytes.Length + 1)); // +1 for null terminator
-            writer.WriteCString(newName);
+            result.Add((lenAt, pos, (int)len - 1, name));
+            pos += (int)len;
         }
-
-        // Anything left over (shouldn't happen -- both samples' records
-        // consumed the packet exactly) -- don't silently drop it.
-        writer.WriteBytes(reader.RemainingBytes().ToArray());
-
-        if (!changed) return;
-        ModifiedData = writer.Build();
+        return pos == _raw.Length ? result : null;
     }
 
     private string ResolveName(string japanese, Dictionary<string, string> dict)

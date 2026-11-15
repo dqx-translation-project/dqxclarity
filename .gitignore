@@ -15,6 +15,8 @@ DqxClarity/native/wanakana/target/
 # dotnet build outputs
 DqxClarity/bin/
 DqxClarity/obj/
+DqxClarity.Tests/bin/
+DqxClarity.Tests/obj/
 
 # language packs are downloaded at runtime, not shipped in the repo
 language-packs/

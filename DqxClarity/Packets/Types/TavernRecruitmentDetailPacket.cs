@@ -50,6 +50,11 @@ namespace DqxClarity.Packets.Types;
 //
 // Samples: two live captures, opcode 0xAA marker 0xE535, names "エクサリン"
 // and "ガブリソ" -- no reference dump saved to docs/packets/references yet.
+// Hardening (2026-11): the slot is read strictly, so if a game update moves it
+// (the bytes at the expected offset aren't null-terminated text), PacketGuard
+// passes the packet through untouched and files a mismatch report instead of
+// writing a name over the wrong bytes. A translation that doesn't fit is cut
+// on a character boundary, never in the middle of a multi-byte character.
 public sealed class TavernRecruitmentDetailPacket : IPacket
 {
     // Confirmed in both sample captures: the player name cstring always
@@ -72,8 +77,9 @@ public sealed class TavernRecruitmentDetailPacket : IPacket
         if (_raw.Length < NameFieldOffset) return;
 
         var reader = new PacketReader(_raw);
-        var header = reader.ReadBytes(NameFieldOffset).ToArray();
-        var name = reader.ReadCString();
+        PacketText.RequireFieldBoundary(_raw, NameFieldOffset, "name");
+        var header = reader.ReadBytesStrict(NameFieldOffset, "header").ToArray();
+        var name = reader.ReadCStringStrict("name", 256);
         // Everything after the terminator ReadCString just consumed -- the
         // rest of the fixed-width slot's zero-padding, the 06 01 00 01
         // marker, and the remainder of this (large, mostly unexamined)
@@ -97,7 +103,7 @@ public sealed class TavernRecruitmentDetailPacket : IPacket
         // original terminator is re-written explicitly at its original
         // position, so this can never change the packet's total length.
         var originalNameBytes = Encoding.UTF8.GetByteCount(name);
-        if (newBytes.Length > originalNameBytes) newBytes = newBytes[..originalNameBytes];
+        newBytes = PacketPatch.TruncateUtf8Bytes(newBytes, originalNameBytes);
 
         var writer = new PacketWriter();
         writer.WriteBytes(header);

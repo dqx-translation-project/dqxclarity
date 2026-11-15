@@ -38,6 +38,10 @@ namespace DqxClarity.Packets.Types;
 // original, regardless of what the translation is.
 //
 // Sample: docs/packets/references/friend_invitation
+// Hardening (2026-11): the name is read with ReadCStringStrict, so if a game
+// update moves it (the bytes at the expected offset aren't null-terminated
+// text), PacketGuard passes the packet through untouched and files a mismatch
+// report instead of romanizing whatever happens to be there.
 public sealed class FriendInvitationPacket : IPacket
 {
     private const int HeaderBytes = 40;
@@ -63,7 +67,8 @@ public sealed class FriendInvitationPacket : IPacket
         if (_raw.Length < HeaderBytes) return;
         var reader = new PacketReader(_raw);
         _header     = reader.ReadBytes(HeaderBytes).ToArray();
-        _playerName = reader.ReadCString();
+        PacketText.RequireFieldBoundary(_raw, HeaderBytes, "player name");
+        _playerName = reader.ReadCStringStrict("player name", 256);
         _remainder  = reader.RemainingBytes().ToArray();
     }
 
@@ -77,9 +82,8 @@ public sealed class FriendInvitationPacket : IPacket
         // crashes the client if the name field is allowed to change the
         // overall packet length.
         var nameSlotBytes = Encoding.UTF8.GetByteCount(_playerName) + 1;
-        var newNameBytes = Encoding.UTF8.GetBytes(newName);
-        if (newNameBytes.Length > nameSlotBytes - 1)
-            newNameBytes = newNameBytes[..(nameSlotBytes - 1)];
+        // Cut on a character boundary so a multi-byte character is never split.
+        var newNameBytes = Encoding.UTF8.GetBytes(PacketPatch.TruncateUtf8(newName, nameSlotBytes - 1));
 
         var writer = new PacketWriter();
         writer.WriteBytes(_header);
