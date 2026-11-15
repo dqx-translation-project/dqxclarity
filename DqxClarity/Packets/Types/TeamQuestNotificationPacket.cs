@@ -28,7 +28,7 @@ namespace DqxClarity.Packets.Types;
 //
 // Because the name is the trailing field with nothing after it that a
 // length change could shift, this is safe to let grow or shrink freely --
-// same category as SiblingNamePacket/NpcDialoguePacket, not the
+// same category as MapNpcListPacket/NpcDialoguePacket, not the
 // fixed-offset roster family. GamePacket's outer wire-frame resize handles
 // the length change.
 //

@@ -54,8 +54,10 @@ namespace DqxClarity.Packets.Types;
 // into its own slot, zero-padded to the slot width and cut (on a utf-8
 // character boundary) to leave room for the terminator. Fields whose lookup
 // misses are not touched at all. If the counts or lengths ever fail to line up
-// with the layout above, Build() leaves the whole packet untouched rather than
-// translate on a guess.
+// with the layout above -- including the 14-byte tail having to end the packet
+// exactly, so a game update that grows the records is caught instead of
+// writing names into the wrong slots -- Build() throws PacketLayoutException:
+// PacketGuard passes the packet through untouched and files a mismatch report.
 //
 // NOT crash-tested against a live client yet.
 //
@@ -75,6 +77,7 @@ public sealed class QuestPackListPacket : IPacket
     private const int FlagBytes = 1;
     private const int RecordBytes = InfoBytes + ChapterBytes + NameBytes + RewardBytes + FlagBytes; // 237
     private const int MaxRecords = 64; // sanity bound; captures show 5-12
+    private const int TailBytes = 14;
 
     private readonly byte[] _raw;
     private readonly PacketDependencies _deps;
@@ -89,7 +92,8 @@ public sealed class QuestPackListPacket : IPacket
 
     public void Build()
     {
-        if (_raw.Length < CountOffset + 4) return;
+        if (_raw.Length < CountOffset + 4)
+            throw new PacketLayoutException($"only {_raw.Length} bytes, the first count is at offset {CountOffset}", 0);
 
         var data = (byte[])_raw.Clone();
         var changed = false;
@@ -98,12 +102,15 @@ public sealed class QuestPackListPacket : IPacket
         // Two back-to-back lists, each introduced by its own u32 count.
         for (var list = 0; list < 2; list++)
         {
-            if (pos + 4 > data.Length) return;
+            if (pos + 4 > data.Length)
+                throw new PacketLayoutException($"list {list + 1} count: no room at offset {pos}", pos);
             var count = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(pos, 4));
             pos += 4;
 
-            if (count > MaxRecords) return;
-            if ((long)pos + (long)count * RecordBytes > data.Length) return;
+            if (count > MaxRecords)
+                throw new PacketLayoutException($"list {list + 1} count {count} is more than {MaxRecords}", pos - 4);
+            if ((long)pos + (long)count * RecordBytes > data.Length)
+                throw new PacketLayoutException($"list {list + 1}: {count} x {RecordBytes}-byte records don't fit", pos);
 
             for (var i = 0; i < count; i++)
             {
@@ -112,8 +119,14 @@ public sealed class QuestPackListPacket : IPacket
             }
         }
 
-        // Anything left over is the tail (14 bytes in every capture) and is
-        // never touched. Only publish the rewritten copy if something changed.
+        // What's left must be exactly the 14-byte tail. If it isn't, the records
+        // are probably a different size now and every slot above was read at
+        // the wrong offset -- so don't publish anything.
+        if (data.Length - pos != TailBytes)
+            throw new PacketLayoutException(
+                $"{data.Length - pos} bytes after the last record, expected the {TailBytes}-byte tail", pos);
+
+        // Only publish the rewritten copy if something changed.
         if (changed) ModifiedData = data;
     }
 

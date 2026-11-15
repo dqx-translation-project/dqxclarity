@@ -43,10 +43,16 @@ namespace DqxClarity.Packets.Types;
 //          player: ゆめきち -- the default-pattern case)
 //          docs/packets/references/house_signpost_2 (house: しぶやの家,
 //          player: しぶや -- also the default-pattern case)
+// Hardening (2026-11): the slot is read strictly, so if a game update moves it
+// (the bytes at the expected offset aren't null-terminated text), PacketGuard
+// passes the packet through untouched and files a mismatch report instead of
+// writing a name over the wrong bytes. A translation that doesn't fit is cut
+// on a character boundary, never in the middle of a multi-byte character.
 public sealed class HouseSignpostPacket : IPacket
 {
     private const int HouseNameFieldOffset = 0x20C;
     private const int PlayerNameFieldOffset = 0x3E0;
+    private const int ExpectedSize = 1050; // both captures
 
     private readonly byte[] _raw;
     private readonly PacketDependencies _deps;
@@ -64,17 +70,20 @@ public sealed class HouseSignpostPacket : IPacket
         if (_raw.Length < PlayerNameFieldOffset) return;
 
         var reader = new PacketReader(_raw);
-        var header = reader.ReadBytes(HouseNameFieldOffset).ToArray();
-        var houseName = reader.ReadCString();
+        PacketText.RequireSize(_raw, ExpectedSize, "house signpost");
+        PacketText.RequireFieldBoundary(_raw, HouseNameFieldOffset, "house name");
+        PacketText.RequireFieldBoundary(_raw, PlayerNameFieldOffset, "player name");
+        var header = reader.ReadBytesStrict(HouseNameFieldOffset, "header").ToArray();
+        var houseName = reader.ReadCStringStrict("house name", 256);
 
         // Gap between the two fields, computed from wherever the house
         // name's cstring actually ended -- not hardcoded, so this still
         // works if the house name's length differs from this sample.
         var middleLen = PlayerNameFieldOffset - reader.Position;
         if (middleLen < 0) return; // house name ran past the player name's offset -- not the shape we expect
-        var middle = reader.ReadBytes(middleLen).ToArray();
+        var middle = reader.ReadBytesStrict(middleLen, "fields between the names").ToArray();
 
-        var playerName = reader.ReadCString();
+        var playerName = reader.ReadCStringStrict("player name", 256);
         var tail = reader.RemainingBytes().ToArray();
 
         // Already translated -- hook re-intercepted its own modified write.
@@ -111,7 +120,7 @@ public sealed class HouseSignpostPacket : IPacket
     {
         var originalBytes = Encoding.UTF8.GetByteCount(original);
         var newBytes = Encoding.UTF8.GetBytes(translated);
-        if (newBytes.Length > originalBytes) newBytes = newBytes[..originalBytes];
+        newBytes = PacketPatch.TruncateUtf8Bytes(newBytes, originalBytes);
         writer.WriteBytes(newBytes);
         writer.WriteBytes(new byte[originalBytes - newBytes.Length]); // zero-pad to original width
         writer.WriteU8(0); // original terminator, unmoved

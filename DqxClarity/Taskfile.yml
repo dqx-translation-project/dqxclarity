@@ -29,6 +29,11 @@ tasks:
     cmds:
       - dotnet build
 
+  test:
+    desc: replay every capture in docs/packets/references through the packet classes
+    cmds:
+      - dotnet test ../DqxClarity.Tests
+
   publish:
     desc: publish a self-contained single-file exe for win-x64
     deps: [native, wanakana]

@@ -50,6 +50,30 @@ public static class PacketText
         return true;
     }
 
+    // A text field can only start right after the end of the previous field,
+    // and in every capture that byte is below 0x80 (a zero, a small number or
+    // an ASCII character). If it's 0x80 or above it belongs to a multi-byte
+    // character -- which means the read is starting partway into a Japanese
+    // string, i.e. the field has moved and we'd translate a fragment of it.
+    // This is the one case ReadCStringStrict can't see on its own (starting
+    // exactly one character late still decodes as valid text).
+    public static void RequireFieldBoundary(byte[] raw, int offset, string what)
+    {
+        if (offset <= 0 || offset > raw.Length) return;
+        var prev = raw[offset - 1];
+        if (prev >= 0x80)
+            throw new PacketLayoutException(
+                $"{what}: the byte before offset {offset} is 0x{prev:X2}, part of a multi-byte character -- the field has probably moved", offset);
+    }
+
+    // For packets whose total size has never varied across captures, even with
+    // names of different lengths: any field being added or removed changes it.
+    public static void RequireSize(byte[] raw, int expected, string what)
+    {
+        if (raw.Length != expected)
+            throw new PacketLayoutException($"{what}: expected a {expected}-byte packet, got {raw.Length}", 0);
+    }
+
     // Reads the null-terminated string out of a fixed-size slot (the whole
     // slot when it has no null). An empty slot is fine and gives "". False
     // when what is in the slot isn't text -- typically a sign the slot isn't

@@ -41,9 +41,15 @@ namespace DqxClarity.Packets.Types;
 //
 // Samples: docs/packets/references/stamp_card_quest_1 (シオンの花言葉),
 //          docs/packets/references/stamp_card_quest_2 (第四の詩歌)
+// Hardening (2026-11): the slot is read strictly, so if a game update moves it
+// (the bytes at the expected offset aren't null-terminated text), PacketGuard
+// passes the packet through untouched and files a mismatch report instead of
+// writing a name over the wrong bytes. A translation that doesn't fit is cut
+// on a character boundary, never in the middle of a multi-byte character.
 public sealed class StampCardQuestPacket : IPacket
 {
     private const int NameFieldOffset = 0x1E;
+    private const int ExpectedSize = 87; // both captures
 
     private readonly byte[] _raw;
     private readonly PacketDependencies _deps;
@@ -61,8 +67,10 @@ public sealed class StampCardQuestPacket : IPacket
         if (_raw.Length < NameFieldOffset) return;
 
         var reader = new PacketReader(_raw);
-        var header = reader.ReadBytes(NameFieldOffset).ToArray();
-        var name = reader.ReadCString();
+        PacketText.RequireSize(_raw, ExpectedSize, "stamp card quest");
+        PacketText.RequireFieldBoundary(_raw, NameFieldOffset, "quest name");
+        var header = reader.ReadBytesStrict(NameFieldOffset, "header").ToArray();
+        var name = reader.ReadCStringStrict("name", 256);
         // Zero padding out to the fixed record size, plus the trailing
         // flag byte. Passed through byte-for-byte untouched.
         var rest = reader.RemainingBytes().ToArray();
@@ -82,7 +90,7 @@ public sealed class StampCardQuestPacket : IPacket
         // its original position, so this can never change the packet's
         // total length.
         var originalNameBytes = Encoding.UTF8.GetByteCount(name);
-        if (newBytes.Length > originalNameBytes) newBytes = newBytes[..originalNameBytes];
+        newBytes = PacketPatch.TruncateUtf8Bytes(newBytes, originalNameBytes);
 
         var writer = new PacketWriter();
         writer.WriteBytes(header);

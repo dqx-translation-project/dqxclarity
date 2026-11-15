@@ -47,9 +47,14 @@ namespace DqxClarity.Packets.Types;
 //
 // Samples: docs/packets/references/hired_member_expiration_shota,
 //          docs/packets/references/hired_member_expiration_mia
+// Hardening (2026-11): the name is read with ReadCStringStrict, so if a game
+// update moves it (the bytes at the expected offset aren't null-terminated
+// text), PacketGuard passes the packet through untouched and files a mismatch
+// report instead of romanizing whatever happens to be there.
 public sealed class HiredMemberExpirationPacket : IPacket
 {
     private const int HeaderBytes = 12;
+    private const int ExpectedSize = 36; // both captures, despite 9- and 12-byte names
 
     private readonly byte[] _raw;
     private readonly PacketDependencies _deps;
@@ -72,7 +77,9 @@ public sealed class HiredMemberExpirationPacket : IPacket
         if (_raw.Length < HeaderBytes) return;
         var reader = new PacketReader(_raw);
         _header     = reader.ReadBytes(HeaderBytes).ToArray();
-        _playerName = reader.ReadCString();
+        PacketText.RequireSize(_raw, ExpectedSize, "hired member expiration");
+        PacketText.RequireFieldBoundary(_raw, HeaderBytes, "player name");
+        _playerName = reader.ReadCStringStrict("player name", 256);
         _remainder  = reader.RemainingBytes().ToArray();
     }
 
@@ -88,9 +95,8 @@ public sealed class HiredMemberExpirationPacket : IPacket
         // translation must never change the packet's length or shift
         // anything after it.
         var nameSlotBytes = Encoding.UTF8.GetByteCount(_playerName) + 1;
-        var newNameBytes = Encoding.UTF8.GetBytes(newName);
-        if (newNameBytes.Length > nameSlotBytes - 1)
-            newNameBytes = newNameBytes[..(nameSlotBytes - 1)];
+        // Cut on a character boundary so a multi-byte character is never split.
+        var newNameBytes = Encoding.UTF8.GetBytes(PacketPatch.TruncateUtf8(newName, nameSlotBytes - 1));
 
         var writer = new PacketWriter();
         writer.WriteBytes(_header);

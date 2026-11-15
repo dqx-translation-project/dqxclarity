@@ -1,56 +1,50 @@
+using System.Buffers.Binary;
 using System.Text;
 using DqxClarity.Translation;
 
 namespace DqxClarity.Packets.Types;
 
-// Sugoroku (the board-game minigame)'s "you won an item" notification --
-// opcode 0x95, marker 0xC9E3. Fired once per item won at the end of a
-// Sugoroku game, naming both the winning player and the item they got.
+// A generic "notification with up to two strings" packet -- opcode 0x95,
+// marker 0xC9E3. First seen as Sugoroku (the board-game minigame)'s "you won
+// an item" notification, naming the winning player and the item. It is ALSO
+// used for other notifications whose first string is not a player name at
+// all -- e.g. a Trainee Logbook title ("釣りの求道者！") with no second string.
 //
-// Layout, confirmed identical (down to the byte, including that both fields'
-// length prefixes exactly match their cstring's real length) in both sample
-// captures:
-//   header           12 bytes -- passthrough. First u32 differs between
-//                    captures (10 vs 14 -- unconfirmed, maybe a roll/turn
-//                    counter); second u32 was 0 in both; third u32 was
-//                    IDENTICALLY 0x151 (337) in both captures despite the
-//                    two items being completely different ("幻界闘士の
-//                    ゆびわ" vs "ドット風エステラ像") -- too consistent to
-//                    be an item id, more likely a constant tagging this as
-//                    a "Sugoroku item win" notification. Unconfirmed either
-//                    way; passed through untouched regardless.
-//   player_name_len  u32 -- the player name's utf-8 byte length INCLUDING
-//                    the null terminator (the same length-prefixed shape
-//                    EntityPacket/MonsterTavernListPacket/
-//                    BingoPlayerListPacket use elsewhere).
-//   player_name      cstring (utf-8, null-terminated)
-//   item_name_len    u32 -- same shape, for the item name
-//   item_name        cstring (utf-8, null-terminated) -- the LAST field,
-//                    nothing follows it in either capture
+// Layout (after opcode + marker):
+//   header           12 bytes -- passthrough. Third u32 looks like a
+//                    notification type: 0x151 (337) in both Sugoroku item
+//                    captures, 0x43F (1087) in the Trainee Logbook capture.
+//                    Unconfirmed, so it isn't relied on.
+//   text1_len        u32 -- byte length of text1 INCLUDING its null terminator
+//   text1            utf-8 string + null (player name for Sugoroku; logbook /
+//                    episode-request text otherwise)
+//   text2_len        u32 -- same shape. 0 in the logbook capture, in which
+//                    case no string bytes follow AT ALL (not even a null).
+//   text2            utf-8 string + null (item name for Sugoroku), or absent
+//   (anything left over is passed through untouched)
 //
-// Both names are length-prefixed rather than living in a fixed-width slot,
-// so a translated name is free to grow or shrink -- same category as
-// EntityPacket/MonsterTavernListPacket/BingoPlayerListPacket, not the
-// fixed-offset "roster" family that has to truncate/zero-pad to avoid
-// shifting anything after it.
+// Both strings are length-prefixed, so a translated string is free to grow or
+// shrink. Each field is read by its length prefix, and a field that isn't
+// translated is copied back byte-for-byte -- so a zero-length text2 stays
+// exactly "00 00 00 00". (An earlier version re-encoded every field, which
+// turned that into "01 00 00 00 00": a length of 1 plus an extra null byte.)
 //
 // Translation:
-//   player_name : resolved the same way every other player name in this
-//                 codebase is -- m00 'local_player_names' dict first, romaji
-//                 fallback when the name isn't in the dict.
-//   item_name   : per the user, looked up in the m00 'items' category only,
-//                 with NO romaji fallback -- a miss passes through as the
-//                 original Japanese untouched, same policy QuestPacket's
-//                 reward fields use for item lookups that miss (romanizing
-//                 an item name would just produce meaningless kana-to-latin
-//                 noise, not an actual English name).
+//   text1 : m00 'custom_trainee_logbook', then 'custom_episode_request_book'
+//           (curated notification text is checked before names), then
+//           'local_player_names'. The romaji fallback is used ONLY when text2
+//           is present -- i.e. the Sugoroku "player won item" shape, where
+//           text1 really is a player name. Without that gate a logbook title
+//           missing from the dictionaries got romanized into "釣rino求道者".
+//   text2 : m00 'items' only, no romaji fallback; a miss stays Japanese.
 //
-// Samples: two live captures, opcode 0x95 marker 0xC9E3, player トギ winning
-// 幻界闘士のゆびわ and ドット風エステラ像 -- no reference dump saved to
-// docs/packets/references yet.
+// Samples: two Sugoroku captures (player トギ winning 幻界闘士のゆびわ and
+// ドット風エステラ像); one Trainee Logbook capture (釣りの求道者！, text2_len 0,
+// 2026-11-11).
 public sealed class SugorokuItemNotificationPacket : IPacket
 {
     private const int HeaderBytes = 12;
+    private const int MaxStringBytes = 4096;
 
     private readonly byte[] _raw;
     private readonly PacketDependencies _deps;
@@ -65,49 +59,82 @@ public sealed class SugorokuItemNotificationPacket : IPacket
 
     public void Build()
     {
-        if (_raw.Length < HeaderBytes) return;
+        if (_raw.Length < HeaderBytes + 4) return;
 
-        var reader = new PacketReader(_raw);
-        var header = reader.ReadBytes(HeaderBytes).ToArray();
+        var pos = HeaderBytes;
+        var field1 = ReadField(ref pos, "text1");
+        var field2 = pos + 4 <= _raw.Length ? ReadField(ref pos, "text2") : (Field?)null;
+        var remainderStart = pos;
 
-        if (reader.Remaining < 4) return;
-        _ = reader.ReadU32(); // player_name_len -- recomputed on write
-        var playerName = reader.ReadCString();
+        var hasText2 = field2 is { Text.Length: > 0 };
+        var new1 = ResolveText1(field1.Text, allowRomaji: hasText2);
+        var new2 = field2 is { } f2 ? ResolveItemName(f2.Text) : null;
 
-        if (reader.Remaining < 4) return;
-        _ = reader.ReadU32(); // item_name_len -- recomputed on write
-        var itemName = reader.ReadCString();
-
-        // Nothing follows the item name in either sample, but don't
-        // silently drop anything if a future capture has a trailer.
-        var remainder = reader.RemainingBytes().ToArray();
-
-        var newPlayerName = ResolvePlayerName(playerName);
-        var newItemName = ResolveItemName(itemName);
-
-        if (newPlayerName == playerName && newItemName == itemName) return;
+        var changed1 = new1 != field1.Text;
+        var changed2 = field2 is { } f && new2 != f.Text;
+        if (!changed1 && !changed2) return;
 
         var writer = new PacketWriter();
-        writer.WriteBytes(header);
-
-        var playerBytes = Encoding.UTF8.GetBytes(newPlayerName);
-        writer.WriteU32((uint)(playerBytes.Length + 1)); // +1 for null terminator
-        writer.WriteCString(newPlayerName);
-
-        var itemBytes = Encoding.UTF8.GetBytes(newItemName);
-        writer.WriteU32((uint)(itemBytes.Length + 1)); // +1 for null terminator
-        writer.WriteCString(newItemName);
-
-        writer.WriteBytes(remainder);
+        writer.WriteBytes(_raw.AsSpan(0, HeaderBytes));
+        WriteField(writer, field1, changed1 ? new1 : null);
+        if (field2 is { } g) WriteField(writer, g, changed2 ? new2 : null);
+        writer.WriteBytes(_raw.AsSpan(remainderStart));
         ModifiedData = writer.Build();
     }
 
-    private string ResolvePlayerName(string japanese)
+    // A length-prefixed string field: where it starts (at the u32), how many
+    // bytes it spans in total (u32 + string bytes), and its decoded text.
+    private readonly record struct Field(int Start, int Span, string Text);
+
+    private Field ReadField(ref int pos, string what)
+    {
+        if (pos + 4 > _raw.Length)
+            throw new PacketLayoutException($"{what}: no room for a length field at offset {pos}", pos);
+
+        var start = pos;
+        var len = BinaryPrimitives.ReadUInt32LittleEndian(_raw.AsSpan(pos, 4));
+        pos += 4;
+
+        if (len == 0) return new Field(start, 4, ""); // absent string: nothing follows
+
+        if (len > MaxStringBytes || len > (uint)(_raw.Length - pos))
+            throw new PacketLayoutException($"{what}: length {len} at offset {start} doesn't fit", start);
+        if (_raw[pos + (int)len - 1] != 0)
+            throw new PacketLayoutException($"{what}: the {len}-byte string at offset {pos} doesn't end in a null", start);
+
+        var text = Encoding.UTF8.GetString(_raw, pos, (int)len - 1);
+        pos += (int)len;
+        return new Field(start, pos - start, text);
+    }
+
+    // Untranslated fields are copied back exactly as they arrived.
+    private void WriteField(PacketWriter writer, Field field, string? replacement)
+    {
+        if (replacement == null)
+        {
+            writer.WriteBytes(_raw.AsSpan(field.Start, field.Span));
+            return;
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(replacement);
+        writer.WriteU32((uint)(bytes.Length + 1)); // +1 for the null terminator
+        writer.WriteBytes(bytes);
+        writer.WriteU8(0);
+    }
+
+    private string ResolveText1(string japanese, bool allowRomaji)
     {
         if (string.IsNullOrEmpty(japanese) || !Translator.IsTextJapanese(japanese)) return japanese;
-        var dict = _deps.M00Dict("local_player_names");
-        if (dict.TryGetValue(japanese, out var known) && !string.IsNullOrEmpty(known)) return known;
-        return _deps.Romanizer.ToRomaji(japanese);
+
+        foreach (var file in new[] { "custom_trainee_logbook", "custom_episode_request_book", "local_player_names" })
+        {
+            var dict = _deps.M00Dict(file);
+            if (dict.TryGetValue(japanese, out var known) && !string.IsNullOrEmpty(known)) return known;
+        }
+
+        // Only the Sugoroku shape (an item name follows) is known to carry a
+        // player name here; anything else that missed the dictionaries stays Japanese.
+        return allowRomaji ? _deps.Romanizer.ToRomaji(japanese) : japanese;
     }
 
     // No romaji fallback -- a miss passes through as the original Japanese

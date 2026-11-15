@@ -12,8 +12,14 @@ namespace DqxClarity.Packets.Types;
 //   ...
 //
 // All strings are looked up in m00 'custom_master_quests'; misses pass through.
-// Trailing nulls between strings are preserved verbatim to keep packet structure
-// identical for unmapped users.
+//
+// Everything after the header is walked as null-terminated segments IN PLACE:
+// only segments that are valid text and actually get translated are replaced,
+// and every other byte -- empty strings, runs of nulls, anything that isn't
+// text, an unterminated tail -- stays exactly where it was. (An earlier version
+// split the whole tail on nulls and re-emitted the strings followed by all the
+// empty ones, which moved any empty string sitting between two others to the
+// end, and it rebuilt the packet even when nothing was translated.)
 //
 // The quest NAME (not the objectives) is capped at 34 UTF-8 bytes PER LINE --
 // per the user, this is a real client-side UI limitation, but only for
@@ -39,15 +45,10 @@ namespace DqxClarity.Packets.Types;
 public sealed class MasterQuestPacket : IPacket
 {
     private const int HeaderBytes = 52;
+    private const int MaxNameBytesPerLine = 34;
 
     private readonly byte[] _raw;
     private readonly PacketDependencies _deps;
-
-    private byte[] _header = Array.Empty<byte>();
-    private string _questName = "";
-    private readonly List<string> _objectives = new();
-    private int _trailingNulls;
-    private bool _unlocked;
 
     public byte[]? ModifiedData { get; private set; }
 
@@ -55,114 +56,54 @@ public sealed class MasterQuestPacket : IPacket
     {
         _raw = payloadData;
         _deps = deps;
-        Parse();
-    }
-
-    private void Parse()
-    {
-        if (_raw.Length < HeaderBytes)
-        {
-            _unlocked = false;
-            return;
-        }
-
-        _header = _raw.AsSpan(0, HeaderBytes).ToArray();
-        var rest = _raw.AsSpan(HeaderBytes).ToArray();
-
-        // Split on \x00, count empty entries as the trailing-null count and drop them.
-        // The very last string in the buffer was null-terminated too, so subtract one if we found any.
-        var splits = SplitNull(rest);
-        var nullCount = splits.Count(s => s.Length == 0);
-        if (nullCount > 0) nullCount -= 1;
-        _trailingNulls = nullCount;
-
-        var strings = splits.Where(s => s.Length > 0)
-                            .Select(b => Encoding.UTF8.GetString(b))
-                            .ToList();
-
-        if (strings.Count == 0) { _unlocked = false; return; }
-
-        _unlocked = true;
-        _questName = strings[0];
-        _objectives.AddRange(strings.Skip(1));
     }
 
     public void Build()
     {
-        if (!_unlocked) return;
+        if (_raw.Length < HeaderBytes) return; // locked / empty entry: nothing to translate
+
+        // Null-terminated text segments after the header, in order.
+        var segments = new List<(int Start, int Length, string Text)>();
+        var pos = HeaderBytes;
+        while (pos < _raw.Length)
+        {
+            var nul = Array.IndexOf(_raw, (byte)0, pos);
+            if (nul < 0) break; // unterminated tail: leave it alone
+            var len = nul - pos;
+            if (len > 0 && PacketText.TryDecode(_raw.AsSpan(pos, len), out var text, allowLineBreaks: true))
+                segments.Add((pos, len, text));
+            pos = nul + 1;
+        }
+        if (segments.Count == 0) return;
 
         var dict = _deps.M00Dict("custom_master_quests");
+        var patch = new PacketPatch(_raw);
 
-        var writer = new PacketWriter();
-        writer.WriteBytes(_header);
+        // First string is the quest name; the rest are objectives.
+        var (nameStart, nameLength, name) = segments[0];
+        var resolvedName = ResolveQuestName(dict, name);
+        if (resolvedName != name && !string.IsNullOrEmpty(resolvedName))
+            patch.ReplaceText(nameStart, nameLength, TruncatePerLine(resolvedName, MaxNameBytesPerLine));
 
-        // Only cap when an actual translation was applied -- the 34-byte
-        // limit is a UI constraint for rendering English text, it doesn't
-        // apply to the original Japanese (see class doc comment).
-        var resolvedName = ResolveQuestName(dict, _questName);
-        var name = resolvedName == _questName ? resolvedName : TruncatePerLine(resolvedName, 34);
-        writer.WriteCString(name);
-        foreach (var obj in _objectives)
-            writer.WriteCString(dict.GetValueOrDefault(obj, obj));
-
-        if (_trailingNulls > 0) writer.WriteBytes(new byte[_trailingNulls]);
-
-        ModifiedData = writer.Build();
-    }
-
-    private static List<byte[]> SplitNull(byte[] data)
-    {
-        var parts = new List<byte[]>();
-        var start = 0;
-        for (var i = 0; i < data.Length; i++)
+        foreach (var (start, length, objective) in segments.Skip(1))
         {
-            if (data[i] == 0)
-            {
-                parts.Add(data.AsSpan(start, i - start).ToArray());
-                start = i + 1;
-            }
+            if (!dict.TryGetValue(objective, out var en) || string.IsNullOrEmpty(en) || en == objective) continue;
+            patch.ReplaceText(start, length, en);
         }
-        if (start <= data.Length) parts.Add(data.AsSpan(start).ToArray());
-        return parts;
+
+        if (patch.HasEdits) ModifiedData = patch.Build();
     }
 
-    // Looks the quest name up in the dictionary. The name the server sends
-    // ends in a newline (e.g. "...強討伐！\n"), but dictionary keys are often
-    // written without it, which used to make the lookup miss and leave the
-    // Japanese name in place. So: exact match first, then retry with the
-    // trailing newlines stripped, and put the same trailing newlines back on
-    // the translation so the name keeps the shape the client expects. A
-    // translation that already ends in a newline isn't given extras.
     private static string ResolveQuestName(Dictionary<string, string> dict, string name)
     {
-        if (dict.TryGetValue(name, out var exact)) return exact;
-
+        if (dict.TryGetValue(name, out var exact) && !string.IsNullOrEmpty(exact)) return exact;
         var trimmed = name.TrimEnd('\n');
         if (trimmed.Length == name.Length || trimmed.Length == 0) return name;
-
         if (!dict.TryGetValue(trimmed, out var found) || string.IsNullOrEmpty(found)) return name;
-
         var suffix = name[trimmed.Length..];
         return found.EndsWith('\n') ? found : found + suffix;
     }
 
-    // Applies the byte cap to each newline-separated line independently.
     private static string TruncatePerLine(string s, int maxBytesPerLine) =>
-        string.Join("\n", s.Split('\n').Select(line => TruncateUtf8(line, maxBytesPerLine)));
-
-    private static string TruncateUtf8(string s, int maxBytes)
-    {
-        var bytes = Encoding.UTF8.GetByteCount(s);
-        if (bytes <= maxBytes) return s;
-        var sb = new StringBuilder();
-        var running = 0;
-        foreach (var c in s)
-        {
-            var cb = Encoding.UTF8.GetByteCount(new[] { c });
-            if (running + cb > maxBytes) break;
-            sb.Append(c);
-            running += cb;
-        }
-        return sb.ToString();
-    }
+        string.Join("\n", s.Split('\n').Select(line => PacketPatch.TruncateUtf8(line, maxBytesPerLine)));
 }
