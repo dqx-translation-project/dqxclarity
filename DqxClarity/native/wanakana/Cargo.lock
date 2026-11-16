@@ -31,9 +31,9 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "wana_kana"
-version = "4.0.0"
+version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a74666202acfcb4f9b995be2e3e9f7f530deb65e05a1407b8d0b30c9c451238a"
+checksum = "377032e42ca0992cc94e7fa7ee6645a125978019a4961f933e3cf5eceb9c4ae0"
 dependencies = [
  "fnv",
  "itertools",
