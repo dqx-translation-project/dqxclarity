@@ -133,6 +133,18 @@ public sealed class ClarityRuntime : IDisposable
         _translator.UpdateBackend(backend);
     }
 
+    // The active language pack's text settings (ClpkTextOptions): whether
+    // translated text is kept as-is instead of being reduced to plain ASCII, and
+    // the NPC dialogue box size. Same reason as UpdateBackend: the runtime
+    // outlives every Run click, so MainViewModel.OnRunRequested pushes the
+    // current pack's values in each time.
+    public void UpdateTextOptions(Models.ClpkTextOptions options)
+    {
+        _translator.UpdateTextOptions(options.DisableTextNormalization);
+        _deps.DialogueCharsPerLine = options.MaxCharsPerLine;
+        _deps.DialogueLinesPerBox = options.MaxLinesPerBox;
+    }
+
     public void RefreshNameOverrides()
     {
         _db.ImportNameOverrides();

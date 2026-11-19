@@ -129,9 +129,11 @@
                 <ScrollViewer x:Name="TabScroll"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto"
-                              ScrollViewer.AllowAutoHide="False"
-                              Padding="14,12">
-                    <StackPanel MaxWidth="620" Margin="0,0,0,12">
+                              ScrollViewer.AllowAutoHide="False">
+                    <!-- Spacing lives on the content, not ScrollViewer.Padding: with
+                         Padding the scroll range came up short and the bottom of the
+                         Advanced tab (Build .clpk) couldn't be scrolled to. -->
+                    <StackPanel MaxWidth="620" Margin="14,12,14,24">
 
                         <!-- ══ GENERAL TAB ══════════════════════════════ -->
                         <StackPanel x:Name="PanelGeneral" Spacing="14">
@@ -266,7 +268,10 @@
                             <Border Classes="fieldset"
                                     ToolTip.Tip="Stamps a CLPK header (sha256 + metadata) onto a plain .zip so it can be distributed and verified as a Clarity language pack.">
                                 <StackPanel Spacing="8">
-                                    <TextBlock Classes="legend" Text="Build language pack (CLPK)" Margin="0,0,0,0"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,0">
+                                        <TextBlock Classes="legend" Text="Build Clarity Language Pack (CLPK)" Margin="0" VerticalAlignment="Center"/>
+                                        <Button Classes="ghost" FontSize="11" Padding="2,0" VerticalAlignment="Center" Click="OnClpkHelpClick">?</Button>
+                                    </StackPanel>
                                     <Grid ColumnDefinitions="*,Auto">
                                         <TextBox Grid.Column="0"
                                                  IsReadOnly="True"
@@ -305,7 +310,42 @@
                                                  Text="{Binding ClpkDownloadUrl}"
                                                  ToolTip.Tip="Optional URL stamped into the CLPK metadata; overrides the manifest's download URL when set."/>
                                     </Grid>
-                                    <Button Command="{Binding BuildClpkCommand}"
+                                    <!-- Options for packs that ship the dialogue plugin. Hidden until asked
+                                         for, so nobody changes them by accident. Values entered here are
+                                         still used when hidden again. -->
+                                    <Button Click="OnClpkPluginOptionsClick"
+                                            HorizontalAlignment="Left"
+                                            ToolTip.Tip="Show or hide settings that only work when your pack includes the dialogue plugin.">Additional Plugin Options</Button>
+                                    <StackPanel x:Name="ClpkPluginOptions"
+                                                Spacing="8"
+                                                Margin="12,0,0,0"
+                                                IsVisible="{Binding ShowClpkPluginOptions}">
+                                        <CheckBox Content="Disable text normalization"
+                                                  IsChecked="{Binding ClpkDisableTextNormalization}"
+                                                  ToolTip.Tip="When checked, machine-translated text keeps characters like ñ, é and ü instead of being stripped out."/>
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="Max characters per line:"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,8,0"/>
+                                            <TextBox Grid.Column="1"
+                                                     Text="{Binding ClpkMaxCharsPerLine}"
+                                                     Watermark="46 (default)"
+                                                     ToolTip.Tip="How many characters fit on one line of a dialogue box. Leave blank to use the default of 46."/>
+                                        </Grid>
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="Max lines per dialogue box:"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,8,0"/>
+                                            <TextBox Grid.Column="1"
+                                                     Text="{Binding ClpkMaxLinesPerBox}"
+                                                     Watermark="3 (default)"
+                                                     ToolTip.Tip="How many lines fit in a single dialogue box before a break. Leave blank to use the default of 3."/>
+                                        </Grid>
+                                    </StackPanel>
+                                    <Button x:Name="ClpkBuildButton"
+                                            Command="{Binding BuildClpkCommand}"
                                             ToolTip.Tip="Hash the input .zip and write a .clpk container with the metadata above.">Build .clpk</Button>
                                     <TextBlock Text="{Binding ClpkBuildStatus}"
                                                FontSize="11" TextWrapping="Wrap"

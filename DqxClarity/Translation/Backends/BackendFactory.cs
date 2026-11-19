@@ -15,7 +15,8 @@ public static class BackendFactory
 
         return (config.TranslateService ?? "none").ToLowerInvariant() switch
         {
-            "deepl"             => new DeepLBackend(config.TranslateKey, lang),
+            "deepl"             => new DeepLBackend(config.TranslateKey, lang,
+                                                    asciiOnly: !config.TextOptions.DisableTextNormalization),
             "google"            => new GoogleBackend(config.TranslateKey, lang),
             "chatgpt"           => new ChatGPTBackend(config.TranslateKey, config.ChatGptModel, langName),
             "ollama"            => new OllamaBackend(config.OllamaUrl, config.OllamaModel, langName),

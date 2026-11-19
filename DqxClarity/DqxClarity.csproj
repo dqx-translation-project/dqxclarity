@@ -29,6 +29,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Lets the test project (DqxClarity.Tests) reach internal helpers such as TextWrapping. -->
+    <InternalsVisibleTo Include="DqxClarity.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
     <AvaloniaResource Include="Styles\**" />
   </ItemGroup>

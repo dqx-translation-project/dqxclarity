@@ -548,12 +548,37 @@ public class LanguagePackService
     }
 
     /// <summary>
+    /// The text settings (normalization, dialogue line/box limits) a pack in the language-packs
+    /// folder asks for, read from its CLPK header. Defaults for a missing file, a plain zip, a
+    /// header without these fields, or any read error -- this never throws.
+    /// </summary>
+    public ClpkTextOptions ReadTextOptions(string? packFileName)
+    {
+        if (string.IsNullOrWhiteSpace(packFileName)) return ClpkTextOptions.Default;
+        try
+        {
+            var path = Path.Combine(SourceLanguagePacksDir(), Path.GetFileName(packFileName));
+            if (!File.Exists(path)) return ClpkTextOptions.Default;
+
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            return ClpkFormat.TryReadHeader(fs, out var meta, out _, out _)
+                ? ClpkTextOptions.From(meta)
+                : ClpkTextOptions.Default;
+        }
+        catch
+        {
+            return ClpkTextOptions.Default;
+        }
+    }
+
+    /// <summary>
     /// Builds a CLPK container from a plain input .zip: validates the input is a zip, hashes it, and
     /// stamps a CLPK header (sha256 + metadata) in front of the payload. Overwrites the output if it
     /// already exists. File IO and hashing run on a background thread.
     /// </summary>
     public async Task BuildClpkAsync(string inputZipPath, string outputClpkPath,
-        string author, string language, string downloadUrl)
+        string author, string language, string downloadUrl,
+        bool disableTextNormalization = false, int? maxCharsPerLine = null, int? maxLinesPerBox = null)
     {
         if (string.IsNullOrWhiteSpace(inputZipPath) || !File.Exists(inputZipPath))
             throw new FileNotFoundException($"Input zip file not found: {inputZipPath}");
@@ -572,6 +597,10 @@ public class LanguagePackService
                 Language    = language ?? "",
                 BuiltAt     = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 DownloadUrl = downloadUrl ?? "",
+                // Optional text settings: left out of the header when not set.
+                DisableTextNormalization = disableTextNormalization,
+                MaxCharsPerLine = maxCharsPerLine,
+                MaxLinesPerBox  = maxLinesPerBox,
             };
 
             using var output = new FileStream(outputClpkPath, FileMode.Create, FileAccess.Write, FileShare.None);

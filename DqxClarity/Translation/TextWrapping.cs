@@ -94,32 +94,29 @@ internal static class TextWrapping
         }
     }
 
+    public const int DefaultLinesPerBox = 3;
+
     // Injects <br> as a separate line every 3 wrapped lines so dialog windows page correctly.
     // Drops trailing empty lines.
-    public static string InjectBrEvery3Lines(string text)
+    public static string InjectBrEvery3Lines(string text) => InjectBrEveryNLines(text, DefaultLinesPerBox);
+
+    // Same, for a dialogue box that holds `linesPerBox` lines: a <br> line goes in
+    // after every `linesPerBox` lines of text. With 3 this is exactly what
+    // InjectBrEvery3Lines always did (<br> at positions 3, 7, 11, ...).
+    public static string InjectBrEveryNLines(string text, int linesPerBox)
     {
+        if (linesPerBox < 1) linesPerBox = DefaultLinesPerBox;
+
         var lines = text.Split('\n').ToList();
-        // inserts at positions 3, 7, 11, ... (every 4 with offset 3).
-        // when the index is out of range, falls back to joining non-empty lines.
-        var insertAt = new List<int> { };
-        for (var i = 3; i < 500; i += 4) insertAt.Add(i);
 
-        try
-        {
-            foreach (var idx in insertAt)
-            {
-                // out-of-bounds triggers the fallback path below
-                if (idx >= lines.Count) throw new IndexOutOfRangeException();
-                lines.Insert(idx, "<br>");
-            }
-        }
-        catch (IndexOutOfRangeException)
-        {
-            // fall back: strip empty lines and rejoin
-            lines = lines.Where(s => !string.IsNullOrEmpty(s)).ToList();
-            return string.Join('\n', lines);
-        }
+        // A <br> goes at index n, then every n + 1 after that (each <br> already
+        // inserted shifts the rest down by one). Stops at the first position past
+        // the end of the text.
+        for (var idx = linesPerBox; idx < lines.Count; idx += linesPerBox + 1)
+            lines.Insert(idx, "<br>");
 
-        return string.Join('\n', lines);
+        // Drop empty lines (this is what the original always ended up doing: it
+        // ran off the end of the list and fell back to stripping them).
+        return string.Join('\n', lines.Where(l => !string.IsNullOrEmpty(l)));
     }
 }

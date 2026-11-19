@@ -30,6 +30,63 @@ public record ClpkMetadata
     /// launcher also falls back to the catalog's URL for the language if a pack omits it.</summary>
     [JsonPropertyName("download_url")]
     public string DownloadUrl { get; init; } = "";
+
+    // ── Optional text settings ──────────────────────────────────────────
+    // For packs meant to be used with a game mod that can draw accented
+    // characters and resize the dialogue box. All three are left out of the
+    // JSON when unset, so a pack that doesn't use them has exactly the header
+    // it always had, and older dqxclarity versions (which ignore unknown
+    // fields) read newer packs fine. See ClpkTextOptions for how they're applied.
+
+    /// <summary>True to keep machine-translated text as the service returned it (ñ, é, ü, ...)
+    /// instead of reducing it to plain ASCII.</summary>
+    [JsonPropertyName("disable_text_normalization")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool DisableTextNormalization { get; init; }
+
+    /// <summary>Characters per line in the dialogue box. Null = the default (46).</summary>
+    [JsonPropertyName("max_chars_per_line")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? MaxCharsPerLine { get; init; }
+
+    /// <summary>Lines per dialogue box before a page break. Null = the default (3).</summary>
+    [JsonPropertyName("max_lines_per_box")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? MaxLinesPerBox { get; init; }
+}
+
+/// <summary>
+/// The text settings a language pack asks for, with defaults filled in and out-of-range values
+/// replaced by the default -- what the translation logic actually uses.
+/// </summary>
+public readonly record struct ClpkTextOptions(bool DisableTextNormalization, int MaxCharsPerLine, int MaxLinesPerBox)
+{
+    public const int DefaultMaxCharsPerLine = 46;
+    public const int DefaultMaxLinesPerBox = 3;
+
+    // Accepted ranges. Anything outside them (0, negative, absurdly large) is
+    // treated as "not set", so a bad value in a pack can't break dialogue.
+    public const int MinCharsPerLine = 10;
+    public const int MaxCharsPerLineLimit = 200;
+    public const int MinLinesPerBox = 1;
+    public const int MaxLinesPerBoxLimit = 20;
+
+    public static ClpkTextOptions Default { get; } =
+        new(false, DefaultMaxCharsPerLine, DefaultMaxLinesPerBox);
+
+    public bool IsDefault => this == Default;
+
+    public static bool IsValidCharsPerLine(int value) => value >= MinCharsPerLine && value <= MaxCharsPerLineLimit;
+    public static bool IsValidLinesPerBox(int value) => value >= MinLinesPerBox && value <= MaxLinesPerBoxLimit;
+
+    public static ClpkTextOptions From(ClpkMetadata? meta)
+    {
+        if (meta == null) return Default;
+        return new ClpkTextOptions(
+            meta.DisableTextNormalization,
+            meta.MaxCharsPerLine is { } chars && IsValidCharsPerLine(chars) ? chars : DefaultMaxCharsPerLine,
+            meta.MaxLinesPerBox is { } lines && IsValidLinesPerBox(lines) ? lines : DefaultMaxLinesPerBox);
+    }
 }
 
 /// <summary>
@@ -50,6 +107,8 @@ public static class ClpkFormat
 
     private static readonly byte[] MagicBytes = "CLPK"u8.ToArray();
 
+    // Never-ignore is the default; the optional text settings opt out per property
+    // (see ClpkMetadata) so they only appear in the JSON when a pack sets them.
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.Never,

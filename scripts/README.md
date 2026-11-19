@@ -81,13 +81,29 @@ Header metadata:
 - `language` is an ISO code (`en`, `fr`, …). dqxclarity shows its display name (English, French) via `CultureInfo` and uses it as the pack's identity.
 - `builtAt` is a Unix timestamp (seconds); shown as the pack's "updated" date.
 - `sha` is the SHA-256 of the ZIP payload, verified on download.
-- `downloadUrl` (optional) — a self-describing update URL. The official packs omit it; dqxclarity then uses the catalog's URL for that language to check for updates.
+- `download_url` (optional) — a self-describing update URL. When a pack omits it, dqxclarity uses the catalog's URL for that language to check for updates.
+
+Optional text settings, for packs meant to be used with a game mod that can display accented characters and resize the dialogue box. Leave them out for the defaults; dqxclarity reads them from the highest-priority active pack each time Run is clicked:
+
+```json
+{
+  "disable_text_normalization": true,
+  "max_chars_per_line": 60,
+  "max_lines_per_box": 4
+}
+```
+
+- `disable_text_normalization` — `true` keeps machine-translated text as the translation service returned it (ñ, é, ü, …). By default it is reduced to plain ASCII, because the unmodded game can't draw those characters.
+- `max_chars_per_line` — characters per line in the NPC dialogue box. Default 46; accepted range 10–200.
+- `max_lines_per_box` — lines in one dialogue box before the text continues on the next page. Default 3; accepted range 1–20.
+
+A value outside its range is ignored and the default is used. These settings affect machine-translated text only; translations already saved in `clarity_dialog.db` keep the shape they were saved with.
 
 The **entire ZIP payload** is extracted into the game's `Game\mods` folder. There is no per-file manifest — the dragonhook proxy serves every loose file under `Game\mods` in place of the packed DAT archives.
 
 ### Building a pack
 
-Use dqxclarity's **Advanced → Build language pack (CLPK)** tool: choose a plain `.zip` of your loose game files, set the author and language (and an optional download URL), and it stamps the header — computing the `sha` and `builtAt` — into a `.clpk`.
+Use dqxclarity's **Advanced → Build language pack (CLPK)** tool: choose a plain `.zip` of your loose game files, set the author and language (and optionally a download URL and the text settings above), and it stamps the header — computing the `sha` and `builtAt` — into a `.clpk`.
 
 dqxclarity scans the `dqxclarity/language-packs` folder for `*.clpk` (and `*.zip` whose contents are a CLPK).
 
