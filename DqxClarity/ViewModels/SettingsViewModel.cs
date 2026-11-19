@@ -64,6 +64,13 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _clpkAuthor = "";
     [ObservableProperty] private string _clpkLanguage = "en";
     [ObservableProperty] private string _clpkDownloadUrl = "";
+    // Optional text settings stamped into the header (see ClpkTextOptions). The two
+    // numbers are text boxes so "blank" can mean "use the default".
+    [ObservableProperty] private bool   _clpkDisableTextNormalization;
+    [ObservableProperty] private string _clpkMaxCharsPerLine = "";
+    [ObservableProperty] private string _clpkMaxLinesPerBox = "";
+    // Whether the "Additional Plugin Options" above are shown. View-only; not saved.
+    [ObservableProperty] private bool   _showClpkPluginOptions;
     [ObservableProperty] private string _clpkBuildStatus = "";
     [ObservableProperty] private bool   _clpkBuildStatusIsError;
 
@@ -82,6 +89,19 @@ public partial class SettingsViewModel : ObservableObject
         ClpkInputZipPath = path;
     }
 
+    // Blank (or only spaces) -> true with null. A whole number the check accepts
+    // -> true with that number. Anything else -> false.
+    private static bool TryParseOptionalNumber(string? text, Func<int, bool> isValid, out int? value)
+    {
+        value = null;
+        if (string.IsNullOrWhiteSpace(text)) return true;
+        if (!int.TryParse(text.Trim(), System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out var n) || !isValid(n))
+            return false;
+        value = n;
+        return true;
+    }
+
     [RelayCommand]
     private async Task BuildClpk()
     {
@@ -92,6 +112,22 @@ public partial class SettingsViewModel : ObservableObject
         }
         if (SaveClpkFileRequested == null) return;
 
+        // Blank = leave it out of the pack (dqxclarity then uses the default).
+        if (!TryParseOptionalNumber(ClpkMaxCharsPerLine, ClpkTextOptions.IsValidCharsPerLine, out var maxChars))
+        {
+            SetClpkBuildStatus(
+                $"Max characters per line must be a whole number from {ClpkTextOptions.MinCharsPerLine} to " +
+                $"{ClpkTextOptions.MaxCharsPerLineLimit}, or blank for the default ({ClpkTextOptions.DefaultMaxCharsPerLine}).", true);
+            return;
+        }
+        if (!TryParseOptionalNumber(ClpkMaxLinesPerBox, ClpkTextOptions.IsValidLinesPerBox, out var maxLines))
+        {
+            SetClpkBuildStatus(
+                $"Max lines per dialogue box must be a whole number from {ClpkTextOptions.MinLinesPerBox} to " +
+                $"{ClpkTextOptions.MaxLinesPerBoxLimit}, or blank for the default ({ClpkTextOptions.DefaultMaxLinesPerBox}).", true);
+            return;
+        }
+
         try
         {
             var suggested = Path.GetFileNameWithoutExtension(ClpkInputZipPath) + ".clpk";
@@ -100,7 +136,8 @@ public partial class SettingsViewModel : ObservableObject
 
             SetClpkBuildStatus("Building...");
             await _languagePacks.BuildClpkAsync(ClpkInputZipPath, outputPath,
-                ClpkAuthor, ClpkLanguage, ClpkDownloadUrl);
+                ClpkAuthor, ClpkLanguage, ClpkDownloadUrl,
+                ClpkDisableTextNormalization, maxChars, maxLines);
             SetClpkBuildStatus($"Built {Path.GetFileName(outputPath)}.");
         }
         catch (Exception ex)
@@ -804,8 +841,17 @@ public partial class SettingsViewModel : ObservableObject
             CommunityApiKey    = CommunityApiKey,
             TargetLanguage     = langCode,
             TargetLanguageName = langName,
+            TextOptions        = ResolvePackTextOptions(),
         };
     }
+
+    // Text settings (normalisation, dialogue box size) come straight from the
+    // header of the highest-priority active language pack -- the same pack that
+    // decides the translation language -- every time this is built, so they
+    // follow a pack update without anything needing to be toggled. Defaults when
+    // no pack is active or the pack doesn't set them.
+    private ClpkTextOptions ResolvePackTextOptions() =>
+        _languagePacks.ReadTextOptions(GetActiveLanguagePackFileNames().FirstOrDefault());
 
     // The machine-translation language always comes from [translation] target_language /
     // target_language_name in user_settings.ini, never straight from the pack list. Turning a

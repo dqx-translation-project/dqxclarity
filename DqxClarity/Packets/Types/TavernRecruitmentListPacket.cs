@@ -17,12 +17,12 @@ namespace DqxClarity.Packets.Types;
 // The stride is no longer a constant: it is worked out from the packet as
 // (Data length - header) / record count, so a future patch that only grows or
 // shrinks the records keeps working. The record count comes from the u32 at
-// header offset 0x18 (always 20 so far; the constant is the fallback). Every
-// record is then checked against its index marker -- u32(any), u32(index),
-// u32(0), with the index running up by one per record -- and a packet whose
-// records do not line up is left completely untouched and reported
-// (PacketLayoutException -> MismatchReporter) instead of being rewritten at
-// the wrong offsets.
+// header offset 0x18 (20 for the full board; 6 in a smaller list -- see
+// below; the constant 20 is the fallback). Every record is then checked
+// against its index marker -- u32(any), u32(non-zero index), u32(0) -- and a
+// packet whose records do not line up is left completely untouched and
+// reported (PacketLayoutException -> MismatchReporter) instead of being
+// rewritten at the wrong offsets.
 //
 // The index does NOT always start at 1. A later capture (same 235-byte
 // records, name still at record offset 12) numbers its 20 listings 21..40, and
@@ -33,6 +33,15 @@ namespace DqxClarity.Packets.Types;
 // first populated record sets the starting value and every later record must
 // then be exactly one more than the one before it. Checking for 1..20 made the
 // whole packet get rejected as a layout mismatch.
+//
+// 2026-11 UPDATE: the index doesn't have to count up at all. A 6-listing
+// capture (record count 6 in the header, 28 + 6 x 235 = 1438 bytes) numbers its
+// listings 41, 42, 43, 20, 9, 44 -- apparently a filtered/partial view of the
+// board -- and the "one more than the last" rule rejected it at listing 4. The
+// index is now only required to be non-zero (and the third u32 zero); the
+// record boundaries are still pinned down by the stride dividing the packet
+// exactly, the marker shape on every populated record, and the name slots
+// holding text.
 //
 // Note on the old reference sample (docs/packets/references/
 // tavern_recruitment_list): it was stored with LF -> CRLF conversion applied
@@ -52,9 +61,9 @@ namespace DqxClarity.Packets.Types;
 //                 Passthrough; used to verify the record boundaries. The
 //                 first number was 1 in the pre-8.1 capture, 2 in every
 //                 listing of the first 8.1 capture and 1 again in the next
-//                 one, so it is NOT checked. The index was 1..20 in the first
-//                 two captures and 21..40 in the third (see above), so it is
-//                 only checked to count up by one per record.
+//                 one, so it is NOT checked. The index was 1..20 and 21..40
+//                 in earlier captures and 41, 42, 43, 20, 9, 44 in a later
+//                 one (see above), so it is only checked to be non-zero.
 //   name          cstring (utf-8, null-terminated) starting at record
 //                 offset 0x0C. May start with a decorative "~", so the whole
 //                 null-terminated string is read.
@@ -83,7 +92,8 @@ namespace DqxClarity.Packets.Types;
 //
 // Samples: docs/packets/references/tavern_recruitment_list (pre-8.1, 231-byte records),
 //          tavern_recruitment_list_2 (8.1, 235-byte records, index 1..20),
-//          tavern_recruitment_list_3 (8.1, 235-byte records, index 21..40)
+//          tavern_recruitment_list_3 (8.1, 235-byte records, index 21..40),
+//          tavern_recruitment_list_4 (6 listings, index 41, 42, 43, 20, 9, 44)
 public sealed class TavernRecruitmentListPacket : IPacket
 {
     private const int HeaderBytes = 0x1C;
@@ -121,14 +131,13 @@ public sealed class TavernRecruitmentListPacket : IPacket
         var changed = false;
         var populated = 0;
         var readable = 0;
-        long? indexBase = null; // listing index of record 0, worked out from the first populated record
 
         for (var r = 0; r < recordCount; r++)
         {
             var recordStart = HeaderBytes + r * stride;
             var recordEnd = recordStart + stride;
 
-            if (!MarkerMatches(recordStart, r, indexBase))
+            if (!MarkerMatches(recordStart))
             {
                 // An unused slot is all zeros; anything else means the records
                 // are not where we think they are.
@@ -138,7 +147,6 @@ public sealed class TavernRecruitmentListPacket : IPacket
                     recordStart);
             }
 
-            indexBase ??= (long)BitConverter.ToUInt32(_raw, recordStart + 4) - r;
             populated++;
 
             var nameStart = recordStart + NameFieldOffset;
@@ -194,18 +202,19 @@ public sealed class TavernRecruitmentListPacket : IPacket
 
     private static bool StrideOk(int stride) => stride >= MinRecordStride && stride <= MaxRecordStride;
 
-    // `indexBase` is the listing index record 0 has (or would have), known once a populated
-    // record has been seen. The first populated record may start anywhere (other than 0);
-    // after that, record r must carry exactly indexBase + r, even across an unused slot.
-    private bool MarkerMatches(int offset, int recordNumber, long? indexBase)
+    // A populated record starts with u32(kind), u32(listing index), u32(0). The
+    // kind is a flag (1 and 2 both seen) and the index is a listing number that
+    // need not be in order (41, 42, 43, 20, 9, 44 seen), so only a non-zero,
+    // plausible index and the trailing zero identify a record.
+    private const uint MaxListingIndex = 0xFFFF;
+
+    private bool MarkerMatches(int offset)
     {
         if (offset + MarkerBytes > _raw.Length) return false;
         if (BitConverter.ToUInt32(_raw, offset + 8) != 0) return false;
 
-        // The first u32 is a kind/flag (1 and 2 both seen), so only the listing index
-        // and the trailing zero identify a record.
         var index = BitConverter.ToUInt32(_raw, offset + 4);
-        return indexBase is null ? index != 0 : index == indexBase.Value + recordNumber;
+        return index != 0 && index <= MaxListingIndex;
     }
 
     private bool IsZero(int offset, int count)

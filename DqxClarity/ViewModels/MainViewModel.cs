@@ -266,7 +266,16 @@ public partial class MainViewModel : ObservableObject
 
         // Translation service, api key and model: the backend was built once from
         // the settings on disk at startup. Rebuild it from what is on screen now.
-        try { _runtime?.UpdateBackend(BackendFactory.Create(Settings.BuildTranslationConfig())); }
+        // The same config also carries the active language pack's text settings
+        // (accented characters kept or not, dialogue box size).
+        ClpkTextOptions? packText = null;
+        try
+        {
+            var translation = Settings.BuildTranslationConfig();
+            _runtime?.UpdateBackend(BackendFactory.Create(translation));
+            _runtime?.UpdateTextOptions(translation.TextOptions);
+            packText = translation.TextOptions;
+        }
         catch (Exception ex) { Log.AppendLine($"Could not apply translation settings: {ex.Message}", "error"); }
 
         // Name overrides: re-import name_overrides.json (saved by Settings.Run()
@@ -277,6 +286,13 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex) { Log.AppendLine($"Could not refresh name overrides: {ex.Message}", "error"); }
 
         Log.AppendLine("Translation runtime active. Pipe waiting for PacketWarden.dll.");
+
+        // Say so when the language pack changes how text is handled, so it's
+        // clear from the log why dialogue looks different.
+        if (packText is { IsDefault: false } text)
+            Log.AppendLine(
+                $"Language pack text settings: text normalization {(text.DisableTextNormalization ? "off" : "on")}, " +
+                $"{text.MaxCharsPerLine} characters per line, {text.MaxLinesPerBox} lines per dialogue box.");
 
         // Same prompt the pre-6.0 launcher gave: when the game is started separately
         // (official launcher, or "Simultaneous Launch" which only opens DQXBoot), tell

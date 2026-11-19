@@ -9,13 +9,19 @@ namespace DqxClarity.Translation.Backends;
 // API key format determines the host: free keys end with ":fx" -> api-free.deepl.com.
 public sealed class DeepLBackend : ITranslationBackend, IDisposable
 {
+    // Appended to one of the instructions below -- and left off when the active
+    // language pack turns text normalisation off, since that pack WANTS accented
+    // characters back.
+    private const string AsciiOnlyInstruction =
+        " Any text that's returned should only include ASCII character codes 33 through 127.";
+
     // Custom instructions passed to the model alongside each request.
     private static readonly string[] CustomInstructions =
     {
         "You are an expert translator and cultural localization specialist with deep knowledge of video game localization. Preserve the original tone, humor, personality, and emotional nuances of the dialogue, considering the unique style and atmosphere of Dragon Quest X.",
         "Adapt idioms, cultural references, and wordplay to resonate naturally with native English speakers while maintaining the fantasy RPG context. Avoid the overuse of profanity. Don't use the same word over and over.",
         "Maintain consistency in character voices, terminology, and naming conventions specific to Dragon Quest X throughout the translation.",
-        "Avoid literal translations that may lose the original intent or impact, especially for game-specific terms or lore elements. Any text that's returned should only include ASCII character codes 33 through 127.",
+        "Avoid literal translations that may lose the original intent or impact, especially for game-specific terms or lore elements." + AsciiOnlyInstruction,
         "Ensure the translation flows naturally and reads as if it were originally written in English, while staying true to the game's narrative style.",
         "Consider the context and subtext of the dialogue, including any references to the game's lore, world, or ongoing storylines.",
         "If a word, phrase, or name has been translated in a specific way, maintain that translation consistently unless the context demands otherwise, respecting established localization choices for Dragon Quest X.",
@@ -35,9 +41,13 @@ public sealed class DeepLBackend : ITranslationBackend, IDisposable
     private readonly HttpClient _http;
     private readonly string _endpoint;
     private readonly string _targetLang;
+    private readonly string[] _instructions;
 
-    public DeepLBackend(string apiKey, string targetLanguage = "en")
+    public DeepLBackend(string apiKey, string targetLanguage = "en", bool asciiOnly = true)
     {
+        _instructions = asciiOnly
+            ? CustomInstructions
+            : CustomInstructions.Select(i => i.Replace(AsciiOnlyInstruction, "")).ToArray();
         _targetLang = DeepLTargets.TryGetValue(targetLanguage, out var t) ? t : targetLanguage.ToUpperInvariant();
         _endpoint = apiKey.EndsWith(":fx", StringComparison.Ordinal)
             ? "https://api-free.deepl.com/v2/translate"
@@ -60,7 +70,7 @@ public sealed class DeepLBackend : ITranslationBackend, IDisposable
                 target_lang = _targetLang,
                 preserve_formatting = true,
                 model_type = "prefer_quality_optimized",
-                custom_instructions = CustomInstructions,
+                custom_instructions = _instructions,
             };
             var resp = _http.PostAsJsonAsync(_endpoint, body).GetAwaiter().GetResult();
             if (!resp.IsSuccessStatusCode)

@@ -14,12 +14,23 @@ namespace DqxClarity.Tests;
 // "nothing to translate" apart from "translated something".
 public static class TestDependencies
 {
-    public static PacketDependencies Create(IRomanizer romanizer)
+    private static ClarityDb CreateEmptyDb()
     {
         var dir = Path.Combine(Path.GetTempPath(), "dqxclarity-tests");
         System.IO.Directory.CreateDirectory(dir);
         var db = new ClarityDb(Path.Combine(dir, Guid.NewGuid().ToString("N") + ".db"));
         db.CreateSchema();
+        return db;
+    }
+
+    // A Translator over an empty glossary with the given backend, for testing the
+    // translation pipeline itself.
+    public static Translator CreateTranslator(ITranslationBackend backend) =>
+        new(backend, GlossaryCache.Load(CreateEmptyDb()));
+
+    public static PacketDependencies Create(IRomanizer romanizer)
+    {
+        var db = CreateEmptyDb();
 
         return new PacketDependencies
         {
@@ -28,6 +39,15 @@ public static class TestDependencies
             Romanizer = romanizer,
         };
     }
+}
+
+// A translation service that answers every phrase with the same fixed text.
+public sealed class FixedReplyBackend(string reply) : ITranslationBackend
+{
+    public string Name => "fixed";
+    public Action<string>? OnError { get; set; }
+    public IReadOnlyList<string> Translate(IReadOnlyList<string> phrases) =>
+        phrases.Select(_ => reply).ToList();
 }
 
 // Returns names unchanged: with an empty database, nothing gets translated.

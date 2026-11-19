@@ -59,6 +59,11 @@ public class TranslationConfig
 
     public string TargetLanguage     { get; set; } = "en";
     public string TargetLanguageName { get; set; } = "English";
+
+    // Text settings from the top active language pack's CLPK header (see
+    // ClpkTextOptions). Not stored in user_settings.ini: they are read from the
+    // pack each time Run is clicked, so updating a pack updates them too.
+    public ClpkTextOptions TextOptions { get; set; } = ClpkTextOptions.Default;
 }
 
 public class GameConfig

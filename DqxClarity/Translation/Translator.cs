@@ -22,6 +22,12 @@ namespace DqxClarity.Translation;
 //      restore color tags, optionally inject <br>, optionally re-prepend/append \n,
 //      and handle <voice> end-of-string rule
 //
+// Two things in step 11 can be changed by the active language pack (see
+// ClpkTextOptions): the NFKD-to-ASCII normalisation can be switched off, for
+// packs used with a game mod that can draw accented characters, and the
+// number of lines per dialogue box (where <br> page breaks go) can differ from
+// the default 3. The wrap width was always a parameter.
+//
 // There is no placeholder-tag swap (<pc> -> <&13_aaaaaae> and back) and no
 // stripping of honorifics after <pc>/<cs_pchero>/<kyodai>: the server fills name
 // tags like <pc> and <%sM_NAME> in before the text reaches us, so neither step
@@ -49,6 +55,7 @@ public sealed class Translator
 
     private volatile ITranslationBackend _backend; // swapped live by UpdateBackend
     private GlossaryCache _glossary;
+    private volatile bool _disableNormalization;   // set live by UpdateTextOptions
 
     public Translator(ITranslationBackend backend, GlossaryCache glossary)
     {
@@ -64,6 +71,11 @@ public sealed class Translator
     // translation-data update finishes, so a running session picks up new custom
     // translations without needing a launcher restart.
     public void UpdateGlossary(GlossaryCache glossary) => _glossary = glossary;
+
+    // Set from the active language pack on every Run (ClarityRuntime.UpdateTextOptions).
+    // True keeps translated text as the service returned it -- ñ, é, ü and so on --
+    // instead of reducing it to plain ASCII.
+    public void UpdateTextOptions(bool disableNormalization) => _disableNormalization = disableNormalization;
 
     public static bool IsTextJapanese(string text)
     {
@@ -83,11 +95,28 @@ public sealed class Translator
         return sb.ToString();
     }
 
+    // What step 11 does to a translated fragment's characters. Normally that is
+    // NormalizeText (plain ASCII only). With normalisation switched off the text
+    // is kept, only composed (NFC) so an accented letter is one character and
+    // counts as one when wrapping.
+    private string CleanText(string text) =>
+        _disableNormalization ? text.Normalize(NormalizationForm.FormC) : NormalizeText(text);
+
+    // A letter or digit that isn't kana or kanji -- i.e. evidence of a real
+    // translation in ANY alphabet. Used in place of HasLatinLetterOrDigit when
+    // normalisation is off, where the output needn't be Latin at all.
+    private static bool HasNonJapaneseLetterOrDigit(string text) =>
+        text.Any(c => char.IsLetterOrDigit(c) && !JpRegex.IsMatch(c.ToString()));
+
     // Returns "" when there is no translation to give: the "None" service is
     // selected, the backend failed, or it handed back nothing but Japanese.
     // Every caller treats "" as "leave the original text alone and don't cache
     // anything".
-    public string Translate(string text, int wrapWidth, int? maxLines = null, bool addBrs = true)
+    //
+    // `linesPerBox` is how many lines fit in one dialogue box: with addBrs, a
+    // <br> page break goes in after every that-many wrapped lines.
+    public string Translate(string text, int wrapWidth, int? maxLines = null, bool addBrs = true,
+                            int linesPerBox = TextWrapping.DefaultLinesPerBox)
     {
         // "None": curated sources only. Stop before the glossary/normalise steps,
         // which would otherwise turn the untouched Japanese into a few stray
@@ -213,7 +242,10 @@ public sealed class Translator
         // means it came back untranslated (an echo, or a failed request that
         // returned its input). Normalising that below would delete every
         // Japanese character and leave punctuation, so give up here instead.
-        if (toTranslate.Any(IsTextJapanese) && !translated.Any(t => HasLatinLetterOrDigit(NormalizeText(t))))
+        var looksTranslated = _disableNormalization
+            ? translated.Any(t => !IsTextJapanese(t) && HasNonJapaneseLetterOrDigit(t))
+            : translated.Any(t => HasLatinLetterOrDigit(NormalizeText(t)));
+        if (toTranslate.Any(IsTextJapanese) && !looksTranslated)
             return "";
 
         // Stage 11: post-process each fragment back into pristine.
@@ -236,7 +268,7 @@ public sealed class Translator
             t = t.Replace("’", "'");
 
             var updated = t.Replace("—", "--");
-            updated = NormalizeText(updated);
+            updated = CleanText(updated);
 
             if (attr.IsList)
             {
@@ -253,7 +285,7 @@ public sealed class Translator
                 updated = ColorBareProtected.Replace(updated, "<color_$1>");
 
                 if (addBrs)
-                    updated = TextWrapping.InjectBrEvery3Lines(updated);
+                    updated = TextWrapping.InjectBrEveryNLines(updated, linesPerBox);
 
                 if (attr.PrependNewline) updated = "\n" + updated;
                 if (attr.AppendNewline) updated = updated + "\n";

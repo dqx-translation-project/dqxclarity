@@ -233,7 +233,10 @@ public sealed class NpcDialoguePacket : IPacket
         if (string.IsNullOrWhiteSpace(original) || !Translator.IsTextJapanese(original)) return original;
 
         // Machine-translate, then cache the result.
-        var translated = _deps.Translator.Translate(original, wrapWidth: 46);
+        // 46 characters x 3 lines per box by default; the active language pack can
+        // change both (PacketDependencies.DialogueCharsPerLine / DialogueLinesPerBox).
+        var translated = _deps.Translator.Translate(
+            original, wrapWidth: _deps.DialogueCharsPerLine, linesPerBox: _deps.DialogueLinesPerBox);
         if (string.IsNullOrEmpty(translated)) return original;
 
         _deps.Db.WriteDialog(original, translated, npcName);

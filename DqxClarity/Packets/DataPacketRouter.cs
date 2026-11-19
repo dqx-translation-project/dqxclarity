@@ -275,6 +275,14 @@ public sealed class PacketDependencies
     public bool TranslateNpcNameplates { get; set; } = true;
     public bool TranslateMonsterNameplates { get; set; } = true;
 
+    // Size of the NPC dialogue box for machine-translated text: characters per
+    // line and lines per box (a <br> page break goes in after that many lines).
+    // 46 x 3 unless the active language pack says otherwise -- for packs used
+    // with a game mod that resizes the dialogue text. Set on every Run by
+    // ClarityRuntime.UpdateTextOptions; read only by NpcDialoguePacket.
+    public int DialogueCharsPerLine { get; set; } = Models.ClpkTextOptions.DefaultMaxCharsPerLine;
+    public int DialogueLinesPerBox { get; set; } = Models.ClpkTextOptions.DefaultMaxLinesPerBox;
+
     // Where corner-text lines with no translation get written (as ready-to-
     // paste json entries). Null when logging isn't wanted, e.g. in tests.
     public UntranslatedTextLog? CornerTextLog { get; set; }

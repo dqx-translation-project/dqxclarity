@@ -66,7 +66,15 @@ public partial class SettingsView : UserControl
         "Community Logging\n" +
          "Records untranslated or unknown in-game strings to a local text file. " +
         "Enabling this helps the translation team identify missing strings - " +
-        "if you report a missing translation, they may ask you to share this log file.";
+        "if you report a missing translation, they may ask you to share this log file.\n\n" +
+        "It's recommended to not turn this on unless asked, as game peformance is affected while it is enabled.";
+
+    private const string ClpkHelpText =
+        "Custom CLPK files can be built from here. Select a ZIP containing the translation files you want your pack to use " +
+        "and set the language code to have machine translated dialogue use that language. The Download URL is optional - " +
+        "if your pack will have updates, you can point it to a URL here where it will check for updates each time dqxclarity launches.\n\n" +
+        "The Additional Plugin Options require a plugin to function correctly which must be packaged in your CLPK file. " +
+        "Do not change them if you are not using the plugin.";
 
     private const string LoggingHelpText =
         "Enable Debug Logging\n" +
@@ -791,6 +799,29 @@ public partial class SettingsView : UserControl
         var win = TopLevel.GetTopLevel(this) as MainWindow;
         if (win == null) return;
         await win.ShowInfoAsync("Configuration", AdvancedConfigHelpText);
+    }
+
+    private async void OnClpkHelpClick(object? sender, RoutedEventArgs e)
+    {
+        var win = TopLevel.GetTopLevel(this) as MainWindow;
+        if (win == null) return;
+        await win.ShowInfoAsync("Build Clarity Language Pack (CLPK)", ClpkHelpText);
+    }
+
+    // Shows/hides the plugin-only options. The window keeps its size -- the tab
+    // scrolls instead -- so when they open, scroll them into view.
+    private void OnClpkPluginOptionsClick(object? sender, RoutedEventArgs e)
+    {
+        if (_vm == null) return;
+        _vm.ShowClpkPluginOptions = !_vm.ShowClpkPluginOptions;
+        if (!_vm.ShowClpkPluginOptions) return;
+
+        // Re-measure the scroll area so its range includes the options, then
+        // scroll down far enough to show them and the Build button below.
+        TabScroll.InvalidateMeasure();
+        Avalonia.Threading.Dispatcher.UIThread.Post(
+            () => ClpkBuildButton.BringIntoView(),
+            Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
     private async void OnLoggingHelpClick(object? sender, RoutedEventArgs e)
