@@ -28,10 +28,17 @@ public sealed class ClarityRuntime : IDisposable
     private Action<string, bool>? _log;
     private Action<string, byte[], string, byte[]?, string?>? _debugPacket;
 
-    // Server-side translations repo (dqx-custom-translations or the one the
-    // active language pack names), as the link stored in the pack -- null for
-    // the default. Updates run one at a time: each wipes and refills m00_strings.
+    // Where translation data comes from, per the active language pack:
+    //   _customTranslationsUrl -- server-side translations repo link stored in the
+    //                             pack (null = dqx-custom-translations)
+    //   _languagePackPath      -- the pack file itself, which may bundle its own
+    //                             name files (null = no pack; all downloaded)
+    // Updates run one at a time: each wipes and refills m00_strings.
     private string? _customTranslationsUrl;
+    private string? _languagePackPath;
+    // Sources of the latest update started (not necessarily finished), so a Run
+    // click during the startup download doesn't queue the same download again.
+    private string _requestedSourcesKey = "";
     private readonly SemaphoreSlim _translationUpdateLock = new(1, 1);
 
     public ClarityRuntime(
@@ -173,28 +180,44 @@ public sealed class ClarityRuntime : IDisposable
     }
 
     // customTranslationsUrl: the active language pack's custom translations repo
-    // link, or null for dqx-custom-translations.
-    public void Start(string? customTranslationsUrl = null)
+    // link, or null for dqx-custom-translations. languagePackPath: that pack's
+    // file, for the name files it may bundle, or null.
+    public void Start(string? customTranslationsUrl = null, string? languagePackPath = null)
     {
         PacketWardenService.EnsureExtracted();
         _hook.StartPipe();
         _customTranslationsUrl = customTranslationsUrl;
+        _languagePackPath = languagePackPath;
+        _requestedSourcesKey = SourcesKey(customTranslationsUrl, languagePackPath);
         _ = UpdateTranslationDataAsync();
     }
 
-    // Called on every Run click with the current top language pack's link. The
-    // translation data was downloaded when the runtime started, so if the pack
-    // now points somewhere else (pack switched, reordered or updated), download
-    // again from the new repo. Same repo -> nothing to do.
-    public void UpdateCustomTranslationsUrl(string? customTranslationsUrl)
+    // Called on every Run click with the current top language pack. The
+    // translation data was loaded when the runtime started, so if the pack now
+    // points somewhere else -- another pack, a different repo link, or the same
+    // pack file updated since -- load it again. Nothing changed -> nothing to do.
+    public void UpdateTranslationSources(string? customTranslationsUrl, string? languagePackPath)
     {
-        var before = TranslationConstants.ResolveCustomTranslationsZipUrl(_customTranslationsUrl);
-        var after  = TranslationConstants.ResolveCustomTranslationsZipUrl(customTranslationsUrl);
         _customTranslationsUrl = customTranslationsUrl;
-        if (string.Equals(before, after, StringComparison.Ordinal)) return;
+        _languagePackPath = languagePackPath;
+        var key = SourcesKey(customTranslationsUrl, languagePackPath);
+        if (string.Equals(key, _requestedSourcesKey, StringComparison.Ordinal))
+            return;
+        _requestedSourcesKey = key;
 
-        _log?.Invoke("Language pack changed the custom translations source; downloading translation data again.", false);
+        _log?.Invoke("Language pack changed; loading translation data again.", false);
         _ = UpdateTranslationDataAsync();
+    }
+
+    // Identifies what one update loaded: the repo zip, plus the pack file and
+    // when it was last written (so an updated pack counts as a change).
+    private static string SourcesKey(string? customTranslationsUrl, string? languagePackPath)
+    {
+        var zip = TranslationConstants.ResolveCustomTranslationsZipUrl(customTranslationsUrl);
+        if (string.IsNullOrEmpty(languagePackPath)) return zip;
+        long stamp = 0;
+        try { stamp = File.GetLastWriteTimeUtc(languagePackPath).Ticks; } catch { }
+        return $"{zip}|{languagePackPath}|{stamp}";
     }
 
     // Refreshes clarity_dialog.db (m00_strings, glossary, fixed_dialog_template, walkthrough,
@@ -210,15 +233,19 @@ public sealed class ClarityRuntime : IDisposable
     {
         await _translationUpdateLock.WaitAsync().ConfigureAwait(false);
 
-        // Read once, so the log below describes the repo actually downloaded.
+        // Read once, so the log below describes what was actually loaded.
         var link = _customTranslationsUrl;
+        var packPath = _languagePackPath;
         var custom = TranslationConstants.TryGetCustomTranslationsZipUrl(link, out var customZip);
+        // Custom translations bundled in the pack win over its link and the default.
+        var packSuppliedCustom = TranslationUpdater.PackHasCustomTranslations(packPath);
         try
         {
-            await new TranslationUpdater(_db, ClarityDb.DefaultDbPath())
-                .RunAsync(custom ? customZip : null).ConfigureAwait(false);
+            var result = await new TranslationUpdater(_db, ClarityDb.DefaultDbPath())
+                .RunAsync(custom ? customZip : null, packPath).ConfigureAwait(false);
+            packSuppliedCustom = result.CustomTranslationsFromPack;
 
-            // TranslationUpdater's custom-zip import (ImportCustomZipAsync) does an
+            // TranslationUpdater's custom translations import (ImportCustomPartsAsync) does an
             // unconditional, unscoped "DELETE FROM m00_strings" before re-ingesting
             // its own categories -- mirroring main's download_custom_files(), which
             // does the exact same wholesale wipe+rebuild. That wipe also destroys
@@ -236,18 +263,25 @@ public sealed class ClarityRuntime : IDisposable
             _db.ImportNameOverrides();
             _translator.UpdateGlossary(GlossaryCache.Load(_db));
             _log?.Invoke("Translation data updated.", false);
-            if (custom)
-                _log?.Invoke($"Using custom translations from the language pack: {link}", false);
+            if (result.CustomTranslationsFromPack)
+                _log?.Invoke("Using custom translations bundled in the language pack.", false);
+            else if (custom)
+                _log?.Invoke($"Using custom translations from the language pack's repo: {link}", false);
+            if (result.NameFilesFromPack > 0)
+                _log?.Invoke($"Using {result.NameFilesFromPack} of {TranslationConstants.TranslationFiles.Length} name files " +
+                             "(monsters, NPCs, items, ...) from the language pack.", false);
+            foreach (var warning in result.Warnings)
+                _log?.Invoke(warning, true);
         }
         catch (Exception ex)
         {
-            _log?.Invoke(custom
+            _log?.Invoke(custom && !packSuppliedCustom
                 ? $"Failed to update translation data from the language pack's custom translations ({link}): {ex.Message}"
                 : $"Failed to update translation data: {ex.Message}", true);
         }
         finally
         {
-            if (link != null && !custom)
+            if (link != null && !custom && !packSuppliedCustom)
                 _log?.Invoke($"The language pack's custom translations link isn't a GitHub repo link ({link}); used the default translations instead.", true);
             _translationUpdateLock.Release();
             // Finished either way (a failed update just means the existing data is used).

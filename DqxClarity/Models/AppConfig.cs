@@ -69,6 +69,10 @@ public class TranslationConfig
     // (null = none). Resolved to a download with
     // TranslationConstants.ResolveCustomTranslationsZipUrl. Not in the ini either.
     public string? CustomTranslationsUrl { get; set; }
+
+    // Full path of that same top active pack (null = none), for the name files
+    // it may bundle (TranslationConstants.PackDataFolder). Not in the ini.
+    public string? LanguagePackPath { get; set; }
 }
 
 public class GameConfig

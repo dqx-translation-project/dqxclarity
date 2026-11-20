@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 using DqxClarity.Data;
+using DqxClarity.Models;
 using Microsoft.Data.Sqlite;
 
 namespace DqxClarity.Updates;
@@ -12,7 +13,18 @@ namespace DqxClarity.Updates;
 //   1. dqx-custom-translations (zip): json files → m00_strings, merge.xlsx →
 //      fixed_dialog_template/walkthrough/quests/story_so_far_template,
 //      glossary.csv → glossary, ignore.py → filter to delete from m00_strings
-//   2. dqx_translations (json files): six big translation files → m00_strings
+//   2. dqx_translations (json files): six big translation files → m00_strings.
+//
+// The active language pack can bundle either source (see TranslationConstants):
+//   - dqxclarity/json/<name file>.json -- each of the six name files it has is
+//     used instead of downloading that file; any it lacks is downloaded.
+//   - dqxclarity/custom-translations/ (json/, csv/, optional
+//     generate_glossary/ignore.py, same layout as dqx-custom-translations) --
+//     when the folder is there, it is the whole of source 1 and nothing is
+//     downloaded for it. A part it leaves out (no json, no merge.xlsx, no
+//     glossary.csv) is reported and that data is left as it was.
+// Without the folder, source 1 comes from the pack's custom translations URL,
+// else the default dqx-custom-translations repo.
 //
 // Uses parameterised inserts inside a single transaction — corrupt input can't escape
 // into a sql-injection shape and the failure mode is a clean rollback.
@@ -29,29 +41,210 @@ public sealed class TranslationUpdater
         _http = new HttpClient(new HttpClientHandler { AutomaticDecompression = System.Net.DecompressionMethods.All });
     }
 
-    // customTranslationsZipUrl: the dqx-custom-translations-style zip to import.
-    // Null means the default repo; a language pack can name its own (see
+    /// <summary>What one update loaded, for the log.</summary>
+    public sealed record Result(
+        bool CustomTranslationsFromPack,
+        int NameFilesFromPack,
+        IReadOnlyList<string> Warnings);
+
+    // customTranslationsZipUrl: the dqx-custom-translations-style zip to download
+    // when the pack doesn't bundle its custom translations. Null means the default
+    // repo; a language pack can name its own (see
     // TranslationConstants.ResolveCustomTranslationsZipUrl).
-    public async Task RunAsync(string? customTranslationsZipUrl = null, CancellationToken ct = default)
+    // languagePackPath: the active language pack (.clpk), for the files it may
+    // bundle, or null for none.
+    public async Task<Result> RunAsync(string? customTranslationsZipUrl = null, string? languagePackPath = null,
+        CancellationToken ct = default)
     {
         _db.CreateSchema();
 
-        var customZip = await _http.GetByteArrayAsync(
-            customTranslationsZipUrl ?? TranslationConstants.CustomTranslationsZipUrl, ct).ConfigureAwait(false);
-        await ImportCustomZipAsync(customZip, ct).ConfigureAwait(false);
+        // Read the pack before anything is wiped, so a bad pack changes nothing.
+        var packFiles = ReadPackTranslationFiles(languagePackPath);
+        var packCustom = ReadPackCustomTranslations(languagePackPath);
 
+        var warnings = new List<string>();
+        CustomParts custom;
+        if (packCustom != null)
+        {
+            custom = packCustom;
+            const string where = "The language pack's " + TranslationConstants.PackCustomTranslationsFolder + " folder";
+            if (custom.Json.Count == 0)
+                warnings.Add($"{where} has no json files, so there are no custom translations for them.");
+            if (custom.MergeXlsx == null)
+                warnings.Add($"{where} has no csv/merge.xlsx; fixed dialogue, walkthrough, quest and story " +
+                             "translations from it were not updated.");
+            if (custom.GlossaryCsv == null)
+                warnings.Add($"{where} has no csv/glossary.csv; the glossary was not updated.");
+        }
+        else
+        {
+            var customZip = await _http.GetByteArrayAsync(
+                customTranslationsZipUrl ?? TranslationConstants.CustomTranslationsZipUrl, ct).ConfigureAwait(false);
+            using var zip = new ZipArchive(new MemoryStream(customZip), ZipArchiveMode.Read);
+            custom = CollectCustomParts(zip.Entries.Select(e => (e.FullName, e)), ct);
+        }
+        await ImportCustomPartsAsync(custom, ct).ConfigureAwait(false);
+
+        var fromPack = 0;
         foreach (var (url, name) in TranslationConstants.TranslationFiles)
         {
             ct.ThrowIfCancellationRequested();
-            var data = await _http.GetByteArrayAsync(url, ct).ConfigureAwait(false);
+            byte[] data;
+            if (packFiles.TryGetValue(TranslationConstants.SourceFileName(url), out var bundled))
+            {
+                data = bundled;
+                fromPack++;
+            }
+            else
+            {
+                data = await _http.GetByteArrayAsync(url, ct).ConfigureAwait(false);
+            }
             await ImportCustomJsonAsync(name, data, ct).ConfigureAwait(false);
+        }
+        return new Result(packCustom != null, fromPack, warnings);
+    }
+
+    // The dqx-custom-translations parts that get imported, read from a repo zip
+    // or from a language pack.
+    internal sealed record CustomParts(
+        IReadOnlyList<(string Name, byte[] Data)> Json,
+        byte[]? MergeXlsx,
+        string? GlossaryCsv,
+        string? IgnorePy);
+
+    // Picks the parts out of zip entries. Paths are matched the way the repo zip
+    // always has been: anything under a json/ folder ending in .json, csv/merge.xlsx,
+    // csv/glossary.csv and generate_glossary/ignore.py, at any depth below a
+    // leading '/'. Callers pass each entry's path with that leading part.
+    private static CustomParts CollectCustomParts(IEnumerable<(string Path, ZipArchiveEntry Entry)> entries,
+        CancellationToken ct)
+    {
+        var json = new List<(string, byte[])>();
+        byte[]? merge = null;
+        string? glossary = null, ignore = null;
+
+        foreach (var (path, entry) in entries)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (path.EndsWith('/') || string.IsNullOrEmpty(entry.Name)) continue;
+
+            if (path.Contains("/json/") && path.EndsWith(".json"))
+                json.Add((Path.GetFileNameWithoutExtension(entry.Name), ReadAll(entry)));
+            else if (path.Contains("/csv/") && path.EndsWith("merge.xlsx"))
+                merge = ReadAll(entry);
+            else if (path.Contains("/csv/") && path.EndsWith("glossary.csv"))
+            {
+                // StreamReader, as before: it drops a UTF-8 BOM if the file has one.
+                using var sr = new StreamReader(new MemoryStream(ReadAll(entry)));
+                glossary = sr.ReadToEnd();
+            }
+            else if (path.Contains("/generate_glossary/") && path.EndsWith("ignore.py"))
+                ignore = System.Text.Encoding.UTF8.GetString(ReadAll(entry));
+        }
+        return new CustomParts(json, merge, glossary, ignore);
+    }
+
+    private static byte[] ReadAll(ZipArchiveEntry entry)
+    {
+        using var s = entry.Open();
+        using var ms = new MemoryStream();
+        s.CopyTo(ms);
+        return ms.ToArray();
+    }
+
+    // Whether a language pack has the custom translations folder at all. Only
+    // looks at entry names, so it's cheap.
+    internal static bool PackHasCustomTranslations(string? languagePackPath)
+    {
+        if (string.IsNullOrWhiteSpace(languagePackPath) || !File.Exists(languagePackPath)) return false;
+        var prefix = TranslationConstants.PackCustomTranslationsFolder + "/";
+        try
+        {
+            var (payload, _) = ClpkFormat.OpenPayload(languagePackPath);
+            using var _payload = payload;
+            using var zip = new ZipArchive(payload, ZipArchiveMode.Read);
+            return zip.Entries.Any(e =>
+                e.FullName.Replace('\\', '/').TrimStart('/').StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        }
+        catch
+        {
+            return false;
         }
     }
 
-    private async Task ImportCustomZipAsync(byte[] zipBytes, CancellationToken ct)
+    // The custom translations a language pack bundles under
+    // TranslationConstants.PackCustomTranslationsFolder; null when the pack has
+    // no such folder (or there's no pack, or it can't be read), meaning they are
+    // downloaded instead.
+    internal static CustomParts? ReadPackCustomTranslations(string? languagePackPath)
     {
-        using var zip = new ZipArchive(new MemoryStream(zipBytes), ZipArchiveMode.Read);
+        if (string.IsNullOrWhiteSpace(languagePackPath) || !File.Exists(languagePackPath)) return null;
+        var prefix = TranslationConstants.PackCustomTranslationsFolder + "/";
 
+        try
+        {
+            var (payload, _) = ClpkFormat.OpenPayload(languagePackPath);
+            using var _payload = payload;
+            using var zip = new ZipArchive(payload, ZipArchiveMode.Read);
+
+            var inFolder = new List<(string, ZipArchiveEntry)>();
+            var found = false;
+            foreach (var entry in zip.Entries)
+            {
+                var path = entry.FullName.Replace('\\', '/').TrimStart('/');
+                if (!path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+                found = true; // the folder exists, even if it turns out empty
+                // Keep a leading '/' so "json/x.json" matches "/json/" like the repo zip's paths do.
+                inFolder.Add(("/" + path[prefix.Length..], entry));
+            }
+            return found ? CollectCustomParts(inFolder, CancellationToken.None) : null;
+        }
+        catch
+        {
+            return null; // unreadable pack -> download, as before
+        }
+    }
+
+    // The name files a language pack bundles under TranslationConstants.PackDataFolder,
+    // keyed by file name (case-insensitive). Empty for no pack, a pack without
+    // them, or a pack that can't be read -- those files are then downloaded.
+    internal static Dictionary<string, byte[]> ReadPackTranslationFiles(string? languagePackPath)
+    {
+        var files = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(languagePackPath) || !File.Exists(languagePackPath)) return files;
+
+        var wanted = TranslationConstants.TranslationFiles
+            .Select(f => TranslationConstants.SourceFileName(f.Url))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var prefix = TranslationConstants.PackDataFolder + "/";
+
+        try
+        {
+            var (payload, _) = ClpkFormat.OpenPayload(languagePackPath);
+            using var _payload = payload;
+            using var zip = new ZipArchive(payload, ZipArchiveMode.Read);
+            foreach (var entry in zip.Entries)
+            {
+                var path = entry.FullName.Replace('\\', '/').Trim('/');
+                if (!path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+                var name = path[prefix.Length..];
+                if (!wanted.Contains(name)) continue; // also skips anything in sub-folders
+
+                using var s = entry.Open();
+                using var ms = new MemoryStream();
+                s.CopyTo(ms);
+                files[name] = ms.ToArray();
+            }
+        }
+        catch
+        {
+            files.Clear(); // unreadable pack -> download everything, as before
+        }
+        return files;
+    }
+
+    private async Task ImportCustomPartsAsync(CustomParts parts, CancellationToken ct)
+    {
         // Wipe + re-ingest m00_strings.
         using (var conn = new SqliteConnection($"Data Source={_dbPath}"))
         {
@@ -61,49 +254,20 @@ public sealed class TranslationUpdater
             cmd.ExecuteNonQuery();
         }
 
-        byte[]? ignorePy = null;
-
-        foreach (var entry in zip.Entries)
+        foreach (var (name, data) in parts.Json)
         {
             ct.ThrowIfCancellationRequested();
-            if (entry.FullName.EndsWith('/')) continue;
-
-            if (entry.FullName.Contains("/json/") && entry.FullName.EndsWith(".json"))
-            {
-                using var s = entry.Open();
-                using var ms = new MemoryStream();
-                await s.CopyToAsync(ms, ct).ConfigureAwait(false);
-                var name = Path.GetFileNameWithoutExtension(entry.Name);
-                await ImportCustomJsonAsync(name, ms.ToArray(), ct).ConfigureAwait(false);
-            }
-            else if (entry.FullName.Contains("/csv/"))
-            {
-                if (entry.FullName.EndsWith("merge.xlsx"))
-                {
-                    using var s = entry.Open();
-                    using var ms = new MemoryStream();
-                    await s.CopyToAsync(ms, ct).ConfigureAwait(false);
-                    ImportMergeXlsx(ms.ToArray());
-                }
-                else if (entry.FullName.EndsWith("glossary.csv"))
-                {
-                    using var s = entry.Open();
-                    using var sr = new StreamReader(s);
-                    var glossary = await sr.ReadToEndAsync(ct).ConfigureAwait(false);
-                    ImportGlossary(glossary);
-                }
-            }
-            else if (entry.FullName.Contains("/generate_glossary/") && entry.FullName.EndsWith("ignore.py"))
-            {
-                using var s = entry.Open();
-                using var ms = new MemoryStream();
-                await s.CopyToAsync(ms, ct).ConfigureAwait(false);
-                ignorePy = ms.ToArray();
-            }
+            await ImportCustomJsonAsync(name, data, ct).ConfigureAwait(false);
         }
 
-        if (ignorePy != null)
-            ApplyIgnoreFilter(System.Text.Encoding.UTF8.GetString(ignorePy));
+        // A part that isn't there leaves its tables as they are: quests and
+        // walkthrough also hold the user's saved machine translations.
+        if (parts.MergeXlsx != null)
+            ImportMergeXlsx(parts.MergeXlsx);
+        if (parts.GlossaryCsv != null)
+            ImportGlossary(parts.GlossaryCsv);
+        if (parts.IgnorePy != null)
+            ApplyIgnoreFilter(parts.IgnorePy);
     }
 
     // Custom-translations json files are an object of objects: { id: { ja: en }, ... }.

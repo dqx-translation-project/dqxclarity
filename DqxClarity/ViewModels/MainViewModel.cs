@@ -275,8 +275,8 @@ public partial class MainViewModel : ObservableObject
             _runtime?.UpdateBackend(BackendFactory.Create(translation));
             _runtime?.UpdateTextOptions(translation.TextOptions);
             packText = translation.TextOptions;
-            // Downloads translation data again only if the pack's repo changed.
-            _runtime?.UpdateCustomTranslationsUrl(translation.CustomTranslationsUrl);
+            // Loads translation data again only if the pack's sources changed.
+            _runtime?.UpdateTranslationSources(translation.CustomTranslationsUrl, translation.LanguagePackPath);
         }
         catch (Exception ex) { Log.AppendLine($"Could not apply translation settings: {ex.Message}", "error"); }
 
@@ -436,10 +436,15 @@ public partial class MainViewModel : ObservableObject
             // Server-side translations come from the top active language pack's
             // custom translations repo when it names one; otherwise (null) the
             // default dqx-custom-translations.
-            string? customTranslationsUrl = null;
-            try { customTranslationsUrl = Settings.ResolvePackCustomTranslationsUrl(); }
-            catch { /* unreadable pack -> default repo */ }
-            _runtime.Start(customTranslationsUrl);
+            // The same pack may also bundle its own name files (monsters, items, ...).
+            string? customTranslationsUrl = null, languagePackPath = null;
+            try
+            {
+                customTranslationsUrl = Settings.ResolvePackCustomTranslationsUrl();
+                languagePackPath = Settings.ResolveActivePackPath();
+            }
+            catch { /* unreadable pack -> defaults */ }
+            _runtime.Start(customTranslationsUrl, languagePackPath);
             Settings.PostInjectCallback = hProc => _runtime.InjectInto(hProc);
 
             // Background watcher covers the case where the game is launched

@@ -89,6 +89,32 @@ internal static class TranslationConstants
 
     public const string CommunityStringApiUrl = "https://community-string-api.ethene.wiki";
 
+    // ── Name files bundled in a language pack ───────────────────────────
+    // A pack can carry its own copies of the six TranslationFiles below (the
+    // same json the pack's ETPs were built from), so packet translations use
+    // the pack's language instead of the English dqx_translations repo. They go
+    // in this folder of the pack's zip, under their usual file names
+    // (subPackage02Client.json, ...). dqxclarity reads them straight from the
+    // pack and never extracts this folder into Game\mods. Any file the pack
+    // doesn't have is downloaded as before.
+    public const string PackDataFolder = "dqxclarity/json";
+
+    // A pack can also bundle its own custom translations in this folder, laid
+    // out like the dqx-custom-translations repo (json/, csv/merge.xlsx,
+    // csv/glossary.csv, optional generate_glossary/ignore.py). When the folder
+    // is there, it is used instead of downloading -- the pack's custom
+    // translations URL and the default repo are not used. See TranslationUpdater.
+    public const string PackCustomTranslationsFolder = "dqxclarity/custom-translations";
+
+    /// <summary>True for a zip entry (normalised to '/' separators, no leading '/') inside
+    /// <see cref="PackDataFolder"/>'s top folder -- data for dqxclarity, not a game file.</summary>
+    public static bool IsPackDataEntry(string normalizedEntry) =>
+        normalizedEntry.Equals("dqxclarity", StringComparison.OrdinalIgnoreCase)
+        || normalizedEntry.StartsWith("dqxclarity/", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The file name a TranslationFiles entry has in the repo, and in a pack.</summary>
+    public static string SourceFileName(string url) => Path.GetFileName(new Uri(url).AbsolutePath);
+
     public static readonly (string Url, string Name)[] TranslationFiles =
     {
         (MonstersJsonUrl, "monsters"),

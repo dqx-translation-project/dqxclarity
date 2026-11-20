@@ -566,6 +566,21 @@ public class LanguagePackService
         return string.IsNullOrWhiteSpace(url) ? null : url.Trim();
     }
 
+    /// <summary>Full path of a pack in the language-packs folder, or null when the file isn't there.</summary>
+    public string? GetPackPath(string? packFileName)
+    {
+        if (string.IsNullOrWhiteSpace(packFileName)) return null;
+        try
+        {
+            var path = Path.Combine(SourceLanguagePacksDir(), Path.GetFileName(packFileName));
+            return File.Exists(path) ? path : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     // CLPK header of a pack in the language-packs folder; null when there isn't one.
     private ClpkMetadata? ReadPackMetadata(string? packFileName)
     {
@@ -648,6 +663,9 @@ public class LanguagePackService
             var normalizedEntry = NormalizeZipPath(entry.FullName);
             if (string.IsNullOrWhiteSpace(normalizedEntry))
                 continue;
+            // Data dqxclarity reads straight from the pack (bundled name files), not a game file.
+            if (Updates.TranslationConstants.IsPackDataEntry(normalizedEntry))
+                continue;
 
             var target = Path.GetFullPath(Path.Combine(modsDir, normalizedEntry));
             if (!target.StartsWith(root, StringComparison.OrdinalIgnoreCase))
@@ -720,6 +738,10 @@ public class LanguagePackService
 
                 var normalizedEntry = NormalizeZipPath(entry.FullName);
                 if (string.IsNullOrWhiteSpace(normalizedEntry))
+                    continue;
+                // Not extracted (see ExtractLanguagePack), and only the top pack's copy is
+                // used, so two packs both carrying them is not a conflict.
+                if (Updates.TranslationConstants.IsPackDataEntry(normalizedEntry))
                     continue;
 
                 ValidateRelativeZipPath(normalizedEntry);

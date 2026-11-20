@@ -854,6 +854,7 @@ public partial class SettingsViewModel : ObservableObject
             TargetLanguageName = langName,
             TextOptions        = ResolvePackTextOptions(),
             CustomTranslationsUrl = ResolvePackCustomTranslationsUrl(),
+            LanguagePackPath   = ResolveActivePackPath(),
         };
     }
 
@@ -862,6 +863,11 @@ public partial class SettingsViewModel : ObservableObject
     // pack built before this option existed), meaning dqx-custom-translations.
     public string? ResolvePackCustomTranslationsUrl() =>
         _languagePacks.ReadCustomTranslationsUrl(GetActiveLanguagePackFileNames().FirstOrDefault());
+
+    // Full path of the top active pack, which may bundle its own name files
+    // (monsters, items, ...); null when no pack is active.
+    public string? ResolveActivePackPath() =>
+        _languagePacks.GetPackPath(GetActiveLanguagePackFileNames().FirstOrDefault());
 
     // Text settings (normalisation, dialogue box size) come straight from the
     // header of the highest-priority active language pack -- the same pack that

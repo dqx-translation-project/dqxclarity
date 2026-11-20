@@ -109,7 +109,31 @@ Optional custom translations source:
 
 - `custom_translations_url` — a GitHub repo to download server-side translations from instead of [dqx-custom-translations](https://github.com/dqx-translation-project/dqx-custom-translations). The repo must use the same folders and file names. dqxclarity downloads the zip of its `main` branch (a `/tree/<branch>` link picks another branch); `https://github.com/<repo>` with no organization means `dqx-translation-project/<repo>`. Left out, blank, or not a GitHub repo link: the default repo is used.
 
-The **entire ZIP payload** is extracted into the game's `Game\mods` folder. There is no per-file manifest — the dragonhook proxy serves every loose file under `Game\mods` in place of the packed DAT archives.
+### Bundled name files
+
+A pack can include its own copies of the six name files dqxclarity otherwise downloads from [dqx_translations](https://github.com/dqx-translation-project/dqx_translations) (`json/_lang/en/`): `subPackage02Client.json` (monsters), `smldt_msg_pkg_NPC_DB.json` (NPCs), `subPackage05Client.json` (items), `subPackage41Client.json` (key items), `eventTextSysQuestaClient.json` (quests) and `eventTextSysEventaClient.json` (story names). Put them in a `dqxclarity/json/` folder at the root of the ZIP, under those file names. dqxclarity reads them from the highest-priority active pack instead of downloading them, so names in menus, lists and other packets match the pack's language. Any file the pack doesn't include is downloaded as before. The `dqxclarity/` folder is never extracted into `Game\mods`.
+
+### Bundled custom translations
+
+A pack can also include its own copy of [dqx-custom-translations](https://github.com/dqx-translation-project/dqx-custom-translations), in a `dqxclarity/custom-translations/` folder at the root of the ZIP, laid out like the repo:
+
+```
+dqxclarity/custom-translations/
+├── json/*.json
+├── csv/merge.xlsx
+├── csv/glossary.csv
+└── generate_glossary/ignore.py   (optional)
+```
+
+Where dqxclarity gets its custom translations, checked in order:
+
+1. The pack has a `dqxclarity/custom-translations/` folder: only what's in it is used, and nothing is downloaded. A part that's missing is reported in the log and that data is left as it was. Saved machine translations are never removed. `ignore.py` is applied only if the pack includes it.
+2. Otherwise, the pack's `custom_translations_url` repo is downloaded.
+3. Otherwise, the default dqx-custom-translations repo is downloaded.
+
+Bundled custom translations only change when the pack is rebuilt and updated, while the downloaded ones are the latest every launch.
+
+The **entire ZIP payload** (apart from the `dqxclarity/` folder) is extracted into the game's `Game\mods` folder. There is no per-file manifest — the dragonhook proxy serves every loose file under `Game\mods` in place of the packed DAT archives.
 
 ### Building a pack
 
