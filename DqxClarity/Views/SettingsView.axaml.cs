@@ -67,12 +67,12 @@ public partial class SettingsView : UserControl
          "Records untranslated or unknown in-game strings to a local text file. " +
         "Enabling this helps the translation team identify missing strings - " +
         "if you report a missing translation, they may ask you to share this log file.\n\n" +
-        "It's recommended to not turn this on unless asked, as game peformance is affected while it is enabled.";
+        "It's recommended to not turn this on unless asked, as game performance is affected while it is enabled.";
 
     private const string ClpkHelpText =
         "Custom CLPK files can be built from here. Select a ZIP containing the translation files you want your pack to use " +
         "and set the language code to have machine translated dialogue use that language. The Download URL is optional - " +
-        "if your pack will have updates, you enter a URL in the Download URL box where it will check for updates each time dqxclarity launches. " +
+        "if your pack will have updates, enter a URL in the Download URL box where it will check for updates each time dqxclarity launches. " +
         "If you want to use your own custom (server-side) translations, enter the URL to your GitHub repo in the " +
         "Custom translations URL box. Note that your repo must follow the same folder/file naming scheme as the " +
         "dqx-custom-translations repo to work properly.\n\n" +
