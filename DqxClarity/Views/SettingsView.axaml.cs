@@ -72,7 +72,10 @@ public partial class SettingsView : UserControl
     private const string ClpkHelpText =
         "Custom CLPK files can be built from here. Select a ZIP containing the translation files you want your pack to use " +
         "and set the language code to have machine translated dialogue use that language. The Download URL is optional - " +
-        "if your pack will have updates, you can point it to a URL here where it will check for updates each time dqxclarity launches.\n\n" +
+        "if your pack will have updates, you enter a URL in the Download URL box where it will check for updates each time dqxclarity launches. " +
+        "If you want to use your own custom (server-side) translations, enter the URL to your GitHub repo in the " +
+        "Custom translations URL box. Note that your repo must follow the same folder/file naming scheme as the " +
+        "dqx-custom-translations repo to work properly.\n\n" +
         "The Additional Plugin Options require a plugin to function correctly which must be packaged in your CLPK file. " +
         "Do not change them if you are not using the plugin.";
 

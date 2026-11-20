@@ -310,6 +310,15 @@
                                                  Text="{Binding ClpkDownloadUrl}"
                                                  ToolTip.Tip="Optional URL stamped into the CLPK metadata; overrides the manifest's download URL when set."/>
                                     </Grid>
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="Custom translations URL:"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"/>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding ClpkCustomTranslationsUrl}"
+                                                 ToolTip.Tip="Optional URL to a Github repo containing server-side translations. Must be formatted the same as dqx-custom-translations."/>
+                                    </Grid>
                                     <!-- Options for packs that ship the dialogue plugin. Hidden until asked
                                          for, so nobody changes them by accident. Values entered here are
                                          still used when hidden again. -->
@@ -342,16 +351,6 @@
                                                      Text="{Binding ClpkMaxLinesPerBox}"
                                                      Watermark="3 (default)"
                                                      ToolTip.Tip="How many lines fit in a single dialogue box before a break. Leave blank to use the default of 3."/>
-                                        </Grid>
-                                        <Grid ColumnDefinitions="Auto,*">
-                                            <TextBlock Grid.Column="0"
-                                                       Text="Custom translations URL:"
-                                                       VerticalAlignment="Center"
-                                                       Margin="0,0,8,0"/>
-                                            <TextBox Grid.Column="1"
-                                                     Text="{Binding ClpkCustomTranslationsUrl}"
-                                                     Watermark="dqx-custom-translations (default)"
-                                                     ToolTip.Tip="Direct link to a Github repo containing server-side translations. Must be formatted the same as dqx-custom-translations."/>
                                         </Grid>
                                     </StackPanel>
                                     <Button x:Name="ClpkBuildButton"
