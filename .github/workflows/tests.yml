@@ -20,7 +20,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '11.0.x'
 
       - name: Run packet tests
         run: dotnet test DqxClarity.Tests --logger "console;verbosity=normal"
