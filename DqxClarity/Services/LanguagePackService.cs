@@ -552,22 +552,35 @@ public class LanguagePackService
     /// folder asks for, read from its CLPK header. Defaults for a missing file, a plain zip, a
     /// header without these fields, or any read error -- this never throws.
     /// </summary>
-    public ClpkTextOptions ReadTextOptions(string? packFileName)
+    public ClpkTextOptions ReadTextOptions(string? packFileName) =>
+        ClpkTextOptions.From(ReadPackMetadata(packFileName));
+
+    /// <summary>
+    /// The custom translations repo link a pack in the language-packs folder names in its CLPK
+    /// header, exactly as stored (not yet checked). Null for no link, a missing file, a plain zip
+    /// or any read error -- this never throws.
+    /// </summary>
+    public string? ReadCustomTranslationsUrl(string? packFileName)
     {
-        if (string.IsNullOrWhiteSpace(packFileName)) return ClpkTextOptions.Default;
+        var url = ReadPackMetadata(packFileName)?.CustomTranslationsUrl;
+        return string.IsNullOrWhiteSpace(url) ? null : url.Trim();
+    }
+
+    // CLPK header of a pack in the language-packs folder; null when there isn't one.
+    private ClpkMetadata? ReadPackMetadata(string? packFileName)
+    {
+        if (string.IsNullOrWhiteSpace(packFileName)) return null;
         try
         {
             var path = Path.Combine(SourceLanguagePacksDir(), Path.GetFileName(packFileName));
-            if (!File.Exists(path)) return ClpkTextOptions.Default;
+            if (!File.Exists(path)) return null;
 
             using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return ClpkFormat.TryReadHeader(fs, out var meta, out _, out _)
-                ? ClpkTextOptions.From(meta)
-                : ClpkTextOptions.Default;
+            return ClpkFormat.TryReadHeader(fs, out var meta, out _, out _) ? meta : null;
         }
         catch
         {
-            return ClpkTextOptions.Default;
+            return null;
         }
     }
 
@@ -578,7 +591,8 @@ public class LanguagePackService
     /// </summary>
     public async Task BuildClpkAsync(string inputZipPath, string outputClpkPath,
         string author, string language, string downloadUrl,
-        bool disableTextNormalization = false, int? maxCharsPerLine = null, int? maxLinesPerBox = null)
+        bool disableTextNormalization = false, int? maxCharsPerLine = null, int? maxLinesPerBox = null,
+        string? customTranslationsUrl = null)
     {
         if (string.IsNullOrWhiteSpace(inputZipPath) || !File.Exists(inputZipPath))
             throw new FileNotFoundException($"Input zip file not found: {inputZipPath}");
@@ -601,6 +615,7 @@ public class LanguagePackService
                 DisableTextNormalization = disableTextNormalization,
                 MaxCharsPerLine = maxCharsPerLine,
                 MaxLinesPerBox  = maxLinesPerBox,
+                CustomTranslationsUrl = string.IsNullOrWhiteSpace(customTranslationsUrl) ? null : customTranslationsUrl.Trim(),
             };
 
             using var output = new FileStream(outputClpkPath, FileMode.Create, FileAccess.Write, FileShare.None);

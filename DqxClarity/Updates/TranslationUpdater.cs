@@ -29,11 +29,15 @@ public sealed class TranslationUpdater
         _http = new HttpClient(new HttpClientHandler { AutomaticDecompression = System.Net.DecompressionMethods.All });
     }
 
-    public async Task RunAsync(CancellationToken ct = default)
+    // customTranslationsZipUrl: the dqx-custom-translations-style zip to import.
+    // Null means the default repo; a language pack can name its own (see
+    // TranslationConstants.ResolveCustomTranslationsZipUrl).
+    public async Task RunAsync(string? customTranslationsZipUrl = null, CancellationToken ct = default)
     {
         _db.CreateSchema();
 
-        var customZip = await _http.GetByteArrayAsync(TranslationConstants.CustomTranslationsZipUrl, ct).ConfigureAwait(false);
+        var customZip = await _http.GetByteArrayAsync(
+            customTranslationsZipUrl ?? TranslationConstants.CustomTranslationsZipUrl, ct).ConfigureAwait(false);
         await ImportCustomZipAsync(customZip, ct).ConfigureAwait(false);
 
         foreach (var (url, name) in TranslationConstants.TranslationFiles)

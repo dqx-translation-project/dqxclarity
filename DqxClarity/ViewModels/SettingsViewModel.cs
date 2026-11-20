@@ -69,6 +69,8 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool   _clpkDisableTextNormalization;
     [ObservableProperty] private string _clpkMaxCharsPerLine = "";
     [ObservableProperty] private string _clpkMaxLinesPerBox = "";
+    // GitHub repo to use instead of dqx-custom-translations. Blank = the default.
+    [ObservableProperty] private string _clpkCustomTranslationsUrl = "";
     // Whether the "Additional Plugin Options" above are shown. View-only; not saved.
     [ObservableProperty] private bool   _showClpkPluginOptions;
     [ObservableProperty] private string _clpkBuildStatus = "";
@@ -128,6 +130,15 @@ public partial class SettingsViewModel : ObservableObject
             return;
         }
 
+        if (!string.IsNullOrWhiteSpace(ClpkCustomTranslationsUrl)
+            && !Updates.TranslationConstants.TryGetCustomTranslationsZipUrl(ClpkCustomTranslationsUrl, out _))
+        {
+            SetClpkBuildStatus(
+                "Custom translations URL must be a GitHub repo link, like https://github.com/<organization>/<repo>, " +
+                "or blank for the default (dqx-custom-translations).", true);
+            return;
+        }
+
         try
         {
             var suggested = Path.GetFileNameWithoutExtension(ClpkInputZipPath) + ".clpk";
@@ -137,7 +148,7 @@ public partial class SettingsViewModel : ObservableObject
             SetClpkBuildStatus("Building...");
             await _languagePacks.BuildClpkAsync(ClpkInputZipPath, outputPath,
                 ClpkAuthor, ClpkLanguage, ClpkDownloadUrl,
-                ClpkDisableTextNormalization, maxChars, maxLines);
+                ClpkDisableTextNormalization, maxChars, maxLines, ClpkCustomTranslationsUrl);
             SetClpkBuildStatus($"Built {Path.GetFileName(outputPath)}.");
         }
         catch (Exception ex)
@@ -842,8 +853,15 @@ public partial class SettingsViewModel : ObservableObject
             TargetLanguage     = langCode,
             TargetLanguageName = langName,
             TextOptions        = ResolvePackTextOptions(),
+            CustomTranslationsUrl = ResolvePackCustomTranslationsUrl(),
         };
     }
+
+    // The custom translations repo link from the same top active pack's header,
+    // as stored; null when there's no active pack or it doesn't name one (every
+    // pack built before this option existed), meaning dqx-custom-translations.
+    public string? ResolvePackCustomTranslationsUrl() =>
+        _languagePacks.ReadCustomTranslationsUrl(GetActiveLanguagePackFileNames().FirstOrDefault());
 
     // Text settings (normalisation, dialogue box size) come straight from the
     // header of the highest-priority active language pack -- the same pack that

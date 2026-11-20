@@ -28,6 +28,12 @@ public sealed class ClarityRuntime : IDisposable
     private Action<string, bool>? _log;
     private Action<string, byte[], string, byte[]?, string?>? _debugPacket;
 
+    // Server-side translations repo (dqx-custom-translations or the one the
+    // active language pack names), as the link stored in the pack -- null for
+    // the default. Updates run one at a time: each wipes and refills m00_strings.
+    private string? _customTranslationsUrl;
+    private readonly SemaphoreSlim _translationUpdateLock = new(1, 1);
+
     public ClarityRuntime(
         ITranslationBackend backend,
         bool debugLogging = false,
@@ -166,10 +172,28 @@ public sealed class ClarityRuntime : IDisposable
         _deps.PlayerContext.ForceReactivate(_deps);
     }
 
-    public void Start()
+    // customTranslationsUrl: the active language pack's custom translations repo
+    // link, or null for dqx-custom-translations.
+    public void Start(string? customTranslationsUrl = null)
     {
         PacketWardenService.EnsureExtracted();
         _hook.StartPipe();
+        _customTranslationsUrl = customTranslationsUrl;
+        _ = UpdateTranslationDataAsync();
+    }
+
+    // Called on every Run click with the current top language pack's link. The
+    // translation data was downloaded when the runtime started, so if the pack
+    // now points somewhere else (pack switched, reordered or updated), download
+    // again from the new repo. Same repo -> nothing to do.
+    public void UpdateCustomTranslationsUrl(string? customTranslationsUrl)
+    {
+        var before = TranslationConstants.ResolveCustomTranslationsZipUrl(_customTranslationsUrl);
+        var after  = TranslationConstants.ResolveCustomTranslationsZipUrl(customTranslationsUrl);
+        _customTranslationsUrl = customTranslationsUrl;
+        if (string.Equals(before, after, StringComparison.Ordinal)) return;
+
+        _log?.Invoke("Language pack changed the custom translations source; downloading translation data again.", false);
         _ = UpdateTranslationDataAsync();
     }
 
@@ -184,9 +208,15 @@ public sealed class ClarityRuntime : IDisposable
     // Translator below so this session doesn't need a restart to pick up fresh data.
     private async Task UpdateTranslationDataAsync()
     {
+        await _translationUpdateLock.WaitAsync().ConfigureAwait(false);
+
+        // Read once, so the log below describes the repo actually downloaded.
+        var link = _customTranslationsUrl;
+        var custom = TranslationConstants.TryGetCustomTranslationsZipUrl(link, out var customZip);
         try
         {
-            await new TranslationUpdater(_db, ClarityDb.DefaultDbPath()).RunAsync().ConfigureAwait(false);
+            await new TranslationUpdater(_db, ClarityDb.DefaultDbPath())
+                .RunAsync(custom ? customZip : null).ConfigureAwait(false);
 
             // TranslationUpdater's custom-zip import (ImportCustomZipAsync) does an
             // unconditional, unscoped "DELETE FROM m00_strings" before re-ingesting
@@ -206,13 +236,20 @@ public sealed class ClarityRuntime : IDisposable
             _db.ImportNameOverrides();
             _translator.UpdateGlossary(GlossaryCache.Load(_db));
             _log?.Invoke("Translation data updated.", false);
+            if (custom)
+                _log?.Invoke($"Using custom translations from the language pack: {link}", false);
         }
         catch (Exception ex)
         {
-            _log?.Invoke($"Failed to update translation data: {ex.Message}", true);
+            _log?.Invoke(custom
+                ? $"Failed to update translation data from the language pack's custom translations ({link}): {ex.Message}"
+                : $"Failed to update translation data: {ex.Message}", true);
         }
         finally
         {
+            if (link != null && !custom)
+                _log?.Invoke($"The language pack's custom translations link isn't a GitHub repo link ({link}); used the default translations instead.", true);
+            _translationUpdateLock.Release();
             // Finished either way (a failed update just means the existing data is used).
             _translationDataDone = true;
             TryAnnounceReady();

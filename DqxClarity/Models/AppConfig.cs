@@ -64,6 +64,11 @@ public class TranslationConfig
     // ClpkTextOptions). Not stored in user_settings.ini: they are read from the
     // pack each time Run is clicked, so updating a pack updates them too.
     public ClpkTextOptions TextOptions { get; set; } = ClpkTextOptions.Default;
+
+    // The custom translations repo link from the same pack's header, as stored
+    // (null = none). Resolved to a download with
+    // TranslationConstants.ResolveCustomTranslationsZipUrl. Not in the ini either.
+    public string? CustomTranslationsUrl { get; set; }
 }
 
 public class GameConfig

@@ -99,6 +99,16 @@ Optional text settings, for packs meant to be used with a game mod that can disp
 
 A value outside its range is ignored and the default is used. These settings affect machine-translated text only; translations already saved in `clarity_dialog.db` keep the shape they were saved with.
 
+Optional custom translations source:
+
+```json
+{
+  "custom_translations_url": "https://github.com/my-org/my-custom-translations"
+}
+```
+
+- `custom_translations_url` — a GitHub repo to download server-side translations from instead of [dqx-custom-translations](https://github.com/dqx-translation-project/dqx-custom-translations). The repo must use the same folders and file names. dqxclarity downloads the zip of its `main` branch (a `/tree/<branch>` link picks another branch); `https://github.com/<repo>` with no organization means `dqx-translation-project/<repo>`. Left out, blank, or not a GitHub repo link: the default repo is used.
+
 The **entire ZIP payload** is extracted into the game's `Game\mods` folder. There is no per-file manifest — the dragonhook proxy serves every loose file under `Game\mods` in place of the packed DAT archives.
 
 ### Building a pack

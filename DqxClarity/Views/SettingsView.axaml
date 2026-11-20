@@ -343,6 +343,16 @@
                                                      Watermark="3 (default)"
                                                      ToolTip.Tip="How many lines fit in a single dialogue box before a break. Leave blank to use the default of 3."/>
                                         </Grid>
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="Custom translations URL:"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,8,0"/>
+                                            <TextBox Grid.Column="1"
+                                                     Text="{Binding ClpkCustomTranslationsUrl}"
+                                                     Watermark="dqx-custom-translations (default)"
+                                                     ToolTip.Tip="Direct link to a Github repo containing server-side translations. Must be formatted the same as dqx-custom-translations."/>
+                                        </Grid>
                                     </StackPanel>
                                     <Button x:Name="ClpkBuildButton"
                                             Command="{Binding BuildClpkCommand}"

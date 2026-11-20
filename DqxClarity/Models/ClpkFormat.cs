@@ -53,6 +53,13 @@ public record ClpkMetadata
     [JsonPropertyName("max_lines_per_box")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? MaxLinesPerBox { get; init; }
+
+    /// <summary>GitHub repo to download server-side translations from instead of
+    /// dqx-custom-translations (same layout required). Null = the default repo; an
+    /// unrecognised link is also treated as the default. Left out of the JSON when unset.</summary>
+    [JsonPropertyName("custom_translations_url")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? CustomTranslationsUrl { get; init; }
 }
 
 /// <summary>
